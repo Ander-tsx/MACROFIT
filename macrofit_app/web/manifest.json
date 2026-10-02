@@ -1,11 +1,11 @@
 {
-    "name": "macrofit_app",
-    "short_name": "macrofit_app",
+    "name": "MacroFit",
+    "short_name": "MacroFit",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",
     "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "description": "Registro nutricional por foto y rutinas de entrenamiento con seguimiento de coach.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [
