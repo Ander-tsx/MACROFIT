@@ -1,0 +1,35 @@
+name: Historia de usuario o tarea técnica
+description: Un elemento del product backlog (HU-XX o TEC-XX).
+title: "HU-XX: "
+labels: [historia]
+body:
+  - type: input
+    id: id
+    attributes:
+      label: ID del backlog
+      placeholder: HU-01
+    validations:
+      required: true
+  - type: textarea
+    id: historia
+    attributes:
+      label: Historia
+      placeholder: Como <rol>, quiero <acción> para <beneficio>.
+    validations:
+      required: true
+  - type: textarea
+    id: criterios
+    attributes:
+      label: Criterios de aceptación
+      description: Tomados del esquema de pruebas del sprint.
+    validations:
+      required: true
+  - type: dropdown
+    id: prioridad
+    attributes:
+      label: Prioridad (MoSCoW)
+      options: [Must, Should, Could, Won't]
+  - type: input
+    id: sp
+    attributes:
+      label: Story points
