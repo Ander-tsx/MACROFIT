@@ -11,6 +11,7 @@ El coach vincula clientes, ajusta sus metas y les asigna rutinas.
 | [product_backlog_macrofit.md](product_backlog_macrofit.md) | Historias técnicas (TEC) y de usuario (HU), prioridad y story points |
 | [esquema_pruebas_sprint1.md](esquema_pruebas_sprint1.md) | Casos de prueba del sprint 1 |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | Estrategia de ramas, commits y pull requests |
+| [docs/legal/aviso-de-privacidad.md](docs/legal/aviso-de-privacidad.md) | Aviso de privacidad integral (TEC-07) |
 
 ## Estructura
 
