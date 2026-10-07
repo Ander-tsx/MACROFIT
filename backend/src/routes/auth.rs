@@ -1,172 +1,166 @@
 use axum::{
+    Json, Router,
     extract::State,
     http::StatusCode,
-    response::Json,
+    routing::{get, post},
 };
-use mongodb::bson::doc;
 use serde::{Deserialize, Serialize};
-use serde_json::{json, Value};
 
-use crate::AppState;
-use crate::auth::jwt::generate_jwt;
 use crate::auth::middleware::{AuthenticatedUser, CoachOnly};
-use crate::models::user::{hash_password, verify_password, Role, User};
+use crate::error::{ApiJson, AppError};
+use crate::models::user::{Role, User};
+use crate::services::auth::{self as auth_service, RegisterInput};
+use crate::services::session::{self, IssuedTokens};
+use crate::state::AppState;
 
-fn default_role() -> Role {
-    Role::User
+pub fn router() -> Router<AppState> {
+    Router::new()
+        .route("/auth/register", post(register_handler))
+        .route("/auth/login", post(login_handler))
+        .route("/auth/refresh", post(refresh_handler))
+        .route("/auth/logout", post(logout_handler))
+        .route("/auth/me", get(me_handler))
+        .route("/coach/test", get(coach_only_handler))
 }
 
+// ---------- DTOs ----------
+
+/// Cuerpo de `POST /auth/register`. Todos los campos son opcionales para que
+/// la validación pueda señalar cuál falta en lugar de rechazar el JSON completo.
 #[derive(Debug, Deserialize)]
 pub struct RegisterRequest {
-    pub email: String,
-    pub password: String,
-    pub name: String,
-    #[serde(default = "default_role")]
-    pub role: Role,
+    pub name: Option<String>,
+    pub email: Option<String>,
+    pub password: Option<String>,
+    pub role: Option<String>,
+    pub privacy_accepted: Option<bool>,
 }
 
 #[derive(Debug, Deserialize)]
 pub struct LoginRequest {
+    pub email: Option<String>,
+    pub password: Option<String>,
+}
+
+/// Representación pública de una cuenta. Nunca incluye la contraseña ni su hash.
+#[derive(Debug, Serialize)]
+pub struct UserResponse {
+    pub id: String,
+    pub name: String,
     pub email: String,
-    pub password: String,
+    pub role: Role,
+    pub profile_completed: bool,
+}
+
+impl From<User> for UserResponse {
+    fn from(user: User) -> Self {
+        Self {
+            id: user.id_hex(),
+            name: user.name,
+            email: user.email,
+            role: user.role,
+            profile_completed: user.profile_completed,
+        }
+    }
+}
+
+/// Cuerpo de `POST /auth/refresh` y `POST /auth/logout`.
+#[derive(Debug, Deserialize)]
+pub struct RefreshRequest {
+    pub refresh_token: Option<String>,
+}
+
+/// Respuesta de login y refresh.
+#[derive(Debug, Serialize)]
+pub struct TokenResponse {
+    pub access_token: String,
+    pub refresh_token: String,
+    pub token_type: &'static str,
+    /// Segundos de vida del access token.
+    pub expires_in: i64,
+    pub user: UserResponse,
+}
+
+impl TokenResponse {
+    fn new(tokens: IssuedTokens, user: User) -> Self {
+        Self {
+            access_token: tokens.access_token,
+            refresh_token: tokens.refresh_token,
+            token_type: "Bearer",
+            expires_in: tokens.expires_in,
+            user: user.into(),
+        }
+    }
 }
 
 #[derive(Debug, Serialize)]
-pub struct AuthResponse {
-    pub token: String,
+pub struct SessionResponse {
     pub user_id: String,
-    pub email: String,
-    pub name: String,
     pub role: Role,
 }
 
+// ---------- Handlers ----------
+
+/// HU-01 — `POST /api/v1/auth/register`
 pub async fn register_handler(
     State(state): State<AppState>,
-    Json(payload): Json<RegisterRequest>,
-) -> Result<(StatusCode, Json<AuthResponse>), (StatusCode, Json<Value>)> {
-    let collection = state.db.collection::<User>("users");
-
-    // Verificar si el correo ya existe
-    let existing = collection
-        .find_one(doc! { "email": &payload.email })
-        .await
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "error": e.to_string() }))))?;
-
-    if existing.is_some() {
-        return Err((
-            StatusCode::BAD_REQUEST,
-            Json(json!({ "error": "El correo electrónico ya está registrado" })),
-        ));
-    }
-
-    // Hashear contraseña con bcrypt
-    let password_hash = hash_password(&payload.password)
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "error": e.to_string() }))))?;
-
-    let new_user = User {
-        id: None,
-        email: payload.email.clone(),
-        password_hash,
-        name: payload.name.clone(),
-        role: payload.role.clone(),
+    ApiJson(body): ApiJson<RegisterRequest>,
+) -> Result<(StatusCode, Json<UserResponse>), AppError> {
+    let input = RegisterInput {
+        name: body.name,
+        email: body.email,
+        password: body.password,
+        role: body.role,
+        privacy_accepted: body.privacy_accepted,
     };
-
-    let insert_result = collection
-        .insert_one(&new_user)
-        .await
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "error": e.to_string() }))))?;
-
-    let user_id = insert_result
-        .inserted_id
-        .as_object_id()
-        .map(|oid| oid.to_hex())
-        .unwrap_or_default();
-
-    let role_str = match &payload.role {
-        Role::User => "User",
-        Role::Coach => "Coach",
-    };
-
-    let token = generate_jwt(&user_id, role_str)
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "error": e.to_string() }))))?;
-
-    Ok((
-        StatusCode::CREATED,
-        Json(AuthResponse {
-            token,
-            user_id,
-            email: payload.email,
-            name: payload.name,
-            role: payload.role,
-        }),
-    ))
+    let user = auth_service::register(&state.db, input).await?;
+    Ok((StatusCode::CREATED, Json(user.into())))
 }
 
+/// HU-02 — `POST /api/v1/auth/login`. Abre una sesión nueva.
 pub async fn login_handler(
     State(state): State<AppState>,
-    Json(payload): Json<LoginRequest>,
-) -> Result<(StatusCode, Json<AuthResponse>), (StatusCode, Json<Value>)> {
-    let collection = state.db.collection::<User>("users");
-
-    let user = collection
-        .find_one(doc! { "email": &payload.email })
-        .await
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "error": e.to_string() }))))?;
-
-    let user = match user {
-        Some(u) => u,
-        None => {
-            return Err((
-                StatusCode::UNAUTHORIZED,
-                Json(json!({ "error": "Credenciales inválidas" })),
-            ));
-        }
-    };
-
-    let is_valid = verify_password(&payload.password, &user.password_hash)
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "error": e.to_string() }))))?;
-
-    if !is_valid {
-        return Err((
-            StatusCode::UNAUTHORIZED,
-            Json(json!({ "error": "Credenciales inválidas" })),
-        ));
-    }
-
-    let user_id = user.id.map(|oid| oid.to_hex()).unwrap_or_default();
-    let role_str = match &user.role {
-        Role::User => "User",
-        Role::Coach => "Coach",
-    };
-
-    let token = generate_jwt(&user_id, role_str)
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "error": e.to_string() }))))?;
-
-    Ok((
-        StatusCode::OK,
-        Json(AuthResponse {
-            token,
-            user_id,
-            email: user.email,
-            name: user.name,
-            role: user.role,
-        }),
-    ))
+    ApiJson(body): ApiJson<LoginRequest>,
+) -> Result<Json<TokenResponse>, AppError> {
+    let user = auth_service::login(&state.db, body.email, body.password).await?;
+    let tokens = session::start(&state.db, &state.tokens, &user).await?;
+    Ok(Json(TokenResponse::new(tokens, user)))
 }
 
-pub async fn me_handler(auth_user: AuthenticatedUser) -> Json<Value> {
-    Json(json!({
-        "user_id": auth_user.user_id,
-        "role": auth_user.role,
-        "message": "Usuario autenticado con éxito"
-    }))
+/// HU-02 — `POST /api/v1/auth/refresh`. Rota el refresh token.
+pub async fn refresh_handler(
+    State(state): State<AppState>,
+    ApiJson(body): ApiJson<RefreshRequest>,
+) -> Result<Json<TokenResponse>, AppError> {
+    let (user, tokens) = session::refresh(&state.db, &state.tokens, body.refresh_token).await?;
+    Ok(Json(TokenResponse::new(tokens, user)))
 }
 
-pub async fn coach_only_handler(CoachOnly(auth_user): CoachOnly) -> Json<Value> {
-    Json(json!({
-        "user_id": auth_user.user_id,
-        "role": auth_user.role,
-        "message": "Acceso permitido: eres Coach"
-    }))
+/// HU-02 — `POST /api/v1/auth/logout`. Requiere Bearer; revoca la sesión completa.
+pub async fn logout_handler(
+    State(state): State<AppState>,
+    auth_user: AuthenticatedUser,
+    ApiJson(body): ApiJson<RefreshRequest>,
+) -> Result<StatusCode, AppError> {
+    session::logout(&state.db, auth_user.session_id, body.refresh_token).await?;
+    Ok(StatusCode::NO_CONTENT)
 }
 
+/// HU-02 — `GET /api/v1/auth/me`. Datos de la cuenta del token.
+pub async fn me_handler(
+    State(state): State<AppState>,
+    auth_user: AuthenticatedUser,
+) -> Result<Json<UserResponse>, AppError> {
+    let user = auth_service::find_user_by_id(&state.db, auth_user.user_id)
+        .await?
+        .ok_or(AppError::Unauthorized("La cuenta ya no existe"))?;
+    Ok(Json(user.into()))
+}
+
+/// TEC-05 — `GET /api/v1/coach/test`. Prueba de la regla de acceso por rol (solo coach).
+pub async fn coach_only_handler(CoachOnly(auth_user): CoachOnly) -> Json<SessionResponse> {
+    Json(SessionResponse {
+        user_id: auth_user.user_id.to_hex(),
+        role: auth_user.role,
+    })
+}

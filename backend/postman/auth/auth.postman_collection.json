@@ -1,0 +1,1966 @@
+{
+  "info": {
+    "_postman_id": "9c4b2e1f-6a3d-4e8b-b7c5-2d1a0f9e0001",
+    "name": "MacroFit · Auth",
+    "description": "Módulo de autenticación y roles (src/routes/auth.rs). Ejecutar las carpetas en orden: cada una usa las cuentas y tokens de las anteriores. \"HU-02 Sesión · Cierre\" va al final.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "HU-01 Registro",
+      "description": "HU-01: Como persona nueva, quiero crear una cuenta eligiendo mi rol para acceder a las funciones de coach o de usuario.\n\nEndpoint: POST /api/v1/auth/register. Ejecutar en orden: los requests de duplicado usan el correo guardado por \"Usuario válido\".",
+      "item": [
+        {
+          "name": "Usuario válido",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    const email = \"user.\" + Date.now() + \".\" + Math.floor(Math.random() * 1e6) + \"@macrofit.test\";",
+                  "    pm.variables.set(\"email\", email);",
+                  "    pm.collectionVariables.set(\"user_email\", email);",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 201 Created\", function () {",
+                  "        pm.response.to.have.status(201);",
+                  "    });",
+                  "    const data = pm.response.json();",
+                  "    pm.test(\"Estructura: id, name, email, role, profile_completed\", function () {",
+                  "        pm.expect(data).to.have.all.keys(\"id\", \"name\", \"email\", \"role\", \"profile_completed\");",
+                  "        pm.expect(data.id).to.be.a(\"string\").and.to.match(/^[0-9a-f]{24}$/);",
+                  "        pm.expect(data.name).to.be.a(\"string\").and.not.empty;",
+                  "        pm.expect(data.role).to.eql(\"user\");",
+                  "        pm.expect(data.profile_completed).to.eql(false);",
+                  "    });",
+                  "    pm.test(\"El correo se devuelve normalizado en minúsculas\", function () {",
+                  "        pm.expect(data.email).to.eql(pm.variables.get(\"email\").toLowerCase());",
+                  "    });",
+                  "    pm.test(\"No devuelve la contraseña ni su hash\", function () {",
+                  "        const raw = pm.response.text();",
+                  "        pm.expect(data).to.not.have.any.keys(\"password\", \"password_hash\");",
+                  "        pm.expect(raw).to.not.include(pm.collectionVariables.get(\"test_password\"));",
+                  "        pm.expect(raw).to.not.include(\"$argon2\");",
+                  "    });",
+                  "    pm.collectionVariables.set(\"user_id\", data.id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "register"
+              ]
+            },
+            "description": "Registro válido con rol user. Responde 201 sin contraseña y guarda el id en {{user_id}}.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Usuario Prueba\",\n  \"email\": \"{{email}}\",\n  \"password\": \"{{test_password}}\",\n  \"role\": \"user\",\n  \"privacy_accepted\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Coach válido",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    const email = \"coach.\" + Date.now() + \".\" + Math.floor(Math.random() * 1e6) + \"@macrofit.test\";",
+                  "    pm.variables.set(\"email\", email);",
+                  "    pm.collectionVariables.set(\"coach_email\", email);",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 201 Created\", function () {",
+                  "        pm.response.to.have.status(201);",
+                  "    });",
+                  "    const data = pm.response.json();",
+                  "    pm.test(\"Estructura: id, name, email, role, profile_completed\", function () {",
+                  "        pm.expect(data).to.have.all.keys(\"id\", \"name\", \"email\", \"role\", \"profile_completed\");",
+                  "        pm.expect(data.id).to.be.a(\"string\").and.to.match(/^[0-9a-f]{24}$/);",
+                  "        pm.expect(data.name).to.be.a(\"string\").and.not.empty;",
+                  "        pm.expect(data.role).to.eql(\"coach\");",
+                  "        pm.expect(data.profile_completed).to.eql(false);",
+                  "    });",
+                  "    pm.test(\"El correo se devuelve normalizado en minúsculas\", function () {",
+                  "        pm.expect(data.email).to.eql(pm.variables.get(\"email\").toLowerCase());",
+                  "    });",
+                  "    pm.test(\"No devuelve la contraseña ni su hash\", function () {",
+                  "        const raw = pm.response.text();",
+                  "        pm.expect(data).to.not.have.any.keys(\"password\", \"password_hash\");",
+                  "        pm.expect(raw).to.not.include(pm.collectionVariables.get(\"test_password\"));",
+                  "        pm.expect(raw).to.not.include(\"$argon2\");",
+                  "    });",
+                  "    pm.collectionVariables.set(\"coach_id\", data.id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "register"
+              ]
+            },
+            "description": "Registro válido con rol coach. Guarda el id en {{coach_id}}.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Coach Prueba\",\n  \"email\": \"{{email}}\",\n  \"password\": \"{{test_password}}\",\n  \"role\": \"coach\",\n  \"privacy_accepted\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Segundo coach válido",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    const email = \"coach2.\" + Date.now() + \".\" + Math.floor(Math.random() * 1e6) + \"@macrofit.test\";",
+                  "    pm.variables.set(\"email\", email);",
+                  "    pm.collectionVariables.set(\"coach2_email\", email);",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 201 Created\", function () {",
+                  "        pm.response.to.have.status(201);",
+                  "    });",
+                  "    const data = pm.response.json();",
+                  "    pm.test(\"Estructura: id, name, email, role, profile_completed\", function () {",
+                  "        pm.expect(data).to.have.all.keys(\"id\", \"name\", \"email\", \"role\", \"profile_completed\");",
+                  "        pm.expect(data.id).to.be.a(\"string\").and.to.match(/^[0-9a-f]{24}$/);",
+                  "        pm.expect(data.name).to.be.a(\"string\").and.not.empty;",
+                  "        pm.expect(data.role).to.eql(\"coach\");",
+                  "        pm.expect(data.profile_completed).to.eql(false);",
+                  "    });",
+                  "    pm.test(\"El correo se devuelve normalizado en minúsculas\", function () {",
+                  "        pm.expect(data.email).to.eql(pm.variables.get(\"email\").toLowerCase());",
+                  "    });",
+                  "    pm.test(\"No devuelve la contraseña ni su hash\", function () {",
+                  "        const raw = pm.response.text();",
+                  "        pm.expect(data).to.not.have.any.keys(\"password\", \"password_hash\");",
+                  "        pm.expect(raw).to.not.include(pm.collectionVariables.get(\"test_password\"));",
+                  "        pm.expect(raw).to.not.include(\"$argon2\");",
+                  "    });",
+                  "    pm.collectionVariables.set(\"coach2_id\", data.id);",
+                  "    pm.test(\"Tiene un id distinto al del primer coach\", function () {",
+                  "        pm.expect(data.id).to.not.eql(pm.collectionVariables.get(\"coach_id\"));",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "register"
+              ]
+            },
+            "description": "Un segundo coach se registra sin conflicto. Guarda el id en {{coach2_id}}.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Coach Dos\",\n  \"email\": \"{{email}}\",\n  \"password\": \"{{test_password}}\",\n  \"role\": \"coach\",\n  \"privacy_accepted\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Correo duplicado",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 409\", function () {",
+                  "        pm.response.to.have.status(409);",
+                  "    });",
+                  "    const body = pm.response.json();",
+                  "    pm.test(\"Formato de error { error: { code, message, fields } }\", function () {",
+                  "        pm.expect(body).to.have.all.keys(\"error\");",
+                  "        pm.expect(body.error).to.have.all.keys(\"code\", \"message\", \"fields\");",
+                  "        pm.expect(body.error.message).to.be.a(\"string\").and.not.empty;",
+                  "        pm.expect(body.error.fields).to.be.an(\"object\");",
+                  "    });",
+                  "    pm.test(\"Código EMAIL_ALREADY_EXISTS\", function () {",
+                  "        pm.expect(body.error.code).to.eql(\"EMAIL_ALREADY_EXISTS\");",
+                  "    });",
+                  "    pm.test(\"Señala el campo 'email'\", function () {",
+                  "        pm.expect(body.error.fields).to.have.property(\"email\");",
+                  "        pm.expect(body.error.fields.email).to.be.a(\"string\").and.not.empty;",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "register"
+              ]
+            },
+            "description": "Mismo correo que \"Usuario válido\". Responde 409 EMAIL_ALREADY_EXISTS y no crea otra cuenta.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Usuario Repetido\",\n  \"email\": \"{{user_email}}\",\n  \"password\": \"{{test_password}}\",\n  \"role\": \"user\",\n  \"privacy_accepted\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Correo duplicado con mayúsculas",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.variables.set(\"email\", pm.collectionVariables.get(\"user_email\").toUpperCase());",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 409\", function () {",
+                  "        pm.response.to.have.status(409);",
+                  "    });",
+                  "    const body = pm.response.json();",
+                  "    pm.test(\"Formato de error { error: { code, message, fields } }\", function () {",
+                  "        pm.expect(body).to.have.all.keys(\"error\");",
+                  "        pm.expect(body.error).to.have.all.keys(\"code\", \"message\", \"fields\");",
+                  "        pm.expect(body.error.message).to.be.a(\"string\").and.not.empty;",
+                  "        pm.expect(body.error.fields).to.be.an(\"object\");",
+                  "    });",
+                  "    pm.test(\"Código EMAIL_ALREADY_EXISTS\", function () {",
+                  "        pm.expect(body.error.code).to.eql(\"EMAIL_ALREADY_EXISTS\");",
+                  "    });",
+                  "    pm.test(\"Señala el campo 'email'\", function () {",
+                  "        pm.expect(body.error.fields).to.have.property(\"email\");",
+                  "        pm.expect(body.error.fields.email).to.be.a(\"string\").and.not.empty;",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "register"
+              ]
+            },
+            "description": "Correo de \"Usuario válido\" en MAYÚSCULAS. El correo se normaliza, así que también responde 409.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Usuario Repetido\",\n  \"email\": \"{{email}}\",\n  \"password\": \"{{test_password}}\",\n  \"role\": \"user\",\n  \"privacy_accepted\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Sin rol",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    const email = \"sinrol.\" + Date.now() + \".\" + Math.floor(Math.random() * 1e6) + \"@macrofit.test\";",
+                  "    pm.variables.set(\"email\", email);",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 400\", function () {",
+                  "        pm.response.to.have.status(400);",
+                  "    });",
+                  "    const body = pm.response.json();",
+                  "    pm.test(\"Formato de error { error: { code, message, fields } }\", function () {",
+                  "        pm.expect(body).to.have.all.keys(\"error\");",
+                  "        pm.expect(body.error).to.have.all.keys(\"code\", \"message\", \"fields\");",
+                  "        pm.expect(body.error.message).to.be.a(\"string\").and.not.empty;",
+                  "        pm.expect(body.error.fields).to.be.an(\"object\");",
+                  "    });",
+                  "    pm.test(\"Código VALIDATION_ERROR\", function () {",
+                  "        pm.expect(body.error.code).to.eql(\"VALIDATION_ERROR\");",
+                  "    });",
+                  "    pm.test(\"Señala el campo 'role'\", function () {",
+                  "        pm.expect(body.error.fields).to.have.property(\"role\");",
+                  "        pm.expect(body.error.fields.role).to.be.a(\"string\").and.not.empty;",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "register"
+              ]
+            },
+            "description": "Sin el campo role. Responde 400 señalando role.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Usuario Prueba\",\n  \"email\": \"{{email}}\",\n  \"password\": \"{{test_password}}\",\n  \"privacy_accepted\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Rol inválido",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    const email = \"rolinvalido.\" + Date.now() + \".\" + Math.floor(Math.random() * 1e6) + \"@macrofit.test\";",
+                  "    pm.variables.set(\"email\", email);",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 400\", function () {",
+                  "        pm.response.to.have.status(400);",
+                  "    });",
+                  "    const body = pm.response.json();",
+                  "    pm.test(\"Formato de error { error: { code, message, fields } }\", function () {",
+                  "        pm.expect(body).to.have.all.keys(\"error\");",
+                  "        pm.expect(body.error).to.have.all.keys(\"code\", \"message\", \"fields\");",
+                  "        pm.expect(body.error.message).to.be.a(\"string\").and.not.empty;",
+                  "        pm.expect(body.error.fields).to.be.an(\"object\");",
+                  "    });",
+                  "    pm.test(\"Código VALIDATION_ERROR\", function () {",
+                  "        pm.expect(body.error.code).to.eql(\"VALIDATION_ERROR\");",
+                  "    });",
+                  "    pm.test(\"Señala el campo 'role'\", function () {",
+                  "        pm.expect(body.error.fields).to.have.property(\"role\");",
+                  "        pm.expect(body.error.fields.role).to.be.a(\"string\").and.not.empty;",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "register"
+              ]
+            },
+            "description": "role distinto de user/coach. Responde 400 señalando role.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Usuario Prueba\",\n  \"email\": \"{{email}}\",\n  \"password\": \"{{test_password}}\",\n  \"role\": \"admin\",\n  \"privacy_accepted\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Sin aviso de privacidad",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    const email = \"sinaviso.\" + Date.now() + \".\" + Math.floor(Math.random() * 1e6) + \"@macrofit.test\";",
+                  "    pm.variables.set(\"email\", email);",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    // TODO(TEC-07): cuando se implemente el aviso de privacidad este request debe",
+                  "    // esperar 400 con código PRIVACY_NOT_ACCEPTED. Reemplaza estos tests por:",
+                  "    //   status 400, error.code === \"PRIVACY_NOT_ACCEPTED\", fields.privacy_accepted",
+                  "    pm.test(\"Status 201 (aviso de privacidad pendiente, TEC-07)\", function () {",
+                  "        pm.response.to.have.status(201);",
+                  "    });",
+                  "    const data = pm.response.json();",
+                  "    pm.test(\"Estructura: id, name, email, role, profile_completed\", function () {",
+                  "        pm.expect(data).to.have.all.keys(\"id\", \"name\", \"email\", \"role\", \"profile_completed\");",
+                  "        pm.expect(data.profile_completed).to.eql(false);",
+                  "    });",
+                  "    pm.test(\"No devuelve la contraseña ni su hash\", function () {",
+                  "        pm.expect(data).to.not.have.any.keys(\"password\", \"password_hash\");",
+                  "        pm.expect(pm.response.text()).to.not.include(pm.collectionVariables.get(\"test_password\"));",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "register"
+              ]
+            },
+            "description": "privacy_accepted: false. PENDIENTE (TEC-07): hoy se acepta (201) y privacy_accepted_at queda en null. Cuando exista el aviso debe responder 400 PRIVACY_NOT_ACCEPTED.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Sin Aviso\",\n  \"email\": \"{{email}}\",\n  \"password\": \"{{test_password}}\",\n  \"role\": \"user\",\n  \"privacy_accepted\": false\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Correo inválido",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 400\", function () {",
+                  "        pm.response.to.have.status(400);",
+                  "    });",
+                  "    const body = pm.response.json();",
+                  "    pm.test(\"Formato de error { error: { code, message, fields } }\", function () {",
+                  "        pm.expect(body).to.have.all.keys(\"error\");",
+                  "        pm.expect(body.error).to.have.all.keys(\"code\", \"message\", \"fields\");",
+                  "        pm.expect(body.error.message).to.be.a(\"string\").and.not.empty;",
+                  "        pm.expect(body.error.fields).to.be.an(\"object\");",
+                  "    });",
+                  "    pm.test(\"Código VALIDATION_ERROR\", function () {",
+                  "        pm.expect(body.error.code).to.eql(\"VALIDATION_ERROR\");",
+                  "    });",
+                  "    pm.test(\"Señala el campo 'email'\", function () {",
+                  "        pm.expect(body.error.fields).to.have.property(\"email\");",
+                  "        pm.expect(body.error.fields.email).to.be.a(\"string\").and.not.empty;",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "register"
+              ]
+            },
+            "description": "Correo con formato inválido. Responde 400 señalando email.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Usuario Prueba\",\n  \"email\": \"correo-sin-arroba.com\",\n  \"password\": \"{{test_password}}\",\n  \"role\": \"user\",\n  \"privacy_accepted\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Contraseña corta",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    const email = \"passcorta.\" + Date.now() + \".\" + Math.floor(Math.random() * 1e6) + \"@macrofit.test\";",
+                  "    pm.variables.set(\"email\", email);",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 400\", function () {",
+                  "        pm.response.to.have.status(400);",
+                  "    });",
+                  "    const body = pm.response.json();",
+                  "    pm.test(\"Formato de error { error: { code, message, fields } }\", function () {",
+                  "        pm.expect(body).to.have.all.keys(\"error\");",
+                  "        pm.expect(body.error).to.have.all.keys(\"code\", \"message\", \"fields\");",
+                  "        pm.expect(body.error.message).to.be.a(\"string\").and.not.empty;",
+                  "        pm.expect(body.error.fields).to.be.an(\"object\");",
+                  "    });",
+                  "    pm.test(\"Código VALIDATION_ERROR\", function () {",
+                  "        pm.expect(body.error.code).to.eql(\"VALIDATION_ERROR\");",
+                  "    });",
+                  "    pm.test(\"Señala el campo 'password'\", function () {",
+                  "        pm.expect(body.error.fields).to.have.property(\"password\");",
+                  "        pm.expect(body.error.fields.password).to.be.a(\"string\").and.not.empty;",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "register"
+              ]
+            },
+            "description": "Contraseña de 7 caracteres (mínimo 8). Responde 400 señalando password.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Usuario Prueba\",\n  \"email\": \"{{email}}\",\n  \"password\": \"1234567\",\n  \"role\": \"user\",\n  \"privacy_accepted\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Nombre vacío",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    const email = \"sinnombre.\" + Date.now() + \".\" + Math.floor(Math.random() * 1e6) + \"@macrofit.test\";",
+                  "    pm.variables.set(\"email\", email);",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 400\", function () {",
+                  "        pm.response.to.have.status(400);",
+                  "    });",
+                  "    const body = pm.response.json();",
+                  "    pm.test(\"Formato de error { error: { code, message, fields } }\", function () {",
+                  "        pm.expect(body).to.have.all.keys(\"error\");",
+                  "        pm.expect(body.error).to.have.all.keys(\"code\", \"message\", \"fields\");",
+                  "        pm.expect(body.error.message).to.be.a(\"string\").and.not.empty;",
+                  "        pm.expect(body.error.fields).to.be.an(\"object\");",
+                  "    });",
+                  "    pm.test(\"Código VALIDATION_ERROR\", function () {",
+                  "        pm.expect(body.error.code).to.eql(\"VALIDATION_ERROR\");",
+                  "    });",
+                  "    pm.test(\"Señala el campo 'name'\", function () {",
+                  "        pm.expect(body.error.fields).to.have.property(\"name\");",
+                  "        pm.expect(body.error.fields.name).to.be.a(\"string\").and.not.empty;",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "register"
+              ]
+            },
+            "description": "name vacío. Responde 400 señalando name.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"\",\n  \"email\": \"{{email}}\",\n  \"password\": \"{{test_password}}\",\n  \"role\": \"user\",\n  \"privacy_accepted\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "HU-02 Sesión",
+      "description": "HU-02: Como usuario o coach, quiero iniciar y cerrar sesión para proteger mi información.\n\nUsa las cuentas creadas en \"HU-01 Registro\". Los tokens de \"Inicio de sesión de usuario/coach\" quedan en {{user_access_token}}, {{user_refresh_token}}, {{coach_access_token}} y {{coach_refresh_token}} para las siguientes historias. La renovación se prueba en una sesión auxiliar para no invalidar esos tokens. El cierre de sesión está en \"HU-02 Sesión · Cierre\", al final de la colección.",
+      "item": [
+        {
+          "name": "Inicio de sesión de usuario",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 200\", function () {",
+                  "        pm.response.to.have.status(200);",
+                  "    });",
+                  "    const data = pm.response.json();",
+                  "    pm.test(\"Estructura: access_token, refresh_token, token_type, expires_in, user\", function () {",
+                  "        pm.expect(data).to.have.all.keys(\"access_token\", \"refresh_token\", \"token_type\", \"expires_in\", \"user\");",
+                  "        pm.expect(data.access_token).to.be.a(\"string\").and.not.empty;",
+                  "        pm.expect(data.access_token.split(\".\")).to.have.lengthOf(3);",
+                  "        pm.expect(data.refresh_token).to.be.a(\"string\").and.not.empty;",
+                  "        pm.expect(data.token_type).to.eql(\"Bearer\");",
+                  "        pm.expect(data.expires_in).to.be.a(\"number\").and.above(0);",
+                  "    });",
+                  "    pm.test(\"El usuario trae su rol 'user' y su id\", function () {",
+                  "        pm.expect(data.user).to.have.all.keys(\"id\", \"name\", \"email\", \"role\", \"profile_completed\");",
+                  "        pm.expect(data.user.role).to.eql(\"user\");",
+                  "        pm.expect(data.user.id).to.eql(pm.collectionVariables.get(\"user_id\"));",
+                  "    });",
+                  "    pm.test(\"No devuelve la contraseña ni su hash\", function () {",
+                  "        pm.expect(data.user).to.not.have.any.keys(\"password\", \"password_hash\");",
+                  "        pm.expect(pm.response.text()).to.not.include(\"$argon2\");",
+                  "    });",
+                  "    pm.collectionVariables.set(\"user_access_token\", data.access_token);",
+                  "    pm.collectionVariables.set(\"user_refresh_token\", data.refresh_token);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ]
+            },
+            "description": "Credenciales válidas (rol user). Guarda {{user_access_token}} y {{user_refresh_token}}.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{user_email}}\",\n  \"password\": \"{{test_password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Inicio de sesión de coach",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 200\", function () {",
+                  "        pm.response.to.have.status(200);",
+                  "    });",
+                  "    const data = pm.response.json();",
+                  "    pm.test(\"Estructura: access_token, refresh_token, token_type, expires_in, user\", function () {",
+                  "        pm.expect(data).to.have.all.keys(\"access_token\", \"refresh_token\", \"token_type\", \"expires_in\", \"user\");",
+                  "        pm.expect(data.access_token).to.be.a(\"string\").and.not.empty;",
+                  "        pm.expect(data.access_token.split(\".\")).to.have.lengthOf(3);",
+                  "        pm.expect(data.refresh_token).to.be.a(\"string\").and.not.empty;",
+                  "        pm.expect(data.token_type).to.eql(\"Bearer\");",
+                  "        pm.expect(data.expires_in).to.be.a(\"number\").and.above(0);",
+                  "    });",
+                  "    pm.test(\"El usuario trae su rol 'coach' y su id\", function () {",
+                  "        pm.expect(data.user).to.have.all.keys(\"id\", \"name\", \"email\", \"role\", \"profile_completed\");",
+                  "        pm.expect(data.user.role).to.eql(\"coach\");",
+                  "        pm.expect(data.user.id).to.eql(pm.collectionVariables.get(\"coach_id\"));",
+                  "    });",
+                  "    pm.test(\"No devuelve la contraseña ni su hash\", function () {",
+                  "        pm.expect(data.user).to.not.have.any.keys(\"password\", \"password_hash\");",
+                  "        pm.expect(pm.response.text()).to.not.include(\"$argon2\");",
+                  "    });",
+                  "    pm.collectionVariables.set(\"coach_access_token\", data.access_token);",
+                  "    pm.collectionVariables.set(\"coach_refresh_token\", data.refresh_token);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ]
+            },
+            "description": "Credenciales válidas (rol coach). Guarda {{coach_access_token}} y {{coach_refresh_token}}.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{coach_email}}\",\n  \"password\": \"{{test_password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Contraseña incorrecta",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 401\", function () {",
+                  "        pm.response.to.have.status(401);",
+                  "    });",
+                  "    const body = pm.response.json();",
+                  "    pm.test(\"Formato de error { error: { code, message, fields } }\", function () {",
+                  "        pm.expect(body).to.have.all.keys(\"error\");",
+                  "        pm.expect(body.error).to.have.all.keys(\"code\", \"message\", \"fields\");",
+                  "        pm.expect(body.error.message).to.be.a(\"string\").and.not.empty;",
+                  "        pm.expect(body.error.fields).to.be.an(\"object\");",
+                  "    });",
+                  "    pm.test(\"Código INVALID_CREDENTIALS\", function () {",
+                  "        pm.expect(body.error.code).to.eql(\"INVALID_CREDENTIALS\");",
+                  "    });",
+                  "    pm.collectionVariables.set(\"invalid_credentials_message\", body.error.message);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ]
+            },
+            "description": "Correo registrado con contraseña incorrecta: 401 INVALID_CREDENTIALS.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{user_email}}\",\n  \"password\": \"contrasena-incorrecta\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Correo inexistente",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.variables.set(\"email\", \"noexiste.\" + Date.now() + \"@macrofit.test\");",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 401\", function () {",
+                  "        pm.response.to.have.status(401);",
+                  "    });",
+                  "    const body = pm.response.json();",
+                  "    pm.test(\"Formato de error { error: { code, message, fields } }\", function () {",
+                  "        pm.expect(body).to.have.all.keys(\"error\");",
+                  "        pm.expect(body.error).to.have.all.keys(\"code\", \"message\", \"fields\");",
+                  "        pm.expect(body.error.message).to.be.a(\"string\").and.not.empty;",
+                  "        pm.expect(body.error.fields).to.be.an(\"object\");",
+                  "    });",
+                  "    pm.test(\"Código INVALID_CREDENTIALS\", function () {",
+                  "        pm.expect(body.error.code).to.eql(\"INVALID_CREDENTIALS\");",
+                  "    });",
+                  "    pm.test(\"Mismo mensaje que con contraseña incorrecta\", function () {",
+                  "        pm.expect(body.error.message).to.eql(pm.collectionVariables.get(\"invalid_credentials_message\"));",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ]
+            },
+            "description": "Correo no registrado: mismo código y mensaje que \"Contraseña incorrecta\" (no revela qué correos existen).",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{email}}\",\n  \"password\": \"{{test_password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "/auth/me sin token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 401\", function () {",
+                  "        pm.response.to.have.status(401);",
+                  "    });",
+                  "    const body = pm.response.json();",
+                  "    pm.test(\"Formato de error { error: { code, message, fields } }\", function () {",
+                  "        pm.expect(body).to.have.all.keys(\"error\");",
+                  "        pm.expect(body.error).to.have.all.keys(\"code\", \"message\", \"fields\");",
+                  "        pm.expect(body.error.message).to.be.a(\"string\").and.not.empty;",
+                  "        pm.expect(body.error.fields).to.be.an(\"object\");",
+                  "    });",
+                  "    pm.test(\"Código UNAUTHORIZED\", function () {",
+                  "        pm.expect(body.error.code).to.eql(\"UNAUTHORIZED\");",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "me"
+              ]
+            },
+            "description": "Sin cabecera Authorization: 401."
+          },
+          "response": []
+        },
+        {
+          "name": "/auth/me con token inválido",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    // Altera la firma del token del usuario: cambia su primer carácter.",
+                  "    const parts = pm.collectionVariables.get(\"user_access_token\").split(\".\");",
+                  "    parts[2] = (parts[2][0] === \"A\" ? \"B\" : \"A\") + parts[2].slice(1);",
+                  "    pm.variables.set(\"tampered_token\", parts.join(\".\"));",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 401\", function () {",
+                  "        pm.response.to.have.status(401);",
+                  "    });",
+                  "    const body = pm.response.json();",
+                  "    pm.test(\"Formato de error { error: { code, message, fields } }\", function () {",
+                  "        pm.expect(body).to.have.all.keys(\"error\");",
+                  "        pm.expect(body.error).to.have.all.keys(\"code\", \"message\", \"fields\");",
+                  "        pm.expect(body.error.message).to.be.a(\"string\").and.not.empty;",
+                  "        pm.expect(body.error.fields).to.be.an(\"object\");",
+                  "    });",
+                  "    pm.test(\"Código UNAUTHORIZED\", function () {",
+                  "        pm.expect(body.error.code).to.eql(\"UNAUTHORIZED\");",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tampered_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "me"
+              ]
+            },
+            "description": "Token con la firma alterada: 401."
+          },
+          "response": []
+        },
+        {
+          "name": "/auth/me con token válido",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 200\", function () {",
+                  "        pm.response.to.have.status(200);",
+                  "    });",
+                  "    const data = pm.response.json();",
+                  "    pm.test(\"Devuelve los datos y el rol de la cuenta\", function () {",
+                  "        pm.expect(data).to.have.all.keys(\"id\", \"name\", \"email\", \"role\", \"profile_completed\");",
+                  "        pm.expect(data.id).to.eql(pm.collectionVariables.get(\"user_id\"));",
+                  "        pm.expect(data.email).to.eql(pm.collectionVariables.get(\"user_email\"));",
+                  "        pm.expect(data.role).to.eql(\"user\");",
+                  "    });",
+                  "    pm.test(\"No devuelve la contraseña ni su hash\", function () {",
+                  "        pm.expect(data).to.not.have.any.keys(\"password\", \"password_hash\");",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{user_access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "me"
+              ]
+            },
+            "description": "Con token válido: 200 con los datos de la cuenta."
+          },
+          "response": []
+        },
+        {
+          "name": "Inicio de sesión auxiliar para renovación",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 200\", function () {",
+                  "        pm.response.to.have.status(200);",
+                  "    });",
+                  "    const data = pm.response.json();",
+                  "    pm.test(\"Estructura: access_token, refresh_token, token_type, expires_in, user\", function () {",
+                  "        pm.expect(data).to.have.all.keys(\"access_token\", \"refresh_token\", \"token_type\", \"expires_in\", \"user\");",
+                  "        pm.expect(data.access_token).to.be.a(\"string\").and.not.empty;",
+                  "        pm.expect(data.access_token.split(\".\")).to.have.lengthOf(3);",
+                  "        pm.expect(data.refresh_token).to.be.a(\"string\").and.not.empty;",
+                  "        pm.expect(data.token_type).to.eql(\"Bearer\");",
+                  "        pm.expect(data.expires_in).to.be.a(\"number\").and.above(0);",
+                  "    });",
+                  "    pm.test(\"El usuario trae su rol 'user' y su id\", function () {",
+                  "        pm.expect(data.user).to.have.all.keys(\"id\", \"name\", \"email\", \"role\", \"profile_completed\");",
+                  "        pm.expect(data.user.role).to.eql(\"user\");",
+                  "        pm.expect(data.user.id).to.eql(pm.collectionVariables.get(\"user_id\"));",
+                  "    });",
+                  "    pm.test(\"No devuelve la contraseña ni su hash\", function () {",
+                  "        pm.expect(data.user).to.not.have.any.keys(\"password\", \"password_hash\");",
+                  "        pm.expect(pm.response.text()).to.not.include(\"$argon2\");",
+                  "    });",
+                  "    pm.collectionVariables.set(\"rotation_access_token\", data.access_token);",
+                  "    pm.collectionVariables.set(\"rotation_refresh_token\", data.refresh_token);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ]
+            },
+            "description": "Abre una segunda sesión del usuario para probar la rotación. Al reutilizar un token rotado se revoca la sesión completa, así que no se usa la sesión principal.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{user_email}}\",\n  \"password\": \"{{test_password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Renovación",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.collectionVariables.set(\"previous_refresh_token\", pm.collectionVariables.get(\"rotation_refresh_token\"));",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 200\", function () {",
+                  "        pm.response.to.have.status(200);",
+                  "    });",
+                  "    const data = pm.response.json();",
+                  "    pm.test(\"Estructura: access_token, refresh_token, token_type, expires_in, user\", function () {",
+                  "        pm.expect(data).to.have.all.keys(\"access_token\", \"refresh_token\", \"token_type\", \"expires_in\", \"user\");",
+                  "        pm.expect(data.access_token).to.be.a(\"string\").and.not.empty;",
+                  "        pm.expect(data.access_token.split(\".\")).to.have.lengthOf(3);",
+                  "        pm.expect(data.refresh_token).to.be.a(\"string\").and.not.empty;",
+                  "        pm.expect(data.token_type).to.eql(\"Bearer\");",
+                  "        pm.expect(data.expires_in).to.be.a(\"number\").and.above(0);",
+                  "    });",
+                  "    pm.test(\"El usuario trae su rol 'user' y su id\", function () {",
+                  "        pm.expect(data.user).to.have.all.keys(\"id\", \"name\", \"email\", \"role\", \"profile_completed\");",
+                  "        pm.expect(data.user.role).to.eql(\"user\");",
+                  "        pm.expect(data.user.id).to.eql(pm.collectionVariables.get(\"user_id\"));",
+                  "    });",
+                  "    pm.test(\"No devuelve la contraseña ni su hash\", function () {",
+                  "        pm.expect(data.user).to.not.have.any.keys(\"password\", \"password_hash\");",
+                  "        pm.expect(pm.response.text()).to.not.include(\"$argon2\");",
+                  "    });",
+                  "    pm.collectionVariables.set(\"rotation_access_token\", data.access_token);",
+                  "    pm.collectionVariables.set(\"rotation_refresh_token\", data.refresh_token);",
+                  "    pm.test(\"Entrega un refresh token nuevo\", function () {",
+                  "        pm.expect(data.refresh_token).to.not.eql(pm.collectionVariables.get(\"previous_refresh_token\"));",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/refresh",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "refresh"
+              ]
+            },
+            "description": "Rota el refresh token: 200 con tokens nuevos.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refresh_token\": \"{{rotation_refresh_token}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Token anterior tras la rotación",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 401\", function () {",
+                  "        pm.response.to.have.status(401);",
+                  "    });",
+                  "    const body = pm.response.json();",
+                  "    pm.test(\"Formato de error { error: { code, message, fields } }\", function () {",
+                  "        pm.expect(body).to.have.all.keys(\"error\");",
+                  "        pm.expect(body.error).to.have.all.keys(\"code\", \"message\", \"fields\");",
+                  "        pm.expect(body.error.message).to.be.a(\"string\").and.not.empty;",
+                  "        pm.expect(body.error.fields).to.be.an(\"object\");",
+                  "    });",
+                  "    pm.test(\"Código TOKEN_REVOKED\", function () {",
+                  "        pm.expect(body.error.code).to.eql(\"TOKEN_REVOKED\");",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/refresh",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "refresh"
+              ]
+            },
+            "description": "El refresh token ya rotado deja de funcionar: 401 TOKEN_REVOKED.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refresh_token\": \"{{previous_refresh_token}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Reuso revoca la sesión",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 401\", function () {",
+                  "        pm.response.to.have.status(401);",
+                  "    });",
+                  "    const body = pm.response.json();",
+                  "    pm.test(\"Formato de error { error: { code, message, fields } }\", function () {",
+                  "        pm.expect(body).to.have.all.keys(\"error\");",
+                  "        pm.expect(body.error).to.have.all.keys(\"code\", \"message\", \"fields\");",
+                  "        pm.expect(body.error.message).to.be.a(\"string\").and.not.empty;",
+                  "        pm.expect(body.error.fields).to.be.an(\"object\");",
+                  "    });",
+                  "    pm.test(\"Código TOKEN_REVOKED\", function () {",
+                  "        pm.expect(body.error.code).to.eql(\"TOKEN_REVOKED\");",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/refresh",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "refresh"
+              ]
+            },
+            "description": "Tras el reuso del token anterior, el refresh token más reciente de esa sesión también queda revocado (posible robo): 401 TOKEN_REVOKED.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refresh_token\": \"{{rotation_refresh_token}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "/auth/me con sesión revocada",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 401\", function () {",
+                  "        pm.response.to.have.status(401);",
+                  "    });",
+                  "    const body = pm.response.json();",
+                  "    pm.test(\"Formato de error { error: { code, message, fields } }\", function () {",
+                  "        pm.expect(body).to.have.all.keys(\"error\");",
+                  "        pm.expect(body.error).to.have.all.keys(\"code\", \"message\", \"fields\");",
+                  "        pm.expect(body.error.message).to.be.a(\"string\").and.not.empty;",
+                  "        pm.expect(body.error.fields).to.be.an(\"object\");",
+                  "    });",
+                  "    pm.test(\"Código TOKEN_REVOKED\", function () {",
+                  "        pm.expect(body.error.code).to.eql(\"TOKEN_REVOKED\");",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{rotation_access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "me"
+              ]
+            },
+            "description": "El access token de una sesión revocada deja de funcionar aunque no haya expirado."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Auth y roles (base)",
+      "description": "Regla de acceso por rol (TEC-05). Usa los tokens de \"HU-02 Sesión\".",
+      "item": [
+        {
+          "name": "Ruta coach con coach",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 200\", function () {",
+                  "        pm.response.to.have.status(200);",
+                  "    });",
+                  "    const data = pm.response.json();",
+                  "    pm.test(\"Estructura: user_id, role\", function () {",
+                  "        pm.expect(data).to.have.all.keys(\"user_id\", \"role\");",
+                  "        pm.expect(data.role).to.eql(\"coach\");",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{coach_access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/coach/test",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "coach",
+                "test"
+              ]
+            },
+            "description": "Un coach accede a la ruta exclusiva (200)."
+          },
+          "response": []
+        },
+        {
+          "name": "Ruta coach con usuario",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 403\", function () {",
+                  "        pm.response.to.have.status(403);",
+                  "    });",
+                  "    const body = pm.response.json();",
+                  "    pm.test(\"Formato de error { error: { code, message, fields } }\", function () {",
+                  "        pm.expect(body).to.have.all.keys(\"error\");",
+                  "        pm.expect(body.error).to.have.all.keys(\"code\", \"message\", \"fields\");",
+                  "        pm.expect(body.error.message).to.be.a(\"string\").and.not.empty;",
+                  "        pm.expect(body.error.fields).to.be.an(\"object\");",
+                  "    });",
+                  "    pm.test(\"Código FORBIDDEN\", function () {",
+                  "        pm.expect(body.error.code).to.eql(\"FORBIDDEN\");",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{user_access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/coach/test",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "coach",
+                "test"
+              ]
+            },
+            "description": "Un usuario con rol user recibe 403."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "HU-02 Sesión · Cierre",
+      "description": "Cierre de sesión de la sesión principal del usuario. build.js mueve esta carpeta al final de la colección combinada para que las demás historias puedan usar {{user_access_token}} antes.",
+      "item": [
+        {
+          "name": "Cierre de sesión",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 204 No Content\", function () {",
+                  "        pm.response.to.have.status(204);",
+                  "    });",
+                  "    pm.test(\"Sin cuerpo\", function () {",
+                  "        pm.expect(pm.response.text()).to.eql(\"\");",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{user_access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/logout",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "logout"
+              ]
+            },
+            "description": "Requiere Bearer y el refresh token de la sesión. Revoca la sesión completa: 204.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refresh_token\": \"{{user_refresh_token}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Renovación con token revocado",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 401\", function () {",
+                  "        pm.response.to.have.status(401);",
+                  "    });",
+                  "    const body = pm.response.json();",
+                  "    pm.test(\"Formato de error { error: { code, message, fields } }\", function () {",
+                  "        pm.expect(body).to.have.all.keys(\"error\");",
+                  "        pm.expect(body.error).to.have.all.keys(\"code\", \"message\", \"fields\");",
+                  "        pm.expect(body.error.message).to.be.a(\"string\").and.not.empty;",
+                  "        pm.expect(body.error.fields).to.be.an(\"object\");",
+                  "    });",
+                  "    pm.test(\"Código TOKEN_REVOKED\", function () {",
+                  "        pm.expect(body.error.code).to.eql(\"TOKEN_REVOKED\");",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/refresh",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "refresh"
+              ]
+            },
+            "description": "El refresh token de la sesión cerrada: 401 TOKEN_REVOKED.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refresh_token\": \"{{user_refresh_token}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "/auth/me tras cerrar sesión",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 401\", function () {",
+                  "        pm.response.to.have.status(401);",
+                  "    });",
+                  "    const body = pm.response.json();",
+                  "    pm.test(\"Formato de error { error: { code, message, fields } }\", function () {",
+                  "        pm.expect(body).to.have.all.keys(\"error\");",
+                  "        pm.expect(body.error).to.have.all.keys(\"code\", \"message\", \"fields\");",
+                  "        pm.expect(body.error.message).to.be.a(\"string\").and.not.empty;",
+                  "        pm.expect(body.error.fields).to.be.an(\"object\");",
+                  "    });",
+                  "    pm.test(\"Código TOKEN_REVOKED\", function () {",
+                  "        pm.expect(body.error.code).to.eql(\"TOKEN_REVOKED\");",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{user_access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "me"
+              ]
+            },
+            "description": "El access token de la sesión cerrada deja de funcionar de inmediato: 401 TOKEN_REVOKED."
+          },
+          "response": []
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "test_password",
+      "value": "Prueba-MacroFit-2026",
+      "type": "string",
+      "description": "Contraseña ficticia solo para pruebas."
+    },
+    {
+      "key": "user_email",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "user_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "coach_email",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "coach_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "coach2_email",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "coach2_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "user_access_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "user_refresh_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "coach_access_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "coach_refresh_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "invalid_credentials_message",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "rotation_access_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "rotation_refresh_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "previous_refresh_token",
+      "value": "",
+      "type": "string"
+    }
+  ]
+}

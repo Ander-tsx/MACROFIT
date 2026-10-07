@@ -75,6 +75,17 @@ flutter analyze
 flutter test
 ```
 
+Si tocaste el backend (ver [backend/README.md](backend/README.md#-forma-de-trabajo)):
+
+```bash
+cd backend
+cargo fmt --check
+cargo clippy --all-targets -- -D warnings
+cargo test
+```
+
+y, si cambiaste pruebas de Postman, `node postman/build.js` para regenerar la colección combinada; esa colección debe pasar sin fallos en el Collection Runner.
+
 ## Configuración recomendada del repositorio en GitHub
 
 En *Settings → Branches*, reglas para `main` y `develop`:

@@ -17,7 +17,9 @@ El coach vincula clientes, ajusta sus metas y les asigna rutinas.
 ```
 .
 ├── .github/          # CI, plantilla de PR y de issues
-├── backend/          # Backend en Rust (Axum, MongoDB Atlas, JWT) -> Ver backend/README.md
+├── backend/          # API en Rust (Axum, MongoDB, JWT) bajo /api/v1 -> Ver backend/README.md
+│   ├── src/          # Cada subcarpeta tiene un README.md con sus reglas
+│   └── postman/      # Pruebas de Postman: una colección por módulo + combinado generado
 ├── macrofit_app/     # Aplicación Flutter
 │   ├── lib/
 │   │   ├── main.dart
