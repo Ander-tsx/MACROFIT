@@ -1,0 +1,406 @@
+{
+  "info": {
+    "_postman_id": "b3e0d869-7c85-4871-9d22-macrofit0001",
+    "name": "MacroFit Backend API",
+    "description": "Colección plana para probar y ejecutar todas las peticiones con el Postman Collection Runner (Health, Auth, JWT, Roles).",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000",
+      "type": "string"
+    },
+    {
+      "key": "jwt_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "coach_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "user_email",
+      "value": "usuario_test@macrofit.com",
+      "type": "string"
+    },
+    {
+      "key": "coach_email",
+      "value": "coach_test@macrofit.com",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "1. GET Health Check",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Status code es 200 OK\", function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "pm.test(\"Respuesta contiene 'API MacroFit OK'\", function () {",
+              "    pm.expect(pm.response.text()).to.include(\"API MacroFit OK\");",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/health",
+          "host": ["{{baseUrl}}"],
+          "path": ["health"]
+        },
+        "description": "Verifica que el servidor Axum esté activo."
+      },
+      "response": []
+    },
+    {
+      "name": "2. POST Registro - Usuario Normal",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "exec": [
+              "var ts = Date.now();",
+              "pm.collectionVariables.set('user_email', 'user_' + ts + '@macrofit.com');"
+            ],
+            "type": "text/javascript"
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Status code es 201 Created\", function () {",
+              "    pm.response.to.have.status(201);",
+              "});",
+              "if (pm.response.code === 201) {",
+              "    var data = pm.response.json();",
+              "    pm.collectionVariables.set('jwt_token', data.token);",
+              "    pm.test(\"Token JWT recibido\", function () {",
+              "        pm.expect(data.token).to.be.a('string');",
+              "        pm.expect(data.role).to.eql('User');",
+              "    });",
+              "}"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"Erick Usuario\",\n  \"email\": \"{{user_email}}\",\n  \"password\": \"PasswordSeguro123\",\n  \"role\": \"User\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/auth/register",
+          "host": ["{{baseUrl}}"],
+          "path": ["auth", "register"]
+        },
+        "description": "Registra un nuevo usuario común y guarda su token en {{jwt_token}}."
+      },
+      "response": []
+    },
+    {
+      "name": "3. POST Login - Usuario Normal",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Status code es 200 OK\", function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "if (pm.response.code === 200) {",
+              "    var data = pm.response.json();",
+              "    pm.collectionVariables.set('jwt_token', data.token);",
+              "    pm.test(\"Token JWT validado\", function () {",
+              "        pm.expect(data.token).to.be.a('string');",
+              "    });",
+              "}"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"{{user_email}}\",\n  \"password\": \"PasswordSeguro123\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/auth/login",
+          "host": ["{{baseUrl}}"],
+          "path": ["auth", "login"]
+        },
+        "description": "Inicia sesión con el usuario recién registrado."
+      },
+      "response": []
+    },
+    {
+      "name": "4. POST Registro - Coach (Entrenador)",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "exec": [
+              "var ts = Date.now();",
+              "pm.collectionVariables.set('coach_email', 'coach_' + ts + '@macrofit.com');"
+            ],
+            "type": "text/javascript"
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Status code es 201 Created\", function () {",
+              "    pm.response.to.have.status(201);",
+              "});",
+              "if (pm.response.code === 201) {",
+              "    var data = pm.response.json();",
+              "    pm.collectionVariables.set('coach_token', data.token);",
+              "    pm.test(\"Token de Coach recibido\", function () {",
+              "        pm.expect(data.role).to.eql('Coach');",
+              "    });",
+              "}"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"Carlos Entrenador\",\n  \"email\": \"{{coach_email}}\",\n  \"password\": \"CoachPassword123\",\n  \"role\": \"Coach\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/auth/register",
+          "host": ["{{baseUrl}}"],
+          "path": ["auth", "register"]
+        },
+        "description": "Registra usuario con rol 'Coach' y guarda su token en {{coach_token}}."
+      },
+      "response": []
+    },
+    {
+      "name": "5. POST Login - Coach (Entrenador)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Status code es 200 OK\", function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "if (pm.response.code === 200) {",
+              "    var data = pm.response.json();",
+              "    pm.collectionVariables.set('coach_token', data.token);",
+              "    pm.test(\"Token de Coach actualizado\", function () {",
+              "        pm.expect(data.token).to.be.a('string');",
+              "    });",
+              "}"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"{{coach_email}}\",\n  \"password\": \"CoachPassword123\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/auth/login",
+          "host": ["{{baseUrl}}"],
+          "path": ["auth", "login"]
+        },
+        "description": "Inicia sesión con el rol de Coach."
+      },
+      "response": []
+    },
+    {
+      "name": "6. GET /auth/me (Con Token Válido)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Status code es 200 OK\", function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "pm.test(\"Usuario autenticado correctamente\", function () {",
+              "    var data = pm.response.json();",
+              "    pm.expect(data.message).to.eql(\"Usuario autenticado con éxito\");",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{jwt_token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/auth/me",
+          "host": ["{{baseUrl}}"],
+          "path": ["auth", "me"]
+        },
+        "description": "Prueba del middleware AuthenticatedUser con token Bearer válido."
+      },
+      "response": []
+    },
+    {
+      "name": "7. GET /auth/me (Sin Token - Espera 401)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Status code es 401 Unauthorized\", function () {",
+              "    pm.response.to.have.status(401);",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/auth/me",
+          "host": ["{{baseUrl}}"],
+          "path": ["auth", "me"]
+        },
+        "description": "Debe retornar 401 Unauthorized por falta de cabecera de autenticación."
+      },
+      "response": []
+    },
+    {
+      "name": "8. GET /coach/test (Con Coach - Espera 200)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Status code es 200 OK (Permitido para Coach)\", function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "pm.test(\"Mensaje de acceso confirmado\", function () {",
+              "    var data = pm.response.json();",
+              "    pm.expect(data.role).to.eql(\"Coach\");",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{coach_token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/coach/test",
+          "host": ["{{baseUrl}}"],
+          "path": ["coach", "test"]
+        },
+        "description": "Prueba regla de acceso por rol: como el token es de Coach, permite acceso (200 OK)."
+      },
+      "response": []
+    },
+    {
+      "name": "9. GET /coach/test (Con User - Espera 403)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Status code es 403 Forbidden (Denegado para User normal)\", function () {",
+              "    pm.response.to.have.status(403);",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{jwt_token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/coach/test",
+          "host": ["{{baseUrl}}"],
+          "path": ["coach", "test"]
+        },
+        "description": "Prueba regla de acceso por rol: como el token es de un usuario regular, deniega con 403 Forbidden."
+      },
+      "response": []
+    }
+  ]
+}

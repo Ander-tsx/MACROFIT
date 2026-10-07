@@ -28,3 +28,9 @@ key.properties
 **/Flutter/ephemeral/
 **/ios/Pods/
 **/macos/Pods/
+
+# Rust Backend
+**/target/
+**/uploads/
+**/*.rs.bk
+*.pdb
