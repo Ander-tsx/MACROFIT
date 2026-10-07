@@ -17,6 +17,7 @@ El coach vincula clientes, ajusta sus metas y les asigna rutinas.
 ```
 .
 ├── .github/          # CI, plantilla de PR y de issues
+├── backend/          # Backend en Rust (Axum, MongoDB Atlas, JWT) -> Ver backend/README.md
 ├── macrofit_app/     # Aplicación Flutter
 │   ├── lib/
 │   │   ├── main.dart
@@ -25,7 +26,7 @@ El coach vincula clientes, ajusta sus metas y les asigna rutinas.
 └── *.md              # Backlog y esquema de pruebas
 ```
 
-La arquitectura por capas y la gestión de estado se definen en **TEC-04**; el backend, en **TEC-03** y **TEC-05**.
+La arquitectura por capas y la gestión de estado se definen en **TEC-04**; el backend, en **TEC-03** y **TEC-05**. Consulta [backend/README.md](backend/README.md) para detalles de ejecución del servidor y pruebas en Postman.
 
 ## Requisitos
 
