@@ -10,26 +10,27 @@ abstract class GoalsRemoteDataSource {
 }
 
 class GoalsRemoteDataSourceImpl implements GoalsRemoteDataSource {
+  static const String defaultBaseUrl = 'http://localhost:3000/api/v1';
+
   final http.Client client;
-  final String baseUrl; 
+  final String baseUrl;
   final Future<String?> Function() tokenProvider;
 
   GoalsRemoteDataSourceImpl({
     required this.client,
-    required this.baseUrl,
     required this.tokenProvider,
+    this.baseUrl = defaultBaseUrl,
   });
 
   @override
   Future<GoalModel> getCurrentGoal() async {
-    final response = await _get('/api/v1/users/me/goals/current');
-    final body = jsonDecode(response.body) as Map<String, dynamic>;
-    return GoalModel.fromJson(body);
+    final response = await _get('/users/me/goals/current');
+    return GoalModel.fromJson(jsonDecode(response.body) as Map<String, dynamic>);
   }
 
   @override
   Future<List<GoalModel>> getGoalsHistory() async {
-    final response = await _get('/api/v1/users/me/goals');
+    final response = await _get('/users/me/goals');
     final decoded = jsonDecode(response.body);
     final list = decoded is List ? decoded : decoded['goals'] as List;
     return list
@@ -47,29 +48,46 @@ class GoalsRemoteDataSourceImpl implements GoalsRemoteDataSource {
       },
     );
 
+    if (response.statusCode == 200) return response;
+
+    final body = _tryDecode(response.body);
+    final code = _extractCode(body);
+    final message = _extractMessage(body);
+
     switch (response.statusCode) {
-      case 200:
-        return response;
       case 404:
-        final body = _tryDecode(response.body);
-        if (body?['code'] == 'PROFILE_NOT_FOUND') {
-          throw ProfileNotFoundException(
-              body?['message']?.toString() ?? 'Perfil no encontrado');
+        if (code == 'PROFILE_NOT_FOUND') {
+          throw ProfileNotFoundException(message ?? 'Perfil no encontrado');
         }
-        throw GoalsServerException('No encontrado', 404);
+        throw GoalsServerException(message ?? 'No encontrado', 404);
       case 403:
-        throw const GoalsForbiddenException();
+      // El backend responde FORBIDDEN cuando el rol es coach
+        throw GoalsForbiddenException(message ?? 'Acceso denegado');
       default:
         throw GoalsServerException(
-            'Error inesperado del servidor', response.statusCode);
+            message ?? 'Error inesperado del servidor', response.statusCode);
     }
   }
 
   Map<String, dynamic>? _tryDecode(String body) {
     try {
-      return jsonDecode(body) as Map<String, dynamic>;
+      final decoded = jsonDecode(body);
+      return decoded is Map<String, dynamic> ? decoded : null;
     } catch (_) {
       return null;
     }
+  }
+
+  // Acepta {"code": ...} o {"error": {"code": ...}}
+  String? _extractCode(Map<String, dynamic>? body) {
+    final nested = body?['error'];
+    if (nested is Map<String, dynamic>) return nested['code']?.toString();
+    return body?['code']?.toString();
+  }
+
+  String? _extractMessage(Map<String, dynamic>? body) {
+    final nested = body?['error'];
+    if (nested is Map<String, dynamic>) return nested['message']?.toString();
+    return body?['message']?.toString();
   }
 }
