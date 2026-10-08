@@ -39,6 +39,8 @@ pub enum AppError {
     Forbidden(&'static str),
     /// 500 — error inesperado; el detalle solo va al log.
     Internal(String),
+    /// 404 — el usuario aún no tiene perfil registrado.
+    ProfileNotFound,
 }
 
 impl AppError {
@@ -119,6 +121,12 @@ impl IntoResponse for AppError {
                     FieldErrors::new(),
                 )
             }
+            Self::ProfileNotFound => (
+                StatusCode::NOT_FOUND,
+                "PROFILE_NOT_FOUND",
+                "Perfil de usuario no encontrado".to_string(),
+                FieldErrors::new(),
+            ),
         };
 
         let body = json!({

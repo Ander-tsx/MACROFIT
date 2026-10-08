@@ -2,6 +2,8 @@ use mongodb::{Client, Database, IndexModel, bson::doc, options::IndexOptions};
 
 use std::time::Duration;
 
+use crate::models::goal::{GOALS_COLLECTION, NutritionalGoal};
+use crate::models::profile::{PROFILES_COLLECTION, UserProfile};
 use crate::models::refresh_token::{REFRESH_TOKENS_COLLECTION, RefreshToken};
 use crate::models::user::{USERS_COLLECTION, User};
 
@@ -75,4 +77,33 @@ async fn ensure_indexes(db: &Database) {
         .create_indexes(refresh_indexes)
         .await
         .expect("No se pudieron crear los índices de refresh_tokens");
+
+    // Historial de metas: la más reciente primero por usuario.
+    let goals_by_user = IndexModel::builder()
+        .keys(doc! { "user_id": 1, "effective_from": -1 })
+        .options(
+            IndexOptions::builder()
+                .name("user_id_effective_from".to_string())
+                .build(),
+        )
+        .build();
+    db.collection::<NutritionalGoal>(GOALS_COLLECTION)
+        .create_index(goals_by_user)
+        .await
+        .expect("No se pudo crear el índice de goals");
+
+    // Un solo perfil por usuario.
+    let profile_user_unique = IndexModel::builder()
+        .keys(doc! { "user_id": 1 })
+        .options(
+            IndexOptions::builder()
+                .unique(true)
+                .name("user_id_unique".to_string())
+                .build(),
+        )
+        .build();
+    db.collection::<UserProfile>(PROFILES_COLLECTION)
+        .create_index(profile_user_unique)
+        .await
+        .expect("No se pudo crear el índice único de profiles.user_id");
 }
