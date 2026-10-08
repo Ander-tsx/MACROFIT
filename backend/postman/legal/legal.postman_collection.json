@@ -1,0 +1,63 @@
+{
+  "info": {
+    "_postman_id": "3f8a6c1d-2e7b-4d90-a5c3-7b1e9d2f0001",
+    "name": "MacroFit · Legal",
+    "description": "Documentos legales (src/routes/legal.rs).",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "TEC-07 Aviso de privacidad",
+      "description": "TEC-07: el aviso de privacidad se sirve desde docs/legal/aviso-de-privacidad.md embebido en el backend.",
+      "item": [
+        {
+          "name": "Aviso de privacidad vigente",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 200\", function () {",
+                  "        pm.response.to.have.status(200);",
+                  "    });",
+                  "    const data = pm.response.json();",
+                  "    pm.test(\"Estructura: version, content\", function () {",
+                  "        pm.expect(data).to.have.all.keys(\"version\", \"content\");",
+                  "        pm.expect(data.version).to.be.a(\"string\").and.match(/^\\d+(\\.\\d+)*$/);",
+                  "        pm.expect(data.content).to.be.a(\"string\").and.not.empty;",
+                  "    });",
+                  "    pm.test(\"El contenido es el aviso con su versión\", function () {",
+                  "        pm.expect(data.content).to.include(\"Aviso de privacidad\");",
+                  "        pm.expect(data.content).to.include(\"**Versión:** \" + data.version);",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/legal/privacy",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "legal",
+                "privacy"
+              ]
+            },
+            "description": "Público. Devuelve la versión vigente y el texto completo en Markdown."
+          },
+          "response": []
+        }
+      ]
+    }
+  ],
+  "variable": []
+}

@@ -141,5 +141,8 @@ Desde `backend/`:
 - El índice único de `users.email` hace fallar el arranque si ya hay correos repetidos; datos anteriores a HU-01/HU-02
   (roles `User`/`Coach`, hashes bcrypt) no son compatibles y deben limpiarse en desarrollo.
 - `jsonwebtoken` tolera 60 s de desfase en `exp` por defecto.
+- El aviso de privacidad se embebe con `include_str!("../../../docs/legal/aviso-de-privacidad.md")`: el backend
+  depende de la estructura del repositorio. No muevas ese archivo sin actualizar `services/legal.rs`; cualquier
+  cambio al aviso requiere recompilar y, si es sustancial, subir su `**Versión:**`.
 - El reuso de un refresh token revoca la sesión completa: en Postman, prueba la rotación en una sesión auxiliar,
   nunca con los tokens que usan otras historias.

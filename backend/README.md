@@ -1,7 +1,7 @@
 # Backend MacroFit (Rust + Axum + MongoDB)
 
 API REST de MacroFit: autenticación, persistencia en MongoDB y reglas de acceso por rol (`user` y `coach`).
-Historias cubiertas: **TEC-05** (base), **HU-01** (registro con rol) y **HU-02** (inicio y cierre de sesión).
+Historias cubiertas: **TEC-05** (base), **TEC-07** (aviso de privacidad), **HU-01** (registro con rol) y **HU-02** (inicio y cierre de sesión).
 
 > **Si eres una persona o una sesión de IA que va a modificar este backend, lee primero
 > la sección [Forma de trabajo](#-forma-de-trabajo) y el README de la carpeta que vas a tocar.**
@@ -139,6 +139,7 @@ URL base: `http://localhost:3000/api/v1`
 | Método | Ruta | Auth | Historia | Descripción |
 |---|---|---|---|---|
 | GET | `/health` | — | TEC-05 | Responde `API MacroFit OK` |
+| GET | `/legal/privacy` | — | TEC-07 | Versión vigente y texto completo (Markdown) del aviso de privacidad |
 | POST | `/auth/register` | — | HU-01 | Crea una cuenta con rol |
 | POST | `/auth/login` | — | HU-02 | Abre una sesión: access + refresh token |
 | POST | `/auth/refresh` | — | HU-02 | Rota el refresh token y entrega tokens nuevos |
@@ -164,7 +165,7 @@ URL base: `http://localhost:3000/api/v1`
 | `email` | Obligatorio, formato válido, máx. 254. Se guarda en minúsculas y sin espacios |
 | `password` | 8 a 128 caracteres. Se guarda solo como hash Argon2id |
 | `role` | `"user"` o `"coach"` (exacto, en minúsculas) |
-| `privacy_accepted` | **Pendiente de TEC-07**: hoy no se exige. Si es `true` se guarda `privacy_accepted_at` |
+| `privacy_accepted` | Debe ser `true`. Se guardan `privacy_accepted_at` y `privacy_version` (versión vigente del aviso) |
 
 La confirmación de contraseña la valida la app; el backend no la recibe.
 
@@ -174,7 +175,7 @@ La confirmación de contraseña la valida la app; el backend no la recibe.
 { "id": "6ac67c70...", "name": "Ana", "email": "ana@macrofit.com", "role": "user", "profile_completed": false }
 ```
 
-**Errores:** `400 VALIDATION_ERROR` (campo en `fields`), `400 INVALID_BODY`, `409 EMAIL_ALREADY_EXISTS`
+**Errores:** `400 VALIDATION_ERROR` (campo en `fields`), `400 PRIVACY_NOT_ACCEPTED`, `400 INVALID_BODY`, `409 EMAIL_ALREADY_EXISTS`
 (también si el correo solo difiere en mayúsculas).
 
 ### Modelo de sesión (HU-02)
@@ -190,6 +191,16 @@ La confirmación de contraseña la valida la app; el backend no la recibe.
   completa**: si alguien usa un token robado, ambas partes pierden la sesión y la persona legítima vuelve a iniciarla.
 - La app guarda ambos tokens en almacenamiento seguro y, ante un `401 UNAUTHORIZED` por access token expirado, llama
   a `/auth/refresh` una sola vez antes de mandar a la persona al login. Con `TOKEN_REVOKED` va directo al login.
+
+### Aviso de privacidad (TEC-07)
+
+- `GET /legal/privacy` responde `200` con `{ "version": "1.0", "content": "# Aviso de privacidad..." }`.
+- El texto se **embebe al compilar** desde `../docs/legal/aviso-de-privacidad.md` (`include_str!`): es la única fuente de
+  verdad. Para cambiar el aviso se edita ese archivo, se sube la línea `**Versión:**` y se recompila el backend.
+- La versión se lee de la línea `**Versión:** x.y` del documento; si falta, el servidor no arranca.
+- En el registro, si `privacy_accepted` no es `true`:
+  - con el resto de campos válidos → `400 PRIVACY_NOT_ACCEPTED` (`fields.privacy_accepted`);
+  - con otros campos inválidos → `400 VALIDATION_ERROR` con `privacy_accepted` como un campo más.
 
 ### POST `/auth/login`
 
@@ -255,7 +266,7 @@ Todas las respuestas de error tienen la misma forma. `fields` siempre es un obje
 |---|---|---|
 | `VALIDATION_ERROR` | 400 | Uno o más campos inválidos; detalle en `fields` |
 | `INVALID_BODY` | 400 | JSON malformado o tipo de dato incorrecto |
-| `PRIVACY_NOT_ACCEPTED` | 400 | *(Reservado para TEC-07)* No se aceptó el aviso de privacidad |
+| `PRIVACY_NOT_ACCEPTED` | 400 | No se aceptó el aviso de privacidad y el resto de campos es válido |
 | `INVALID_CREDENTIALS` | 401 | Login con correo o contraseña incorrectos |
 | `UNAUTHORIZED` | 401 | Falta el access token, está alterado o expiró |
 | `INVALID_REFRESH_TOKEN` | 401 | Refresh token desconocido, expirado o de otra sesión |

@@ -34,8 +34,12 @@ pub struct User {
     pub email: String,
     pub password_hash: String,
     pub role: Role,
-    /// `None` mientras el aviso de privacidad no se exija (TEC-07).
+    /// Momento en que se aceptó el aviso de privacidad. `None` solo en cuentas creadas
+    /// antes de TEC-07, cuando el aviso aún no se exigía.
     pub privacy_accepted_at: Option<DateTime>,
+    /// Versión del aviso aceptada (`services::legal::PRIVACY_VERSION`).
+    #[serde(default)]
+    pub privacy_version: Option<String>,
     pub profile_completed: bool,
     pub created_at: DateTime,
 }

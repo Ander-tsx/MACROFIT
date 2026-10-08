@@ -9,6 +9,7 @@ use mongodb::{
 use crate::auth::password::{hash_password, verify_password};
 use crate::error::{AppError, FieldErrors};
 use crate::models::user::{Role, USERS_COLLECTION, User};
+use crate::services::legal::PRIVACY_VERSION;
 use crate::validation::{
     NAME_MAX_CHARS, PASSWORD_MAX_CHARS, PASSWORD_MIN_CHARS, is_valid_email, normalize_email,
 };
@@ -34,10 +35,13 @@ pub struct ValidRegistration {
     pub email: String,
     pub password: String,
     pub role: Role,
-    pub privacy_accepted: bool,
 }
 
 /// Valida los datos de registro y devuelve todos los campos inválidos a la vez.
+///
+/// Aviso de privacidad (TEC-07): si hay otros campos inválidos se reporta como un campo
+/// más (`fields.privacy_accepted`) dentro de `VALIDATION_ERROR`; si es lo único que
+/// falta, responde `PRIVACY_NOT_ACCEPTED`.
 pub fn validate_registration(input: RegisterInput) -> Result<ValidRegistration, AppError> {
     let mut errors = FieldErrors::new();
 
@@ -92,21 +96,29 @@ pub fn validate_registration(input: RegisterInput) -> Result<ValidRegistration, 
     };
 
     let privacy_accepted = input.privacy_accepted.unwrap_or(false);
-    if !privacy_accepted {
-        // TODO(TEC-07): cuando exista el aviso de privacidad, rechazar el registro con
-        // `return Err(AppError::PrivacyNotAccepted);` (400 PRIVACY_NOT_ACCEPTED)
-        // y cambiar "HU-01 Registro / Sin aviso de privacidad" en postman/auth/ para que espere 400.
-    }
 
     match role {
-        Some(role) if errors.is_empty() => Ok(ValidRegistration {
-            name,
-            email,
-            password,
-            role,
-            privacy_accepted,
-        }),
-        _ => Err(AppError::Validation(errors)),
+        Some(role) if errors.is_empty() => {
+            if privacy_accepted {
+                Ok(ValidRegistration {
+                    name,
+                    email,
+                    password,
+                    role,
+                })
+            } else {
+                Err(AppError::PrivacyNotAccepted)
+            }
+        }
+        _ => {
+            if !privacy_accepted {
+                errors.insert(
+                    "privacy_accepted".into(),
+                    "Debes aceptar el aviso de privacidad".into(),
+                );
+            }
+            Err(AppError::Validation(errors))
+        }
     }
 }
 
@@ -138,7 +150,8 @@ pub async fn register(db: &Database, input: RegisterInput) -> Result<User, AppEr
         email: data.email,
         password_hash,
         role: data.role,
-        privacy_accepted_at: data.privacy_accepted.then_some(now),
+        privacy_accepted_at: Some(now),
+        privacy_version: Some(PRIVACY_VERSION.clone()),
         profile_completed: false,
         created_at: now,
     };
@@ -245,13 +258,30 @@ mod tests {
     }
 
     #[test]
-    fn sin_aviso_de_privacidad_aun_se_acepta() {
-        // Cambia este test cuando se implemente TEC-07.
-        let input = RegisterInput {
-            privacy_accepted: None,
+    fn sin_aviso_de_privacidad_responde_privacy_not_accepted() {
+        for privacy_accepted in [None, Some(false)] {
+            let input = RegisterInput {
+                privacy_accepted,
+                ..valid_input()
+            };
+            assert!(matches!(
+                validate_registration(input),
+                Err(AppError::PrivacyNotAccepted)
+            ));
+        }
+    }
+
+    #[test]
+    fn sin_aviso_y_con_campos_invalidos_lo_reporta_como_campo() {
+        let fields = field_errors(RegisterInput {
+            email: Some("no-es-correo".into()),
+            privacy_accepted: Some(false),
             ..valid_input()
-        };
-        assert!(!validate_registration(input).unwrap().privacy_accepted);
+        });
+        assert_eq!(
+            fields.keys().collect::<Vec<_>>(),
+            ["email", "privacy_accepted"]
+        );
     }
 
     #[test]
@@ -317,7 +347,7 @@ mod tests {
         let fields = field_errors(RegisterInput::default());
         assert_eq!(
             fields.keys().collect::<Vec<_>>(),
-            ["email", "name", "password", "role"]
+            ["email", "name", "password", "privacy_accepted", "role"]
         );
     }
 }

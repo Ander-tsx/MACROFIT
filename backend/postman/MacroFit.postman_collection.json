@@ -2,7 +2,7 @@
   "info": {
     "_postman_id": "b3e0d869-7c85-4871-9d22-4f6a1c2e0001",
     "name": "MacroFit",
-    "description": "ARCHIVO GENERADO por postman/build.js: no lo edites, modifica postman/<modulo>/ y regenera.\n\nAPI del backend de MacroFit (/api/v1). Una carpeta por historia del backlog (HU-XX / TEC-XX). Requiere el entorno \"MacroFit - Local\" (postman/MacroFit.postman_environment.json).\n\nMódulos (en orden): core, auth. Las carpetas \"... · Cierre\" van al final.",
+    "description": "ARCHIVO GENERADO por postman/build.js: no lo edites, modifica postman/<modulo>/ y regenera.\n\nAPI del backend de MacroFit (/api/v1). Una carpeta por historia del backlog (HU-XX / TEC-XX). Requiere el entorno \"MacroFit - Local\" (postman/MacroFit.postman_environment.json).\n\nMódulos (en orden): core, legal, auth. Las carpetas \"... · Cierre\" van al final.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "item": [
@@ -45,6 +45,58 @@
               ]
             },
             "description": "Verifica que el servidor esté activo."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "TEC-07 Aviso de privacidad",
+      "description": "TEC-07: el aviso de privacidad se sirve desde docs/legal/aviso-de-privacidad.md embebido en el backend.",
+      "item": [
+        {
+          "name": "Aviso de privacidad vigente",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 200\", function () {",
+                  "        pm.response.to.have.status(200);",
+                  "    });",
+                  "    const data = pm.response.json();",
+                  "    pm.test(\"Estructura: version, content\", function () {",
+                  "        pm.expect(data).to.have.all.keys(\"version\", \"content\");",
+                  "        pm.expect(data.version).to.be.a(\"string\").and.match(/^\\d+(\\.\\d+)*$/);",
+                  "        pm.expect(data.content).to.be.a(\"string\").and.not.empty;",
+                  "    });",
+                  "    pm.test(\"El contenido es el aviso con su versión\", function () {",
+                  "        pm.expect(data.content).to.include(\"Aviso de privacidad\");",
+                  "        pm.expect(data.content).to.include(\"**Versión:** \" + data.version);",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/legal/privacy",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "legal",
+                "privacy"
+              ]
+            },
+            "description": "Público. Devuelve la versión vigente y el texto completo en Markdown."
           },
           "response": []
         }
@@ -612,20 +664,22 @@
                 "type": "text/javascript",
                 "exec": [
                   "{",
-                  "    // TODO(TEC-07): cuando se implemente el aviso de privacidad este request debe",
-                  "    // esperar 400 con código PRIVACY_NOT_ACCEPTED. Reemplaza estos tests por:",
-                  "    //   status 400, error.code === \"PRIVACY_NOT_ACCEPTED\", fields.privacy_accepted",
-                  "    pm.test(\"Status 201 (aviso de privacidad pendiente, TEC-07)\", function () {",
-                  "        pm.response.to.have.status(201);",
+                  "    pm.test(\"Status 400\", function () {",
+                  "        pm.response.to.have.status(400);",
                   "    });",
-                  "    const data = pm.response.json();",
-                  "    pm.test(\"Estructura: id, name, email, role, profile_completed\", function () {",
-                  "        pm.expect(data).to.have.all.keys(\"id\", \"name\", \"email\", \"role\", \"profile_completed\");",
-                  "        pm.expect(data.profile_completed).to.eql(false);",
+                  "    const body = pm.response.json();",
+                  "    pm.test(\"Formato de error { error: { code, message, fields } }\", function () {",
+                  "        pm.expect(body).to.have.all.keys(\"error\");",
+                  "        pm.expect(body.error).to.have.all.keys(\"code\", \"message\", \"fields\");",
+                  "        pm.expect(body.error.message).to.be.a(\"string\").and.not.empty;",
+                  "        pm.expect(body.error.fields).to.be.an(\"object\");",
                   "    });",
-                  "    pm.test(\"No devuelve la contraseña ni su hash\", function () {",
-                  "        pm.expect(data).to.not.have.any.keys(\"password\", \"password_hash\");",
-                  "        pm.expect(pm.response.text()).to.not.include(pm.collectionVariables.get(\"test_password\"));",
+                  "    pm.test(\"Código PRIVACY_NOT_ACCEPTED\", function () {",
+                  "        pm.expect(body.error.code).to.eql(\"PRIVACY_NOT_ACCEPTED\");",
+                  "    });",
+                  "    pm.test(\"Señala el campo 'privacy_accepted'\", function () {",
+                  "        pm.expect(body.error.fields).to.have.property(\"privacy_accepted\");",
+                  "        pm.expect(body.error.fields.privacy_accepted).to.be.a(\"string\").and.not.empty;",
                   "    });",
                   "}"
                 ]
@@ -652,10 +706,78 @@
                 "register"
               ]
             },
-            "description": "privacy_accepted: false. PENDIENTE (TEC-07): hoy se acepta (201) y privacy_accepted_at queda en null. Cuando exista el aviso debe responder 400 PRIVACY_NOT_ACCEPTED.",
+            "description": "privacy_accepted: false con el resto de campos válidos: 400 PRIVACY_NOT_ACCEPTED y no se crea la cuenta.",
             "body": {
               "mode": "raw",
               "raw": "{\n  \"name\": \"Sin Aviso\",\n  \"email\": \"{{email}}\",\n  \"password\": \"{{test_password}}\",\n  \"role\": \"user\",\n  \"privacy_accepted\": false\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Sin aviso y con correo inválido",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 400\", function () {",
+                  "        pm.response.to.have.status(400);",
+                  "    });",
+                  "    const body = pm.response.json();",
+                  "    pm.test(\"Formato de error { error: { code, message, fields } }\", function () {",
+                  "        pm.expect(body).to.have.all.keys(\"error\");",
+                  "        pm.expect(body.error).to.have.all.keys(\"code\", \"message\", \"fields\");",
+                  "        pm.expect(body.error.message).to.be.a(\"string\").and.not.empty;",
+                  "        pm.expect(body.error.fields).to.be.an(\"object\");",
+                  "    });",
+                  "    pm.test(\"Código VALIDATION_ERROR\", function () {",
+                  "        pm.expect(body.error.code).to.eql(\"VALIDATION_ERROR\");",
+                  "    });",
+                  "    pm.test(\"Señala el campo 'email'\", function () {",
+                  "        pm.expect(body.error.fields).to.have.property(\"email\");",
+                  "        pm.expect(body.error.fields.email).to.be.a(\"string\").and.not.empty;",
+                  "    });",
+                  "    pm.test(\"Señala el campo 'privacy_accepted'\", function () {",
+                  "        pm.expect(body.error.fields).to.have.property(\"privacy_accepted\");",
+                  "        pm.expect(body.error.fields.privacy_accepted).to.be.a(\"string\").and.not.empty;",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "register"
+              ]
+            },
+            "description": "Si además hay campos inválidos, el aviso se reporta como un campo más dentro de VALIDATION_ERROR.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Sin Aviso\",\n  \"email\": \"correo-sin-arroba.com\",\n  \"password\": \"{{test_password}}\",\n  \"role\": \"user\",\n  \"privacy_accepted\": false\n}",
               "options": {
                 "raw": {
                   "language": "json"
