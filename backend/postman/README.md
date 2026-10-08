@@ -9,6 +9,7 @@ postman/
 ├── MacroFit.postman_collection.json    # GENERADO: no editar a mano
 ├── MacroFit.postman_environment.json   # Entorno "MacroFit - Local": solo baseUrl, sin credenciales
 ├── core/core.postman_collection.json   # src/routes/mod.rs  → health
+├── legal/legal.postman_collection.json # src/routes/legal.rs → TEC-07 aviso de privacidad
 └── auth/auth.postman_collection.json   # src/routes/auth.rs → HU-01, HU-02, roles y cierre de sesión
 ```
 
@@ -63,7 +64,8 @@ ponlos en la carpeta o en el request).
 | Módulo | Carpeta | Requests |
 |---|---|---|
 | `core` | `Servicio` | Health check |
-| `auth` | `HU-01 Registro` | Usuario válido, Coach válido, Segundo coach válido, Correo duplicado, Correo duplicado con mayúsculas, Sin rol, Rol inválido, Sin aviso de privacidad*, Correo inválido, Contraseña corta, Nombre vacío |
+| `legal` | `TEC-07 Aviso de privacidad` | Aviso de privacidad vigente |
+| `auth` | `HU-01 Registro` | Usuario válido, Coach válido, Segundo coach válido, Correo duplicado, Correo duplicado con mayúsculas, Sin rol, Rol inválido, Sin aviso de privacidad, Sin aviso y con correo inválido, Correo inválido, Contraseña corta, Nombre vacío |
 | `auth` | `HU-02 Sesión` | Inicio de sesión de usuario, Inicio de sesión de coach, Contraseña incorrecta, Correo inexistente, /auth/me sin token, /auth/me con token inválido, /auth/me con token válido, Inicio de sesión auxiliar para renovación, Renovación, Token anterior tras la rotación, Reuso revoca la sesión, /auth/me con sesión revocada |
 | `auth` | `Auth y roles (base)` | Ruta coach con coach, Ruta coach con usuario |
 | `auth` | `HU-02 Sesión · Cierre` *(al final)* | Cierre de sesión, Renovación con token revocado, /auth/me tras cerrar sesión |
@@ -79,8 +81,6 @@ ponlos en la carpeta o en el request).
 El access token dura 15 minutos: si una ejecución completa tardara más, las historias siguientes deberán renovar con
 `/auth/refresh` y actualizar las variables.
 
-\* *Sin aviso de privacidad* espera `201` hasta que se implemente TEC-07; entonces debe esperar `400 PRIVACY_NOT_ACCEPTED`
-(instrucciones en el comentario `TODO(TEC-07)` del propio test).
 
 ## Convenciones de los tests
 

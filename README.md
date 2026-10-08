@@ -21,15 +21,19 @@ El coach vincula clientes, ajusta sus metas y les asigna rutinas.
 ├── backend/          # API en Rust (Axum, MongoDB, JWT) bajo /api/v1 -> Ver backend/README.md
 │   ├── src/          # Cada subcarpeta tiene un README.md con sus reglas
 │   └── postman/      # Pruebas de Postman: una colección por módulo + combinado generado
-├── macrofit_app/     # Aplicación Flutter
+├── docs/legal/       # Aviso de privacidad (lo sirve el backend en /legal/privacy)
+├── macrofit_app/     # App Flutter: MVVM en 3 capas por feature -> Ver macrofit_app/README.md
 │   ├── lib/
-│   │   ├── main.dart
-│   │   └── app/      # Raíz de la app y tema
+│   │   ├── app/      # Dependencias, router con guard de sesión, tema
+│   │   ├── core/     # Config, errores, red, base de ViewModel, widgets comunes
+│   │   └── features/ # auth, legal, home… cada una con domain/ data/ presentation/
 │   └── test/
 └── *.md              # Backlog y esquema de pruebas
 ```
 
-La arquitectura por capas y la gestión de estado se definen en **TEC-04**; el backend, en **TEC-03** y **TEC-05**. Consulta [backend/README.md](backend/README.md) para detalles de ejecución del servidor y pruebas en Postman.
+Arquitectura de la app (TEC-04): **MVVM en 3 capas** (presentación, dominio, datos) organizada por feature, con
+`provider` + `ChangeNotifier`, `go_router` y `dio`; detalles en [macrofit_app/README.md](macrofit_app/README.md).
+El backend (TEC-03, TEC-05) se documenta en [backend/README.md](backend/README.md), incluidas las pruebas en Postman.
 
 ## Requisitos
 

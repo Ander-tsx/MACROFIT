@@ -22,7 +22,8 @@ Un archivo por colección. Cada archivo define la constante con el nombre de la 
 | `email` | string | Normalizado: minúsculas y sin espacios |
 | `password_hash` | string | Argon2id en formato PHC (`$argon2id$...`). Nunca se guarda la contraseña |
 | `role` | `"user"` \| `"coach"` | |
-| `privacy_accepted_at` | ISODate \| null | `null` mientras TEC-07 no exija el aviso |
+| `privacy_accepted_at` | ISODate \| null | Momento de aceptación del aviso. `null` solo en cuentas anteriores a TEC-07 |
+| `privacy_version` | string \| ausente | Versión del aviso aceptada (p. ej. `"1.0"`). Ausente en cuentas anteriores a TEC-07 |
 | `profile_completed` | bool | `false` al registrarse; lo cambia HU-03 |
 | `created_at` | ISODate | |
 
