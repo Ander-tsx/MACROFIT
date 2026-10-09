@@ -3,6 +3,7 @@ use axum::{Router, routing::get};
 use crate::state::AppState;
 
 pub mod auth;
+pub mod goals;
 pub mod legal;
 pub mod profile;
 
@@ -15,7 +16,8 @@ pub fn api_router() -> Router<AppState> {
         .route("/health", get(|| async { "API MacroFit OK" }))
         .merge(auth::router())
         .merge(legal::router())
-        .merge(profile::router());
+        .merge(profile::router())
+        .merge(goals::router());
 
     Router::new().nest(API_PREFIX, v1)
 }

@@ -149,6 +149,8 @@ URL base: `http://localhost:3000/api/v1`
 | POST | `/users/me/profile` | Bearer (user) | HU-03 | Crea el perfil inicial y marca `profile_completed` |
 | GET | `/users/me/profile` | Bearer (user) | HU-03 | Perfil del usuario de la sesión |
 | PATCH | `/users/me/profile` | Bearer (user) | HU-03 | Edita solo los campos enviados del perfil |
+| GET | `/users/me/goals/current` | Bearer (user) | HU-04 | Meta nutricional vigente |
+| GET | `/users/me/goals` | Bearer (user) | HU-04 | Historial de metas (más reciente primero) |
 | GET | `/coach/test` | Bearer (coach) | TEC-05 | Prueba de la regla de acceso por rol |
 
 ### POST `/auth/register` (HU-01)
@@ -289,7 +291,10 @@ Errores: `400 VALIDATION_ERROR` (cada campo inválido en `fields`), `400 INVALID
 
 **PATCH** → cuerpo con uno o más campos del POST (los ausentes o `null` no cambian; mismas reglas). `200` con el perfil
 actualizado y `updated_at` nuevo. Errores: `400 VALIDATION_ERROR`, `400 INVALID_BODY` (sin ningún campo),
-`404 PROFILE_NOT_FOUND`. El recálculo de la meta al editar llega con HU-04 (`TODO(HU-04)` en `services/profile.rs`).
+`404 PROFILE_NOT_FOUND`.
+
+**Meta nutricional (HU-04):** al crear el perfil se genera la meta inicial; al editarlo se recalcula solo si cambian
+`weight_kg`, `objective` o `training_days`, y nunca si la meta vigente la fijó un coach.
 
 ### GET `/coach/test`
 

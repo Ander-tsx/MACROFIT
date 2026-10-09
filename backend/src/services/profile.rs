@@ -11,6 +11,7 @@ use crate::error::{AppError, FieldErrors};
 use crate::models::profile::{Gender, Level, Objective, PROFILES_COLLECTION, UserProfile};
 use crate::models::user::{USERS_COLLECTION, User};
 use crate::services::auth::is_duplicate_key;
+use crate::services::goals;
 
 // TODO(TEC-12): rangos provisionales; ajustarlos cuando TEC-12 defina los definitivos
 // (y también en `macrofit_app/lib/features/profile/domain/validators/profile_validators.dart`).
@@ -350,7 +351,8 @@ async fn mark_profile_completed(db: &Database, user_id: ObjectId) -> Result<(), 
     Ok(())
 }
 
-/// HU-03 — crea el perfil del usuario y marca su cuenta con `profile_completed: true`.
+/// HU-03 — crea el perfil del usuario, marca su cuenta con `profile_completed: true`
+/// y genera su meta nutricional inicial (HU-04).
 pub async fn create_profile(
     db: &Database,
     user_id: ObjectId,
@@ -396,6 +398,8 @@ pub async fn create_profile(
     }
 
     mark_profile_completed(db, user_id).await?;
+    // HU-04: meta inicial calculada con el perfil recién creado.
+    goals::recalculate_on_profile_change(db, &profile).await?;
     Ok(profile)
 }
 
@@ -440,6 +444,8 @@ fn changes_to_set(changes: &ProfileChanges, now: DateTime) -> Result<Document, A
 }
 
 /// HU-03 — edita solo los campos enviados y devuelve el perfil actualizado.
+/// HU-04: si cambian peso, objetivo o días de entrenamiento se recalcula la meta
+/// (salvo que la vigente la haya fijado un coach).
 pub async fn update_profile(
     db: &Database,
     user_id: ObjectId,
@@ -448,14 +454,18 @@ pub async fn update_profile(
     let changes = validate_profile_changes(input, today_utc())?;
     let set = changes_to_set(&changes, DateTime::now())?;
 
-    // TODO(HU-04): si cambian peso, objetivo o días de entrenamiento, recalcular la meta
-    // vigente (`goal_inputs_changed`) salvo que la haya fijado un coach.
-    profiles(db)
+    let previous = get_profile(db, user_id).await?;
+    let updated = profiles(db)
         .find_one_and_update(doc! { "user_id": user_id }, doc! { "$set": set })
         .return_document(ReturnDocument::After)
         .await
         .map_err(AppError::internal)?
-        .ok_or(AppError::ProfileNotFound)
+        .ok_or(AppError::ProfileNotFound)?;
+
+    if goals::goal_inputs_changed(&previous, &updated) {
+        goals::recalculate_on_profile_change(db, &updated).await?;
+    }
+    Ok(updated)
 }
 
 #[cfg(test)]

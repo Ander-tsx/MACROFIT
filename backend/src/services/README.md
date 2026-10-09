@@ -36,4 +36,5 @@ y `privacy_version`.
   error `11000`) responde `PROFILE_ALREADY_EXISTS` y **también** asegura la marca en `users`, por si una petición
   anterior guardó el perfil pero no alcanzó a marcar la cuenta.
 - `update_profile` solo toca los campos enviados (`$set` + `updated_at`) con `find_one_and_update`.
-  `TODO(HU-04)`: recalcular la meta cuando cambien peso, objetivo o días, salvo meta de coach.
+  Si cambian peso, objetivo o días (`goals::goal_inputs_changed`) llama a `goals::recalculate_on_profile_change`,
+  que respeta la meta de un coach. `create_profile` también la llama para generar la meta inicial (HU-04).
