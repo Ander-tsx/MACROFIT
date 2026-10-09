@@ -7,7 +7,7 @@ Piezas de autenticación que usan todos los dominios. La lógica de registro/log
 | `password.rs` | `hash_password` / `verify_password` con **Argon2id** (parámetros por defecto del crate `argon2`, formato PHC con sal) |
 | `jwt.rs` | Access token: `Claims { sub, role, sid, iat, exp }`, `generate_access_token`, `decode_access_token`. Duración y secreto desde `state.tokens` |
 | `refresh.rs` | Refresh tokens opacos: `generate_refresh_token` (32 bytes aleatorios) y `hash_refresh_token` (SHA-256) |
-| `middleware.rs` | Extractores `AuthenticatedUser` (401 `UNAUTHORIZED` sin token válido; 401 `TOKEN_REVOKED` si la sesión está cerrada) y `CoachOnly` (403 si el rol no es `coach`) |
+| `middleware.rs` | Extractores `AuthenticatedUser` (401 `UNAUTHORIZED` sin token válido; 401 `TOKEN_REVOKED` si la sesión está cerrada) y `CoachOnly` (403 `FORBIDDEN` si el rol no es `coach`), `UserOnly` (403 `FORBIDDEN_ROLE` si el rol no es `user`) |
 
 ## Proteger una ruta
 
@@ -17,6 +17,9 @@ pub async fn handler(user: AuthenticatedUser) -> Result<Json<...>, AppError> { .
 
 // Solo coaches
 pub async fn handler(CoachOnly(coach): CoachOnly) -> Result<Json<...>, AppError> { ... }
+
+// Solo usuarios (rol `user`), p. ej. el perfil de HU-03
+pub async fn handler(UserOnly(user): UserOnly) -> Result<Json<...>, AppError> { ... }
 ```
 
 ## Reglas

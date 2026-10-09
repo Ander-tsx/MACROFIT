@@ -10,7 +10,8 @@ postman/
 ├── MacroFit.postman_environment.json   # Entorno "MacroFit - Local": solo baseUrl, sin credenciales
 ├── core/core.postman_collection.json   # src/routes/mod.rs  → health
 ├── legal/legal.postman_collection.json # src/routes/legal.rs → TEC-07 aviso de privacidad
-└── auth/auth.postman_collection.json   # src/routes/auth.rs → HU-01, HU-02, roles y cierre de sesión
+├── auth/auth.postman_collection.json   # src/routes/auth.rs → HU-01, HU-02, roles y cierre de sesión
+└── profile/profile.postman_collection.json # src/routes/profile.rs → HU-03 perfil inicial
 ```
 
 Regla: **una carpeta `postman/<modulo>/` por cada archivo de `src/routes/<modulo>.rs`**, con el mismo nombre.
@@ -68,6 +69,7 @@ ponlos en la carpeta o en el request).
 | `auth` | `HU-01 Registro` | Usuario válido, Coach válido, Segundo coach válido, Correo duplicado, Correo duplicado con mayúsculas, Sin rol, Rol inválido, Sin aviso de privacidad, Sin aviso y con correo inválido, Correo inválido, Contraseña corta, Nombre vacío |
 | `auth` | `HU-02 Sesión` | Inicio de sesión de usuario, Inicio de sesión de coach, Contraseña incorrecta, Correo inexistente, /auth/me sin token, /auth/me con token inválido, /auth/me con token válido, Inicio de sesión auxiliar para renovación, Renovación, Token anterior tras la rotación, Reuso revoca la sesión, /auth/me con sesión revocada |
 | `auth` | `Auth y roles (base)` | Ruta coach con coach, Ruta coach con usuario |
+| `profile` | `HU-03 Perfil` | Consulta antes de crear, Creación por coach, Consulta por coach, Campos faltantes, Valores fuera de rango, Valores no permitidos, Creación válida, Creación duplicada, Consulta, Verificación en /auth/me, Edición, Edición con valores inválidos, Edición sin campos, Consulta tras la edición |
 | `auth` | `HU-02 Sesión · Cierre` *(al final)* | Cierre de sesión, Renovación con token revocado, /auth/me tras cerrar sesión |
 
 ### Variables para las siguientes historias
@@ -77,6 +79,7 @@ ponlos en la carpeta o en el request).
 | `user_id`, `user_email`, `coach_id`, `coach_email`, `coach2_id`, `coach2_email` | HU-01 | Cuentas de prueba |
 | `user_access_token`, `user_refresh_token` | HU-02 · Inicio de sesión de usuario | `Authorization: Bearer {{user_access_token}}`. Válidos hasta la carpeta de cierre |
 | `coach_access_token`, `coach_refresh_token` | HU-02 · Inicio de sesión de coach | Peticiones como coach. No se cierran |
+| `profile_id`, `profile_sent`, `profile_expected` | HU-03 · Creación válida / Edición | Id del perfil y valores enviados/editados (JSON) para comparar en las consultas. El usuario de HU-01 queda **con perfil** |
 
 El access token dura 15 minutos: si una ejecución completa tardara más, las historias siguientes deberán renovar con
 `/auth/refresh` y actualizar las variables.

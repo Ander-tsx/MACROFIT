@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 
 import '../features/auth/domain/repositories/auth_repository.dart';
 import '../features/legal/domain/repositories/legal_repository.dart';
+import '../features/profile/domain/repositories/profile_repository.dart';
 import 'dependencies.dart';
 import 'router.dart';
 import 'theme.dart';
@@ -39,6 +40,9 @@ class _MacroFitAppState extends State<MacroFitApp> {
           value: dependencies.authRepository,
         ),
         Provider<LegalRepository>.value(value: dependencies.legalRepository),
+        Provider<ProfileRepository>.value(
+          value: dependencies.profileRepository,
+        ),
       ],
       child: MaterialApp.router(
         title: 'MacroFit',

@@ -14,11 +14,23 @@ import 'package:macrofit_app/features/auth/domain/entities/user.dart';
 import 'package:macrofit_app/features/auth/domain/repositories/auth_repository.dart';
 import 'package:macrofit_app/features/legal/domain/entities/privacy_notice.dart';
 import 'package:macrofit_app/features/legal/domain/repositories/legal_repository.dart';
+import 'package:macrofit_app/features/profile/domain/entities/profile.dart';
+import 'package:macrofit_app/features/profile/domain/repositories/profile_repository.dart';
 
+/// Usuario que ya capturó su perfil (HU-03): entra a la pantalla principal.
 const testUser = User(
   id: '6ac67c707314ad6c7164900b',
   name: 'Ana',
   email: 'ana@macrofit.test',
+  role: Role.user,
+  profileCompleted: true,
+);
+
+/// Usuario recién registrado, sin perfil: el router lo manda al formulario (HU-03).
+const testNewUser = User(
+  id: '6ac67c727314ad6c7164900d',
+  name: 'Beto',
+  email: 'beto@macrofit.test',
   role: Role.user,
   profileCompleted: false,
 );
@@ -74,6 +86,11 @@ class FakeAuthRepository extends AuthRepository {
   /// Rol con el que inicia sesión `login`.
   Role loginRole = Role.user;
 
+  /// Si se asigna, `login` inicia sesión con esta cuenta (ignora [loginRole]).
+  User? loginUser;
+
+  int markProfileCompletedCalls = 0;
+
   @override
   AuthState get state => _state;
 
@@ -102,7 +119,7 @@ class FakeAuthRepository extends AuthRepository {
   Future<User> login({required String email, required String password}) async {
     logins.add((email: email, password: password));
     if (loginError case final error?) throw error;
-    final user = loginRole == Role.user ? testUser : testCoach;
+    final user = loginUser ?? (loginRole == Role.user ? testUser : testCoach);
     emit(Authenticated(user));
     return user;
   }
@@ -111,6 +128,72 @@ class FakeAuthRepository extends AuthRepository {
   Future<void> logout() async {
     logoutCalls++;
     emit(const Unauthenticated());
+  }
+
+  @override
+  Future<void> markProfileCompleted() async {
+    markProfileCompletedCalls++;
+    if (_state case Authenticated(:final user)) {
+      emit(Authenticated(user.copyWith(profileCompleted: true)));
+    }
+  }
+}
+
+final testProfile = Profile(
+  objective: Objective.loseFat,
+  level: ExperienceLevel.beginner,
+  trainingDays: 4,
+  weightKg: 72.5,
+  heightCm: 170,
+  gender: Gender.female,
+  birthDate: DateTime(1996, 5, 20),
+);
+
+/// Repositorio de perfil en memoria (simula al backend de HU-03).
+class FakeProfileRepository implements ProfileRepository {
+  FakeProfileRepository({this.stored});
+
+  /// Perfil "guardado en el backend"; `null` = el usuario aún no tiene perfil.
+  Profile? stored;
+
+  /// Si se asigna, la siguiente llamada del tipo correspondiente lanza este error.
+  ApiException? getError;
+  ApiException? createError;
+  ApiException? updateError;
+
+  final created = <Profile>[];
+  final updated = <Profile>[];
+  int getCalls = 0;
+
+  @override
+  Future<Profile> getProfile() async {
+    getCalls++;
+    if (getError case final error?) throw error;
+    final profile = stored;
+    if (profile == null) {
+      throw apiError(ApiErrorCode.profileNotFound, status: 404);
+    }
+    return profile;
+  }
+
+  @override
+  Future<Profile> createProfile(Profile profile) async {
+    created.add(profile);
+    if (createError case final error?) throw error;
+    if (stored != null) {
+      throw apiError(ApiErrorCode.profileAlreadyExists, status: 409);
+    }
+    return stored = profile;
+  }
+
+  @override
+  Future<Profile> updateProfile(Profile profile) async {
+    updated.add(profile);
+    if (updateError case final error?) throw error;
+    if (stored == null) {
+      throw apiError(ApiErrorCode.profileNotFound, status: 404);
+    }
+    return stored = profile;
   }
 }
 

@@ -107,8 +107,7 @@ pub fn allows_recalculation(current_source: Option<GoalSource>) -> bool {
 }
 
 /// ¿Cambió algún dato que afecte la meta (peso, objetivo o días de entrenamiento)?
-// TODO(HU-03): lo usará la edición de perfil para decidir si recalcula.
-#[allow(dead_code)]
+/// La usa la edición del perfil (HU-03) para decidir si recalcula.
 pub fn goal_inputs_changed(old: &UserProfile, new: &UserProfile) -> bool {
     old.weight_kg != new.weight_kg
         || old.objective != new.objective
@@ -212,9 +211,9 @@ pub async fn get_goals_history(
 /// - Meta vigente de `coach`: no se toca y devuelve `None`.
 /// - Sin meta o de `system`: se inserta una meta nueva (la anterior queda en el
 ///   historial) y se devuelve.
-// TODO(HU-03): llamarla al crear el perfil (meta inicial) y, al editarlo, solo si
-// `goal_inputs_changed` es true.
-#[allow(dead_code)]
+///
+/// `services::profile` la llama al crear el perfil (meta inicial) y, al editarlo,
+/// solo si `goal_inputs_changed` es true.
 pub async fn recalculate_on_profile_change(
     db: &Database,
     profile: &UserProfile,

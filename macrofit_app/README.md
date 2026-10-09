@@ -3,8 +3,8 @@
 App de MacroFit para los roles **usuario** y **coach**. Consume la API del backend (`../backend`, ver
 [backend/README.md](../backend/README.md)). Ramas, commits y PR en [CONTRIBUTING.md](../CONTRIBUTING.md).
 
-Historias implementadas: **HU-01** (registro con rol y aviso de privacidad) y **HU-02** (inicio, persistencia y
-cierre de sesión).
+Historias implementadas: **HU-01** (registro con rol y aviso de privacidad), **HU-02** (inicio, persistencia y
+cierre de sesión) y **HU-03** (perfil inicial del usuario y su edición).
 
 > **Si eres una persona o una sesión de IA que va a modificar la app, lee este archivo y el `README.md` de cada
 > carpeta que vayas a tocar** (`lib/app`, `lib/core`, `lib/features`, `lib/features/<feature>`, `test`).
@@ -95,6 +95,7 @@ lib/
     │   ├── data/          # Modelos JSON, fuentes de datos (API, almacenamiento seguro), repositorio
     │   └── presentation/  # Vistas (widgets) + ViewModels (ChangeNotifier)
     ├── legal/             # TEC-07 aviso de privacidad
+    ├── profile/           # HU-03 perfil inicial y edición
     └── home/              # Pantallas principales por rol (solo presentación por ahora)
 ```
 

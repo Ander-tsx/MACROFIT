@@ -8,6 +8,7 @@ import '../../domain/repositories/auth_repository.dart';
 import '../datasources/auth_remote_data_source.dart';
 import '../datasources/session_local_data_source.dart';
 import '../datasources/session_remote_data_source.dart';
+import '../models/user_model.dart';
 
 class AuthRepositoryImpl extends AuthRepository {
   AuthRepositoryImpl({
@@ -77,6 +78,22 @@ class AuthRepositoryImpl extends AuthRepository {
     } finally {
       await _endLocalSession();
     }
+  }
+
+  @override
+  Future<void> markProfileCompleted() async {
+    final current = _state;
+    if (current is! Authenticated || current.user.profileCompleted) return;
+    final stored = await _local.read();
+    if (stored != null) {
+      await _local.saveUser(
+        UserModel.fromJson({
+          ...stored.user.toJson(),
+          'profile_completed': true,
+        }),
+      );
+    }
+    _setState(Authenticated(current.user.copyWith(profileCompleted: true)));
   }
 
   /// Llamado por `AuthInterceptor` cuando la sesión deja de ser válida.

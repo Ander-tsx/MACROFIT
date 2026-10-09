@@ -162,6 +162,37 @@ void main() {
       expect(repository.state, isA<Unauthenticated>());
     });
   });
+
+  group('perfil completado (HU-03)', () {
+    test('marca la sesión y el usuario guardado con perfil', () async {
+      local = FakeSessionLocalDataSource(
+        tokens: const TokenPair(accessToken: 'a', refreshToken: 'r'),
+        user: userModelOf(testNewUser),
+      );
+      sessionRemote.meResult = userModelOf(testNewUser);
+      repository = build();
+      await repository.restoreSession();
+      await pumpEventQueue();
+      var notifications = 0;
+      repository.addListener(() => notifications++);
+
+      await repository.markProfileCompleted();
+
+      expect(repository.currentUser?.profileCompleted, isTrue);
+      expect((await local.read())?.user.profileCompleted, isTrue);
+      expect(notifications, 1);
+    });
+
+    test('sin sesión no hace nada', () async {
+      local = FakeSessionLocalDataSource();
+      repository = build();
+      await repository.restoreSession();
+
+      await repository.markProfileCompleted();
+
+      expect(repository.state, isA<Unauthenticated>());
+    });
+  });
 }
 
 extension on UserModel {

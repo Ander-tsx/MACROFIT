@@ -31,4 +31,8 @@ abstract class AuthRepository extends ChangeNotifier {
   /// HU-02: cierra la sesión en el backend y borra la sesión local.
   /// La sesión local se borra aunque el servidor no responda.
   Future<void> logout();
+
+  /// HU-03: el perfil inicial se guardó en el backend. Actualiza la sesión
+  /// (estado y almacenamiento seguro) para que el router abra la pantalla principal.
+  Future<void> markProfileCompleted();
 }

@@ -18,6 +18,14 @@ class User {
   /// `false` hasta que la persona capture su perfil (HU-03).
   final bool profileCompleted;
 
+  User copyWith({bool? profileCompleted}) => User(
+    id: id,
+    name: name,
+    email: email,
+    role: role,
+    profileCompleted: profileCompleted ?? this.profileCompleted,
+  );
+
   @override
   bool operator ==(Object other) =>
       other is User &&

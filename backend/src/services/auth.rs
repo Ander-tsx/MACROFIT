@@ -222,7 +222,8 @@ pub async fn find_user_by_id(db: &Database, id: ObjectId) -> Result<Option<User>
         .map_err(AppError::internal)
 }
 
-fn is_duplicate_key(err: &mongodb::error::Error) -> bool {
+/// ¿El error es una violación de índice único (código `11000`)?
+pub(crate) fn is_duplicate_key(err: &mongodb::error::Error) -> bool {
     matches!(
         err.kind.as_ref(),
         ErrorKind::Write(WriteFailure::WriteError(write_error)) if write_error.code == DUPLICATE_KEY

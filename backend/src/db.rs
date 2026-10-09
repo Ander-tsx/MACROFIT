@@ -92,7 +92,7 @@ async fn ensure_indexes(db: &Database) {
         .await
         .expect("No se pudo crear el índice de goals");
 
-    // Un solo perfil por usuario.
+    // HU-03: un solo perfil por usuario.
     let profile_user_unique = IndexModel::builder()
         .keys(doc! { "user_id": 1 })
         .options(
@@ -105,5 +105,5 @@ async fn ensure_indexes(db: &Database) {
     db.collection::<UserProfile>(PROFILES_COLLECTION)
         .create_index(profile_user_unique)
         .await
-        .expect("No se pudo crear el índice único de profiles.user_id");
+        .expect("No se pudo crear el índice único de profiles.user_id (¿hay perfiles duplicados?)");
 }

@@ -2,7 +2,7 @@
   "info": {
     "_postman_id": "b3e0d869-7c85-4871-9d22-4f6a1c2e0001",
     "name": "MacroFit",
-    "description": "ARCHIVO GENERADO por postman/build.js: no lo edites, modifica postman/<modulo>/ y regenera.\n\nAPI del backend de MacroFit (/api/v1). Una carpeta por historia del backlog (HU-XX / TEC-XX). Requiere el entorno \"MacroFit - Local\" (postman/MacroFit.postman_environment.json).\n\nMódulos (en orden): core, legal, auth, goals. Las carpetas \"... · Cierre\" van al final.",
+    "description": "ARCHIVO GENERADO por postman/build.js: no lo edites, modifica postman/<modulo>/ y regenera.\n\nAPI del backend de MacroFit (/api/v1). Una carpeta por historia del backlog (HU-XX / TEC-XX). Requiere el entorno \"MacroFit - Local\" (postman/MacroFit.postman_environment.json).\n\nMódulos (en orden): core, legal, auth, profile, goals. Las carpetas \"... · Cierre\" van al final.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "item": [
@@ -1877,8 +1877,940 @@
       ]
     },
     {
+      "name": "HU-03 Perfil",
+      "description": "Alta, consulta y edición del perfil inicial (solo rol user).",
+      "item": [
+        {
+          "name": "Consulta antes de crear",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    // Fechas relativas a hoy (UTC) para que la carpeta funcione cualquier día.",
+                  "    const today = new Date();",
+                  "    const yearsAgo = function (years) {",
+                  "        const date = new Date(Date.UTC(today.getUTCFullYear() - years, today.getUTCMonth(), today.getUTCDate()));",
+                  "        return date.toISOString().slice(0, 10);",
+                  "    };",
+                  "    pm.collectionVariables.set(\"profile_birth_date\", yearsAgo(30));",
+                  "    pm.collectionVariables.set(\"profile_new_birth_date\", yearsAgo(41));",
+                  "    pm.collectionVariables.set(\"profile_minor_birth_date\", yearsAgo(17));",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 404\", function () {",
+                  "        pm.response.to.have.status(404);",
+                  "    });",
+                  "    const body = pm.response.json();",
+                  "    pm.test(\"Formato de error { error: { code, message, fields } }\", function () {",
+                  "        pm.expect(body).to.have.all.keys(\"error\");",
+                  "        pm.expect(body.error).to.have.all.keys(\"code\", \"message\", \"fields\");",
+                  "        pm.expect(body.error.message).to.be.a(\"string\").and.not.empty;",
+                  "        pm.expect(body.error.fields).to.be.an(\"object\");",
+                  "    });",
+                  "    pm.test(\"Código PROFILE_NOT_FOUND\", function () {",
+                  "        pm.expect(body.error.code).to.eql(\"PROFILE_NOT_FOUND\");",
+                  "    });",
+                  "    pm.test(\"Sin errores por campo\", function () {",
+                  "        pm.expect(body.error.fields).to.eql({});",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{user_access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/me/profile",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "me",
+                "profile"
+              ]
+            },
+            "description": "El usuario de HU-01 aún no tiene perfil → 404 PROFILE_NOT_FOUND. Prepara las fechas de nacimiento de la carpeta (relativas a hoy)."
+          },
+          "response": []
+        },
+        {
+          "name": "Creación por coach",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 403\", function () {",
+                  "        pm.response.to.have.status(403);",
+                  "    });",
+                  "    const body = pm.response.json();",
+                  "    pm.test(\"Formato de error { error: { code, message, fields } }\", function () {",
+                  "        pm.expect(body).to.have.all.keys(\"error\");",
+                  "        pm.expect(body.error).to.have.all.keys(\"code\", \"message\", \"fields\");",
+                  "        pm.expect(body.error.message).to.be.a(\"string\").and.not.empty;",
+                  "        pm.expect(body.error.fields).to.be.an(\"object\");",
+                  "    });",
+                  "    pm.test(\"Código FORBIDDEN_ROLE\", function () {",
+                  "        pm.expect(body.error.code).to.eql(\"FORBIDDEN_ROLE\");",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{coach_access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/me/profile",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "me",
+                "profile"
+              ]
+            },
+            "description": "Un coach intenta crear un perfil con datos válidos → 403 FORBIDDEN_ROLE.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"objective\": \"lose_fat\",\n  \"level\": \"beginner\",\n  \"training_days\": 4,\n  \"weight_kg\": 72.5,\n  \"height_cm\": 170,\n  \"gender\": \"female\",\n  \"birth_date\": \"{{profile_birth_date}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Consulta por coach",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 403\", function () {",
+                  "        pm.response.to.have.status(403);",
+                  "    });",
+                  "    const body = pm.response.json();",
+                  "    pm.test(\"Formato de error { error: { code, message, fields } }\", function () {",
+                  "        pm.expect(body).to.have.all.keys(\"error\");",
+                  "        pm.expect(body.error).to.have.all.keys(\"code\", \"message\", \"fields\");",
+                  "        pm.expect(body.error.message).to.be.a(\"string\").and.not.empty;",
+                  "        pm.expect(body.error.fields).to.be.an(\"object\");",
+                  "    });",
+                  "    pm.test(\"Código FORBIDDEN_ROLE\", function () {",
+                  "        pm.expect(body.error.code).to.eql(\"FORBIDDEN_ROLE\");",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{coach_access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/me/profile",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "me",
+                "profile"
+              ]
+            },
+            "description": "Un coach tampoco puede consultar el perfil de usuario → 403 FORBIDDEN_ROLE."
+          },
+          "response": []
+        },
+        {
+          "name": "Campos faltantes",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 400\", function () {",
+                  "        pm.response.to.have.status(400);",
+                  "    });",
+                  "    const body = pm.response.json();",
+                  "    pm.test(\"Formato de error { error: { code, message, fields } }\", function () {",
+                  "        pm.expect(body).to.have.all.keys(\"error\");",
+                  "        pm.expect(body.error).to.have.all.keys(\"code\", \"message\", \"fields\");",
+                  "        pm.expect(body.error.message).to.be.a(\"string\").and.not.empty;",
+                  "        pm.expect(body.error.fields).to.be.an(\"object\");",
+                  "    });",
+                  "    pm.test(\"Código VALIDATION_ERROR\", function () {",
+                  "        pm.expect(body.error.code).to.eql(\"VALIDATION_ERROR\");",
+                  "    });",
+                  "    pm.test(\"Señala exactamente: objective, level, training_days, weight_kg, height_cm, gender, birth_date\", function () {",
+                  "        pm.expect(Object.keys(body.error.fields).sort()).to.eql([\"birth_date\",\"gender\",\"height_cm\",\"level\",\"objective\",\"training_days\",\"weight_kg\"]);",
+                  "        Object.values(body.error.fields).forEach(function (message) {",
+                  "            pm.expect(message).to.be.a(\"string\").and.not.empty;",
+                  "        });",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{user_access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/me/profile",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "me",
+                "profile"
+              ]
+            },
+            "description": "Cuerpo vacío → 400 VALIDATION_ERROR con los siete campos señalados.",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Valores fuera de rango",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 400\", function () {",
+                  "        pm.response.to.have.status(400);",
+                  "    });",
+                  "    const body = pm.response.json();",
+                  "    pm.test(\"Formato de error { error: { code, message, fields } }\", function () {",
+                  "        pm.expect(body).to.have.all.keys(\"error\");",
+                  "        pm.expect(body.error).to.have.all.keys(\"code\", \"message\", \"fields\");",
+                  "        pm.expect(body.error.message).to.be.a(\"string\").and.not.empty;",
+                  "        pm.expect(body.error.fields).to.be.an(\"object\");",
+                  "    });",
+                  "    pm.test(\"Código VALIDATION_ERROR\", function () {",
+                  "        pm.expect(body.error.code).to.eql(\"VALIDATION_ERROR\");",
+                  "    });",
+                  "    pm.test(\"Señala exactamente: weight_kg, height_cm, training_days, birth_date\", function () {",
+                  "        pm.expect(Object.keys(body.error.fields).sort()).to.eql([\"birth_date\",\"height_cm\",\"training_days\",\"weight_kg\"]);",
+                  "        Object.values(body.error.fields).forEach(function (message) {",
+                  "            pm.expect(message).to.be.a(\"string\").and.not.empty;",
+                  "        });",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{user_access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/me/profile",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "me",
+                "profile"
+              ]
+            },
+            "description": "Peso < 30, estatura > 250, 8 días y 17 años → 400 con esos cuatro campos (el resto es válido).",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"objective\": \"lose_fat\",\n  \"level\": \"beginner\",\n  \"training_days\": 8,\n  \"weight_kg\": 29.9,\n  \"height_cm\": 250.5,\n  \"gender\": \"female\",\n  \"birth_date\": \"{{profile_minor_birth_date}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Valores no permitidos",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 400\", function () {",
+                  "        pm.response.to.have.status(400);",
+                  "    });",
+                  "    const body = pm.response.json();",
+                  "    pm.test(\"Formato de error { error: { code, message, fields } }\", function () {",
+                  "        pm.expect(body).to.have.all.keys(\"error\");",
+                  "        pm.expect(body.error).to.have.all.keys(\"code\", \"message\", \"fields\");",
+                  "        pm.expect(body.error.message).to.be.a(\"string\").and.not.empty;",
+                  "        pm.expect(body.error.fields).to.be.an(\"object\");",
+                  "    });",
+                  "    pm.test(\"Código VALIDATION_ERROR\", function () {",
+                  "        pm.expect(body.error.code).to.eql(\"VALIDATION_ERROR\");",
+                  "    });",
+                  "    pm.test(\"Señala exactamente: objective, level, gender, training_days, birth_date\", function () {",
+                  "        pm.expect(Object.keys(body.error.fields).sort()).to.eql([\"birth_date\",\"gender\",\"level\",\"objective\",\"training_days\"]);",
+                  "        Object.values(body.error.fields).forEach(function (message) {",
+                  "            pm.expect(message).to.be.a(\"string\").and.not.empty;",
+                  "        });",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{user_access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/me/profile",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "me",
+                "profile"
+              ]
+            },
+            "description": "Objetivo, nivel y sexo fuera del catálogo, días no enteros y fecha inexistente → 400 con esos cinco campos.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"objective\": \"volar\",\n  \"level\": \"experto\",\n  \"training_days\": 2.5,\n  \"weight_kg\": 72.5,\n  \"height_cm\": 170,\n  \"gender\": \"otro\",\n  \"birth_date\": \"1990-02-30\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Creación válida",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 201\", function () {",
+                  "        pm.response.to.have.status(201);",
+                  "    });",
+                  "    const data = pm.response.json();",
+                  "    pm.test(\"Estructura: id, user_id, objective, level, training_days, weight_kg, height_cm, gender, birth_date, created_at, updated_at\", function () {",
+                  "        pm.expect(data).to.have.all.keys(\"id\", \"user_id\", \"objective\", \"level\", \"training_days\", \"weight_kg\", \"height_cm\", \"gender\", \"birth_date\", \"created_at\", \"updated_at\");",
+                  "        pm.expect(data.id).to.match(/^[0-9a-f]{24}$/);",
+                  "        pm.expect(data.user_id).to.eql(pm.collectionVariables.get(\"user_id\"));",
+                  "        pm.expect(data.birth_date).to.match(/^\\d{4}-\\d{2}-\\d{2}$/);",
+                  "        pm.expect(new Date(data.created_at).toString()).to.not.eql(\"Invalid Date\");",
+                  "        pm.expect(new Date(data.updated_at).toString()).to.not.eql(\"Invalid Date\");",
+                  "    });",
+                  "    const sent = JSON.parse(pm.variables.replaceIn(pm.request.body.raw));",
+                  "    pm.test(\"Los valores devueltos son los enviados\", function () {",
+                  "        [\"objective\",\"level\",\"training_days\",\"weight_kg\",\"height_cm\",\"gender\",\"birth_date\"].forEach(function (field) {",
+                  "            pm.expect(data[field], field).to.eql(sent[field]);",
+                  "        });",
+                  "    });",
+                  "    pm.collectionVariables.set(\"profile_id\", data.id);",
+                  "    pm.collectionVariables.set(\"profile_sent\", JSON.stringify(sent));",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{user_access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/me/profile",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "me",
+                "profile"
+              ]
+            },
+            "description": "Perfil válido → 201 con todos sus campos iguales a los enviados. Guarda {{profile_id}} y {{profile_sent}}.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"objective\": \"lose_fat\",\n  \"level\": \"beginner\",\n  \"training_days\": 4,\n  \"weight_kg\": 72.5,\n  \"height_cm\": 170,\n  \"gender\": \"female\",\n  \"birth_date\": \"{{profile_birth_date}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Creación duplicada",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 409\", function () {",
+                  "        pm.response.to.have.status(409);",
+                  "    });",
+                  "    const body = pm.response.json();",
+                  "    pm.test(\"Formato de error { error: { code, message, fields } }\", function () {",
+                  "        pm.expect(body).to.have.all.keys(\"error\");",
+                  "        pm.expect(body.error).to.have.all.keys(\"code\", \"message\", \"fields\");",
+                  "        pm.expect(body.error.message).to.be.a(\"string\").and.not.empty;",
+                  "        pm.expect(body.error.fields).to.be.an(\"object\");",
+                  "    });",
+                  "    pm.test(\"Código PROFILE_ALREADY_EXISTS\", function () {",
+                  "        pm.expect(body.error.code).to.eql(\"PROFILE_ALREADY_EXISTS\");",
+                  "    });",
+                  "    pm.test(\"Sin errores por campo\", function () {",
+                  "        pm.expect(body.error.fields).to.eql({});",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{user_access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/me/profile",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "me",
+                "profile"
+              ]
+            },
+            "description": "El usuario ya tiene perfil → 409 PROFILE_ALREADY_EXISTS.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"objective\": \"lose_fat\",\n  \"level\": \"beginner\",\n  \"training_days\": 4,\n  \"weight_kg\": 72.5,\n  \"height_cm\": 170,\n  \"gender\": \"female\",\n  \"birth_date\": \"{{profile_birth_date}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Consulta",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 200\", function () {",
+                  "        pm.response.to.have.status(200);",
+                  "    });",
+                  "    const data = pm.response.json();",
+                  "    pm.test(\"Estructura: id, user_id, objective, level, training_days, weight_kg, height_cm, gender, birth_date, created_at, updated_at\", function () {",
+                  "        pm.expect(data).to.have.all.keys(\"id\", \"user_id\", \"objective\", \"level\", \"training_days\", \"weight_kg\", \"height_cm\", \"gender\", \"birth_date\", \"created_at\", \"updated_at\");",
+                  "        pm.expect(data.id).to.match(/^[0-9a-f]{24}$/);",
+                  "        pm.expect(data.user_id).to.eql(pm.collectionVariables.get(\"user_id\"));",
+                  "        pm.expect(data.birth_date).to.match(/^\\d{4}-\\d{2}-\\d{2}$/);",
+                  "        pm.expect(new Date(data.created_at).toString()).to.not.eql(\"Invalid Date\");",
+                  "        pm.expect(new Date(data.updated_at).toString()).to.not.eql(\"Invalid Date\");",
+                  "    });",
+                  "    pm.test(\"Es el perfil creado\", function () {",
+                  "        pm.expect(data.id).to.eql(pm.collectionVariables.get(\"profile_id\"));",
+                  "    });",
+                  "    const expected = JSON.parse(pm.collectionVariables.get(\"profile_sent\"));",
+                  "    pm.test(\"Los valores consultados son los enviados\", function () {",
+                  "        [\"objective\",\"level\",\"training_days\",\"weight_kg\",\"height_cm\",\"gender\",\"birth_date\"].forEach(function (field) {",
+                  "            pm.expect(data[field], field).to.eql(expected[field]);",
+                  "        });",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{user_access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/me/profile",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "me",
+                "profile"
+              ]
+            },
+            "description": "Devuelve el perfil creado; se compara campo por campo contra lo enviado."
+          },
+          "response": []
+        },
+        {
+          "name": "Verificación en /auth/me",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 200\", function () {",
+                  "        pm.response.to.have.status(200);",
+                  "    });",
+                  "    const data = pm.response.json();",
+                  "    pm.test(\"Estructura de la cuenta\", function () {",
+                  "        pm.expect(data).to.have.all.keys(\"id\", \"name\", \"email\", \"role\", \"profile_completed\");",
+                  "        pm.expect(data.id).to.eql(pm.collectionVariables.get(\"user_id\"));",
+                  "        pm.expect(data.role).to.eql(\"user\");",
+                  "    });",
+                  "    pm.test(\"profile_completed es true\", function () {",
+                  "        pm.expect(data.profile_completed).to.eql(true);",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{user_access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "me"
+              ]
+            },
+            "description": "Tras crear el perfil, la cuenta muestra profile_completed: true."
+          },
+          "response": []
+        },
+        {
+          "name": "Edición",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 200\", function () {",
+                  "        pm.response.to.have.status(200);",
+                  "    });",
+                  "    const data = pm.response.json();",
+                  "    pm.test(\"Estructura: id, user_id, objective, level, training_days, weight_kg, height_cm, gender, birth_date, created_at, updated_at\", function () {",
+                  "        pm.expect(data).to.have.all.keys(\"id\", \"user_id\", \"objective\", \"level\", \"training_days\", \"weight_kg\", \"height_cm\", \"gender\", \"birth_date\", \"created_at\", \"updated_at\");",
+                  "        pm.expect(data.id).to.match(/^[0-9a-f]{24}$/);",
+                  "        pm.expect(data.user_id).to.eql(pm.collectionVariables.get(\"user_id\"));",
+                  "        pm.expect(data.birth_date).to.match(/^\\d{4}-\\d{2}-\\d{2}$/);",
+                  "        pm.expect(new Date(data.created_at).toString()).to.not.eql(\"Invalid Date\");",
+                  "        pm.expect(new Date(data.updated_at).toString()).to.not.eql(\"Invalid Date\");",
+                  "    });",
+                  "    const changes = JSON.parse(pm.variables.replaceIn(pm.request.body.raw));",
+                  "    const expected = Object.assign(JSON.parse(pm.collectionVariables.get(\"profile_sent\")), changes);",
+                  "    pm.test(\"Aplica los cambios y conserva lo demás\", function () {",
+                  "        [\"objective\",\"level\",\"training_days\",\"weight_kg\",\"height_cm\",\"gender\",\"birth_date\"].forEach(function (field) {",
+                  "            pm.expect(data[field], field).to.eql(expected[field]);",
+                  "        });",
+                  "    });",
+                  "    pm.test(\"Mismo perfil y updated_at posterior a created_at\", function () {",
+                  "        pm.expect(data.id).to.eql(pm.collectionVariables.get(\"profile_id\"));",
+                  "        pm.expect(new Date(data.updated_at).getTime()).to.be.at.least(new Date(data.created_at).getTime());",
+                  "    });",
+                  "    pm.collectionVariables.set(\"profile_expected\", JSON.stringify(expected));",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{user_access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/me/profile",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "me",
+                "profile"
+              ]
+            },
+            "description": "Cambia peso, objetivo, nivel, días y fecha de nacimiento → 200; el resto de campos no cambia. Guarda {{profile_expected}}.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"weight_kg\": 70.2,\n  \"objective\": \"gain_muscle\",\n  \"level\": \"intermediate\",\n  \"training_days\": 5,\n  \"birth_date\": \"{{profile_new_birth_date}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Edición con valores inválidos",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 400\", function () {",
+                  "        pm.response.to.have.status(400);",
+                  "    });",
+                  "    const body = pm.response.json();",
+                  "    pm.test(\"Formato de error { error: { code, message, fields } }\", function () {",
+                  "        pm.expect(body).to.have.all.keys(\"error\");",
+                  "        pm.expect(body.error).to.have.all.keys(\"code\", \"message\", \"fields\");",
+                  "        pm.expect(body.error.message).to.be.a(\"string\").and.not.empty;",
+                  "        pm.expect(body.error.fields).to.be.an(\"object\");",
+                  "    });",
+                  "    pm.test(\"Código VALIDATION_ERROR\", function () {",
+                  "        pm.expect(body.error.code).to.eql(\"VALIDATION_ERROR\");",
+                  "    });",
+                  "    pm.test(\"Señala exactamente: height_cm, gender\", function () {",
+                  "        pm.expect(Object.keys(body.error.fields).sort()).to.eql([\"gender\",\"height_cm\"]);",
+                  "        Object.values(body.error.fields).forEach(function (message) {",
+                  "            pm.expect(message).to.be.a(\"string\").and.not.empty;",
+                  "        });",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{user_access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/me/profile",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "me",
+                "profile"
+              ]
+            },
+            "description": "Estatura fuera de rango y sexo no permitido → 400 con esos campos; el perfil no cambia.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"height_cm\": 99,\n  \"gender\": \"x\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Edición sin campos",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 400\", function () {",
+                  "        pm.response.to.have.status(400);",
+                  "    });",
+                  "    const body = pm.response.json();",
+                  "    pm.test(\"Formato de error { error: { code, message, fields } }\", function () {",
+                  "        pm.expect(body).to.have.all.keys(\"error\");",
+                  "        pm.expect(body.error).to.have.all.keys(\"code\", \"message\", \"fields\");",
+                  "        pm.expect(body.error.message).to.be.a(\"string\").and.not.empty;",
+                  "        pm.expect(body.error.fields).to.be.an(\"object\");",
+                  "    });",
+                  "    pm.test(\"Código INVALID_BODY\", function () {",
+                  "        pm.expect(body.error.code).to.eql(\"INVALID_BODY\");",
+                  "    });",
+                  "    pm.test(\"Sin errores por campo\", function () {",
+                  "        pm.expect(body.error.fields).to.eql({});",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{user_access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/me/profile",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "me",
+                "profile"
+              ]
+            },
+            "description": "Un PATCH sin ningún campo del perfil → 400 INVALID_BODY.",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Consulta tras la edición",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 200\", function () {",
+                  "        pm.response.to.have.status(200);",
+                  "    });",
+                  "    const data = pm.response.json();",
+                  "    pm.test(\"Estructura: id, user_id, objective, level, training_days, weight_kg, height_cm, gender, birth_date, created_at, updated_at\", function () {",
+                  "        pm.expect(data).to.have.all.keys(\"id\", \"user_id\", \"objective\", \"level\", \"training_days\", \"weight_kg\", \"height_cm\", \"gender\", \"birth_date\", \"created_at\", \"updated_at\");",
+                  "        pm.expect(data.id).to.match(/^[0-9a-f]{24}$/);",
+                  "        pm.expect(data.user_id).to.eql(pm.collectionVariables.get(\"user_id\"));",
+                  "        pm.expect(data.birth_date).to.match(/^\\d{4}-\\d{2}-\\d{2}$/);",
+                  "        pm.expect(new Date(data.created_at).toString()).to.not.eql(\"Invalid Date\");",
+                  "        pm.expect(new Date(data.updated_at).toString()).to.not.eql(\"Invalid Date\");",
+                  "    });",
+                  "    const expected = JSON.parse(pm.collectionVariables.get(\"profile_expected\"));",
+                  "    pm.test(\"Los valores consultados son los editados\", function () {",
+                  "        [\"objective\",\"level\",\"training_days\",\"weight_kg\",\"height_cm\",\"gender\",\"birth_date\"].forEach(function (field) {",
+                  "            pm.expect(data[field], field).to.eql(expected[field]);",
+                  "        });",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{user_access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/me/profile",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "me",
+                "profile"
+              ]
+            },
+            "description": "El perfil refleja la edición válida y no la inválida (lo que verá la app al volver a abrirse)."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
       "name": "HU-04 Meta calculada",
-      "description": "HU-04: la meta nutricional (calorías, proteína y grasa) se calcula automáticamente con Mifflin-St Jeor a partir del perfil, se recalcula al editarlo y conserva el historial. Endpoints: GET /api/v1/users/me/goals/current y GET /api/v1/users/me/goals.\n\nEjecutar en orden. Las peticiones 02 (registrar perfil) y 03 usan POST/PUT /api/v1/users/me/profile, que pertenecen a HU-03.\n\nTODO(HU-03): confirmar que los nombres de campo del body (weight_kg, height_cm, birth_date, gender, training_days, objective) y sus valores coinciden con los del endpoint de perfil.",
+      "description": "HU-04: la meta nutricional (calorías, proteína y grasa) se calcula automáticamente con Mifflin-St Jeor a partir del perfil, se recalcula al editarlo y conserva el historial. Endpoints: GET /api/v1/users/me/goals/current y GET /api/v1/users/me/goals.\n\nEjecutar en orden. Las peticiones 02 (registrar perfil) y 03 (edición) usan POST y PATCH /api/v1/users/me/profile de HU-03.",
       "item": [
         {
           "name": "00 - Preparación: registrar usuario sin perfil",
@@ -2089,9 +3021,18 @@
                 "type": "text/javascript",
                 "exec": [
                   "{",
-                  "    // TODO(HU-03): ajustar al código y a la estructura reales del endpoint de perfil.",
-                  "    pm.test(\"El perfil se registra (200 o 201)\", function () {",
-                  "        pm.expect(pm.response.code).to.be.oneOf([200, 201]);",
+                  "    pm.test(\"Status 201 Created\", function () {",
+                  "        pm.response.to.have.status(201);",
+                  "    });",
+                  "    const data = pm.response.json();",
+                  "    pm.test(\"El perfil guardado tiene los valores enviados\", function () {",
+                  "        pm.expect(data.user_id).to.eql(pm.collectionVariables.get(\"goals_user_id\"));",
+                  "        pm.expect(data.weight_kg).to.eql(Number(pm.collectionVariables.get(\"goals_profile_weight_kg\")));",
+                  "        pm.expect(data.height_cm).to.eql(Number(pm.collectionVariables.get(\"goals_profile_height_cm\")));",
+                  "        pm.expect(data.birth_date).to.eql(pm.collectionVariables.get(\"goals_profile_birth_date\"));",
+                  "        pm.expect(data.gender).to.eql(pm.collectionVariables.get(\"goals_profile_gender\"));",
+                  "        pm.expect(data.training_days).to.eql(Number(pm.collectionVariables.get(\"goals_profile_training_days\")));",
+                  "        pm.expect(data.objective).to.eql(pm.collectionVariables.get(\"goals_profile_objective\"));",
                   "    });",
                   "}"
                 ]
@@ -2126,7 +3067,7 @@
             "description": "Registra el perfil de referencia (HU-03). Al crearse debe generarse la meta inicial.",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"weight_kg\": {{goals_profile_weight_kg}},\n  \"height_cm\": {{goals_profile_height_cm}},\n  \"birth_date\": \"{{goals_profile_birth_date}}\",\n  \"gender\": \"{{goals_profile_gender}}\",\n  \"training_days\": {{goals_profile_training_days}},\n  \"objective\": \"{{goals_profile_objective}}\"\n}",
+              "raw": "{\n  \"weight_kg\": {{goals_profile_weight_kg}},\n  \"height_cm\": {{goals_profile_height_cm}},\n  \"birth_date\": \"{{goals_profile_birth_date}}\",\n  \"gender\": \"{{goals_profile_gender}}\",\n  \"level\": \"intermediate\",\n  \"training_days\": {{goals_profile_training_days}},\n  \"objective\": \"{{goals_profile_objective}}\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -2245,9 +3186,14 @@
                 "type": "text/javascript",
                 "exec": [
                   "{",
-                  "    // TODO(HU-03): ajustar al código y a la estructura reales del endpoint de perfil.",
-                  "    pm.test(\"El perfil se actualiza (200 o 204)\", function () {",
-                  "        pm.expect(pm.response.code).to.be.oneOf([200, 204]);",
+                  "    pm.test(\"Status 200\", function () {",
+                  "        pm.response.to.have.status(200);",
+                  "    });",
+                  "    const data = pm.response.json();",
+                  "    pm.test(\"El perfil refleja los cambios\", function () {",
+                  "        pm.expect(data.weight_kg).to.eql(Number(pm.collectionVariables.get(\"goals_profile_weight_kg\")));",
+                  "        pm.expect(data.training_days).to.eql(Number(pm.collectionVariables.get(\"goals_profile_training_days\")));",
+                  "        pm.expect(data.objective).to.eql(pm.collectionVariables.get(\"goals_profile_objective\"));",
                   "    });",
                   "}"
                 ]
@@ -2255,7 +3201,7 @@
             }
           ],
           "request": {
-            "method": "PUT",
+            "method": "PATCH",
             "header": [
               {
                 "key": "Content-Type",
@@ -2456,8 +3402,8 @@
                   "        pm.expect(body.error.message).to.be.a(\"string\").and.not.empty;",
                   "        pm.expect(body.error.fields).to.be.an(\"object\");",
                   "    });",
-                  "    pm.test(\"Código FORBIDDEN\", function () {",
-                  "        pm.expect(body.error.code).to.eql(\"FORBIDDEN\");",
+                  "    pm.test(\"Código FORBIDDEN_ROLE\", function () {",
+                  "        pm.expect(body.error.code).to.eql(\"FORBIDDEN_ROLE\");",
                   "    });",
                   "}"
                 ]
@@ -2741,6 +3687,36 @@
     },
     {
       "key": "previous_refresh_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "profile_birth_date",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "profile_new_birth_date",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "profile_minor_birth_date",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "profile_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "profile_sent",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "profile_expected",
       "value": "",
       "type": "string"
     },

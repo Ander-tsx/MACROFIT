@@ -64,7 +64,7 @@ class GoalsRemoteDataSourceImpl implements GoalsRemoteDataSource {
         }
         throw GoalsServerException(message ?? 'No encontrado', 404);
       case 403:
-        // El backend responde FORBIDDEN cuando el rol es coach
+        // El backend responde 403 FORBIDDEN_ROLE cuando el rol es coach
         throw GoalsForbiddenException(message ?? 'Acceso denegado');
       default:
         throw GoalsServerException(
