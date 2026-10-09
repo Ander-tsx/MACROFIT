@@ -138,23 +138,26 @@ void main() {
       });
     });
 
-    test('la meta calculada es del sistema, del usuario y vigente desde ahora', () {
-      final goal = calculate(
-        profile(
-          weightKg: 70,
-          heightCm: 175,
-          age: 30,
-          gender: Gender.male,
-          days: 3,
-          objective: FitnessObjective.maintain,
-        ),
-        now: now,
-      );
+    test(
+      'la meta calculada es del sistema, del usuario y vigente desde ahora',
+      () {
+        final goal = calculate(
+          profile(
+            weightKg: 70,
+            heightCm: 175,
+            age: 30,
+            gender: Gender.male,
+            days: 3,
+            objective: FitnessObjective.maintain,
+          ),
+          now: now,
+        );
 
-      expect(goal.source, GoalSource.system);
-      expect(goal.setBy, isNull);
-      expect(goal.userId, 'user-1');
-      expect(goal.effectiveFrom, now);
-    });
+        expect(goal.source, GoalSource.system);
+        expect(goal.setBy, isNull);
+        expect(goal.userId, 'user-1');
+        expect(goal.effectiveFrom, now);
+      },
+    );
   });
 }

@@ -5,8 +5,9 @@ import 'calculate_nutritional_goal.dart';
 class UpdateGoalOnProfileChange {
   final CalculateNutritionalGoal _calculate;
 
-  const UpdateGoalOnProfileChange(
-      [this._calculate = const CalculateNutritionalGoal()]);
+  const UpdateGoalOnProfileChange([
+    this._calculate = const CalculateNutritionalGoal(),
+  ]);
 
   /// Devuelve la nueva meta a insertar en el historial,
   /// o `null` si la meta vigente es de un coach (no se reemplaza).

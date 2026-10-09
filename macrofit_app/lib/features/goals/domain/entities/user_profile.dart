@@ -6,7 +6,7 @@ class UserProfile {
   final String userId;
   final double weightKg;
   final double heightCm;
-  final DateTime birthDate; 
+  final DateTime birthDate;
   final Gender gender;
   final int trainingDaysPerWeek;
   final FitnessObjective objective;
@@ -23,7 +23,8 @@ class UserProfile {
 
   int ageAt(DateTime now) {
     var age = now.year - birthDate.year;
-    final hadBirthday = now.month > birthDate.month ||
+    final hadBirthday =
+        now.month > birthDate.month ||
         (now.month == birthDate.month && now.day >= birthDate.day);
     if (!hadBirthday) age--;
     return age;

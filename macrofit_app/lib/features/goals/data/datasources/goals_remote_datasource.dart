@@ -1,4 +1,5 @@
 import 'dart:convert';
+
 import 'package:http/http.dart' as http;
 
 import '../../domain/exceptions/goals_exceptions.dart';
@@ -25,7 +26,9 @@ class GoalsRemoteDataSourceImpl implements GoalsRemoteDataSource {
   @override
   Future<GoalModel> getCurrentGoal() async {
     final response = await _get('/users/me/goals/current');
-    return GoalModel.fromJson(jsonDecode(response.body) as Map<String, dynamic>);
+    return GoalModel.fromJson(
+      jsonDecode(response.body) as Map<String, dynamic>,
+    );
   }
 
   @override
@@ -61,11 +64,13 @@ class GoalsRemoteDataSourceImpl implements GoalsRemoteDataSource {
         }
         throw GoalsServerException(message ?? 'No encontrado', 404);
       case 403:
-      // El backend responde FORBIDDEN cuando el rol es coach
+        // El backend responde FORBIDDEN cuando el rol es coach
         throw GoalsForbiddenException(message ?? 'Acceso denegado');
       default:
         throw GoalsServerException(
-            message ?? 'Error inesperado del servidor', response.statusCode);
+          message ?? 'Error inesperado del servidor',
+          response.statusCode,
+        );
     }
   }
 
