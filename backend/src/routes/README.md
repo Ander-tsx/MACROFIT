@@ -24,4 +24,5 @@ bajo `/api/v1` en `api_router()`.
 | Archivo | Rutas |
 |---|---|
 | `mod.rs` | `API_PREFIX`, `/health` y composición de routers |
+| `legal.rs` | `/legal/privacy` (TEC-07) |
 | `auth.rs` | `/auth/register` (HU-01), `/auth/login`, `/auth/refresh`, `/auth/logout`, `/auth/me` (HU-02), `/coach/test` (TEC-05) |

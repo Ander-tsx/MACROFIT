@@ -13,17 +13,18 @@ Un archivo por dominio (`auth.rs`, y después `profile.rs`, `goals.rs`, ...). Aq
   pero el error de clave duplicada (código `11000`) también debe traducirse al `AppError` correspondiente.
 - **CPU pesada** (hash/verificación de contraseñas) dentro de `tokio::task::spawn_blocking`.
 - Mensajes de error al usuario en español, en `FieldErrors` por campo.
-- Pendientes de otra historia: `// TODO(ID): qué falta y qué hay que cambiar` (ver el TODO de TEC-07 en `auth.rs`).
+- Pendientes de otra historia: `// TODO(ID): qué falta y qué hay que cambiar` .
 
 ## Archivos
 
 | Archivo | Contenido |
 |---|---|
 | `auth.rs` | `validate_registration`, `register` (HU-01), `login` (HU-02, con hash ficticio para igualar tiempos), `find_user_by_id` |
+| `legal.rs` | TEC-07: `PRIVACY_NOTICE` (Markdown embebido desde `docs/legal/`) y `PRIVACY_VERSION` (leída de su cabecera) |
 | `session.rs` | HU-02: `start` (login), `refresh` (rotación atómica + detección de reuso), `logout`, `is_active` |
 
-### Pendiente conocido
+### Aviso de privacidad en el registro
 
-- **TEC-07 — aviso de privacidad**: `validate_registration` aún acepta `privacy_accepted: false`.
-  Al implementarlo: devolver `AppError::PrivacyNotAccepted`, actualizar el test `sin_aviso_de_privacidad_aun_se_acepta`
-  y el request `HU-01 Registro / Sin aviso de privacidad` de `postman/auth/auth.postman_collection.json` (luego `node postman/build.js`) para que espere `400`.
+`validate_registration` exige `privacy_accepted: true`. Si es lo único que falla responde `PRIVACY_NOT_ACCEPTED`; si hay
+otros campos inválidos lo agrega a `FieldErrors` dentro de `VALIDATION_ERROR`. `register` guarda `privacy_accepted_at`
+y `privacy_version`.

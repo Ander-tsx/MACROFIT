@@ -2,7 +2,7 @@
   "info": {
     "_postman_id": "b3e0d869-7c85-4871-9d22-4f6a1c2e0001",
     "name": "MacroFit",
-    "description": "ARCHIVO GENERADO por postman/build.js: no lo edites, modifica postman/<modulo>/ y regenera.\n\nAPI del backend de MacroFit (/api/v1). Una carpeta por historia del backlog (HU-XX / TEC-XX). Requiere el entorno \"MacroFit - Local\" (postman/MacroFit.postman_environment.json).\n\nMódulos (en orden): core, auth. Las carpetas \"... · Cierre\" van al final.",
+    "description": "ARCHIVO GENERADO por postman/build.js: no lo edites, modifica postman/<modulo>/ y regenera.\n\nAPI del backend de MacroFit (/api/v1). Una carpeta por historia del backlog (HU-XX / TEC-XX). Requiere el entorno \"MacroFit - Local\" (postman/MacroFit.postman_environment.json).\n\nMódulos (en orden): core, legal, auth, goals. Las carpetas \"... · Cierre\" van al final.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "item": [
@@ -45,6 +45,58 @@
               ]
             },
             "description": "Verifica que el servidor esté activo."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "TEC-07 Aviso de privacidad",
+      "description": "TEC-07: el aviso de privacidad se sirve desde docs/legal/aviso-de-privacidad.md embebido en el backend.",
+      "item": [
+        {
+          "name": "Aviso de privacidad vigente",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 200\", function () {",
+                  "        pm.response.to.have.status(200);",
+                  "    });",
+                  "    const data = pm.response.json();",
+                  "    pm.test(\"Estructura: version, content\", function () {",
+                  "        pm.expect(data).to.have.all.keys(\"version\", \"content\");",
+                  "        pm.expect(data.version).to.be.a(\"string\").and.match(/^\\d+(\\.\\d+)*$/);",
+                  "        pm.expect(data.content).to.be.a(\"string\").and.not.empty;",
+                  "    });",
+                  "    pm.test(\"El contenido es el aviso con su versión\", function () {",
+                  "        pm.expect(data.content).to.include(\"Aviso de privacidad\");",
+                  "        pm.expect(data.content).to.include(\"**Versión:** \" + data.version);",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/legal/privacy",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "legal",
+                "privacy"
+              ]
+            },
+            "description": "Público. Devuelve la versión vigente y el texto completo en Markdown."
           },
           "response": []
         }
@@ -612,20 +664,22 @@
                 "type": "text/javascript",
                 "exec": [
                   "{",
-                  "    // TODO(TEC-07): cuando se implemente el aviso de privacidad este request debe",
-                  "    // esperar 400 con código PRIVACY_NOT_ACCEPTED. Reemplaza estos tests por:",
-                  "    //   status 400, error.code === \"PRIVACY_NOT_ACCEPTED\", fields.privacy_accepted",
-                  "    pm.test(\"Status 201 (aviso de privacidad pendiente, TEC-07)\", function () {",
-                  "        pm.response.to.have.status(201);",
+                  "    pm.test(\"Status 400\", function () {",
+                  "        pm.response.to.have.status(400);",
                   "    });",
-                  "    const data = pm.response.json();",
-                  "    pm.test(\"Estructura: id, name, email, role, profile_completed\", function () {",
-                  "        pm.expect(data).to.have.all.keys(\"id\", \"name\", \"email\", \"role\", \"profile_completed\");",
-                  "        pm.expect(data.profile_completed).to.eql(false);",
+                  "    const body = pm.response.json();",
+                  "    pm.test(\"Formato de error { error: { code, message, fields } }\", function () {",
+                  "        pm.expect(body).to.have.all.keys(\"error\");",
+                  "        pm.expect(body.error).to.have.all.keys(\"code\", \"message\", \"fields\");",
+                  "        pm.expect(body.error.message).to.be.a(\"string\").and.not.empty;",
+                  "        pm.expect(body.error.fields).to.be.an(\"object\");",
                   "    });",
-                  "    pm.test(\"No devuelve la contraseña ni su hash\", function () {",
-                  "        pm.expect(data).to.not.have.any.keys(\"password\", \"password_hash\");",
-                  "        pm.expect(pm.response.text()).to.not.include(pm.collectionVariables.get(\"test_password\"));",
+                  "    pm.test(\"Código PRIVACY_NOT_ACCEPTED\", function () {",
+                  "        pm.expect(body.error.code).to.eql(\"PRIVACY_NOT_ACCEPTED\");",
+                  "    });",
+                  "    pm.test(\"Señala el campo 'privacy_accepted'\", function () {",
+                  "        pm.expect(body.error.fields).to.have.property(\"privacy_accepted\");",
+                  "        pm.expect(body.error.fields.privacy_accepted).to.be.a(\"string\").and.not.empty;",
                   "    });",
                   "}"
                 ]
@@ -652,10 +706,78 @@
                 "register"
               ]
             },
-            "description": "privacy_accepted: false. PENDIENTE (TEC-07): hoy se acepta (201) y privacy_accepted_at queda en null. Cuando exista el aviso debe responder 400 PRIVACY_NOT_ACCEPTED.",
+            "description": "privacy_accepted: false con el resto de campos válidos: 400 PRIVACY_NOT_ACCEPTED y no se crea la cuenta.",
             "body": {
               "mode": "raw",
               "raw": "{\n  \"name\": \"Sin Aviso\",\n  \"email\": \"{{email}}\",\n  \"password\": \"{{test_password}}\",\n  \"role\": \"user\",\n  \"privacy_accepted\": false\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Sin aviso y con correo inválido",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 400\", function () {",
+                  "        pm.response.to.have.status(400);",
+                  "    });",
+                  "    const body = pm.response.json();",
+                  "    pm.test(\"Formato de error { error: { code, message, fields } }\", function () {",
+                  "        pm.expect(body).to.have.all.keys(\"error\");",
+                  "        pm.expect(body.error).to.have.all.keys(\"code\", \"message\", \"fields\");",
+                  "        pm.expect(body.error.message).to.be.a(\"string\").and.not.empty;",
+                  "        pm.expect(body.error.fields).to.be.an(\"object\");",
+                  "    });",
+                  "    pm.test(\"Código VALIDATION_ERROR\", function () {",
+                  "        pm.expect(body.error.code).to.eql(\"VALIDATION_ERROR\");",
+                  "    });",
+                  "    pm.test(\"Señala el campo 'email'\", function () {",
+                  "        pm.expect(body.error.fields).to.have.property(\"email\");",
+                  "        pm.expect(body.error.fields.email).to.be.a(\"string\").and.not.empty;",
+                  "    });",
+                  "    pm.test(\"Señala el campo 'privacy_accepted'\", function () {",
+                  "        pm.expect(body.error.fields).to.have.property(\"privacy_accepted\");",
+                  "        pm.expect(body.error.fields.privacy_accepted).to.be.a(\"string\").and.not.empty;",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "register"
+              ]
+            },
+            "description": "Si además hay campos inválidos, el aviso se reporta como un campo más dentro de VALIDATION_ERROR.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Sin Aviso\",\n  \"email\": \"correo-sin-arroba.com\",\n  \"password\": \"{{test_password}}\",\n  \"role\": \"user\",\n  \"privacy_accepted\": false\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -1755,6 +1877,622 @@
       ]
     },
     {
+      "name": "HU-04 Meta calculada",
+      "description": "HU-04: la meta nutricional (calorías, proteína y grasa) se calcula automáticamente con Mifflin-St Jeor a partir del perfil, se recalcula al editarlo y conserva el historial. Endpoints: GET /api/v1/users/me/goals/current y GET /api/v1/users/me/goals.\n\nEjecutar en orden. Las peticiones 02 (registrar perfil) y 03 usan POST/PUT /api/v1/users/me/profile, que pertenecen a HU-03.\n\nTODO(HU-03): confirmar que los nombres de campo del body (weight_kg, height_cm, birth_date, gender, training_days, objective) y sus valores coinciden con los del endpoint de perfil.",
+      "item": [
+        {
+          "name": "00 - Preparación: registrar usuario sin perfil",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    const email = \"goals.\" + Date.now() + \".\" + Math.floor(Math.random() * 1e6) + \"@macrofit.test\";",
+                  "    pm.variables.set(\"email\", email);",
+                  "    pm.collectionVariables.set(\"goals_user_email\", email);",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 201 Created\", function () {",
+                  "        pm.response.to.have.status(201);",
+                  "    });",
+                  "    const data = pm.response.json();",
+                  "    pm.test(\"Estructura: id, name, email, role, profile_completed\", function () {",
+                  "        pm.expect(data).to.have.all.keys(\"id\", \"name\", \"email\", \"role\", \"profile_completed\");",
+                  "        pm.expect(data.id).to.be.a(\"string\").and.to.match(/^[0-9a-f]{24}$/);",
+                  "        pm.expect(data.role).to.eql(\"user\");",
+                  "        pm.expect(data.profile_completed).to.eql(false);",
+                  "    });",
+                  "    pm.collectionVariables.set(\"goals_user_id\", data.id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "register"
+              ]
+            },
+            "description": "Crea un usuario nuevo (rol user) que todavía no tiene perfil. Guarda su id en {{goals_user_id}}.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Usuario Metas\",\n  \"email\": \"{{email}}\",\n  \"password\": \"{{test_password}}\",\n  \"role\": \"user\",\n  \"privacy_accepted\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "00 - Preparación: iniciar sesión del usuario",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 200\", function () {",
+                  "        pm.response.to.have.status(200);",
+                  "    });",
+                  "    const data = pm.response.json();",
+                  "    pm.test(\"Estructura: access_token, refresh_token, token_type, expires_in, user\", function () {",
+                  "        pm.expect(data).to.have.all.keys(\"access_token\", \"refresh_token\", \"token_type\", \"expires_in\", \"user\");",
+                  "        pm.expect(data.access_token).to.be.a(\"string\").and.not.empty;",
+                  "        pm.expect(data.token_type).to.eql(\"Bearer\");",
+                  "        pm.expect(data.user.id).to.eql(pm.collectionVariables.get(\"goals_user_id\"));",
+                  "        pm.expect(data.user.role).to.eql(\"user\");",
+                  "    });",
+                  "    pm.collectionVariables.set(\"goals_access_token\", data.access_token);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ]
+            },
+            "description": "Inicia sesión con el usuario sin perfil. Guarda el token en {{goals_access_token}}.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{goals_user_email}}\",\n  \"password\": \"{{test_password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "01 - Consulta sin perfil",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 404\", function () {",
+                  "        pm.response.to.have.status(404);",
+                  "    });",
+                  "    const body = pm.response.json();",
+                  "    pm.test(\"Formato de error { error: { code, message, fields } }\", function () {",
+                  "        pm.expect(body).to.have.all.keys(\"error\");",
+                  "        pm.expect(body.error).to.have.all.keys(\"code\", \"message\", \"fields\");",
+                  "        pm.expect(body.error.message).to.be.a(\"string\").and.not.empty;",
+                  "        pm.expect(body.error.fields).to.be.an(\"object\");",
+                  "    });",
+                  "    pm.test(\"Código PROFILE_NOT_FOUND\", function () {",
+                  "        pm.expect(body.error.code).to.eql(\"PROFILE_NOT_FOUND\");",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{goals_access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/me/goals/current",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "me",
+                "goals",
+                "current"
+              ]
+            },
+            "description": "Usuario sin perfil registrado: 404 PROFILE_NOT_FOUND."
+          },
+          "response": []
+        },
+        {
+          "name": "02 - Meta inicial (registrar perfil)",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    // Perfil de referencia: hombre, 80 kg, 180 cm, 4 días, mantener.",
+                  "    pm.collectionVariables.set(\"goals_profile_weight_kg\", \"80\");",
+                  "    pm.collectionVariables.set(\"goals_profile_height_cm\", \"180\");",
+                  "    pm.collectionVariables.set(\"goals_profile_birth_date\", \"1998-03-15\");",
+                  "    pm.collectionVariables.set(\"goals_profile_gender\", \"male\");",
+                  "    pm.collectionVariables.set(\"goals_profile_training_days\", \"4\");",
+                  "    pm.collectionVariables.set(\"goals_profile_objective\", \"maintain\");",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    // TODO(HU-03): ajustar al código y a la estructura reales del endpoint de perfil.",
+                  "    pm.test(\"El perfil se registra (200 o 201)\", function () {",
+                  "        pm.expect(pm.response.code).to.be.oneOf([200, 201]);",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{goals_access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/me/profile",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "me",
+                "profile"
+              ]
+            },
+            "description": "Registra el perfil de referencia (HU-03). Al crearse debe generarse la meta inicial.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"weight_kg\": {{goals_profile_weight_kg}},\n  \"height_cm\": {{goals_profile_height_cm}},\n  \"birth_date\": \"{{goals_profile_birth_date}}\",\n  \"gender\": \"{{goals_profile_gender}}\",\n  \"training_days\": {{goals_profile_training_days}},\n  \"objective\": \"{{goals_profile_objective}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "02 - Meta inicial (consultar meta)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 200 OK\", function () {",
+                  "        pm.response.to.have.status(200);",
+                  "    });",
+                  "    const data = pm.response.json();",
+                  "    pm.test(\"Estructura: id, user_id, calories, protein_g, fat_g, source, set_by, effective_from, created_at\", function () {",
+                  "        pm.expect(data).to.have.all.keys(\"id\", \"user_id\", \"calories\", \"protein_g\", \"fat_g\", \"source\", \"set_by\", \"effective_from\", \"created_at\");",
+                  "        pm.expect(data.id).to.be.a(\"string\").and.to.match(/^[0-9a-f]{24}$/);",
+                  "        pm.expect(data.calories).to.be.a(\"number\");",
+                  "        pm.expect(data.protein_g).to.be.a(\"number\");",
+                  "        pm.expect(data.fat_g).to.be.a(\"number\");",
+                  "        pm.expect(Date.parse(data.effective_from)).to.not.be.NaN;",
+                  "    });",
+                  "    pm.test(\"La meta es del sistema, del usuario y sin coach\", function () {",
+                  "        pm.expect(data.source).to.eql(\"system\");",
+                  "        pm.expect(data.set_by).to.eql(null);",
+                  "        pm.expect(data.user_id).to.eql(pm.collectionVariables.get(\"goals_user_id\"));",
+                  "    });",
+                  "    // Valor esperado: Mifflin-St Jeor sobre el perfil enviado.",
+                  "    const v = (name) => pm.collectionVariables.get(\"goals_profile_\" + name);",
+                  "    const weight = Number(v(\"weight_kg\"));",
+                  "    const height = Number(v(\"height_cm\"));",
+                  "    const days = Number(v(\"training_days\"));",
+                  "    const objective = v(\"objective\");",
+                  "    const [by, bm, bd] = v(\"birth_date\").split(\"-\").map(Number);",
+                  "    const today = new Date();",
+                  "    const month = today.getUTCMonth() + 1;",
+                  "    let age = today.getUTCFullYear() - by;",
+                  "    if (month < bm || (month === bm && today.getUTCDate() < bd)) { age--; }",
+                  "    const base = 10 * weight + 6.25 * height - 5 * age;",
+                  "    const bmr = v(\"gender\") === \"male\" ? base + 5 : base - 161;",
+                  "    const factor = days <= 1 ? 1.2 : days <= 3 ? 1.375 : days <= 5 ? 1.55 : 1.725;",
+                  "    const adjustment = { lose_fat: 0.8, maintain: 1.0, gain_muscle: 1.1 }[objective];",
+                  "    const proteinPerKg = { lose_fat: 2.0, maintain: 1.6, gain_muscle: 1.8 }[objective];",
+                  "    const kcal = bmr * factor * adjustment;",
+                  "    const expected = {",
+                  "        calories: Math.round(kcal),",
+                  "        protein_g: Math.round(weight * proteinPerKg),",
+                  "        fat_g: Math.round(kcal * 0.25 / 9)",
+                  "    };",
+                  "    pm.test(\"calories, protein_g y fat_g coinciden con la fórmula (± 1)\", function () {",
+                  "        pm.expect(Math.abs(data.calories - expected.calories)).to.be.at.most(1);",
+                  "        pm.expect(Math.abs(data.protein_g - expected.protein_g)).to.be.at.most(1);",
+                  "        pm.expect(Math.abs(data.fat_g - expected.fat_g)).to.be.at.most(1);",
+                  "    });",
+                  "    pm.collectionVariables.set(\"goals_goal_initial_id\", data.id);",
+                  "    pm.collectionVariables.set(\"goals_goal_initial_calories\", String(data.calories));",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{goals_access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/me/goals/current",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "me",
+                "goals",
+                "current"
+              ]
+            },
+            "description": "Con el perfil registrado, la meta vigente es la inicial, con source system y los macros de Mifflin-St Jeor (± 1). Guarda su id y sus calorías para las peticiones 04 y 05."
+          },
+          "response": []
+        },
+        {
+          "name": "03 - Edición del perfil",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    // Cambian peso, objetivo y días de entrenamiento.",
+                  "    pm.collectionVariables.set(\"goals_profile_weight_kg\", \"85\");",
+                  "    pm.collectionVariables.set(\"goals_profile_objective\", \"gain_muscle\");",
+                  "    pm.collectionVariables.set(\"goals_profile_training_days\", \"5\");",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    // TODO(HU-03): ajustar al código y a la estructura reales del endpoint de perfil.",
+                  "    pm.test(\"El perfil se actualiza (200 o 204)\", function () {",
+                  "        pm.expect(pm.response.code).to.be.oneOf([200, 204]);",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{goals_access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/me/profile",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "me",
+                "profile"
+              ]
+            },
+            "description": "Edita peso (85 kg), objetivo (gain_muscle) y días de entrenamiento (5). Como la meta vigente es del sistema, debe recalcularse.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"weight_kg\": {{goals_profile_weight_kg}},\n  \"height_cm\": {{goals_profile_height_cm}},\n  \"birth_date\": \"{{goals_profile_birth_date}}\",\n  \"gender\": \"{{goals_profile_gender}}\",\n  \"training_days\": {{goals_profile_training_days}},\n  \"objective\": \"{{goals_profile_objective}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "04 - Meta recalculada",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 200 OK\", function () {",
+                  "        pm.response.to.have.status(200);",
+                  "    });",
+                  "    const data = pm.response.json();",
+                  "    pm.test(\"Estructura: id, user_id, calories, protein_g, fat_g, source, set_by, effective_from, created_at\", function () {",
+                  "        pm.expect(data).to.have.all.keys(\"id\", \"user_id\", \"calories\", \"protein_g\", \"fat_g\", \"source\", \"set_by\", \"effective_from\", \"created_at\");",
+                  "        pm.expect(data.id).to.be.a(\"string\").and.to.match(/^[0-9a-f]{24}$/);",
+                  "        pm.expect(data.calories).to.be.a(\"number\");",
+                  "        pm.expect(data.protein_g).to.be.a(\"number\");",
+                  "        pm.expect(data.fat_g).to.be.a(\"number\");",
+                  "        pm.expect(Date.parse(data.effective_from)).to.not.be.NaN;",
+                  "    });",
+                  "    pm.test(\"Es una meta nueva del sistema (distinta de la inicial)\", function () {",
+                  "        pm.expect(data.source).to.eql(\"system\");",
+                  "        pm.expect(data.set_by).to.eql(null);",
+                  "        pm.expect(data.id).to.not.eql(pm.collectionVariables.get(\"goals_goal_initial_id\"));",
+                  "    });",
+                  "    // Valor esperado: Mifflin-St Jeor sobre el perfil ya editado.",
+                  "    const v = (name) => pm.collectionVariables.get(\"goals_profile_\" + name);",
+                  "    const weight = Number(v(\"weight_kg\"));",
+                  "    const height = Number(v(\"height_cm\"));",
+                  "    const days = Number(v(\"training_days\"));",
+                  "    const objective = v(\"objective\");",
+                  "    const [by, bm, bd] = v(\"birth_date\").split(\"-\").map(Number);",
+                  "    const today = new Date();",
+                  "    const month = today.getUTCMonth() + 1;",
+                  "    let age = today.getUTCFullYear() - by;",
+                  "    if (month < bm || (month === bm && today.getUTCDate() < bd)) { age--; }",
+                  "    const base = 10 * weight + 6.25 * height - 5 * age;",
+                  "    const bmr = v(\"gender\") === \"male\" ? base + 5 : base - 161;",
+                  "    const factor = days <= 1 ? 1.2 : days <= 3 ? 1.375 : days <= 5 ? 1.55 : 1.725;",
+                  "    const adjustment = { lose_fat: 0.8, maintain: 1.0, gain_muscle: 1.1 }[objective];",
+                  "    const proteinPerKg = { lose_fat: 2.0, maintain: 1.6, gain_muscle: 1.8 }[objective];",
+                  "    const kcal = bmr * factor * adjustment;",
+                  "    const expected = {",
+                  "        calories: Math.round(kcal),",
+                  "        protein_g: Math.round(weight * proteinPerKg),",
+                  "        fat_g: Math.round(kcal * 0.25 / 9)",
+                  "    };",
+                  "    pm.test(\"calories, protein_g y fat_g coinciden con el nuevo cálculo (± 1)\", function () {",
+                  "        pm.expect(Math.abs(data.calories - expected.calories)).to.be.at.most(1);",
+                  "        pm.expect(Math.abs(data.protein_g - expected.protein_g)).to.be.at.most(1);",
+                  "        pm.expect(Math.abs(data.fat_g - expected.fat_g)).to.be.at.most(1);",
+                  "    });",
+                  "    pm.collectionVariables.set(\"goals_goal_current_id\", data.id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{goals_access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/me/goals/current",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "me",
+                "goals",
+                "current"
+              ]
+            },
+            "description": "Tras editar el perfil, la meta vigente es una nueva con los macros del perfil editado (± 1). Guarda su id en {{goals_goal_current_id}}."
+          },
+          "response": []
+        },
+        {
+          "name": "05 - Historial",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 200 OK\", function () {",
+                  "        pm.response.to.have.status(200);",
+                  "    });",
+                  "    const list = pm.response.json();",
+                  "    pm.test(\"Es una lista con 2 metas: la anterior y la nueva\", function () {",
+                  "        pm.expect(list).to.be.an(\"array\").with.lengthOf(2);",
+                  "    });",
+                  "    pm.test(\"Cada meta tiene la estructura esperada\", function () {",
+                  "        list.forEach(function (goal) {",
+                  "            pm.expect(goal).to.have.all.keys(\"id\", \"user_id\", \"calories\", \"protein_g\", \"fat_g\", \"source\", \"set_by\", \"effective_from\", \"created_at\");",
+                  "        });",
+                  "    });",
+                  "    pm.test(\"Orden: la más reciente primero\", function () {",
+                  "        pm.expect(list[0].id).to.eql(pm.collectionVariables.get(\"goals_goal_current_id\"));",
+                  "        pm.expect(list[1].id).to.eql(pm.collectionVariables.get(\"goals_goal_initial_id\"));",
+                  "        pm.expect(Date.parse(list[0].effective_from)).to.be.at.least(Date.parse(list[1].effective_from));",
+                  "    });",
+                  "    pm.test(\"La meta anterior se conserva sin cambios\", function () {",
+                  "        pm.expect(list[1].source).to.eql(\"system\");",
+                  "        pm.expect(String(list[1].calories)).to.eql(pm.collectionVariables.get(\"goals_goal_initial_calories\"));",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{goals_access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/me/goals",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "me",
+                "goals"
+              ]
+            },
+            "description": "El historial tiene 2 metas, la nueva primero y la anterior intacta."
+          },
+          "response": []
+        },
+        {
+          "name": "06 - Consulta por un coach",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 403\", function () {",
+                  "        pm.response.to.have.status(403);",
+                  "    });",
+                  "    const body = pm.response.json();",
+                  "    pm.test(\"Formato de error { error: { code, message, fields } }\", function () {",
+                  "        pm.expect(body).to.have.all.keys(\"error\");",
+                  "        pm.expect(body.error).to.have.all.keys(\"code\", \"message\", \"fields\");",
+                  "        pm.expect(body.error.message).to.be.a(\"string\").and.not.empty;",
+                  "        pm.expect(body.error.fields).to.be.an(\"object\");",
+                  "    });",
+                  "    pm.test(\"Código FORBIDDEN\", function () {",
+                  "        pm.expect(body.error.code).to.eql(\"FORBIDDEN\");",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{coach_access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/me/goals/current",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "me",
+                "goals",
+                "current"
+              ]
+            },
+            "description": "Un coach no tiene metas propias: 403 FORBIDDEN. Usa {{coach_access_token}} del módulo auth."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
       "name": "HU-02 Sesión · Cierre",
       "description": "Cierre de sesión de la sesión principal del usuario. build.js mueve esta carpeta al final de la colección combinada para que las demás historias puedan usar {{user_access_token}} antes.",
       "item": [
@@ -2003,6 +2741,66 @@
     },
     {
       "key": "previous_refresh_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "goals_user_email",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "goals_user_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "goals_access_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "goals_profile_weight_kg",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "goals_profile_height_cm",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "goals_profile_birth_date",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "goals_profile_gender",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "goals_profile_training_days",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "goals_profile_objective",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "goals_goal_initial_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "goals_goal_initial_calories",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "goals_goal_current_id",
       "value": "",
       "type": "string"
     }

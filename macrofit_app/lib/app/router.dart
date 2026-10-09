@@ -1,0 +1,95 @@
+import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
+
+import '../features/auth/domain/entities/auth_state.dart';
+import '../features/auth/domain/entities/role.dart';
+import '../features/auth/domain/repositories/auth_repository.dart';
+import '../features/auth/presentation/login/login_view.dart';
+import '../features/auth/presentation/login/login_view_model.dart';
+import '../features/auth/presentation/register/register_view.dart';
+import '../features/auth/presentation/register/register_view_model.dart';
+import '../features/auth/presentation/splash/splash_view.dart';
+import '../features/home/presentation/coach_home_view.dart';
+import '../features/home/presentation/home_view_model.dart';
+import '../features/home/presentation/user_home_view.dart';
+import '../features/legal/domain/repositories/legal_repository.dart';
+import '../features/legal/presentation/privacy_notice/privacy_notice_view.dart';
+import '../features/legal/presentation/privacy_notice/privacy_notice_view_model.dart';
+import 'routes.dart';
+
+/// Crea el router. Escucha al [AuthRepository]: cada cambio de sesión vuelve a
+/// evaluar [resolveRedirect], así que login, logout y sesión expirada navegan solos.
+GoRouter createRouter(AuthRepository auth) {
+  return GoRouter(
+    initialLocation: AppRoutes.splash,
+    refreshListenable: auth,
+    redirect: (context, state) =>
+        resolveRedirect(auth.state, state.matchedLocation),
+    routes: [
+      GoRoute(path: AppRoutes.splash, builder: (_, _) => const SplashView()),
+      GoRoute(
+        path: AppRoutes.login,
+        builder: (context, _) => ChangeNotifierProvider(
+          create: (context) => LoginViewModel(context.read<AuthRepository>()),
+          child: const LoginView(),
+        ),
+      ),
+      GoRoute(
+        path: AppRoutes.register,
+        builder: (context, _) => ChangeNotifierProvider(
+          create: (context) =>
+              RegisterViewModel(context.read<AuthRepository>()),
+          child: const RegisterView(),
+        ),
+      ),
+      GoRoute(
+        path: AppRoutes.privacyNotice,
+        builder: (context, _) => ChangeNotifierProvider(
+          create: (context) =>
+              PrivacyNoticeViewModel(context.read<LegalRepository>())..load(),
+          child: const PrivacyNoticeView(),
+        ),
+      ),
+      GoRoute(
+        path: AppRoutes.userHome,
+        builder: (context, _) => ChangeNotifierProvider(
+          create: (context) => HomeViewModel(context.read<AuthRepository>()),
+          child: const UserHomeView(),
+        ),
+      ),
+      GoRoute(
+        path: AppRoutes.coachHome,
+        builder: (context, _) => ChangeNotifierProvider(
+          create: (context) => HomeViewModel(context.read<AuthRepository>()),
+          child: const CoachHomeView(),
+        ),
+      ),
+    ],
+  );
+}
+
+/// Pantalla principal de cada rol.
+String homeFor(Role role) => switch (role) {
+  Role.user => AppRoutes.userHome,
+  Role.coach => AppRoutes.coachHome,
+};
+
+/// Regla de navegación según la sesión. Función pura para poder probarla.
+///
+/// - Sesión desconocida → carga inicial.
+/// - Sin sesión → solo login, registro y aviso; cualquier otra ruta va a login
+///   (por eso el botón atrás no regresa a pantallas protegidas tras cerrar sesión).
+/// - Con sesión → la pantalla principal de su rol; nunca la del otro rol ni
+///   login/registro. El aviso de privacidad sigue disponible.
+String? resolveRedirect(AuthState state, String location) {
+  switch (state) {
+    case AuthUnknown():
+      return location == AppRoutes.splash ? null : AppRoutes.splash;
+    case Unauthenticated():
+      return AppRoutes.public.contains(location) ? null : AppRoutes.login;
+    case Authenticated(:final user):
+      if (location == AppRoutes.privacyNotice) return null;
+      final home = homeFor(user.role);
+      return location == home ? null : home;
+  }
+}

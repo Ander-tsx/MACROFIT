@@ -11,7 +11,7 @@ Instrucciones para Claude Code al trabajar en `backend/`. Las reglas generales d
 
 - API REST en **Rust 2024 + Axum 0.7 + MongoDB**, rutas bajo `/api/v1`, capas `routes → services → models` con `auth/` transversal.
 - Errores siempre con `AppError` → `{ "error": { code, message, fields } }`; cuerpos con `ApiJson<T>`.
-- Historias implementadas: TEC-05 (base), HU-01 (registro con rol), HU-02 (sesión con access/refresh token).
+- Historias implementadas: TEC-05 (base), TEC-07 (aviso de privacidad), HU-01 (registro con rol), HU-02 (sesión con access/refresh token).
 - Antes de terminar: `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings`, `cargo test`,
   `node postman/build.js --check` y newman contra una base temporal (AGENTS.md §7).
 

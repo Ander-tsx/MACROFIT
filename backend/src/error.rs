@@ -21,9 +21,7 @@ pub enum AppError {
     Validation(FieldErrors),
     /// 400 — el cuerpo no es JSON válido o un campo tiene un tipo incorrecto.
     InvalidBody(String),
-    /// 400 — no se aceptó el aviso de privacidad.
-    // TODO(TEC-07): se empezará a usar cuando exista el aviso de privacidad.
-    #[allow(dead_code)]
+    /// 400 — no se aceptó el aviso de privacidad (y el resto de campos es válido).
     PrivacyNotAccepted,
     /// 409 — ya existe una cuenta con ese correo.
     EmailAlreadyExists,

@@ -1,3 +1,4 @@
 pub mod auth;
-pub mod goals;
 pub mod session;
+pub mod goals;
+pub mod legal;

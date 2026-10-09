@@ -19,6 +19,11 @@ use state::AppState;
 async fn main() {
     dotenvy::dotenv().ok();
     let config = Config::from_env();
+    // Falla al arrancar (y no en la primera petición) si el aviso no declara su versión.
+    println!(
+        "Aviso de privacidad vigente: versión {}",
+        *services::legal::PRIVACY_VERSION
+    );
 
     let db = db::connect(&config.mongo_uri, &config.db_name).await;
     let state = AppState {
