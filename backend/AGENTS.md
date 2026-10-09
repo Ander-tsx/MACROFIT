@@ -49,7 +49,7 @@ main.rs ─▶ routes/ ─▶ services/ ─▶ models/
 | `routes/<modulo>.rs` | Rutas, DTOs de entrada/salida, handlers delgados | Consultar Mongo o contener reglas de negocio |
 | `services/<modulo>.rs` | Validación del caso de uso, reglas, acceso a Mongo | Usar tipos HTTP (`StatusCode`, `Json`) |
 | `models/<coleccion>.rs` | Struct del documento y constante del nombre de colección | Serializarse hacia el cliente |
-| `auth/` | JWT, refresh tokens, hash de contraseñas, extractores `AuthenticatedUser` / `CoachOnly` | Lógica de un dominio concreto |
+| `auth/` | JWT, refresh tokens, hash de contraseñas, extractores `AuthenticatedUser` / `CoachOnly` / `UserOnly` | Lógica de un dominio concreto |
 | `error.rs` | `AppError` → `{ "error": { code, message, fields } }`; extractor `ApiJson` | — |
 | `db.rs` | Conexión y **todos** los índices (`ensure_indexes`) | — |
 | `config.rs` | Única lectura de variables de entorno | — |
@@ -67,7 +67,8 @@ main.rs ─▶ routes/ ─▶ services/ ─▶ models/
 8. Hash/verificación de contraseñas dentro de **`tokio::task::spawn_blocking`**.
 9. Unicidad garantizada por **índice único** en `db.rs`; traduce el error de clave duplicada (`11000`) al `AppError` correspondiente.
 10. Roles en minúsculas: `"user"` / `"coach"` (`models::user::Role`).
-11. Rutas protegidas: argumento `AuthenticatedUser` (cualquier sesión) o `CoachOnly` (solo coach). No reimplementes la verificación del token.
+11. Rutas protegidas: argumento `AuthenticatedUser` (cualquier sesión), `CoachOnly` (solo coach, 403 `FORBIDDEN`) o `UserOnly`
+    (solo usuario, 403 `FORBIDDEN_ROLE`). No reimplementes la verificación del token.
 12. Secretos y duraciones desde `state.tokens` (`TokenConfig`); `std::env::var` solo en `config.rs`.
 13. Errores inesperados con `AppError::internal(err)`: el detalle va al log, el cliente recibe `INTERNAL_ERROR`.
 14. Un código de error nuevo = variante en `AppError` + fila en la tabla de códigos de `README.md`.

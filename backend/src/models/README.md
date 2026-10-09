@@ -24,7 +24,7 @@ Un archivo por colección. Cada archivo define la constante con el nombre de la 
 | `role` | `"user"` \| `"coach"` | |
 | `privacy_accepted_at` | ISODate \| null | Momento de aceptación del aviso. `null` solo en cuentas anteriores a TEC-07 |
 | `privacy_version` | string \| ausente | Versión del aviso aceptada (p. ej. `"1.0"`). Ausente en cuentas anteriores a TEC-07 |
-| `profile_completed` | bool | `false` al registrarse; lo cambia HU-03 |
+| `profile_completed` | bool | `false` al registrarse; `true` al crear el perfil (HU-03) |
 | `created_at` | ISODate | |
 
 **Índices:** `email_unique` → `{ email: 1 }`, único. Como el correo se guarda normalizado,
@@ -46,3 +46,24 @@ Un documento por refresh token emitido (HU-02). Los tokens de un mismo login com
 
 **Índices:** `token_hash_unique` (único), `session_id` y `expires_at_ttl` (TTL con `expireAfterSeconds: 0`:
 Mongo borra cada documento cuando pasa su `expires_at`).
+
+## Colección `profiles` (`profile.rs`)
+
+Perfil inicial del usuario (HU-03). Un documento por cuenta con rol `user`.
+
+| Campo | Tipo | Notas |
+|---|---|---|
+| `_id` | ObjectId | Se expone como `id` (hex) |
+| `user_id` | ObjectId | Referencia a `users._id` |
+| `objective` | `"lose_fat"` \| `"maintain"` \| `"gain_muscle"` | |
+| `level` | `"beginner"` \| `"intermediate"` \| `"advanced"` | |
+| `training_days` | int | 1 a 7 |
+| `weight_kg` | double | 30 a 300 (provisional, TEC-12) |
+| `height_cm` | double | 100 a 250 (provisional, TEC-12) |
+| `gender` | `"male"` \| `"female"` | |
+| `birth_date` | ISODate | Medianoche UTC; la API la expone como `YYYY-MM-DD` |
+| `created_at` | ISODate | |
+| `updated_at` | ISODate | Cambia en cada edición |
+
+**Índices:** `user_id_unique` → `{ user_id: 1 }`, único (garantiza un perfil por usuario; el error `11000` se traduce
+a `409 PROFILE_ALREADY_EXISTS`).

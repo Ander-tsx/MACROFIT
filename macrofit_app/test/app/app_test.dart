@@ -9,25 +9,31 @@ import 'package:macrofit_app/features/auth/presentation/splash/splash_view.dart'
 import 'package:macrofit_app/features/home/presentation/coach_home_view.dart';
 import 'package:macrofit_app/features/home/presentation/user_home_view.dart';
 import 'package:macrofit_app/features/legal/presentation/privacy_notice/privacy_notice_view.dart';
+import 'package:macrofit_app/features/profile/domain/entities/profile.dart';
+import 'package:macrofit_app/features/profile/presentation/profile_form/profile_form_view.dart';
 
 import '../helpers/fakes.dart';
 
 void main() {
   late FakeAuthRepository auth;
   late FakeLegalRepository legal;
+  late FakeProfileRepository profiles;
 
   Future<void> pumpApp(
     WidgetTester tester, {
     AuthState state = const Unauthenticated(),
     bool settle = true,
+    Profile? storedProfile,
   }) async {
     auth = FakeAuthRepository(initialState: state);
     legal = FakeLegalRepository();
+    profiles = FakeProfileRepository(stored: storedProfile);
     await tester.pumpWidget(
       MacroFitApp(
         dependencies: AppDependencies(
           authRepository: auth,
           legalRepository: legal,
+          profileRepository: profiles,
         ),
       ),
     );
@@ -119,5 +125,136 @@ void main() {
     await tester.pumpAndSettle();
     expect(handled, isFalse);
     expect(find.byType(UserHomeView), findsNothing);
+  });
+
+  group('perfil inicial (HU-03)', () {
+    Future<void> tapVisible(WidgetTester tester, Finder finder) async {
+      await tester.ensureVisible(finder);
+      await tester.pumpAndSettle();
+      await tester.tap(finder);
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('un usuario sin perfil va al formulario tras iniciar sesión', (
+      tester,
+    ) async {
+      await pumpApp(tester);
+      auth.loginUser = testNewUser;
+
+      await tester.enterText(
+        find.byKey(const Key('login_email')),
+        testNewUser.email,
+      );
+      await tester.enterText(
+        find.descendant(
+          of: find.byKey(const Key('login_password')),
+          matching: find.byType(TextField),
+        ),
+        'Segura123',
+      );
+      await tester.tap(find.byKey(const Key('login_submit')));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(ProfileFormView), findsOneWidget);
+      expect(find.text('Tu perfil inicial'), findsOneWidget);
+      expect(find.byType(UserHomeView), findsNothing);
+    });
+
+    testWidgets('sin completar el perfil no se puede llegar al inicio', (
+      tester,
+    ) async {
+      await pumpApp(tester, state: const Authenticated(testNewUser));
+      expect(find.byType(ProfileFormView), findsOneWidget);
+
+      await tapVisible(tester, find.byKey(const Key('profile_submit')));
+
+      expect(profiles.created, isEmpty);
+      expect(find.text('Elige tu objetivo'), findsOneWidget);
+      expect(find.text('El peso es obligatorio'), findsOneWidget);
+      expect(find.byType(ProfileFormView), findsOneWidget);
+
+      // El botón atrás no lleva a la pantalla principal.
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
+      expect(find.byType(UserHomeView), findsNothing);
+    });
+
+    testWidgets('al guardar un perfil válido entra a la pantalla principal', (
+      tester,
+    ) async {
+      await pumpApp(tester, state: const Authenticated(testNewUser));
+
+      await tapVisible(tester, find.text(Objective.gainMuscle.label));
+      await tapVisible(tester, find.text(ExperienceLevel.advanced.label));
+      await tapVisible(
+        tester,
+        find.byKey(const Key('profile_training_days_5')),
+      );
+      await tester.enterText(find.byKey(const Key('profile_weight')), '80,5');
+      await tester.enterText(find.byKey(const Key('profile_height')), '178');
+      await tapVisible(tester, find.text(Gender.male.label));
+
+      // Selector de fecha: el valor por defecto (hace 25 años) es válido.
+      await tapVisible(tester, find.byKey(const Key('profile_birth_date')));
+      final okLabel = MaterialLocalizations.of(
+        tester.element(find.byType(DatePickerDialog)),
+      ).okButtonLabel;
+      await tester.tap(find.text(okLabel));
+      await tester.pumpAndSettle();
+
+      await tapVisible(tester, find.byKey(const Key('profile_submit')));
+
+      expect(profiles.created, hasLength(1));
+      final saved = profiles.created.single;
+      expect(saved.objective, Objective.gainMuscle);
+      expect(saved.level, ExperienceLevel.advanced);
+      expect(saved.trainingDays, 5);
+      expect(saved.weightKg, 80.5);
+      expect(saved.heightCm, 178);
+      expect(saved.gender, Gender.male);
+      expect(auth.markProfileCompletedCalls, 1);
+      expect(find.byType(UserHomeView), findsOneWidget);
+    });
+
+    testWidgets('un coach entra a su pantalla sin ver el formulario', (
+      tester,
+    ) async {
+      await pumpApp(tester, state: const Authenticated(testCoach));
+      expect(find.byType(CoachHomeView), findsOneWidget);
+      expect(find.byType(ProfileFormView), findsNothing);
+      expect(profiles.getCalls, 0);
+    });
+
+    testWidgets('Mi perfil carga los datos guardados y guarda los cambios', (
+      tester,
+    ) async {
+      await pumpApp(
+        tester,
+        state: const Authenticated(testUser),
+        storedProfile: testProfile,
+      );
+
+      await tester.tap(find.byKey(const Key('profile_button')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Mi perfil'), findsOneWidget);
+      expect(profiles.getCalls, 1);
+      expect(find.text('72.5'), findsOneWidget);
+      expect(find.text('170'), findsOneWidget);
+      expect(find.text('20/05/1996'), findsOneWidget);
+
+      await tester.enterText(find.byKey(const Key('profile_weight')), '70');
+      await tapVisible(tester, find.byKey(const Key('profile_submit')));
+
+      expect(profiles.updated.single.weightKg, 70);
+      expect(profiles.stored!.weightKg, 70);
+      expect(find.byType(UserHomeView), findsOneWidget);
+
+      // Al volver a abrir "Mi perfil" se ve el cambio (se consulta de nuevo).
+      await tester.tap(find.byKey(const Key('profile_button')));
+      await tester.pumpAndSettle();
+      expect(profiles.getCalls, 2);
+      expect(find.text('70'), findsOneWidget);
+    });
   });
 }

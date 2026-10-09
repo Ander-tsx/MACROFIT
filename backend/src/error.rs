@@ -35,6 +35,12 @@ pub enum AppError {
     TokenRevoked,
     /// 403 — el rol no tiene acceso al recurso.
     Forbidden(&'static str),
+    /// 403 — la función es exclusiva de otro rol (p. ej. el perfil, solo para `user`).
+    ForbiddenRole(&'static str),
+    /// 404 — el usuario aún no tiene perfil.
+    ProfileNotFound,
+    /// 409 — el usuario ya tiene un perfil.
+    ProfileAlreadyExists,
     /// 500 — error inesperado; el detalle solo va al log.
     Internal(String),
 }
@@ -106,6 +112,24 @@ impl IntoResponse for AppError {
                 StatusCode::FORBIDDEN,
                 "FORBIDDEN",
                 message.to_string(),
+                FieldErrors::new(),
+            ),
+            Self::ForbiddenRole(message) => (
+                StatusCode::FORBIDDEN,
+                "FORBIDDEN_ROLE",
+                message.to_string(),
+                FieldErrors::new(),
+            ),
+            Self::ProfileNotFound => (
+                StatusCode::NOT_FOUND,
+                "PROFILE_NOT_FOUND",
+                "Todavía no has capturado tu perfil".to_string(),
+                FieldErrors::new(),
+            ),
+            Self::ProfileAlreadyExists => (
+                StatusCode::CONFLICT,
+                "PROFILE_ALREADY_EXISTS",
+                "Ya tienes un perfil; edítalo en lugar de crear otro".to_string(),
                 FieldErrors::new(),
             ),
             Self::Internal(detail) => {

@@ -21,6 +21,8 @@ void main() {
         for (final route in [
           AppRoutes.userHome,
           AppRoutes.coachHome,
+          AppRoutes.profileSetup,
+          AppRoutes.profileEdit,
           AppRoutes.splash,
         ]) {
           expect(resolveRedirect(state, route), AppRoutes.login, reason: route);
@@ -59,6 +61,56 @@ void main() {
         resolveRedirect(const Authenticated(testUser), AppRoutes.privacyNotice),
         isNull,
       );
+      expect(
+        resolveRedirect(
+          const Authenticated(testNewUser),
+          AppRoutes.privacyNotice,
+        ),
+        isNull,
+      );
+    });
+  });
+
+  group('perfil inicial (HU-03)', () {
+    test('un usuario sin perfil solo puede abrir el formulario de perfil', () {
+      const state = Authenticated(testNewUser);
+      for (final route in [
+        AppRoutes.splash,
+        AppRoutes.login,
+        AppRoutes.userHome,
+        AppRoutes.profileEdit,
+        AppRoutes.coachHome,
+      ]) {
+        expect(
+          resolveRedirect(state, route),
+          AppRoutes.profileSetup,
+          reason: route,
+        );
+      }
+      expect(resolveRedirect(state, AppRoutes.profileSetup), isNull);
+    });
+
+    test('con perfil ya no ve el formulario y puede abrir Mi perfil', () {
+      const state = Authenticated(testUser);
+      expect(
+        resolveRedirect(state, AppRoutes.profileSetup),
+        AppRoutes.userHome,
+      );
+      expect(resolveRedirect(state, AppRoutes.profileEdit), isNull);
+    });
+
+    test('un coach nunca ve el formulario ni la edición del perfil', () {
+      const state = Authenticated(testCoach);
+      expect(testCoach.profileCompleted, isFalse);
+      expect(
+        resolveRedirect(state, AppRoutes.profileSetup),
+        AppRoutes.coachHome,
+      );
+      expect(
+        resolveRedirect(state, AppRoutes.profileEdit),
+        AppRoutes.coachHome,
+      );
+      expect(resolveRedirect(state, AppRoutes.login), AppRoutes.coachHome);
     });
   });
 

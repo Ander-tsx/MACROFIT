@@ -1,7 +1,8 @@
 # Backend MacroFit (Rust + Axum + MongoDB)
 
 API REST de MacroFit: autenticación, persistencia en MongoDB y reglas de acceso por rol (`user` y `coach`).
-Historias cubiertas: **TEC-05** (base), **TEC-07** (aviso de privacidad), **HU-01** (registro con rol) y **HU-02** (inicio y cierre de sesión).
+Historias cubiertas: **TEC-05** (base), **TEC-07** (aviso de privacidad), **HU-01** (registro con rol), **HU-02** (inicio y cierre de sesión)
+y **HU-03** (perfil inicial del usuario).
 
 > **Si eres una persona o una sesión de IA que va a modificar este backend, lee primero
 > la sección [Forma de trabajo](#-forma-de-trabajo) y el README de la carpeta que vas a tocar.**
@@ -57,7 +58,7 @@ Conectando y verificando cluster de MongoDB...
 Servidor MacroFit corriendo en http://0.0.0.0:3000/api/v1
 ```
 
-Al arrancar se crean los índices (`users.email` único y los de `refresh_tokens`). Si la colección `users` ya tenía correos repetidos,
+Al arrancar se crean los índices (`users.email` único, los de `refresh_tokens` y `profiles.user_id` único). Si la colección `users` ya tenía correos repetidos,
 el arranque falla con un mensaje que lo indica: limpia esos documentos primero.
 
 ## ✅ Comprobaciones antes de subir
@@ -145,6 +146,9 @@ URL base: `http://localhost:3000/api/v1`
 | POST | `/auth/refresh` | — | HU-02 | Rota el refresh token y entrega tokens nuevos |
 | POST | `/auth/logout` | Bearer | HU-02 | Cierra (revoca) la sesión |
 | GET | `/auth/me` | Bearer | HU-02 | Datos y rol de la cuenta del token |
+| POST | `/users/me/profile` | Bearer (user) | HU-03 | Crea el perfil inicial y marca `profile_completed` |
+| GET | `/users/me/profile` | Bearer (user) | HU-03 | Perfil del usuario de la sesión |
+| PATCH | `/users/me/profile` | Bearer (user) | HU-03 | Edita solo los campos enviados del perfil |
 | GET | `/coach/test` | Bearer (coach) | TEC-05 | Prueba de la regla de acceso por rol |
 
 ### POST `/auth/register` (HU-01)
@@ -237,6 +241,56 @@ Errores: `400 VALIDATION_ERROR`, `401 UNAUTHORIZED`, `401 TOKEN_REVOKED` (sesió
 Cabecera `Authorization: Bearer <access_token>`. **200 OK**: `{ id, name, email, role, profile_completed }`.
 Errores: `401 UNAUTHORIZED` (sin token, alterado o expirado), `401 TOKEN_REVOKED` (sesión cerrada).
 
+### Perfil inicial — `/users/me/profile` (HU-03)
+
+Cabecera `Authorization: Bearer <access_token>`. **Solo rol `user`**: un coach recibe `403 FORBIDDEN_ROLE` en los tres métodos.
+
+**POST** (todos los campos obligatorios):
+
+```json
+{
+  "objective": "lose_fat",
+  "level": "beginner",
+  "training_days": 4,
+  "weight_kg": 72.5,
+  "height_cm": 170,
+  "gender": "female",
+  "birth_date": "1996-05-20"
+}
+```
+
+| Campo | Regla |
+|---|---|
+| `objective` | `"lose_fat"`, `"maintain"` o `"gain_muscle"` (exacto, en minúsculas) |
+| `level` | `"beginner"`, `"intermediate"` o `"advanced"` |
+| `training_days` | Entero de 1 a 7 (un número con decimales se señala en el campo) |
+| `weight_kg` | Número de 30 a 300 (kg) |
+| `height_cm` | Número de 100 a 250 (cm) |
+| `gender` | `"male"` o `"female"` |
+| `birth_date` | Fecha válida `YYYY-MM-DD`; edad de 18 a 100 años cumplidos a la fecha UTC actual; no futura |
+
+> Rangos provisionales hasta **TEC-12** (`services::profile::WEIGHT_MIN_KG`, etc.). Si cambian, cambia también
+> `macrofit_app/lib/features/profile/domain/validators/profile_validators.dart`.
+
+**201 Created** — además marca `users.profile_completed = true` (visible en `GET /auth/me`):
+
+```json
+{
+  "id": "6ac6...", "user_id": "6ac5...",
+  "objective": "lose_fat", "level": "beginner", "training_days": 4,
+  "weight_kg": 72.5, "height_cm": 170.0, "gender": "female", "birth_date": "1996-05-20",
+  "created_at": "2026-10-08T21:40:00Z", "updated_at": "2026-10-08T21:40:00Z"
+}
+```
+
+Errores: `400 VALIDATION_ERROR` (cada campo inválido en `fields`), `400 INVALID_BODY`, `409 PROFILE_ALREADY_EXISTS`.
+
+**GET** → `200` con la misma forma. Error: `404 PROFILE_NOT_FOUND` si aún no lo captura.
+
+**PATCH** → cuerpo con uno o más campos del POST (los ausentes o `null` no cambian; mismas reglas). `200` con el perfil
+actualizado y `updated_at` nuevo. Errores: `400 VALIDATION_ERROR`, `400 INVALID_BODY` (sin ningún campo),
+`404 PROFILE_NOT_FOUND`. El recálculo de la meta al editar llega con HU-04 (`TODO(HU-04)` en `services/profile.rs`).
+
 ### GET `/coach/test`
 
 Misma autenticación que `/auth/me`. **200 OK** `{ "user_id", "role" }` para coaches; `403 FORBIDDEN` para `user`.
@@ -272,7 +326,10 @@ Todas las respuestas de error tienen la misma forma. `fields` siempre es un obje
 | `INVALID_REFRESH_TOKEN` | 401 | Refresh token desconocido, expirado o de otra sesión |
 | `TOKEN_REVOKED` | 401 | La sesión fue cerrada o revocada (logout, token rotado o reuso) |
 | `FORBIDDEN` | 403 | El rol no tiene acceso |
+| `FORBIDDEN_ROLE` | 403 | La función es exclusiva de otro rol (p. ej. el perfil, solo para `user`) |
+| `PROFILE_NOT_FOUND` | 404 | El usuario aún no tiene perfil |
 | `EMAIL_ALREADY_EXISTS` | 409 | El correo ya está registrado |
+| `PROFILE_ALREADY_EXISTS` | 409 | El usuario ya tiene un perfil (se edita con `PATCH`) |
 | `INTERNAL_ERROR` | 500 | Error inesperado (el detalle solo va al log del servidor) |
 
 ---

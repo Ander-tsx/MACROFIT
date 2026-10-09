@@ -12,7 +12,8 @@ Instrucciones para Claude Code al trabajar en `macrofit_app/`. Las reglas genera
 - Flutter 3.47 / Dart 3.13. **MVVM en 3 capas por feature** (`domain`, `data`, `presentation`) + `app/` + `core/`.
 - `provider` + `ChangeNotifier`, `go_router` con guard de sesión (`resolveRedirect`), `dio` con `AuthInterceptor`,
   `flutter_secure_storage`.
-- Historias implementadas: HU-01 (registro con rol + aviso de privacidad), HU-02 (inicio, persistencia y cierre de sesión).
+- Historias implementadas: HU-01 (registro con rol + aviso de privacidad), HU-02 (inicio, persistencia y cierre de sesión),
+  HU-03 (perfil inicial y edición).
 - Antes de terminar: `dart format --output=none --set-exit-if-changed lib test`, `flutter analyze`, `flutter test`
   y prueba de punta a punta contra el backend con base temporal (AGENTS.md §7).
 

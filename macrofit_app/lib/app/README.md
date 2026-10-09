@@ -14,10 +14,12 @@
 publicDio ── AuthRemoteDataSource (register, login, refresh)
           └─ LegalRemoteDataSource (aviso de privacidad)
 sessionDio + AuthInterceptor ── SessionRemoteDataSource (me, logout)
+                             └─ ProfileRemoteDataSource (perfil, HU-03)
 SessionLocalDataSource (flutter_secure_storage)
         ↓
 AuthRepositoryImpl  ←── interceptor.onSessionExpired
 LegalRepositoryImpl
+ProfileRepositoryImpl
 ```
 
 - Hay **dos clientes Dio**: uno público y otro con `AuthInterceptor`. Las rutas públicas y la renovación de tokens van
@@ -32,7 +34,9 @@ LegalRepositoryImpl
 |---|---|---|
 | `AuthUnknown` (leyendo sesión) | `/` (carga) | → `/` |
 | `Unauthenticated` | `/login`, `/register`, `/privacy` | → `/login` |
-| `Authenticated(user)` | Pantalla principal de su rol (`/user` o `/coach`) y `/privacy` | → pantalla de su rol |
+| `Authenticated(user)`, rol `user` **sin perfil** | `/profile/setup` y `/privacy` | → `/profile/setup` |
+| `Authenticated(user)`, rol `user` con perfil | `/user`, `/user/profile` y `/privacy` | → `/user` |
+| `Authenticated(user)`, rol `coach` | `/coach` y `/privacy` | → `/coach` |
 
 Consecuencias:
 
@@ -40,6 +44,8 @@ Consecuencias:
 - Tras cerrar sesión (o si la sesión expira/es revocada) se va a `/login` y la pila se reemplaza: el botón atrás no
   regresa a pantallas protegidas.
 - Un rol nunca puede abrir la pantalla del otro.
+- HU-03: un usuario sin perfil no llega a `/user` hasta guardar el formulario; al guardarlo,
+  `AuthRepository.markProfileCompleted()` cambia la sesión y el router lo lleva a `/user`. Un coach nunca ve el formulario.
 
 ### Agregar una ruta
 

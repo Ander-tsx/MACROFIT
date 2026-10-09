@@ -15,6 +15,9 @@ import '../features/home/presentation/user_home_view.dart';
 import '../features/legal/domain/repositories/legal_repository.dart';
 import '../features/legal/presentation/privacy_notice/privacy_notice_view.dart';
 import '../features/legal/presentation/privacy_notice/privacy_notice_view_model.dart';
+import '../features/profile/domain/repositories/profile_repository.dart';
+import '../features/profile/presentation/profile_form/profile_form_view.dart';
+import '../features/profile/presentation/profile_form/profile_form_view_model.dart';
 import 'routes.dart';
 
 /// Crea el router. Escucha al [AuthRepository]: cada cambio de sesión vuelve a
@@ -58,6 +61,28 @@ GoRouter createRouter(AuthRepository auth) {
         ),
       ),
       GoRoute(
+        path: AppRoutes.profileSetup,
+        builder: (context, _) => ChangeNotifierProvider(
+          create: (context) => ProfileFormViewModel(
+            profiles: context.read<ProfileRepository>(),
+            auth: context.read<AuthRepository>(),
+            mode: ProfileFormMode.setup,
+          ),
+          child: const ProfileFormView(),
+        ),
+      ),
+      GoRoute(
+        path: AppRoutes.profileEdit,
+        builder: (context, _) => ChangeNotifierProvider(
+          create: (context) => ProfileFormViewModel(
+            profiles: context.read<ProfileRepository>(),
+            auth: context.read<AuthRepository>(),
+            mode: ProfileFormMode.edit,
+          )..load(),
+          child: const ProfileFormView(),
+        ),
+      ),
+      GoRoute(
         path: AppRoutes.coachHome,
         builder: (context, _) => ChangeNotifierProvider(
           create: (context) => HomeViewModel(context.read<AuthRepository>()),
@@ -81,6 +106,9 @@ String homeFor(Role role) => switch (role) {
 ///   (por eso el botón atrás no regresa a pantallas protegidas tras cerrar sesión).
 /// - Con sesión → la pantalla principal de su rol; nunca la del otro rol ni
 ///   login/registro. El aviso de privacidad sigue disponible.
+/// - Usuario sin perfil (HU-03) → solo el formulario de perfil inicial hasta
+///   completarlo. Con perfil: su pantalla principal y "Mi perfil".
+///   Un coach nunca ve el formulario.
 String? resolveRedirect(AuthState state, String location) {
   switch (state) {
     case AuthUnknown():
@@ -89,7 +117,17 @@ String? resolveRedirect(AuthState state, String location) {
       return AppRoutes.public.contains(location) ? null : AppRoutes.login;
     case Authenticated(:final user):
       if (location == AppRoutes.privacyNotice) return null;
-      final home = homeFor(user.role);
-      return location == home ? null : home;
+      switch (user.role) {
+        case Role.user when !user.profileCompleted:
+          return location == AppRoutes.profileSetup
+              ? null
+              : AppRoutes.profileSetup;
+        case Role.user:
+          return AppRoutes.userRoutes.contains(location)
+              ? null
+              : AppRoutes.userHome;
+        case Role.coach:
+          return location == AppRoutes.coachHome ? null : AppRoutes.coachHome;
+      }
   }
 }

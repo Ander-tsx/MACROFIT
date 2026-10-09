@@ -5,10 +5,18 @@ import '../home_view_model.dart';
 
 /// Estructura común de las pantallas principales: barra con cierre de sesión.
 class HomeScaffold extends StatelessWidget {
-  const HomeScaffold({required this.title, required this.body, super.key});
+  const HomeScaffold({
+    required this.title,
+    required this.body,
+    this.actions = const [],
+    super.key,
+  });
 
   final String title;
   final Widget body;
+
+  /// Acciones de la barra antes del botón de cerrar sesión.
+  final List<Widget> actions;
 
   Future<void> _confirmLogout(BuildContext context) async {
     final viewModel = context.read<HomeViewModel>();
@@ -41,6 +49,7 @@ class HomeScaffold extends StatelessWidget {
       appBar: AppBar(
         title: Text(title),
         actions: [
+          ...actions,
           IconButton(
             key: const Key('logout_button'),
             tooltip: 'Cerrar sesión',

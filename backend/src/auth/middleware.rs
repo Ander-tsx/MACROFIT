@@ -75,3 +75,24 @@ impl FromRequestParts<AppState> for CoachOnly {
         Ok(CoachOnly(auth_user))
     }
 }
+
+/// Extractor para rutas exclusivas del rol `user`; responde 403 `FORBIDDEN_ROLE` a los coaches.
+pub struct UserOnly(pub AuthenticatedUser);
+
+#[async_trait]
+impl FromRequestParts<AppState> for UserOnly {
+    type Rejection = AppError;
+
+    async fn from_request_parts(
+        parts: &mut Parts,
+        state: &AppState,
+    ) -> Result<Self, Self::Rejection> {
+        let auth_user = AuthenticatedUser::from_request_parts(parts, state).await?;
+        if auth_user.role != Role::User {
+            return Err(AppError::ForbiddenRole(
+                "Acceso denegado: esta función es exclusiva del rol usuario",
+            ));
+        }
+        Ok(UserOnly(auth_user))
+    }
+}
