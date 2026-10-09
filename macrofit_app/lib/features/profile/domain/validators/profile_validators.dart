@@ -64,9 +64,11 @@ abstract final class ProfileValidators {
 
   /// Años cumplidos a la fecha `today` (negativo si la fecha es futura).
   static int ageOn(DateTime birthDate, DateTime today) {
-    if (DateTime(birthDate.year, birthDate.month, birthDate.day).isAfter(
-      DateTime(today.year, today.month, today.day),
-    )) {
+    if (DateTime(
+      birthDate.year,
+      birthDate.month,
+      birthDate.day,
+    ).isAfter(DateTime(today.year, today.month, today.day))) {
       return -1;
     }
     var age = today.year - birthDate.year;

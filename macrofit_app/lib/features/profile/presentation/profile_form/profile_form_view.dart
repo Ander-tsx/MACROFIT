@@ -18,9 +18,8 @@ class ProfileFormView extends StatelessWidget {
     final saved = await viewModel.submit();
     // En el alta el router cambia de pantalla solo; en la edición se regresa.
     if (!saved || !viewModel.isEditing || !context.mounted) return;
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text('Perfil actualizado')));
+    ScaffoldMessenger.of(context)
+        .showSnackBar(const SnackBar(content: Text('Perfil actualizado')));
     if (context.canPop()) context.pop();
   }
 
@@ -254,12 +253,10 @@ class ProfileFormView extends StatelessWidget {
                     ),
                     border: const OutlineInputBorder(),
                   ),
-                  child: Text(
-                    switch (viewModel.birthDate) {
-                      final date? => _formatDate(date),
-                      null => '',
-                    },
-                  ),
+                  child: Text(switch (viewModel.birthDate) {
+                    final date? => _formatDate(date),
+                    null => '',
+                  }),
                 ),
               ),
               const SizedBox(height: 24),
