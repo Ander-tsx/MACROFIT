@@ -1,98 +1,70 @@
-import 'dart:convert';
+import 'package:dio/dio.dart';
 
-import 'package:http/http.dart' as http;
-
-import '../../domain/exceptions/goals_exceptions.dart';
+import '../../../../core/network/dio_factory.dart';
+import '../models/coach_client_model.dart';
 import '../models/goal_model.dart';
 
-abstract class GoalsRemoteDataSource {
-  Future<GoalModel> getCurrentGoal();
-  Future<List<GoalModel>> getGoalsHistory();
-}
+/// Endpoints de metas (HU-04 y HU-05). Usa el cliente HTTP **con** `AuthInterceptor`.
+class GoalsRemoteDataSource {
+  const GoalsRemoteDataSource(this._dio);
 
-class GoalsRemoteDataSourceImpl implements GoalsRemoteDataSource {
-  static const String defaultBaseUrl = 'http://localhost:3000/api/v1';
+  final Dio _dio;
 
-  final http.Client client;
-  final String baseUrl;
-  final Future<String?> Function() tokenProvider;
-
-  GoalsRemoteDataSourceImpl({
-    required this.client,
-    required this.tokenProvider,
-    this.baseUrl = defaultBaseUrl,
+  /// HU-04 — `GET /users/me/goals/current`.
+  Future<GoalModel> getCurrentGoal() => guardApiCall(() async {
+    final response = await _dio.get<Map<String, dynamic>>(
+      '/users/me/goals/current',
+    );
+    return GoalModel.fromJson(response.data!);
   });
 
-  @override
-  Future<GoalModel> getCurrentGoal() async {
-    final response = await _get('/users/me/goals/current');
-    return GoalModel.fromJson(
-      jsonDecode(response.body) as Map<String, dynamic>,
-    );
-  }
+  /// HU-04 — `GET /users/me/goals`.
+  Future<List<GoalModel>> getGoalsHistory() => _getGoals('/users/me/goals');
 
-  @override
-  Future<List<GoalModel>> getGoalsHistory() async {
-    final response = await _get('/users/me/goals');
-    final decoded = jsonDecode(response.body);
-    final list = decoded is List ? decoded : decoded['goals'] as List;
-    return list
-        .map((e) => GoalModel.fromJson(e as Map<String, dynamic>))
-        .toList();
-  }
+  /// HU-05 — `GET /coach/clients`.
+  Future<List<CoachClientModel>> getClients() => guardApiCall(() async {
+    final response = await _dio.get<List<dynamic>>('/coach/clients');
+    return [
+      for (final json in response.data!)
+        CoachClientModel.fromJson(json as Map<String, dynamic>),
+    ];
+  });
 
-  Future<http.Response> _get(String path) async {
-    final token = await tokenProvider();
-    final response = await client.get(
-      Uri.parse('$baseUrl$path'),
-      headers: {
-        'Accept': 'application/json',
-        if (token != null) 'Authorization': 'Bearer $token',
+  /// HU-05 — `GET /coach/clients/{clientId}/goals`.
+  Future<List<GoalModel>> getClientGoals(String clientId) =>
+      _getGoals('/coach/clients/$clientId/goals');
+
+  /// HU-05 — `POST /coach/clients/{clientId}/goals` (201).
+  Future<GoalModel> setClientGoal(
+    String clientId, {
+    required int calories,
+    required int proteinG,
+    required int fatG,
+    required DateTime effectiveFrom,
+  }) => guardApiCall(() async {
+    final response = await _dio.post<Map<String, dynamic>>(
+      '/coach/clients/$clientId/goals',
+      data: {
+        'calories': calories,
+        'protein_g': proteinG,
+        'fat_g': fatG,
+        'effective_from': _formatDate(effectiveFrom),
       },
     );
+    return GoalModel.fromJson(response.data!);
+  });
 
-    if (response.statusCode == 200) return response;
+  Future<List<GoalModel>> _getGoals(String path) => guardApiCall(() async {
+    final response = await _dio.get<List<dynamic>>(path);
+    return [
+      for (final json in response.data!)
+        GoalModel.fromJson(json as Map<String, dynamic>),
+    ];
+  });
 
-    final body = _tryDecode(response.body);
-    final code = _extractCode(body);
-    final message = _extractMessage(body);
-
-    switch (response.statusCode) {
-      case 404:
-        if (code == 'PROFILE_NOT_FOUND') {
-          throw ProfileNotFoundException(message ?? 'Perfil no encontrado');
-        }
-        throw GoalsServerException(message ?? 'No encontrado', 404);
-      case 403:
-        // El backend responde 403 FORBIDDEN_ROLE cuando el rol es coach
-        throw GoalsForbiddenException(message ?? 'Acceso denegado');
-      default:
-        throw GoalsServerException(
-          message ?? 'Error inesperado del servidor',
-          response.statusCode,
-        );
-    }
-  }
-
-  Map<String, dynamic>? _tryDecode(String body) {
-    try {
-      final decoded = jsonDecode(body);
-      return decoded is Map<String, dynamic> ? decoded : null;
-    } catch (_) {
-      return null;
-    }
-  }
-
-  // Acepta {"code": ...} o {"error": {"code": ...}}
-  String? _extractCode(Map<String, dynamic>? body) {
-    final nested = body?['error'];
-    if (nested is Map<String, dynamic>) return nested['code']?.toString();
-    return body?['code']?.toString();
-  }
-
-  String? _extractMessage(Map<String, dynamic>? body) {
-    final nested = body?['error'];
-    if (nested is Map<String, dynamic>) return nested['message']?.toString();
-    return body?['message']?.toString();
+  /// `YYYY-MM-DD`.
+  static String _formatDate(DateTime date) {
+    String two(int value) => value.toString().padLeft(2, '0');
+    return '${date.year}-${two(date.month)}-${two(date.day)}';
   }
 }

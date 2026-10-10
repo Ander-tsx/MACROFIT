@@ -8,6 +8,7 @@ feature; si necesitan algo de otra, usan su **dominio** (p. ej. `home` usa `auth
 | `auth/` | HU-01 registro, HU-02 inicio/cierre/persistencia de sesión | [auth/README.md](auth/README.md) |
 | `legal/` | TEC-07 aviso de privacidad | [legal/README.md](legal/README.md) |
 | `profile/` | HU-03 perfil inicial (alta obligatoria) y edición | [profile/README.md](profile/README.md) |
+| `goals/` | HU-04 dominio de la meta, HU-05 metas de los clientes de un coach | [goals/README.md](goals/README.md) |
 | `home/` | Pantallas principales de usuario y coach | [home/README.md](home/README.md) |
 
 ## Plantilla

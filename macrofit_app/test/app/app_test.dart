@@ -6,6 +6,8 @@ import 'package:macrofit_app/features/auth/domain/entities/auth_state.dart';
 import 'package:macrofit_app/features/auth/presentation/login/login_view.dart';
 import 'package:macrofit_app/features/auth/presentation/register/register_view.dart';
 import 'package:macrofit_app/features/auth/presentation/splash/splash_view.dart';
+import 'package:macrofit_app/features/goals/presentation/coach_clients/coach_clients_view.dart';
+import 'package:macrofit_app/features/goals/presentation/coach_goal_form/coach_goal_form_view.dart';
 import 'package:macrofit_app/features/home/presentation/coach_home_view.dart';
 import 'package:macrofit_app/features/home/presentation/user_home_view.dart';
 import 'package:macrofit_app/features/legal/presentation/privacy_notice/privacy_notice_view.dart';
@@ -18,6 +20,7 @@ void main() {
   late FakeAuthRepository auth;
   late FakeLegalRepository legal;
   late FakeProfileRepository profiles;
+  late FakeCoachGoalsRepository coachGoals;
 
   Future<void> pumpApp(
     WidgetTester tester, {
@@ -28,12 +31,14 @@ void main() {
     auth = FakeAuthRepository(initialState: state);
     legal = FakeLegalRepository();
     profiles = FakeProfileRepository(stored: storedProfile);
+    coachGoals = FakeCoachGoalsRepository();
     await tester.pumpWidget(
       MacroFitApp(
         dependencies: AppDependencies(
           authRepository: auth,
           legalRepository: legal,
           profileRepository: profiles,
+          coachGoalsRepository: coachGoals,
         ),
       ),
     );
@@ -255,6 +260,65 @@ void main() {
       await tester.pumpAndSettle();
       expect(profiles.getCalls, 2);
       expect(find.text('70'), findsOneWidget);
+    });
+  });
+
+  group('metas por coach (HU-05)', () {
+    Future<void> openClientForm(WidgetTester tester) async {
+      await pumpApp(tester, state: const Authenticated(testCoach));
+      await tester.tap(find.byKey(const Key('clients_button')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(Key('client_${testClient.id}')));
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('el coach llega al formulario de un cliente en dos pantallas', (
+      tester,
+    ) async {
+      await pumpApp(tester, state: const Authenticated(testCoach));
+
+      await tester.tap(find.byKey(const Key('clients_button')));
+      await tester.pumpAndSettle();
+      expect(find.byType(CoachClientsView), findsOneWidget);
+      expect(find.text(testClient.name), findsOneWidget);
+
+      await tester.tap(find.byKey(Key('client_${testClient.id}')));
+      await tester.pumpAndSettle();
+      expect(find.byType(CoachGoalFormView), findsOneWidget);
+    });
+
+    testWidgets('guarda la meta y la muestra en el historial', (tester) async {
+      await openClientForm(tester);
+      expect(find.text('Este cliente todavía no tiene metas.'), findsOneWidget);
+
+      await tester.enterText(find.byKey(const Key('goal_calories')), '2200');
+      await tester.enterText(find.byKey(const Key('goal_protein')), '160');
+      await tester.enterText(find.byKey(const Key('goal_fat')), '70');
+      await tester.tap(find.byKey(const Key('goal_submit')));
+      await tester.pumpAndSettle();
+
+      expect(coachGoals.saved.single.clientId, testClient.id);
+      expect(find.text('Meta guardada'), findsOneWidget);
+      expect(find.text('2200 kcal · P 160 g · G 70 g'), findsOneWidget);
+    });
+
+    testWidgets('un formulario vacío no se envía y señala los campos', (
+      tester,
+    ) async {
+      await openClientForm(tester);
+
+      await tester.tap(find.byKey(const Key('goal_submit')));
+      await tester.pumpAndSettle();
+
+      expect(coachGoals.saved, isEmpty);
+      expect(find.text('Las calorías son obligatorias'), findsOneWidget);
+      expect(find.text('La proteína es obligatoria'), findsOneWidget);
+      expect(find.text('La grasa es obligatoria'), findsOneWidget);
+    });
+
+    testWidgets('un usuario no ve el acceso a clientes', (tester) async {
+      await pumpApp(tester, state: const Authenticated(testUser));
+      expect(find.byKey(const Key('clients_button')), findsNothing);
     });
   });
 }

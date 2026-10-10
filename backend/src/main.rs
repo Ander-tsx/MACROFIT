@@ -31,7 +31,7 @@ async fn main() {
         tokens: config.tokens,
     };
 
-    let app = routes::api_router()
+    let app = routes::api_router(config.dev_mode)
         .layer(CorsLayer::permissive())
         .with_state(state);
 

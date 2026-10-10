@@ -71,6 +71,43 @@ void main() {
     });
   });
 
+  group('metas por coach (HU-05)', () {
+    test('un coach abre sus pantallas de clientes y metas', () {
+      const state = Authenticated(testCoach);
+      for (final route in [
+        AppRoutes.coachClients,
+        AppRoutes.coachClientGoals('abc'),
+      ]) {
+        expect(resolveRedirect(state, route), isNull, reason: route);
+      }
+    });
+
+    test('un usuario no accede a las pantallas del coach', () {
+      const state = Authenticated(testUser);
+      for (final route in [
+        AppRoutes.coachClients,
+        AppRoutes.coachClientGoals('abc'),
+      ]) {
+        expect(
+          resolveRedirect(state, route),
+          AppRoutes.userHome,
+          reason: route,
+        );
+      }
+    });
+
+    test('sin sesión las pantallas del coach mandan a login', () {
+      expect(
+        resolveRedirect(const Unauthenticated(), AppRoutes.coachClients),
+        AppRoutes.login,
+      );
+    });
+
+    test('una ruta parecida a la del coach no cuenta como suya', () {
+      expect(AppRoutes.isCoachRoute('/coachmate'), isFalse);
+    });
+  });
+
   group('perfil inicial (HU-03)', () {
     test('un usuario sin perfil solo puede abrir el formulario de perfil', () {
       const state = Authenticated(testNewUser);

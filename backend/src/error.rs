@@ -33,10 +33,10 @@ pub enum AppError {
     InvalidRefreshToken,
     /// 401 — el token pertenece a una sesión cerrada o revocada.
     TokenRevoked,
-    /// 403 — el rol no tiene acceso al recurso.
-    Forbidden(&'static str),
     /// 403 — la función es exclusiva de otro rol (p. ej. el perfil, solo para `user`).
     ForbiddenRole(&'static str),
+    /// 403 — el coach no tiene una vinculación activa con el cliente.
+    ClientNotLinked,
     /// 404 — el usuario aún no tiene perfil.
     ProfileNotFound,
     /// 409 — el usuario ya tiene un perfil.
@@ -108,16 +108,16 @@ impl IntoResponse for AppError {
                 "La sesión fue cerrada; inicia sesión de nuevo".to_string(),
                 FieldErrors::new(),
             ),
-            Self::Forbidden(message) => (
-                StatusCode::FORBIDDEN,
-                "FORBIDDEN",
-                message.to_string(),
-                FieldErrors::new(),
-            ),
             Self::ForbiddenRole(message) => (
                 StatusCode::FORBIDDEN,
                 "FORBIDDEN_ROLE",
                 message.to_string(),
+                FieldErrors::new(),
+            ),
+            Self::ClientNotLinked => (
+                StatusCode::FORBIDDEN,
+                "CLIENT_NOT_LINKED",
+                "No tienes una vinculación activa con este cliente".to_string(),
                 FieldErrors::new(),
             ),
             Self::ProfileNotFound => (

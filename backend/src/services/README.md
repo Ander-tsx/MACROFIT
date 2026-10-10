@@ -22,6 +22,8 @@ Un archivo por dominio (`auth.rs`, y después `profile.rs`, `goals.rs`, ...). Aq
 | `auth.rs` | `validate_registration`, `register` (HU-01), `login` (HU-02, con hash ficticio para igualar tiempos), `find_user_by_id` |
 | `legal.rs` | TEC-07: `PRIVACY_NOTICE` (Markdown embebido desde `docs/legal/`) y `PRIVACY_VERSION` (leída de su cabecera) |
 | `session.rs` | HU-02: `start` (login), `refresh` (rotación atómica + detección de reuso), `logout`, `is_active` |
+| `coach_links.rs` | HU-05: `require_active_link` (guarda de acceso a un cliente), `list_clients`, `seed_link` (solo desarrollo) |
+| `goals.rs` | HU-04: cálculo Mifflin-St Jeor (puro), `get_current_goal`, `get_goals_history`, `recalculate_on_profile_change`. HU-05: `validate_coach_goal` (pura), `set_client_goal`, `get_client_goals`; `find_current_goal` decide la meta vigente |
 | `profile.rs` | HU-03: `validate_new_profile` / `validate_profile_changes` (puras), `create_profile` (marca `profile_completed`), `get_profile`, `update_profile`; rangos provisionales (TEC-12) |
 
 ### Aviso de privacidad en el registro

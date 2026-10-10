@@ -14,12 +14,14 @@
 publicDio ── AuthRemoteDataSource (register, login, refresh)
           └─ LegalRemoteDataSource (aviso de privacidad)
 sessionDio + AuthInterceptor ── SessionRemoteDataSource (me, logout)
-                             └─ ProfileRemoteDataSource (perfil, HU-03)
+                             ├─ ProfileRemoteDataSource (perfil, HU-03)
+                             └─ GoalsRemoteDataSource (metas, HU-05)
 SessionLocalDataSource (flutter_secure_storage)
         ↓
 AuthRepositoryImpl  ←── interceptor.onSessionExpired
 LegalRepositoryImpl
 ProfileRepositoryImpl
+CoachGoalsRepositoryImpl
 ```
 
 - Hay **dos clientes Dio**: uno público y otro con `AuthInterceptor`. Las rutas públicas y la renovación de tokens van
@@ -43,7 +45,7 @@ Consecuencias:
 - Tras login o registro la app entra a la pantalla de su rol sin que la vista navegue.
 - Tras cerrar sesión (o si la sesión expira/es revocada) se va a `/login` y la pila se reemplaza: el botón atrás no
   regresa a pantallas protegidas.
-- Un rol nunca puede abrir la pantalla del otro.
+- Un rol nunca puede abrir la pantalla del otro. Las pantallas del coach cuelgan de `/coach` (`AppRoutes.isCoachRoute`).
 - HU-03: un usuario sin perfil no llega a `/user` hasta guardar el formulario; al guardarlo,
   `AuthRepository.markProfileCompleted()` cambia la sesión y el router lo lleva a `/user`. Un coach nunca ve el formulario.
 

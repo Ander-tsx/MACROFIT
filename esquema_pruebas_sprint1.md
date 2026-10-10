@@ -27,3 +27,9 @@
 | HU-05 | Conservación del historial de metas. | Integración | La meta anterior permanece registrada después de guardar una nueva. |
 | HU-05 | Restricción de acceso a clientes no vinculados. | Integración | Un coach no vinculado no puede leer ni modificar las metas del usuario; la operación es rechazada por las reglas del backend. |
 | HU-05 | Flujo de ajuste de meta desde la app. | Interfaz | El coach llega desde su pantalla principal al formulario de meta de un cliente en 3 pantallas o menos. |
+| HU-05 | Restricción de los endpoints de coach por rol. | Integración | Una cuenta de usuario recibe 403 `FORBIDDEN_ROLE` al consultar o modificar metas de un cliente. |
+| HU-05 | Prioridad de la meta del coach y vigencia por fecha. | Integración | Una meta de coach es la vigente aunque exista una calculada del mismo día; una meta con fecha futura se guarda pero no es la vigente hasta que llega su fecha. |
+| HU-05 | Cliente sin perfil con meta del coach. | Integración | El cliente que aún no captura su perfil recibe la meta del coach como vigente; al registrar y editar su perfil no se genera una meta calculada que la reemplace. |
+| HU-05 | Disponibilidad del endpoint de datos de prueba. | Integración | `POST /dev/seed/coach-links` vincula a un coach con un usuario con `APP_ENV=development` y responde 404 en cualquier otro ambiente. |
+| HU-05 | Lista de clientes vinculados del coach. | Integración | `GET /coach/clients` devuelve solo los clientes con vinculación activa del coach de la sesión. |
+| HU-05 | Errores del backend en el formulario de meta. | Interfaz | Un error de validación se muestra junto a su campo, un `CLIENT_NOT_LINKED` como mensaje general, y el formulario vacío no se envía. |

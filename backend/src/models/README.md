@@ -67,3 +67,34 @@ Perfil inicial del usuario (HU-03). Un documento por cuenta con rol `user`.
 
 **Índices:** `user_id_unique` → `{ user_id: 1 }`, único (garantiza un perfil por usuario; el error `11000` se traduce
 a `409 PROFILE_ALREADY_EXISTS`).
+
+## Colección `goals` (`goal.rs`)
+
+Historial de metas nutricionales (HU-04 y HU-05). Solo se insertan documentos; nunca se modifican.
+
+| Campo | Tipo | Notas |
+|---|---|---|
+| `_id` | ObjectId | Se expone como `id` (hex) |
+| `user_id` | ObjectId | Referencia a `users._id` |
+| `calories`, `protein_g`, `fat_g` | int | |
+| `source` | `"system"` \| `"coach"` | Quién fijó la meta |
+| `set_by` | ObjectId \| null | Coach que la fijó (solo `source: "coach"`) |
+| `effective_from` | ISODate | Desde cuándo aplica. La vigente es la más reciente con `effective_from <= ahora`, y una de coach gana a una `system` |
+| `created_at` | ISODate | |
+
+**Índices:** `user_id_effective_from` → `{ user_id: 1, effective_from: -1 }`.
+
+## Colección `coach_links` (`coach_link.rs`)
+
+Vinculación entre un coach y un cliente (HU-05). Hoy se llena con `POST /dev/seed/coach-links`; HU-13 y HU-14 la
+crearán y la cerrarán desde la app.
+
+| Campo | Tipo | Notas |
+|---|---|---|
+| `_id` | ObjectId | Se expone como `id` (hex) |
+| `coach_id` | ObjectId | Referencia a `users._id` (rol `coach`) |
+| `user_id` | ObjectId | Referencia a `users._id` (rol `user`) |
+| `status` | `"active"` \| `"unlinked"` | Solo `active` da acceso al cliente |
+| `created_at` | ISODate | |
+
+**Índices:** `coach_id_user_id_unique` → `{ coach_id: 1, user_id: 1 }`, único.
