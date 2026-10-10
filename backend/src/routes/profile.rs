@@ -4,8 +4,9 @@ use serde::{Deserialize, Serialize};
 use crate::auth::middleware::UserOnly;
 use crate::error::{ApiJson, AppError};
 use crate::models::profile::{Gender, Level, Objective, UserProfile};
-use crate::services::profile::{self as profile_service, ProfileInput, birth_date_to_string};
+use crate::services::profile::{self as profile_service, ProfileInput};
 use crate::state::AppState;
+use crate::validation::date_to_string;
 
 pub fn router() -> Router<AppState> {
     Router::new().route(
@@ -74,7 +75,7 @@ impl From<UserProfile> for ProfileResponse {
             weight_kg: profile.weight_kg,
             height_cm: profile.height_cm,
             gender: profile.gender,
-            birth_date: birth_date_to_string(profile.birth_date),
+            birth_date: date_to_string(profile.birth_date),
             created_at: profile
                 .created_at
                 .try_to_rfc3339_string()

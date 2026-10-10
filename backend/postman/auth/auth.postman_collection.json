@@ -1746,8 +1746,8 @@
                   "        pm.expect(body.error.message).to.be.a(\"string\").and.not.empty;",
                   "        pm.expect(body.error.fields).to.be.an(\"object\");",
                   "    });",
-                  "    pm.test(\"Código FORBIDDEN\", function () {",
-                  "        pm.expect(body.error.code).to.eql(\"FORBIDDEN\");",
+                  "    pm.test(\"Código FORBIDDEN_ROLE\", function () {",
+                  "        pm.expect(body.error.code).to.eql(\"FORBIDDEN_ROLE\");",
                   "    });",
                   "}"
                 ]

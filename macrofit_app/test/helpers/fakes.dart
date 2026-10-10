@@ -12,6 +12,9 @@ import 'package:macrofit_app/features/auth/domain/entities/registration.dart';
 import 'package:macrofit_app/features/auth/domain/entities/role.dart';
 import 'package:macrofit_app/features/auth/domain/entities/user.dart';
 import 'package:macrofit_app/features/auth/domain/repositories/auth_repository.dart';
+import 'package:macrofit_app/features/goals/domain/entities/coach_client.dart';
+import 'package:macrofit_app/features/goals/domain/entities/nutritional_goal.dart';
+import 'package:macrofit_app/features/goals/domain/repositories/coach_goals_repository.dart';
 import 'package:macrofit_app/features/legal/domain/entities/privacy_notice.dart';
 import 'package:macrofit_app/features/legal/domain/repositories/legal_repository.dart';
 import 'package:macrofit_app/features/profile/domain/entities/profile.dart';
@@ -194,6 +197,97 @@ class FakeProfileRepository implements ProfileRepository {
       throw apiError(ApiErrorCode.profileNotFound, status: 404);
     }
     return stored = profile;
+  }
+}
+
+const testClient = CoachClient(
+  id: '6ac67c737314ad6c7164900e',
+  name: 'Ana',
+  email: 'ana@macrofit.test',
+);
+
+NutritionalGoal testGoal({
+  int calories = 2200,
+  int proteinG = 160,
+  int fatG = 70,
+  GoalSource source = GoalSource.coach,
+  DateTime? effectiveFrom,
+}) => NutritionalGoal(
+  userId: testClient.id,
+  calories: calories,
+  proteinG: proteinG,
+  fatG: fatG,
+  carbsG: 0,
+  source: source,
+  effectiveFrom: effectiveFrom ?? DateTime(2026, 10, 9),
+);
+
+/// Repositorio de metas del coach en memoria (simula al backend de HU-05).
+class FakeCoachGoalsRepository implements CoachGoalsRepository {
+  FakeCoachGoalsRepository({
+    this.clients = const [testClient],
+    List<NutritionalGoal> history = const [],
+  }) : history = [...history];
+
+  List<CoachClient> clients;
+
+  /// Historial del cliente, de la más reciente a la más antigua.
+  final List<NutritionalGoal> history;
+
+  /// Si se asigna, la siguiente llamada del tipo correspondiente lanza este error.
+  ApiException? clientsError;
+  ApiException? historyError;
+  ApiException? setError;
+
+  int clientsCalls = 0;
+  final saved =
+      <
+        ({
+          String clientId,
+          int calories,
+          int proteinG,
+          int fatG,
+          DateTime effectiveFrom,
+        })
+      >[];
+
+  @override
+  Future<List<CoachClient>> getClients() async {
+    clientsCalls++;
+    if (clientsError case final error?) throw error;
+    return clients;
+  }
+
+  @override
+  Future<List<NutritionalGoal>> getClientGoals(String clientId) async {
+    if (historyError case final error?) throw error;
+    return [...history];
+  }
+
+  @override
+  Future<NutritionalGoal> setClientGoal(
+    String clientId, {
+    required int calories,
+    required int proteinG,
+    required int fatG,
+    required DateTime effectiveFrom,
+  }) async {
+    saved.add((
+      clientId: clientId,
+      calories: calories,
+      proteinG: proteinG,
+      fatG: fatG,
+      effectiveFrom: effectiveFrom,
+    ));
+    if (setError case final error?) throw error;
+    final goal = testGoal(
+      calories: calories,
+      proteinG: proteinG,
+      fatG: fatG,
+      effectiveFrom: effectiveFrom,
+    );
+    history.insert(0, goal);
+    return goal;
   }
 }
 

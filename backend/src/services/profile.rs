@@ -12,6 +12,7 @@ use crate::models::profile::{Gender, Level, Objective, PROFILES_COLLECTION, User
 use crate::models::user::{USERS_COLLECTION, User};
 use crate::services::auth::is_duplicate_key;
 use crate::services::goals;
+use crate::validation::{check, date_to_bson, parse_date};
 
 // TODO(TEC-12): rangos provisionales; ajustarlos cuando TEC-12 defina los definitivos
 // (y también en `macrofit_app/lib/features/profile/domain/validators/profile_validators.dart`).
@@ -23,9 +24,6 @@ pub const AGE_MIN_YEARS: u32 = 18;
 pub const AGE_MAX_YEARS: u32 = 100;
 pub const TRAINING_DAYS_MIN: i32 = 1;
 pub const TRAINING_DAYS_MAX: i32 = 7;
-
-/// Formato de `birth_date` en la API.
-pub const BIRTH_DATE_FORMAT: &str = "%Y-%m-%d";
 
 /// Datos del perfil tal como llegan del cliente. En el alta todos son obligatorios;
 /// en la edición, `None` significa "no cambiar".
@@ -73,31 +71,6 @@ impl ProfileChanges {
 
 // ───────────────────────── Validación (funciones puras) ─────────────────────────
 
-/// Valida un campo según si es obligatorio (alta) u opcional (edición) y acumula su error.
-fn check<R, T>(
-    errors: &mut FieldErrors,
-    field: &str,
-    value: Option<R>,
-    required: bool,
-    missing: &str,
-    rule: impl FnOnce(R) -> Result<T, String>,
-) -> Option<T> {
-    match value {
-        None if required => {
-            errors.insert(field.into(), missing.into());
-            None
-        }
-        None => None,
-        Some(raw) => match rule(raw) {
-            Ok(value) => Some(value),
-            Err(message) => {
-                errors.insert(field.into(), message);
-                None
-            }
-        },
-    }
-}
-
 fn parse_enum<T>(
     value: String,
     parse: fn(&str) -> Option<T>,
@@ -141,9 +114,7 @@ fn parse_birth_date(value: String, today: NaiveDate) -> Result<NaiveDate, String
     if value.is_empty() {
         return Err("La fecha de nacimiento es obligatoria".into());
     }
-    let date = (value.len() == 10)
-        .then(|| NaiveDate::parse_from_str(value, BIRTH_DATE_FORMAT).ok())
-        .flatten()
+    let date = parse_date(value)
         .ok_or("La fecha de nacimiento debe ser una fecha válida con formato AAAA-MM-DD")?;
     match age_on(date, today) {
         None => Err("La fecha de nacimiento no puede ser futura".into()),
@@ -313,22 +284,6 @@ pub fn validate_profile_changes(
     Ok(changes)
 }
 
-/// Fecha de nacimiento → `DateTime` de BSON a medianoche UTC.
-pub fn birth_date_to_bson(date: NaiveDate) -> DateTime {
-    DateTime::from_millis(
-        date.and_time(chrono::NaiveTime::MIN)
-            .and_utc()
-            .timestamp_millis(),
-    )
-}
-
-/// `DateTime` de BSON → texto `YYYY-MM-DD` (fecha UTC).
-pub fn birth_date_to_string(date: DateTime) -> String {
-    chrono::DateTime::from_timestamp_millis(date.timestamp_millis())
-        .map(|value| value.date_naive().format(BIRTH_DATE_FORMAT).to_string())
-        .unwrap_or_default()
-}
-
 fn today_utc() -> NaiveDate {
     Utc::now().date_naive()
 }
@@ -384,7 +339,7 @@ pub async fn create_profile(
         weight_kg: data.weight_kg,
         height_cm: data.height_cm,
         gender: data.gender,
-        birth_date: birth_date_to_bson(data.birth_date),
+        birth_date: date_to_bson(data.birth_date),
         created_at: now,
         updated_at: now,
     };
@@ -438,7 +393,7 @@ fn changes_to_set(changes: &ProfileChanges, now: DateTime) -> Result<Document, A
         set.insert("gender", enum_bson(gender)?);
     }
     if let Some(birth_date) = changes.birth_date {
-        set.insert("birth_date", birth_date_to_bson(birth_date));
+        set.insert("birth_date", date_to_bson(birth_date));
     }
     Ok(set)
 }
@@ -685,12 +640,6 @@ mod tests {
             today(),
         ));
         assert_eq!(fields, ["level", "weight_kg"]);
-    }
-
-    #[test]
-    fn fecha_de_nacimiento_ida_y_vuelta_en_bson() {
-        let date = NaiveDate::from_ymd_opt(1996, 5, 20).unwrap();
-        assert_eq!(birth_date_to_string(birth_date_to_bson(date)), "1996-05-20");
     }
 
     #[test]

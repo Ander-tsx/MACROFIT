@@ -38,6 +38,7 @@ Copia `.env.example` a `.env` dentro de `backend/`. **`.env` nunca se sube al re
 | `DB_NAME` | Sí | Nombre de la base de datos |
 | `JWT_SECRET` | Sí | Clave para firmar los JWT. El servidor no arranca sin ella |
 | `PORT` | No (3000) | Puerto HTTP |
+| `APP_ENV` | No | `development` monta las rutas de datos de prueba (`/dev`); omítela en producción |
 | `ACCESS_TOKEN_MINUTES` | No (15) | Vida del access token (JWT) |
 | `REFRESH_TOKEN_DAYS` | No (30) | Vida del refresh token; se renueva en cada rotación |
 
@@ -71,7 +72,7 @@ cargo test
 node postman/build.js --check
 ```
 
-Y la colección de Postman sin fallos (ver [postman/README.md](postman/README.md)).
+Y la colección de Postman sin fallos (ver [postman/README.md](postman/README.md)). Los scripts de [../scripts](../scripts/README.md) hacen todo esto con un comando: `scripts/check.sh backend` y `scripts/api-test.sh`.
 
 ---
 
@@ -151,6 +152,10 @@ URL base: `http://localhost:3000/api/v1`
 | PATCH | `/users/me/profile` | Bearer (user) | HU-03 | Edita solo los campos enviados del perfil |
 | GET | `/users/me/goals/current` | Bearer (user) | HU-04 | Meta nutricional vigente |
 | GET | `/users/me/goals` | Bearer (user) | HU-04 | Historial de metas (más reciente primero) |
+| GET | `/coach/clients` | Bearer (coach) | HU-05 | Clientes con vinculación activa |
+| GET | `/coach/clients/{clientId}/goals` | Bearer (coach) | HU-05 | Historial de metas de un cliente vinculado |
+| POST | `/coach/clients/{clientId}/goals` | Bearer (coach) | HU-05 | Fija una meta para un cliente vinculado |
+| POST | `/dev/seed/coach-links` | — (solo `APP_ENV=development`) | HU-05 | Vincula un coach con un usuario de prueba |
 | GET | `/coach/test` | Bearer (coach) | TEC-05 | Prueba de la regla de acceso por rol |
 
 ### POST `/auth/register` (HU-01)
@@ -296,9 +301,45 @@ actualizado y `updated_at` nuevo. Errores: `400 VALIDATION_ERROR`, `400 INVALID_
 **Meta nutricional (HU-04):** al crear el perfil se genera la meta inicial; al editarlo se recalcula solo si cambian
 `weight_kg`, `objective` o `training_days`, y nunca si la meta vigente la fijó un coach.
 
+### Metas por coach — `/coach/clients/{clientId}/goals` (HU-05)
+
+Cabecera `Authorization: Bearer <access_token>`. **Solo rol `coach`** (`403 FORBIDDEN_ROLE` para un `user`) y solo con una
+vinculación activa con el cliente (`403 CLIENT_NOT_LINKED`, también si el id no existe o está mal formado).
+La vinculación se comprueba antes de validar el cuerpo.
+
+**POST** (todos los campos obligatorios):
+
+```json
+{ "calories": 2200, "protein_g": 160, "fat_g": 70, "effective_from": "2026-10-09" }
+```
+
+| Campo | Regla |
+|---|---|
+| `calories` | Entero de 1 a 10 000 |
+| `protein_g`, `fat_g` | Entero de 1 a 1 000 |
+| `effective_from` | Fecha válida `YYYY-MM-DD` (medianoche UTC) |
+
+**201 Created** — misma forma que `GET /users/me/goals/current` (HU-04) con `source: "coach"` y `set_by` igual al id del coach.
+La meta se agrega al historial; las anteriores no se modifican. Errores: `400 VALIDATION_ERROR` (campos en `fields`;
+un texto o un decimal se señalan en su campo), `400 INVALID_BODY`.
+
+**GET** → `200` con el historial completo del cliente (metas del coach y calculadas), la más reciente primero.
+
+**Meta vigente (HU-04 y HU-05):** es la de `effective_from` más reciente que ya empezó (las de fecha futura todavía no
+aplican). Una meta de coach vigente tiene prioridad sobre las calculadas, y editar el perfil nunca la reemplaza.
+Un cliente sin perfil recibe la meta del coach en `GET /users/me/goals/current`.
+
+**GET `/coach/clients`** → `200` con `[{ "id", "name", "email" }]` de los clientes vinculados, por nombre.
+
+### POST `/dev/seed/coach-links` (HU-05)
+
+Solo existe con `APP_ENV=development`; en cualquier otro ambiente la ruta no se monta (`404`). Sin autenticación.
+Cuerpo `{ "coach_id", "user_id" }` (ids de cuentas existentes con rol `coach` y `user`). **201** con la vinculación
+`active` (la crea o la reactiva). Errores: `400 VALIDATION_ERROR`.
+
 ### GET `/coach/test`
 
-Misma autenticación que `/auth/me`. **200 OK** `{ "user_id", "role" }` para coaches; `403 FORBIDDEN` para `user`.
+Misma autenticación que `/auth/me`. **200 OK** `{ "user_id", "role" }` para coaches; `403 FORBIDDEN_ROLE` para `user`.
 
 ---
 
@@ -330,8 +371,8 @@ Todas las respuestas de error tienen la misma forma. `fields` siempre es un obje
 | `UNAUTHORIZED` | 401 | Falta el access token, está alterado o expiró |
 | `INVALID_REFRESH_TOKEN` | 401 | Refresh token desconocido, expirado o de otra sesión |
 | `TOKEN_REVOKED` | 401 | La sesión fue cerrada o revocada (logout, token rotado o reuso) |
-| `FORBIDDEN` | 403 | El rol no tiene acceso |
-| `FORBIDDEN_ROLE` | 403 | La función es exclusiva de otro rol (p. ej. el perfil, solo para `user`) |
+| `FORBIDDEN_ROLE` | 403 | La función es exclusiva de otro rol (p. ej. el perfil, solo para `user`; las metas por coach, solo para `coach`) |
+| `CLIENT_NOT_LINKED` | 403 | El coach no tiene una vinculación activa con el cliente |
 | `PROFILE_NOT_FOUND` | 404 | El usuario aún no tiene perfil |
 | `EMAIL_ALREADY_EXISTS` | 409 | El correo ya está registrado |
 | `PROFILE_ALREADY_EXISTS` | 409 | El usuario ya tiene un perfil (se edita con `PATCH`) |

@@ -2,7 +2,7 @@
   "info": {
     "_postman_id": "9c4b2e1f-6a3d-4e8b-b7c5-2d1a0f9e0002",
     "name": "MacroFit · Goals",
-    "description": "Módulo de metas nutricionales (src/routes/goals.rs). Depende de \"auth\" solo para {{coach_access_token}} (petición 06), así que debe ejecutarse después de ese módulo. Registra su propio usuario sin perfil para no chocar con otras historias.",
+    "description": "Módulo de metas nutricionales (src/routes/goals.rs). Depende de \"auth\" solo para {{coach_access_token}} (HU-04 petición 06 y HU-05 peticiones 03), así que debe ejecutarse después de ese módulo. Cada historia registra sus propias cuentas para no chocar con otras. HU-05 necesita el backend con APP_ENV=development.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "item": [
@@ -635,6 +635,1262 @@
           "response": []
         }
       ]
+    },
+    {
+      "name": "HU-05 Metas por coach",
+      "description": "HU-05: el coach define metas para sus clientes vinculados (POST/GET /api/v1/coach/clients/{clientId}/goals). La meta del coach tiene prioridad sobre la calculada y las anteriores quedan en el historial.\n\nRequiere el backend con APP_ENV=development (la petición 01 usa POST /api/v1/dev/seed/coach-links). Ejecutar en orden.",
+      "item": [
+        {
+          "name": "00 - Preparación: registrar al coach",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    const email = \"goals.coach.\" + Date.now() + \".\" + Math.floor(Math.random() * 1e6) + \"@macrofit.test\";",
+                  "    pm.variables.set(\"email\", email);",
+                  "    pm.collectionVariables.set(\"goals_coach_email\", email);",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 201 Created\", function () {",
+                  "        pm.response.to.have.status(201);",
+                  "    });",
+                  "    const data = pm.response.json();",
+                  "    pm.test(\"Rol coach\", function () {",
+                  "        pm.expect(data.role).to.eql(\"coach\");",
+                  "    });",
+                  "    pm.collectionVariables.set(\"goals_coach_id\", data.id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "register"
+              ]
+            },
+            "description": "Crea al coach (rol coach). Guarda su id en {{goals_coach_id}}.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Coach Metas\",\n  \"email\": \"{{email}}\",\n  \"password\": \"{{test_password}}\",\n  \"role\": \"coach\",\n  \"privacy_accepted\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "00 - Preparación: iniciar sesión de el coach",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 200\", function () {",
+                  "        pm.response.to.have.status(200);",
+                  "    });",
+                  "    const data = pm.response.json();",
+                  "    pm.test(\"Devuelve access_token\", function () {",
+                  "        pm.expect(data.access_token).to.be.a(\"string\").and.not.empty;",
+                  "    });",
+                  "    pm.collectionVariables.set(\"goals_coach_token\", data.access_token);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ]
+            },
+            "description": "Inicia sesión y guarda el token en {{goals_coach_token}}.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{goals_coach_email}}\",\n  \"password\": \"{{test_password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "00 - Preparación: registrar al cliente (sin perfil)",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    const email = \"goals.client.\" + Date.now() + \".\" + Math.floor(Math.random() * 1e6) + \"@macrofit.test\";",
+                  "    pm.variables.set(\"email\", email);",
+                  "    pm.collectionVariables.set(\"goals_client_email\", email);",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 201 Created\", function () {",
+                  "        pm.response.to.have.status(201);",
+                  "    });",
+                  "    const data = pm.response.json();",
+                  "    pm.test(\"Rol user\", function () {",
+                  "        pm.expect(data.role).to.eql(\"user\");",
+                  "    });",
+                  "    pm.collectionVariables.set(\"goals_client_id\", data.id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "register"
+              ]
+            },
+            "description": "Crea al cliente (sin perfil) (rol user). Guarda su id en {{goals_client_id}}.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Cliente Metas\",\n  \"email\": \"{{email}}\",\n  \"password\": \"{{test_password}}\",\n  \"role\": \"user\",\n  \"privacy_accepted\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "00 - Preparación: iniciar sesión de el cliente",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 200\", function () {",
+                  "        pm.response.to.have.status(200);",
+                  "    });",
+                  "    const data = pm.response.json();",
+                  "    pm.test(\"Devuelve access_token\", function () {",
+                  "        pm.expect(data.access_token).to.be.a(\"string\").and.not.empty;",
+                  "    });",
+                  "    pm.collectionVariables.set(\"goals_client_token\", data.access_token);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ]
+            },
+            "description": "Inicia sesión y guarda el token en {{goals_client_token}}.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{goals_client_email}}\",\n  \"password\": \"{{test_password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "01 - Vinculación de prueba",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 201 Created\", function () {",
+                  "        pm.response.to.have.status(201);",
+                  "    });",
+                  "    const link = pm.response.json();",
+                  "    pm.test(\"Vinculación activa entre el coach y el cliente\", function () {",
+                  "        pm.expect(link).to.have.all.keys(\"id\", \"coach_id\", \"user_id\", \"status\", \"created_at\");",
+                  "        pm.expect(link.coach_id).to.eql(pm.collectionVariables.get(\"goals_coach_id\"));",
+                  "        pm.expect(link.user_id).to.eql(pm.collectionVariables.get(\"goals_client_id\"));",
+                  "        pm.expect(link.status).to.eql(\"active\");",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/dev/seed/coach-links",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "dev",
+                "seed",
+                "coach-links"
+              ]
+            },
+            "description": "Solo disponible con APP_ENV=development. Vincula al coach con el cliente.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"coach_id\": \"{{goals_coach_id}}\",\n  \"user_id\": \"{{goals_client_id}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "02 - Intento con cuenta de usuario",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 403\", function () {",
+                  "        pm.response.to.have.status(403);",
+                  "    });",
+                  "    const body = pm.response.json();",
+                  "    pm.test(\"Formato de error { error: { code, message, fields } }\", function () {",
+                  "        pm.expect(body).to.have.all.keys(\"error\");",
+                  "        pm.expect(body.error).to.have.all.keys(\"code\", \"message\", \"fields\");",
+                  "        pm.expect(body.error.message).to.be.a(\"string\").and.not.empty;",
+                  "        pm.expect(body.error.fields).to.be.an(\"object\");",
+                  "    });",
+                  "    pm.test(\"Código FORBIDDEN_ROLE\", function () {",
+                  "        pm.expect(body.error.code).to.eql(\"FORBIDDEN_ROLE\");",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{goals_client_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/coach/clients/{{goals_client_id}}/goals",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "coach",
+                "clients",
+                "{{goals_client_id}}",
+                "goals"
+              ]
+            },
+            "description": "Una cuenta de usuario no puede usar los endpoints de coach: 403 FORBIDDEN_ROLE.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"calories\": 2200,\n  \"protein_g\": 160,\n  \"fat_g\": 70,\n  \"effective_from\": \"2026-01-01\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "03 - Consulta por un coach no vinculado",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 403\", function () {",
+                  "        pm.response.to.have.status(403);",
+                  "    });",
+                  "    const body = pm.response.json();",
+                  "    pm.test(\"Formato de error { error: { code, message, fields } }\", function () {",
+                  "        pm.expect(body).to.have.all.keys(\"error\");",
+                  "        pm.expect(body.error).to.have.all.keys(\"code\", \"message\", \"fields\");",
+                  "        pm.expect(body.error.message).to.be.a(\"string\").and.not.empty;",
+                  "        pm.expect(body.error.fields).to.be.an(\"object\");",
+                  "    });",
+                  "    pm.test(\"Código CLIENT_NOT_LINKED\", function () {",
+                  "        pm.expect(body.error.code).to.eql(\"CLIENT_NOT_LINKED\");",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{coach_access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/coach/clients/{{goals_client_id}}/goals",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "coach",
+                "clients",
+                "{{goals_client_id}}",
+                "goals"
+              ]
+            },
+            "description": "Usa {{coach_access_token}} del módulo auth, sin vinculación con el cliente: 403 CLIENT_NOT_LINKED."
+          },
+          "response": []
+        },
+        {
+          "name": "03 - Modificación por un coach no vinculado",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 403\", function () {",
+                  "        pm.response.to.have.status(403);",
+                  "    });",
+                  "    const body = pm.response.json();",
+                  "    pm.test(\"Formato de error { error: { code, message, fields } }\", function () {",
+                  "        pm.expect(body).to.have.all.keys(\"error\");",
+                  "        pm.expect(body.error).to.have.all.keys(\"code\", \"message\", \"fields\");",
+                  "        pm.expect(body.error.message).to.be.a(\"string\").and.not.empty;",
+                  "        pm.expect(body.error.fields).to.be.an(\"object\");",
+                  "    });",
+                  "    pm.test(\"Código CLIENT_NOT_LINKED\", function () {",
+                  "        pm.expect(body.error.code).to.eql(\"CLIENT_NOT_LINKED\");",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{coach_access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/coach/clients/{{goals_client_id}}/goals",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "coach",
+                "clients",
+                "{{goals_client_id}}",
+                "goals"
+              ]
+            },
+            "description": "Un coach sin vinculación no puede fijar metas: 403 CLIENT_NOT_LINKED.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"calories\": 2200,\n  \"protein_g\": 160,\n  \"fat_g\": 70,\n  \"effective_from\": \"2026-01-01\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "04 - Valores inválidos",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 400\", function () {",
+                  "        pm.response.to.have.status(400);",
+                  "    });",
+                  "    const body = pm.response.json();",
+                  "    pm.test(\"Formato de error { error: { code, message, fields } }\", function () {",
+                  "        pm.expect(body).to.have.all.keys(\"error\");",
+                  "        pm.expect(body.error).to.have.all.keys(\"code\", \"message\", \"fields\");",
+                  "        pm.expect(body.error.message).to.be.a(\"string\").and.not.empty;",
+                  "        pm.expect(body.error.fields).to.be.an(\"object\");",
+                  "    });",
+                  "    pm.test(\"Código VALIDATION_ERROR\", function () {",
+                  "        pm.expect(body.error.code).to.eql(\"VALIDATION_ERROR\");",
+                  "    });",
+                  "    pm.test(\"Señala calories, protein_g y fat_g\", function () {",
+                  "        pm.expect(body.error.fields).to.have.all.keys(\"calories\", \"protein_g\", \"fat_g\");",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{goals_coach_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/coach/clients/{{goals_client_id}}/goals",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "coach",
+                "clients",
+                "{{goals_client_id}}",
+                "goals"
+              ]
+            },
+            "description": "Texto, negativo y cero: 400 VALIDATION_ERROR con los tres campos señalados.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"calories\": \"mucho\",\n  \"protein_g\": -5,\n  \"fat_g\": 0,\n  \"effective_from\": \"2026-01-01\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "05 - Fecha inválida",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 400\", function () {",
+                  "        pm.response.to.have.status(400);",
+                  "    });",
+                  "    const body = pm.response.json();",
+                  "    pm.test(\"Formato de error { error: { code, message, fields } }\", function () {",
+                  "        pm.expect(body).to.have.all.keys(\"error\");",
+                  "        pm.expect(body.error).to.have.all.keys(\"code\", \"message\", \"fields\");",
+                  "        pm.expect(body.error.message).to.be.a(\"string\").and.not.empty;",
+                  "        pm.expect(body.error.fields).to.be.an(\"object\");",
+                  "    });",
+                  "    pm.test(\"Código VALIDATION_ERROR\", function () {",
+                  "        pm.expect(body.error.code).to.eql(\"VALIDATION_ERROR\");",
+                  "    });",
+                  "    pm.test(\"Señala effective_from\", function () {",
+                  "        pm.expect(body.error.fields).to.have.all.keys(\"effective_from\");",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{goals_coach_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/coach/clients/{{goals_client_id}}/goals",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "coach",
+                "clients",
+                "{{goals_client_id}}",
+                "goals"
+              ]
+            },
+            "description": "Fecha inexistente: 400 VALIDATION_ERROR señalando effective_from.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"calories\": 2200,\n  \"protein_g\": 160,\n  \"fat_g\": 70,\n  \"effective_from\": \"2026-02-30\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "06 - Lista de clientes del coach",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 200\", function () {",
+                  "        pm.response.to.have.status(200);",
+                  "    });",
+                  "    const clients = pm.response.json();",
+                  "    pm.test(\"Incluye al cliente vinculado con id, name y email\", function () {",
+                  "        const client = clients.find((c) => c.id === pm.collectionVariables.get(\"goals_client_id\"));",
+                  "        pm.expect(client).to.have.all.keys(\"id\", \"name\", \"email\");",
+                  "        pm.expect(client.email).to.eql(pm.collectionVariables.get(\"goals_client_email\"));",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{goals_coach_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/coach/clients",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "coach",
+                "clients"
+              ]
+            },
+            "description": "Clientes con vinculación activa; incluye al cliente de la prueba."
+          },
+          "response": []
+        },
+        {
+          "name": "07 - Primera meta",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.collectionVariables.set(\"goals_first_date\", new Date(Date.now() + (-1) * 86400000).toISOString().slice(0, 10));",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 201 Created\", function () {",
+                  "        pm.response.to.have.status(201);",
+                  "    });",
+                  "    const goal = pm.response.json();",
+                  "    pm.test(\"Estructura de la meta\", function () {",
+                  "        pm.expect(goal).to.have.all.keys(\"id\", \"user_id\", \"calories\", \"protein_g\", \"fat_g\", \"source\", \"set_by\", \"effective_from\", \"created_at\");",
+                  "        pm.expect(goal.id).to.match(/^[0-9a-f]{24}$/);",
+                  "    });",
+                  "    pm.test(\"Meta del coach con la fecha de vigencia enviada\", function () {",
+                  "        pm.expect(goal.source).to.eql(\"coach\");",
+                  "        pm.expect(goal.set_by).to.eql(pm.collectionVariables.get(\"goals_coach_id\"));",
+                  "        pm.expect(goal.user_id).to.eql(pm.collectionVariables.get(\"goals_client_id\"));",
+                  "        pm.expect([goal.calories, goal.protein_g, goal.fat_g]).to.eql([2200, 160, 70]);",
+                  "        pm.expect(goal.effective_from.slice(0, 10)).to.eql(pm.collectionVariables.get(\"goals_first_date\"));",
+                  "    });",
+                  "    pm.collectionVariables.set(\"goals_first_goal_id\", goal.id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{goals_coach_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/coach/clients/{{goals_client_id}}/goals",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "coach",
+                "clients",
+                "{{goals_client_id}}",
+                "goals"
+              ]
+            },
+            "description": "Meta con vigencia desde ayer: 201 con source \"coach\" y set_by igual al id del coach.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"calories\": 2200,\n  \"protein_g\": 160,\n  \"fat_g\": 70,\n  \"effective_from\": \"{{goals_first_date}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "08 - Meta vigente del cliente",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 200\", function () {",
+                  "        pm.response.to.have.status(200);",
+                  "    });",
+                  "    const goal = pm.response.json();",
+                  "    pm.test(\"Es la primera meta del coach\", function () {",
+                  "        pm.expect(goal.id).to.eql(pm.collectionVariables.get(\"goals_first_goal_id\"));",
+                  "        pm.expect(goal.source).to.eql(\"coach\");",
+                  "        pm.expect(goal.calories).to.eql(2200);",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{goals_client_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/me/goals/current",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "me",
+                "goals",
+                "current"
+              ]
+            },
+            "description": "El cliente recibe la meta del coach aunque todavía no tenga perfil."
+          },
+          "response": []
+        },
+        {
+          "name": "09 - Segunda meta",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.collectionVariables.set(\"goals_second_date\", new Date(Date.now() + (0) * 86400000).toISOString().slice(0, 10));",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 201 Created\", function () {",
+                  "        pm.response.to.have.status(201);",
+                  "    });",
+                  "    const goal = pm.response.json();",
+                  "    pm.test(\"Estructura de la meta\", function () {",
+                  "        pm.expect(goal).to.have.all.keys(\"id\", \"user_id\", \"calories\", \"protein_g\", \"fat_g\", \"source\", \"set_by\", \"effective_from\", \"created_at\");",
+                  "        pm.expect(goal.id).to.match(/^[0-9a-f]{24}$/);",
+                  "    });",
+                  "    pm.test(\"Meta del coach con calorías 2500\", function () {",
+                  "        pm.expect(goal.source).to.eql(\"coach\");",
+                  "        pm.expect(goal.calories).to.eql(2500);",
+                  "    });",
+                  "    pm.collectionVariables.set(\"goals_second_goal_id\", goal.id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{goals_coach_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/coach/clients/{{goals_client_id}}/goals",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "coach",
+                "clients",
+                "{{goals_client_id}}",
+                "goals"
+              ]
+            },
+            "description": "Meta con vigencia desde hoy: reemplaza a la anterior como vigente.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"calories\": 2500,\n  \"protein_g\": 180,\n  \"fat_g\": 80,\n  \"effective_from\": \"{{goals_second_date}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "10 - Historial del cliente (coach)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 200\", function () {",
+                  "        pm.response.to.have.status(200);",
+                  "    });",
+                  "    const history = pm.response.json();",
+                  "    pm.test(\"Dos metas, la más reciente primero\", function () {",
+                  "        pm.expect(history.map((g) => g.id)).to.eql([",
+                  "            pm.collectionVariables.get(\"goals_second_goal_id\"),",
+                  "            pm.collectionVariables.get(\"goals_first_goal_id\"),",
+                  "        ]);",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{goals_coach_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/coach/clients/{{goals_client_id}}/goals",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "coach",
+                "clients",
+                "{{goals_client_id}}",
+                "goals"
+              ]
+            },
+            "description": "La meta anterior permanece en el historial; la más reciente va primero."
+          },
+          "response": []
+        },
+        {
+          "name": "11 - Meta con vigencia futura",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.collectionVariables.set(\"goals_future_date\", new Date(Date.now() + (2) * 86400000).toISOString().slice(0, 10));",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 201 Created\", function () {",
+                  "        pm.response.to.have.status(201);",
+                  "    });",
+                  "    const goal = pm.response.json();",
+                  "    pm.test(\"Estructura de la meta\", function () {",
+                  "        pm.expect(goal).to.have.all.keys(\"id\", \"user_id\", \"calories\", \"protein_g\", \"fat_g\", \"source\", \"set_by\", \"effective_from\", \"created_at\");",
+                  "        pm.expect(goal.id).to.match(/^[0-9a-f]{24}$/);",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{goals_coach_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/coach/clients/{{goals_client_id}}/goals",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "coach",
+                "clients",
+                "{{goals_client_id}}",
+                "goals"
+              ]
+            },
+            "description": "Una meta con fecha futura se guarda pero todavía no es la vigente.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"calories\": 2800,\n  \"protein_g\": 200,\n  \"fat_g\": 90,\n  \"effective_from\": \"{{goals_future_date}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "12 - La meta vigente ignora la futura",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 200\", function () {",
+                  "        pm.response.to.have.status(200);",
+                  "    });",
+                  "    pm.test(\"Sigue siendo la segunda meta\", function () {",
+                  "        pm.expect(pm.response.json().id).to.eql(pm.collectionVariables.get(\"goals_second_goal_id\"));",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{goals_client_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/me/goals/current",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "me",
+                "goals",
+                "current"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "13 - El cliente registra su perfil",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 201 Created\", function () {",
+                  "        pm.response.to.have.status(201);",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{goals_client_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/me/profile",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "me",
+                "profile"
+              ]
+            },
+            "description": "Registrar el perfil no reemplaza la meta del coach.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"weight_kg\": 80,\n  \"height_cm\": 180,\n  \"birth_date\": \"1990-01-15\",\n  \"gender\": \"male\",\n  \"level\": \"intermediate\",\n  \"training_days\": 4,\n  \"objective\": \"maintain\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "14 - El cliente edita su perfil",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 200\", function () {",
+                  "        pm.response.to.have.status(200);",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{goals_client_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/me/profile",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "me",
+                "profile"
+              ]
+            },
+            "description": "Cambiar peso y objetivo dispararía un recálculo, pero la meta del coach tiene prioridad.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"weight_kg\": 75,\n  \"objective\": \"lose_fat\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "15 - Meta vigente tras editar el perfil",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 200\", function () {",
+                  "        pm.response.to.have.status(200);",
+                  "    });",
+                  "    const goal = pm.response.json();",
+                  "    pm.test(\"Sigue siendo la meta del coach\", function () {",
+                  "        pm.expect(goal.id).to.eql(pm.collectionVariables.get(\"goals_second_goal_id\"));",
+                  "        pm.expect(goal.source).to.eql(\"coach\");",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{goals_client_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/me/goals/current",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "me",
+                "goals",
+                "current"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "16 - Historial del cliente sin metas calculadas",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 200\", function () {",
+                  "        pm.response.to.have.status(200);",
+                  "    });",
+                  "    pm.test(\"Solo metas del coach: el perfil no generó una meta system\", function () {",
+                  "        const history = pm.response.json();",
+                  "        pm.expect(history).to.have.lengthOf(3);",
+                  "        pm.expect(history.every((g) => g.source === \"coach\")).to.eql(true);",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{goals_client_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/me/goals",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "me",
+                "goals"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
     }
   ],
   "variable": [
@@ -701,6 +1957,61 @@
     },
     {
       "key": "goals_goal_current_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "goals_coach_email",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "goals_coach_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "goals_coach_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "goals_client_email",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "goals_client_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "goals_client_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "goals_first_goal_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "goals_second_goal_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "goals_first_date",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "goals_second_date",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "goals_future_date",
       "value": "",
       "type": "string"
     }

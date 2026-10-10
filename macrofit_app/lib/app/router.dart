@@ -9,6 +9,12 @@ import '../features/auth/presentation/login/login_view_model.dart';
 import '../features/auth/presentation/register/register_view.dart';
 import '../features/auth/presentation/register/register_view_model.dart';
 import '../features/auth/presentation/splash/splash_view.dart';
+import '../features/goals/domain/entities/coach_client.dart';
+import '../features/goals/domain/repositories/coach_goals_repository.dart';
+import '../features/goals/presentation/coach_clients/coach_clients_view.dart';
+import '../features/goals/presentation/coach_clients/coach_clients_view_model.dart';
+import '../features/goals/presentation/coach_goal_form/coach_goal_form_view.dart';
+import '../features/goals/presentation/coach_goal_form/coach_goal_form_view_model.dart';
 import '../features/home/presentation/coach_home_view.dart';
 import '../features/home/presentation/home_view_model.dart';
 import '../features/home/presentation/user_home_view.dart';
@@ -89,6 +95,28 @@ GoRouter createRouter(AuthRepository auth) {
           child: const CoachHomeView(),
         ),
       ),
+      GoRoute(
+        path: AppRoutes.coachClients,
+        builder: (context, _) => ChangeNotifierProvider(
+          create: (context) =>
+              CoachClientsViewModel(context.read<CoachGoalsRepository>())
+                ..load(),
+          child: const CoachClientsView(),
+        ),
+      ),
+      GoRoute(
+        path: AppRoutes.coachClientGoalsPattern,
+        // Sin el cliente (p. ej. al restaurar la ruta) se vuelve a la lista.
+        redirect: (_, state) =>
+            state.extra is CoachClient ? null : AppRoutes.coachClients,
+        builder: (context, state) => ChangeNotifierProvider(
+          create: (context) => CoachGoalFormViewModel(
+            repository: context.read<CoachGoalsRepository>(),
+            client: state.extra! as CoachClient,
+          )..load(),
+          child: const CoachGoalFormView(),
+        ),
+      ),
     ],
   );
 }
@@ -127,7 +155,7 @@ String? resolveRedirect(AuthState state, String location) {
               ? null
               : AppRoutes.userHome;
         case Role.coach:
-          return location == AppRoutes.coachHome ? null : AppRoutes.coachHome;
+          return AppRoutes.isCoachRoute(location) ? null : AppRoutes.coachHome;
       }
   }
 }

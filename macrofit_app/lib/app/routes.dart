@@ -18,6 +18,18 @@ abstract final class AppRoutes {
   /// Pantalla principal del rol `coach`.
   static const coachHome = '/coach';
 
+  /// HU-05: clientes vinculados del coach.
+  static const coachClients = '/coach/clients';
+
+  /// HU-05: meta e historial de un cliente.
+  static const coachClientGoalsPattern = '/coach/clients/:clientId/goals';
+  static String coachClientGoals(String clientId) =>
+      '/coach/clients/$clientId/goals';
+
+  /// Pantallas del rol `coach`: su principal y las que cuelgan de ella.
+  static bool isCoachRoute(String location) =>
+      location == coachHome || location.startsWith('$coachHome/');
+
   /// Rutas visibles sin sesión.
   static const public = {login, register, privacyNotice};
 

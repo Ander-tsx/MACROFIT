@@ -11,8 +11,8 @@ abstract final class ApiErrorCode {
   static const unauthorized = 'UNAUTHORIZED';
   static const invalidRefreshToken = 'INVALID_REFRESH_TOKEN';
   static const tokenRevoked = 'TOKEN_REVOKED';
-  static const forbidden = 'FORBIDDEN';
   static const forbiddenRole = 'FORBIDDEN_ROLE';
+  static const clientNotLinked = 'CLIENT_NOT_LINKED';
   static const profileNotFound = 'PROFILE_NOT_FOUND';
   static const profileAlreadyExists = 'PROFILE_ALREADY_EXISTS';
 

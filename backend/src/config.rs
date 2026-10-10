@@ -4,6 +4,8 @@ pub struct Config {
     pub mongo_uri: String,
     pub db_name: String,
     pub port: u16,
+    /// `APP_ENV=development`: habilita las rutas de datos de prueba (`/dev`).
+    pub dev_mode: bool,
     pub tokens: TokenConfig,
 }
 
@@ -24,6 +26,7 @@ impl Config {
             mongo_uri: required("MONGO_URI"),
             db_name: required("DB_NAME"),
             port: optional("PORT", 3000),
+            dev_mode: optional("APP_ENV", String::new()) == "development",
             tokens: TokenConfig {
                 jwt_secret: required("JWT_SECRET"),
                 access_ttl: chrono::Duration::minutes(optional("ACCESS_TOKEN_MINUTES", 15)),

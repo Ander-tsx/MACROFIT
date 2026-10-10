@@ -1,7 +1,10 @@
-use mongodb::{Client, Database, IndexModel, bson::doc, options::IndexOptions};
+use mongodb::{Client, Cursor, Database, IndexModel, bson::doc, options::IndexOptions};
+use serde::de::DeserializeOwned;
 
 use std::time::Duration;
 
+use crate::error::AppError;
+use crate::models::coach_link::{COACH_LINKS_COLLECTION, CoachLink};
 use crate::models::goal::{GOALS_COLLECTION, NutritionalGoal};
 use crate::models::profile::{PROFILES_COLLECTION, UserProfile};
 use crate::models::refresh_token::{REFRESH_TOKENS_COLLECTION, RefreshToken};
@@ -24,6 +27,17 @@ pub async fn connect(mongo_uri: &str, db_name: &str) -> Database {
     let db = client.database(db_name);
     ensure_indexes(&db).await;
     db
+}
+
+/// Lee un cursor completo en un `Vec`.
+pub async fn collect_cursor<T: DeserializeOwned>(
+    mut cursor: Cursor<T>,
+) -> Result<Vec<T>, AppError> {
+    let mut items = Vec::new();
+    while cursor.advance().await.map_err(AppError::internal)? {
+        items.push(cursor.deserialize_current().map_err(AppError::internal)?);
+    }
+    Ok(items)
 }
 
 /// Crea los índices de todas las colecciones. `create_index` es idempotente.
@@ -106,4 +120,19 @@ async fn ensure_indexes(db: &Database) {
         .create_index(profile_user_unique)
         .await
         .expect("No se pudo crear el índice único de profiles.user_id (¿hay perfiles duplicados?)");
+
+    // HU-05: una sola vinculación por par coach-cliente.
+    let link_pair_unique = IndexModel::builder()
+        .keys(doc! { "coach_id": 1, "user_id": 1 })
+        .options(
+            IndexOptions::builder()
+                .unique(true)
+                .name("coach_id_user_id_unique".to_string())
+                .build(),
+        )
+        .build();
+    db.collection::<CoachLink>(COACH_LINKS_COLLECTION)
+        .create_index(link_pair_unique)
+        .await
+        .expect("No se pudo crear el índice único de coach_links");
 }
