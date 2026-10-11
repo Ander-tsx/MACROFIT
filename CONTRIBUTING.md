@@ -63,10 +63,15 @@ Ejemplos: `feat(auth): registro con selección de rol`, `fix(nutricion): redonde
 - Se usa la plantilla (`.github/pull_request_template.md`); el título sigue Conventional Commits.
 - **Al menos una aprobación** de otra persona del equipo antes del merge.
 - La CI (formato, análisis y pruebas) tiene que pasar.
+- **Formato automático**: si en un PR hay archivos de `macrofit_app` sin `dart format`, la CI los formatea, sube un
+  commit `style(app): aplicar dart format` a tu rama y vuelve a correr sobre él. Haz `git pull` antes de seguir
+  trabajando en esa rama. En `main`/`develop` y en PRs desde forks no se corrige solo: ahí el formato incorrecto falla.
 - Merge con **squash** hacia `develop`; merge commit normal en `release/*` → `main`.
 - Quien abre el PR lo mergea y borra la rama.
 
 ## Antes de subir
+
+Formatear en local sigue siendo lo recomendado (evita el commit extra de la CI):
 
 ```bash
 cd macrofit_app
@@ -74,6 +79,17 @@ dart format lib test
 flutter analyze
 flutter test
 ```
+
+Si tocaste el backend (ver [backend/README.md](backend/README.md#-forma-de-trabajo)):
+
+```bash
+cd backend
+cargo fmt --check
+cargo clippy --all-targets -- -D warnings
+cargo test
+```
+
+y, si cambiaste pruebas de Postman, `node postman/build.js` para regenerar la colección combinada; esa colección debe pasar sin fallos en el Collection Runner.
 
 ## Configuración recomendada del repositorio en GitHub
 

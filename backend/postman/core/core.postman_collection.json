@@ -1,0 +1,55 @@
+{
+  "info": {
+    "_postman_id": "5e1d7c2a-0b4f-4c3e-8a6d-1f2e3c4b0001",
+    "name": "MacroFit · Core",
+    "description": "Rutas generales del servicio (src/routes/mod.rs).",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Servicio",
+      "description": "Estado del servidor (TEC-05).",
+      "item": [
+        {
+          "name": "Health check",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 200\", function () {",
+                  "        pm.response.to.have.status(200);",
+                  "    });",
+                  "    pm.test(\"Responde 'API MacroFit OK'\", function () {",
+                  "        pm.expect(pm.response.text()).to.include(\"API MacroFit OK\");",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/health",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "health"
+              ]
+            },
+            "description": "Verifica que el servidor esté activo."
+          },
+          "response": []
+        }
+      ]
+    }
+  ],
+  "variable": []
+}
