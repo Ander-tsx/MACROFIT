@@ -67,7 +67,7 @@ main.rs ─▶ routes/ ─▶ services/ ─▶ models/
 8. Hash/verificación de contraseñas dentro de **`tokio::task::spawn_blocking`**.
 9. Unicidad garantizada por **índice único** en `db.rs`; traduce el error de clave duplicada (`11000`) al `AppError` correspondiente.
 10. Roles en minúsculas: `"user"` / `"coach"` (`models::user::Role`).
-11. Rutas protegidas: argumento `AuthenticatedUser` (cualquier sesión), `CoachOnly` (solo coach, 403 `FORBIDDEN`) o `UserOnly`
+11. Rutas protegidas: argumento `AuthenticatedUser` (cualquier sesión), `CoachOnly` (solo coach, 403 `FORBIDDEN_ROLE`) o `UserOnly`
     (solo usuario, 403 `FORBIDDEN_ROLE`). No reimplementes la verificación del token.
 12. Secretos y duraciones desde `state.tokens` (`TokenConfig`); `std::env::var` solo en `config.rs`.
 13. Errores inesperados con `AppError::internal(err)`: el detalle va al log, el cliente recibe `INTERNAL_ERROR`.
