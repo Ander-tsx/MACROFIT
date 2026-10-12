@@ -2,7 +2,7 @@
 
 API REST de MacroFit: autenticación, persistencia en MongoDB y reglas de acceso por rol (`user` y `coach`).
 Historias cubiertas: **TEC-05** (base), **TEC-07** (aviso de privacidad), **HU-01** (registro con rol), **HU-02** (inicio y cierre de sesión)
-y **HU-03** (perfil inicial del usuario).
+**HU-03** (perfil inicial del usuario) y **TEC-13** (almacenamiento de fotos de comidas).
 
 > **Si eres una persona o una sesión de IA que va a modificar este backend, lee primero
 > la sección [Forma de trabajo](#-forma-de-trabajo) y el README de la carpeta que vas a tocar.**
@@ -21,6 +21,7 @@ y **HU-03** (perfil inicial del usuario).
 | `jsonwebtoken` | Access tokens JWT de corta duración |
 | `sha2` + `rand` | Refresh tokens opacos (solo se guarda su SHA-256) |
 | `dotenvy` | Variables de entorno desde `.env` |
+| GridFS (driver de MongoDB) + `futures-util` | Almacenamiento de fotos de comidas (TEC-13) |
 
 ## 📋 Requisitos
 
@@ -59,7 +60,7 @@ Conectando y verificando cluster de MongoDB...
 Servidor MacroFit corriendo en http://0.0.0.0:3000/api/v1
 ```
 
-Al arrancar se crean los índices (`users.email` único, los de `refresh_tokens` y `profiles.user_id` único). Si la colección `users` ya tenía correos repetidos,
+Al arrancar se crean los índices (`users.email` único, los de `refresh_tokens`, `profiles.user_id` único, `goals`, `coach_links` y los del bucket de fotos `meal_photos`). Si la colección `users` ya tenía correos repetidos,
 el arranque falla con un mensaje que lo indica: limpia esos documentos primero.
 
 ## ✅ Comprobaciones antes de subir
@@ -374,8 +375,11 @@ Todas las respuestas de error tienen la misma forma. `fields` siempre es un obje
 | `FORBIDDEN_ROLE` | 403 | La función es exclusiva de otro rol (p. ej. el perfil, solo para `user`; las metas por coach, solo para `coach`) |
 | `CLIENT_NOT_LINKED` | 403 | El coach no tiene una vinculación activa con el cliente |
 | `PROFILE_NOT_FOUND` | 404 | El usuario aún no tiene perfil |
+| `PHOTO_NOT_FOUND` | 404 | La foto no existe o la cuenta no puede verla (no se distingue) |
 | `EMAIL_ALREADY_EXISTS` | 409 | El correo ya está registrado |
 | `PROFILE_ALREADY_EXISTS` | 409 | El usuario ya tiene un perfil (se edita con `PATCH`) |
+| `PHOTO_TOO_LARGE` | 413 | La foto supera 5 MB |
+| `UNSUPPORTED_PHOTO_TYPE` | 415 | La foto no es JPEG ni PNG (se revisa el contenido) |
 | `INTERNAL_ERROR` | 500 | Error inesperado (el detalle solo va al log del servidor) |
 
 ---
@@ -383,6 +387,17 @@ Todas las respuestas de error tienen la misma forma. `fields` siempre es un obje
 ## 🗄️ Base de datos
 
 Ver [src/models/README.md](src/models/README.md) para el esquema de cada colección.
+
+### Fotos de comidas (TEC-13)
+
+Se guardan en **GridFS**, en la misma base (`meal_photos.files` y `meal_photos.chunks`), así que **no requieren
+variables de entorno ni servicios nuevos**. Solo JPEG y PNG (detectados por contenido) y máximo 5 MB. Las lee su dueño
+o su coach con vinculación activa; solo el dueño las elimina. Decisión y reglas en
+[src/services/README.md](src/services/README.md#fotos-de-comidas-tec-13).
+
+```js
+db.meal_photos.files.find({}, { length: 1, metadata: 1, uploadDate: 1 }).sort({ uploadDate: -1 }).limit(3)
+```
 
 Evidencia de que la contraseña se guarda solo como hash (`mongosh`):
 
