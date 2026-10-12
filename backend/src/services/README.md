@@ -24,7 +24,7 @@ Un archivo por dominio (`auth.rs`, y después `profile.rs`, `goals.rs`, ...). Aq
 | `session.rs` | HU-02: `start` (login), `refresh` (rotación atómica + detección de reuso), `logout`, `is_active` |
 | `coach_links.rs` | HU-05: `require_active_link` (guarda de acceso a un cliente), `list_clients`, `seed_link` (solo desarrollo). TEC-13: `has_active_link` |
 | `goals.rs` | HU-04: cálculo Mifflin-St Jeor (puro), `get_current_goal`, `get_goals_history`, `recalculate_on_profile_change`. HU-05: `validate_coach_goal` (pura), `set_client_goal`, `get_client_goals`; `find_current_goal` decide la meta vigente |
-| `photos.rs` | TEC-13: `validate_photo` / `detect_format` (puras), `save_photo`, `read_photo` (dueño o coach vinculado), `delete_photo` (solo el dueño); almacenamiento en GridFS |
+| `photos.rs` | TEC-13: `validate_photo` / `detect_format` (puras), `save_photo`, HU-06: `validate_upload` (pura) y `upload_photo`, `read_photo` (dueño o coach vinculado), `delete_photo` (solo el dueño); almacenamiento en GridFS |
 | `profile.rs` | HU-03: `validate_new_profile` / `validate_profile_changes` (puras), `create_profile` (marca `profile_completed`), `get_profile`, `update_profile`; rangos provisionales (TEC-12) |
 
 ### Aviso de privacidad en el registro
@@ -66,8 +66,10 @@ usa `save_photo` / `read_photo` / `delete_photo` y el id de la foto.
 - **Lectura:** el dueño o un coach con vinculación `active` con el dueño (`coach_links::has_active_link`). Cualquier otra
   cuenta, un id inexistente o mal formado reciben lo mismo, `404 PHOTO_NOT_FOUND`, para no revelar que la foto existe.
 - **Eliminación:** solo el dueño; borra el documento de `meal_photos.files` y todos sus trozos. Un coach vinculado no puede.
-- **Para HU-06:** Axum limita los cuerpos a 2 MB por defecto; la ruta de subida tiene que subir ese límite por encima de
-  `MAX_PHOTO_BYTES` (`DefaultBodyLimit::max`) para poder responder 413 con el formato de la API.
+- **Subida (HU-06):** `upload_photo` valida con `validate_upload` (sin archivo o vacío → `400 VALIDATION_ERROR` en
+  `photo`; después tamaño y tipo) y guarda con `save_photo`. La ruta `POST /meals/photos` sube el límite de cuerpo de
+  Axum (2 MB por defecto) a `MAX_PHOTO_BYTES` + 1 MiB y guarda como máximo `MAX_PHOTO_BYTES + 1` bytes del archivo,
+  suficiente para que el servicio responda 413 sin tener el archivo completo en memoria.
 - **Pruebas:** las puras corren con `cargo test`; las de MongoDB real (guardar, leer, permisos, borrado de trozos, índices)
   con `cargo test -- --ignored` contra un Mongo sin autenticación (`TEST_MONGO_URI`, por defecto `mongodb://localhost:27017`).
   Cada prueba crea y borra su propia base `macrofit_test_<id>`.

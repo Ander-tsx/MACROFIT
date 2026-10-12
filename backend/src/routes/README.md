@@ -8,6 +8,10 @@ bajo `/api/v1` en `api_router()`.
 - **Handlers delgados**: extraen datos, llaman a un servicio y convierten el resultado a un DTO de respuesta.
   Nada de consultas a Mongo ni reglas de negocio aquí.
 - **Firma**: `async fn x_handler(...) -> Result<..., AppError>`.
+- **Subida de archivos** (`multipart/form-data`): extraer `Result<Multipart, MultipartRejection>` como último argumento
+  y convertir el rechazo a `AppError::InvalidBody`. Si el archivo puede pasar de 2 MB, subir el límite **solo en esa ruta**
+  con `.layer(DefaultBodyLimit::max(..))`; un `MultipartError` con estado 413 se traduce al error de tamaño del dominio
+  (ver `meals.rs`).
 - **Cuerpo JSON**: usar `ApiJson<T>` (de `crate::error`), nunca `axum::Json` como extractor.
   `axum::Json` sí se usa para *responder*.
 - **DTOs de entrada** (`XxxRequest`): todos los campos `Option<T>` para poder señalar campo por campo lo que falta.
@@ -28,4 +32,5 @@ bajo `/api/v1` en `api_router()`.
 | `auth.rs` | `/auth/register` (HU-01), `/auth/login`, `/auth/refresh`, `/auth/logout`, `/auth/me` (HU-02), `/coach/test` (TEC-05) |
 | `goals.rs` | `/users/me/goals` y `/users/me/goals/current` (HU-04, `UserOnly`); `/coach/clients` y `/coach/clients/{clientId}/goals` (HU-05, `CoachOnly`) |
 | `dev.rs` | `/dev/seed/coach-links` (HU-05): solo se monta con `APP_ENV=development` |
+| `meals.rs` | `/meals/photos` POST (HU-06, `UserOnly`): multipart con el campo `photo`, límite de cuerpo propio (`DefaultBodyLimit`) |
 | `profile.rs` | `/users/me/profile` POST/GET/PATCH (HU-03), solo rol `user` (`UserOnly`) |

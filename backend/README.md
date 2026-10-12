@@ -2,7 +2,7 @@
 
 API REST de MacroFit: autenticación, persistencia en MongoDB y reglas de acceso por rol (`user` y `coach`).
 Historias cubiertas: **TEC-05** (base), **TEC-07** (aviso de privacidad), **HU-01** (registro con rol), **HU-02** (inicio y cierre de sesión)
-**HU-03** (perfil inicial del usuario) y **TEC-13** (almacenamiento de fotos de comidas).
+**HU-03** (perfil inicial del usuario), **HU-04** y **HU-05** (metas), **TEC-13** (almacenamiento de fotos de comidas) y **HU-06** (carga de la foto de comida).
 
 > **Si eres una persona o una sesión de IA que va a modificar este backend, lee primero
 > la sección [Forma de trabajo](#-forma-de-trabajo) y el README de la carpeta que vas a tocar.**
@@ -156,6 +156,7 @@ URL base: `http://localhost:3000/api/v1`
 | GET | `/coach/clients` | Bearer (coach) | HU-05 | Clientes con vinculación activa |
 | GET | `/coach/clients/{clientId}/goals` | Bearer (coach) | HU-05 | Historial de metas de un cliente vinculado |
 | POST | `/coach/clients/{clientId}/goals` | Bearer (coach) | HU-05 | Fija una meta para un cliente vinculado |
+| POST | `/meals/photos` | Bearer (user) | HU-06 | Sube la foto de una comida (multipart, campo `photo`) |
 | POST | `/dev/seed/coach-links` | — (solo `APP_ENV=development`) | HU-05 | Vincula un coach con un usuario de prueba |
 | GET | `/coach/test` | Bearer (coach) | TEC-05 | Prueba de la regla de acceso por rol |
 
@@ -332,6 +333,36 @@ Un cliente sin perfil recibe la meta del coach en `GET /users/me/goals/current`.
 
 **GET `/coach/clients`** → `200` con `[{ "id", "name", "email" }]` de los clientes vinculados, por nombre.
 
+### POST `/meals/photos` (HU-06)
+
+Cabecera `Authorization: Bearer <access_token>`. **Solo rol `user`** (`403 FORBIDDEN_ROLE` para un coach).
+Cuerpo `multipart/form-data` con el archivo en el campo **`photo`**; los demás campos se ignoran y, si hay varios
+`photo`, se toma el primero. Reglas de TEC-13: solo **JPEG o PNG** (se revisa el contenido, no la extensión ni el
+`Content-Type`) y como máximo **5 MiB**; el tamaño se revisa antes que el tipo.
+
+```bash
+curl -X POST http://localhost:3000/api/v1/meals/photos   -H "Authorization: Bearer <access_token>"   -F "photo=@comida.jpg"
+```
+
+**201 Created** — la foto queda en GridFS a nombre del usuario de la sesión:
+
+```json
+{ "id": "6acd4140ac968514f27322cd", "format": "jpeg", "size_bytes": 134 }
+```
+
+| Caso | Respuesta |
+|---|---|
+| Sin campo `photo` o archivo vacío | `400 VALIDATION_ERROR` con `fields.photo` |
+| El cuerpo no es `multipart/form-data` válido | `400 INVALID_BODY` |
+| Sin sesión / token inválido | `401 UNAUTHORIZED` |
+| Cuenta de coach | `403 FORBIDDEN_ROLE` |
+| Más de 5 MiB | `413 PHOTO_TOO_LARGE` |
+| No es JPEG ni PNG | `415 UNSUPPORTED_PHOTO_TYPE` |
+
+El límite de cuerpo de esta ruta es 6 MiB (5 MiB de foto + 1 MiB de margen para el multipart); un cuerpo mayor también
+responde `413 PHOTO_TOO_LARGE` con el formato de la API. El `id` es el que usarán HU-07 (estimación) y HU-09 (registro).
+<!-- TODO(TEC-14): documentar este endpoint en la especificación OpenAPI cuando exista. -->
+
 ### POST `/dev/seed/coach-links` (HU-05)
 
 Solo existe con `APP_ENV=development`; en cualquier otro ambiente la ruta no se monta (`404`). Sin autenticación.
@@ -378,7 +409,7 @@ Todas las respuestas de error tienen la misma forma. `fields` siempre es un obje
 | `PHOTO_NOT_FOUND` | 404 | La foto no existe o la cuenta no puede verla (no se distingue) |
 | `EMAIL_ALREADY_EXISTS` | 409 | El correo ya está registrado |
 | `PROFILE_ALREADY_EXISTS` | 409 | El usuario ya tiene un perfil (se edita con `PATCH`) |
-| `PHOTO_TOO_LARGE` | 413 | La foto supera 5 MB |
+| `PHOTO_TOO_LARGE` | 413 | La foto supera 5 MiB (o el cuerpo de la subida supera el límite de la ruta) |
 | `UNSUPPORTED_PHOTO_TYPE` | 415 | La foto no es JPEG ni PNG (se revisa el contenido) |
 | `INTERNAL_ERROR` | 500 | Error inesperado (el detalle solo va al log del servidor) |
 
@@ -390,7 +421,7 @@ Ver [src/models/README.md](src/models/README.md) para el esquema de cada colecci
 
 ### Fotos de comidas (TEC-13)
 
-Se guardan en **GridFS**, en la misma base (`meal_photos.files` y `meal_photos.chunks`), así que **no requieren
+Se suben con `POST /meals/photos` (HU-06) y se guardan en **GridFS**, en la misma base (`meal_photos.files` y `meal_photos.chunks`), así que **no requieren
 variables de entorno ni servicios nuevos**. Solo JPEG y PNG (detectados por contenido) y máximo 5 MB. Las lee su dueño
 o su coach con vinculación activa; solo el dueño las elimina. Decisión y reglas en
 [src/services/README.md](src/services/README.md#fotos-de-comidas-tec-13).

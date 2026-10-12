@@ -6,6 +6,7 @@ pub mod auth;
 pub mod dev;
 pub mod goals;
 pub mod legal;
+pub mod meals;
 pub mod profile;
 
 /// Prefijo común de la API. Una versión nueva incompatible se monta en `/api/v2`.
@@ -18,7 +19,8 @@ pub fn api_router(dev_mode: bool) -> Router<AppState> {
         .merge(auth::router())
         .merge(legal::router())
         .merge(profile::router())
-        .merge(goals::router());
+        .merge(goals::router())
+        .merge(meals::router());
     if dev_mode {
         v1 = v1.merge(dev::router());
     }

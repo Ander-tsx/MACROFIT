@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-axum = { version = "0.7", features = ["macros"] }
+axum = { version = "0.7", features = ["macros", "multipart"] } # multipart: subida de fotos (HU-06)
 tokio = { version = "1.0", features = ["full"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
@@ -17,3 +17,6 @@ dotenvy = "0.15" # Manejo de archivo .env
 tower-http = { version = "0.5", features = ["cors", "trace"] } # CORS
 chrono = { version = "0.4", features = ["serde"] }
 futures-util = { version = "0.3", features = ["io"] } # Escribir y leer los streams de GridFS (fotos)
+
+[dev-dependencies]
+tower = { version = "0.5", features = ["util"] } # `oneshot` para probar rutas sin levantar el servidor
