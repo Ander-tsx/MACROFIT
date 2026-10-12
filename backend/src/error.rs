@@ -23,6 +23,16 @@ pub enum AppError {
     InvalidBody(String),
     /// 400 — no se aceptó el aviso de privacidad (y el resto de campos es válido).
     PrivacyNotAccepted,
+    /// 404 — la foto no existe o la cuenta no tiene permiso para verla (no se distingue).
+    // TODO(HU-06): quitar los `allow` de las tres variantes de fotos cuando las use una ruta.
+    #[allow(dead_code)]
+    PhotoNotFound,
+    /// 413 — la foto supera `services::photos::MAX_PHOTO_BYTES`.
+    #[allow(dead_code)]
+    PhotoTooLarge,
+    /// 415 — el archivo no es JPEG ni PNG (se revisa el contenido, no la extensión).
+    #[allow(dead_code)]
+    UnsupportedPhotoType,
     /// 409 — ya existe una cuenta con ese correo.
     EmailAlreadyExists,
     /// 401 — correo o contraseña incorrectos.
@@ -124,6 +134,24 @@ impl IntoResponse for AppError {
                 StatusCode::NOT_FOUND,
                 "PROFILE_NOT_FOUND",
                 "Todavía no has capturado tu perfil".to_string(),
+                FieldErrors::new(),
+            ),
+            Self::PhotoNotFound => (
+                StatusCode::NOT_FOUND,
+                "PHOTO_NOT_FOUND",
+                "La foto no existe".to_string(),
+                FieldErrors::new(),
+            ),
+            Self::PhotoTooLarge => (
+                StatusCode::PAYLOAD_TOO_LARGE,
+                "PHOTO_TOO_LARGE",
+                "La foto supera el tamaño máximo de 5 MB".to_string(),
+                FieldErrors::new(),
+            ),
+            Self::UnsupportedPhotoType => (
+                StatusCode::UNSUPPORTED_MEDIA_TYPE,
+                "UNSUPPORTED_PHOTO_TYPE",
+                "La foto debe ser JPEG o PNG".to_string(),
                 FieldErrors::new(),
             ),
             Self::ProfileAlreadyExists => (

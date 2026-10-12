@@ -98,3 +98,25 @@ crearán y la cerrarán desde la app.
 | `created_at` | ISODate | |
 
 **Índices:** `coach_id_user_id_unique` → `{ coach_id: 1, user_id: 1 }`, único.
+
+## Bucket de GridFS `meal_photos` (`meal_photo.rs`)
+
+Fotos de comidas (TEC-13). GridFS las guarda en dos colecciones; el driver las escribe y el servicio `services/photos.rs`
+es el único que las usa. El contenido no se guarda nunca en otra colección: los registros de comida (HU-09) guardan solo el id.
+
+**`meal_photos.files`** — un documento por foto:
+
+| Campo | Tipo | Notas |
+|---|---|---|
+| `_id` | ObjectId | Id de la foto que guardan los registros de comida |
+| `filename` | string | El mismo id en hex (GridFS exige un nombre) |
+| `length` | int | Tamaño en bytes (máx. 5 MiB) |
+| `chunkSize` | int | 255 KiB (valor por defecto de GridFS) |
+| `uploadDate` | ISODate | |
+| `metadata.owner_id` | ObjectId | Dueño (`users._id`). Define quién puede leerla y eliminarla |
+| `metadata.format` | `"jpeg"` | `"png"` | Detectado por contenido al guardar |
+
+**`meal_photos.chunks`** — el contenido en trozos: `files_id` (→ `meal_photos.files._id`), `n` (orden) y `data` (binario).
+
+**Índices:** `filename_1_uploadDate_1` en `files` y `files_id_1_n_1` (único) en `chunks`, los estándar de GridFS con su
+nombre automático; y `metadata_owner_id` → `{ "metadata.owner_id": 1 }` en `files`, para las fotos de un usuario.

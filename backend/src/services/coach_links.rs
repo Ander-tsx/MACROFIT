@@ -33,6 +33,19 @@ pub async fn require_active_link(
         .ok_or(AppError::ClientNotLinked)
 }
 
+/// `true` si existe una vinculación activa entre el coach y el usuario (TEC-13: acceso a las fotos).
+pub async fn has_active_link(
+    db: &Database,
+    coach_id: ObjectId,
+    user_id: ObjectId,
+) -> Result<bool, AppError> {
+    let link = links(db)
+        .find_one(doc! { "coach_id": coach_id, "user_id": user_id, "status": "active" })
+        .await
+        .map_err(AppError::internal)?;
+    Ok(link.is_some())
+}
+
 /// Clientes con vinculación activa, ordenados por nombre.
 pub async fn list_clients(db: &Database, coach_id: ObjectId) -> Result<Vec<User>, AppError> {
     let cursor = links(db)

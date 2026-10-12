@@ -1,4 +1,8 @@
-use mongodb::{Client, Cursor, Database, IndexModel, bson::doc, options::IndexOptions};
+use mongodb::{
+    Client, Cursor, Database, IndexModel,
+    bson::{Document, doc},
+    options::IndexOptions,
+};
 use serde::de::DeserializeOwned;
 
 use std::time::Duration;
@@ -6,6 +10,7 @@ use std::time::Duration;
 use crate::error::AppError;
 use crate::models::coach_link::{COACH_LINKS_COLLECTION, CoachLink};
 use crate::models::goal::{GOALS_COLLECTION, NutritionalGoal};
+use crate::models::meal_photo::{MEAL_PHOTOS_CHUNKS_COLLECTION, MEAL_PHOTOS_FILES_COLLECTION};
 use crate::models::profile::{PROFILES_COLLECTION, UserProfile};
 use crate::models::refresh_token::{REFRESH_TOKENS_COLLECTION, RefreshToken};
 use crate::models::user::{USERS_COLLECTION, User};
@@ -135,4 +140,36 @@ async fn ensure_indexes(db: &Database) {
         .create_index(link_pair_unique)
         .await
         .expect("No se pudo crear el índice único de coach_links");
+
+    // TEC-13: bucket de GridFS de las fotos de comidas. Los dos primeros son los índices estándar de GridFS
+    // (mismas claves y nombre automático que crearía el driver en la primera subida, así que no chocan);
+    // el de `chunks` es único como pide la especificación de GridFS.
+    let photo_files = db.collection::<Document>(MEAL_PHOTOS_FILES_COLLECTION);
+    let photo_files_indexes = [
+        IndexModel::builder()
+            .keys(doc! { "filename": 1, "uploadDate": 1 })
+            .build(),
+        // Fotos de un usuario (p. ej. para borrar todas las de una cuenta).
+        IndexModel::builder()
+            .keys(doc! { "metadata.owner_id": 1 })
+            .options(
+                IndexOptions::builder()
+                    .name("metadata_owner_id".to_string())
+                    .build(),
+            )
+            .build(),
+    ];
+    photo_files
+        .create_indexes(photo_files_indexes)
+        .await
+        .expect("No se pudieron crear los índices de meal_photos.files");
+
+    let photo_chunks_unique = IndexModel::builder()
+        .keys(doc! { "files_id": 1, "n": 1 })
+        .options(IndexOptions::builder().unique(true).build())
+        .build();
+    db.collection::<Document>(MEAL_PHOTOS_CHUNKS_COLLECTION)
+        .create_index(photo_chunks_unique)
+        .await
+        .expect("No se pudo crear el índice único de meal_photos.chunks");
 }

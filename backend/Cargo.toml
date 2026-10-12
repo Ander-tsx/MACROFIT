@@ -16,3 +16,4 @@ rand = "0.8" # Generación de refresh tokens aleatorios
 dotenvy = "0.15" # Manejo de archivo .env
 tower-http = { version = "0.5", features = ["cors", "trace"] } # CORS
 chrono = { version = "0.4", features = ["serde"] }
+futures-util = { version = "0.3", features = ["io"] } # Escribir y leer los streams de GridFS (fotos)
