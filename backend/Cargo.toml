@@ -1,0 +1,18 @@
+[package]
+name = "backend"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+axum = { version = "0.7", features = ["macros"] }
+tokio = { version = "1.0", features = ["full"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+mongodb = "3.1" # Conector oficial de MongoDB
+jsonwebtoken = "9.3" # Manejo de tokens JWT
+argon2 = { version = "0.5", features = ["std"] } # Hash de contraseñas (Argon2id)
+sha2 = "0.10" # SHA-256 de los refresh tokens
+rand = "0.8" # Generación de refresh tokens aleatorios
+dotenvy = "0.15" # Manejo de archivo .env
+tower-http = { version = "0.5", features = ["cors", "trace"] } # CORS
+chrono = { version = "0.4", features = ["serde"] }

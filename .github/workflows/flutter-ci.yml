@@ -5,10 +5,17 @@ on:
     branches: [main, develop]
   push:
     branches: [main, develop]
+  # Lo usa la propia CI para volver a correr sobre el commit de formato que sube al PR
+  # (los pushes hechos con GITHUB_TOKEN no disparan workflows por sí solos).
+  workflow_dispatch:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
+
+permissions:
+  contents: write # subir el commit de formato a la rama del PR
+  actions: write # relanzar este workflow sobre ese commit
 
 jobs:
   check:
@@ -17,8 +24,15 @@ jobs:
     defaults:
       run:
         working-directory: macrofit_app
+    env:
+      # Solo se corrige automáticamente en PRs cuya rama vive en este repositorio.
+      # En main/develop y en PRs desde forks, el formato incorrecto sigue fallando.
+      AUTOFORMAT: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          # En un PR se trabaja sobre la rama real (no el merge commit) para poder subir el formato.
+          ref: ${{ github.head_ref || github.ref }}
 
       - uses: subosito/flutter-action@v2
         with:
@@ -29,8 +43,36 @@ jobs:
       - name: Instalar dependencias
         run: flutter pub get
 
+      - name: Aplicar formato
+        id: format
+        run: |
+          dart format lib test
+          if git diff --quiet -- lib test; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            git diff --stat -- lib test
+          fi
+
+      - name: Subir formato a la rama del PR
+        if: steps.format.outputs.changed == 'true' && env.AUTOFORMAT == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BRANCH: ${{ github.head_ref }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add lib test
+          git commit -m "style(app): aplicar dart format"
+          git push origin "HEAD:$BRANCH"
+          gh workflow run flutter-ci.yml --ref "$BRANCH"
+          echo "::notice::Se aplicó dart format y se subió un commit a $BRANCH. Haz git pull antes de seguir trabajando."
+
       - name: Comprobar formato
-        run: dart format --output=none --set-exit-if-changed lib test
+        if: steps.format.outputs.changed == 'true' && env.AUTOFORMAT != 'true'
+        run: |
+          echo "::error::Hay archivos sin formato. Ejecuta 'dart format lib test' en macrofit_app y sube los cambios."
+          exit 1
 
       - name: Análisis estático
         run: flutter analyze
