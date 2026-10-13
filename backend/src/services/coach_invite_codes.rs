@@ -27,7 +27,7 @@ pub fn generate_code() -> String {
 }
 
 /// `true` si el error es de clave duplicada (11000), venga de un write o de un command.
-fn is_duplicate_key(e: &mongodb::error::Error) -> bool {
+pub(crate) fn is_duplicate_key(e: &mongodb::error::Error) -> bool {
     match &*e.kind {
         ErrorKind::Write(WriteFailure::WriteError(we)) => we.code == MONGO_DUPLICATE_KEY,
         ErrorKind::Command(ce) => ce.code == MONGO_DUPLICATE_KEY,

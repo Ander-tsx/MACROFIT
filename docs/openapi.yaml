@@ -13,7 +13,8 @@ tags:
     description: Operaciones exclusivas del rol user.
   - name: Ejercicios
     description: Catálogo base de ejercicios para rutinas y recomendaciones (TEC-09).
-
+  - name: Vinculaciones
+    description: Vinculación entre un usuario y su coach.
 paths:
   /users/me/weights:
     post:
@@ -42,9 +43,9 @@ paths:
         "400":
           $ref: "#/components/responses/ValidationError"
         "401":
-          $ref: "#/components/responses/UnauthorizedError"
+          $ref: "#/components/responses/Unauthorized"
         "403":
-          $ref: "#/components/responses/ForbiddenRoleUser"
+          $ref: "#/components/responses/ForbiddenUserOnly"
     get:
       tags: [Usuario]
       summary: Historial de peso del usuario (HU-21)
@@ -62,9 +63,9 @@ paths:
                 items:
                   $ref: "#/components/schemas/WeightResponse"
         "401":
-          $ref: "#/components/responses/UnauthorizedError"
+          $ref: "#/components/responses/Unauthorized"
         "403":
-          $ref: "#/components/responses/ForbiddenRoleUser"
+          $ref: "#/components/responses/ForbiddenUserOnly"
 
   /coach/invite-code:
     get:
@@ -86,7 +87,7 @@ paths:
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
-          $ref: "#/components/responses/Forbidden"
+          $ref: "#/components/responses/ForbiddenCoachOnly"
 
   /coach/invite-code/regenerate:
     post:
@@ -108,7 +109,43 @@ paths:
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
-          $ref: "#/components/responses/Forbidden"
+          $ref: "#/components/responses/ForbiddenCoachOnly"
+
+  /users/me/coach-link:
+    post:
+      tags: [Vinculaciones]
+      summary: Vincularse con un coach mediante su código de invitación (HU-13)
+      description: >
+        El usuario autenticado se vincula con el coach dueño del código.
+        El código se normaliza (sin espacios alrededor y en mayúsculas).
+        Si ya existía una vinculación previa con ese coach, se reactiva.
+        Un usuario solo puede tener una vinculación activa a la vez.
+      operationId: linkCoach
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LinkCoachRequest"
+      responses:
+        "201":
+          description: Vinculación activa creada o reactivada.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CoachLinkResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/ForbiddenUserOnly"
+        "404":
+          $ref: "#/components/responses/InviteCodeNotFound"
+        "409":
+          $ref: "#/components/responses/UserAlreadyLinked"
 
   /exercises:
     get:
@@ -168,6 +205,59 @@ components:
           pattern: "^[A-Z0-9]{6}$"
           example: "K7P2QX"
           description: Código de 6 caracteres alfanuméricos en mayúsculas (A-Z0-9).
+
+    LinkCoachRequest:
+      type: object
+      required: [invite_code]
+      properties:
+        invite_code:
+          type: string
+          example: "K7P2QX"
+          description: Código de invitación del coach. No distingue mayúsculas ni espacios alrededor.
+
+    CoachLinkResponse:
+      type: object
+      required: [id, coach_id, coach_name, coach_email, status]
+      properties:
+        id:
+          type: string
+          example: "6720c1f4a1b2c3d4e5f60718"
+          description: Id de la vinculación.
+        coach_id:
+          type: string
+          example: "6720c1f4a1b2c3d4e5f60719"
+        coach_name:
+          type: string
+          example: "Laura Pérez"
+        coach_email:
+          type: string
+          format: email
+          example: "laura@example.com"
+        status:
+          type: string
+          enum: [active]
+          example: active
+
+    ErrorResponse:
+      type: object
+      description: Formato de error de la API (README del backend, "Formato de error").
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message, fields]
+          properties:
+            code:
+              type: string
+              example: FORBIDDEN_ROLE
+            message:
+              type: string
+            fields:
+              type: object
+              description: Errores por campo (nombre del campo a mensaje). Vacío si no aplica.
+              additionalProperties:
+                type: string
+
     WeightRequest:
       type: object
       required: [weight_kg]
@@ -178,6 +268,7 @@ components:
           maximum: 250
           example: 78.2
           description: Peso en kg (rango del perfil, TEC-12). La fecha no se envía; la pone el servidor.
+
     WeightResponse:
       type: object
       required: [id, user_id, weight_kg, recorded_at]
@@ -195,25 +286,7 @@ components:
           type: string
           format: date-time
           example: "2026-10-13T16:05:00Z"
-    ApiError:
-      type: object
-      description: Formato real de error de la API (README del backend, "Formato de error").
-      required: [error]
-      properties:
-        error:
-          type: object
-          required: [code, message, fields]
-          properties:
-            code:
-              type: string
-              example: VALIDATION_ERROR
-            message:
-              type: string
-            fields:
-              type: object
-              additionalProperties:
-                type: string
-              description: Mensaje por campo inválido; vacío si el error no es de un campo.
+
     ExerciseResponse:
       type: object
       required: [id, name, muscle_group, equipment, level, created_at]
@@ -239,31 +312,34 @@ components:
           type: string
           format: date-time
           example: "2026-10-13T12:00:00Z"
-    ErrorResponse:
-      type: object
-      properties:
-        code:
-          type: string
-          example: FORBIDDEN
-        message:
-          type: string
-        fields:
-          type: object
-          additionalProperties:
-            type: string
 
   responses:
-    ValidationError:
-      description: Uno o más parámetros de la petición no son válidos.
+    BadRequest:
+      description: >
+        Cuerpo inválido. `VALIDATION_ERROR` si falta `invite_code` o viene vacío;
+        `INVALID_BODY` si el JSON está mal formado o un campo tiene un tipo incorrecto.
       content:
         application/json:
           schema:
             $ref: "#/components/schemas/ErrorResponse"
           example:
-            code: VALIDATION_ERROR
-            message: Error de validación
-            fields:
-              muscle_group: "El grupo muscular debe ser 'chest', 'back', 'legs', 'shoulders', 'arms' o 'core'"
+            error:
+              code: VALIDATION_ERROR
+              message: Hay campos inválidos
+              fields:
+                invite_code: invite_code es obligatorio
+    ValidationError:
+      description: Uno o más campos o parámetros inválidos; cada uno aparece en `error.fields`.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          example:
+            error:
+              code: VALIDATION_ERROR
+              message: Hay campos inválidos
+              fields:
+                weight_kg: El peso debe estar entre 35 y 250 kg
     Unauthorized:
       description: Token ausente, inválido o expirado.
       content:
@@ -271,48 +347,51 @@ components:
           schema:
             $ref: "#/components/schemas/ErrorResponse"
           example:
-            code: UNAUTHORIZED
-            message: Token inválido o expirado
-    Forbidden:
-      description: La cuenta autenticada no tiene el rol requerido.
+            error:
+              code: UNAUTHORIZED
+              message: Token inválido o expirado
+              fields: {}
+    ForbiddenCoachOnly:
+      description: La cuenta autenticada no tiene rol coach.
       content:
         application/json:
           schema:
             $ref: "#/components/schemas/ErrorResponse"
           example:
-            code: FORBIDDEN
-            message: Acceso restringido a coaches
-    ValidationError:
-      description: Uno o más campos inválidos; cada uno aparece en `error.fields`.
-      content:
-        application/json:
-          schema:
-            $ref: "#/components/schemas/ApiError"
-          example:
             error:
-              code: VALIDATION_ERROR
-              message: Hay campos inválidos
-              fields:
-                weight_kg: El peso debe estar entre 35 y 250 kg
-    UnauthorizedError:
-      description: Token ausente, inválido o expirado.
-      content:
-        application/json:
-          schema:
-            $ref: "#/components/schemas/ApiError"
-          example:
-            error:
-              code: UNAUTHORIZED
-              message: Token inválido o expirado
+              code: FORBIDDEN_ROLE
+              message: Acceso restringido a coaches
               fields: {}
-    ForbiddenRoleUser:
+    ForbiddenUserOnly:
       description: La cuenta autenticada no tiene rol user.
       content:
         application/json:
           schema:
-            $ref: "#/components/schemas/ApiError"
+            $ref: "#/components/schemas/ErrorResponse"
           example:
             error:
               code: FORBIDDEN_ROLE
               message: "Acceso denegado: esta función es exclusiva del rol usuario"
+              fields: {}
+    InviteCodeNotFound:
+      description: El código no existe o ya no está vigente.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          example:
+            error:
+              code: INVITE_CODE_NOT_FOUND
+              message: El código de invitación no existe o ya no está vigente
+              fields: {}
+    UserAlreadyLinked:
+      description: El usuario ya tiene una vinculación activa con un coach.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          example:
+            error:
+              code: USER_ALREADY_LINKED
+              message: Ya tienes una vinculación activa con un coach
               fields: {}

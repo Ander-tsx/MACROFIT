@@ -169,6 +169,9 @@ El contrato completo (cuerpos, respuestas y códigos de error de cada endpoint) 
 | POST | `/coach/invite-code/regenerate` | Bearer (coach) | HU-12 | Reemplaza el código de invitación por uno nuevo |
 | POST | `/dev/seed/coach-links` | — (solo `APP_ENV=development`) | HU-05 | Vincula un coach con un usuario de prueba |
 | GET | `/coach/test` | Bearer (coach) | TEC-05 | Prueba de la regla de acceso por rol |
+| GET | `/coach/invite-code` | Bearer (coach) | HU-12 | Código de invitación del coach; se crea si no existe |
+| POST | `/coach/invite-code/regenerate` | Bearer (coach) | HU-12 | Genera un código nuevo; el anterior deja de ser válido |
+| POST | `/users/me/coach-link` | Bearer (user) | HU-13 | Vincula al usuario con un coach mediante su código de invitación |
 
 ### Contrato OpenAPI (TEC-14)
 
@@ -363,6 +366,40 @@ Un cliente sin perfil recibe la meta del coach en `GET /users/me/goals/current`.
 
 **GET `/coach/clients`** → `200` con `[{ "id", "name", "email" }]` de los clientes vinculados, por nombre.
 
+### Código de invitación — `/coach/invite-code` (HU-12)
+
+Cabecera `Authorization: Bearer <access_token>`. **Solo rol `coach`** (`403 FORBIDDEN_ROLE` para un `user`).
+Cada coach tiene un único código de 6 caracteres (`A-Z0-9`).
+
+**GET** → `200` con `{ "code": "K7P2QX" }`. Si el coach aún no tiene código, se genera y se guarda.
+
+**POST `/coach/invite-code/regenerate`** → `200` con `{ "code": "..." }`, siempre distinto al anterior.
+El código anterior deja de ser válido.
+
+### POST `/users/me/coach-link` (HU-13)
+
+Cabecera `Authorization: Bearer <access_token>`. **Solo rol `user`** (`403 FORBIDDEN_ROLE` para un `coach`).
+
+```json
+{ "invite_code": "K7P2QX" }
+```
+
+| Campo | Regla |
+|---|---|
+| `invite_code` | Obligatorio. Se normaliza (sin espacios alrededor y en mayúsculas) |
+
+Un usuario solo puede tener **una vinculación activa**. Si ya existía una vinculación previa con ese coach, se reactiva.
+
+**201 Created**
+
+```json
+{ "id": "6ac6...", "coach_id": "6ac5...", "coach_name": "Laura", "coach_email": "laura@macrofit.com", "status": "active" }
+```
+
+**Errores:** `400 VALIDATION_ERROR` (falta `invite_code`), `400 INVALID_BODY`, `401 UNAUTHORIZED`,
+`403 FORBIDDEN_ROLE`, `404 INVITE_CODE_NOT_FOUND` (el código no existe o su dueño ya no es coach),
+`409 USER_ALREADY_LINKED`.
+
 ### Registro de peso — `/users/me/weights` (HU-21)
 
 Solo rol `user` (`UserOnly`); sin sesión `401 UNAUTHORIZED`, una cuenta de coach `403 FORBIDDEN_ROLE`.
@@ -500,7 +537,9 @@ Todas las respuestas de error tienen la misma forma. `fields` siempre es un obje
 | `FORBIDDEN_ROLE` | 403 | La función es exclusiva de otro rol (p. ej. el perfil, solo para `user`; las metas por coach, solo para `coach`) |
 | `CLIENT_NOT_LINKED` | 403 | El coach no tiene una vinculación activa con el cliente |
 | `PROFILE_NOT_FOUND` | 404 | El usuario aún no tiene perfil |
+| `INVITE_CODE_NOT_FOUND` | 404 | El código de invitación no existe o ya no está vigente |
 | `PHOTO_NOT_FOUND` | 404 | La foto no existe o la cuenta no puede verla (no se distingue) |
+| `USER_ALREADY_LINKED` | 409 | El usuario ya tiene una vinculación activa con un coach |
 | `EMAIL_ALREADY_EXISTS` | 409 | El correo ya está registrado |
 | `PROFILE_ALREADY_EXISTS` | 409 | El usuario ya tiene un perfil (se edita con `PATCH`) |
 | `PHOTO_TOO_LARGE` | 413 | La foto supera 5 MB |
