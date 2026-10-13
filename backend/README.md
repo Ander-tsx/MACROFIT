@@ -272,13 +272,19 @@ Cabecera `Authorization: Bearer <access_token>`. **Solo rol `user`**: un coach r
 | `objective` | `"lose_fat"`, `"maintain"` o `"gain_muscle"` (exacto, en minúsculas) |
 | `level` | `"beginner"`, `"intermediate"` o `"advanced"` |
 | `training_days` | Entero de 1 a 7 (un número con decimales se señala en el campo) |
-| `weight_kg` | Número de 30 a 300 (kg) |
-| `height_cm` | Número de 100 a 250 (cm) |
+| `weight_kg` | Número de 35 a 250 (kg) |
+| `height_cm` | Número de 130 a 230 (cm) |
 | `gender` | `"male"` o `"female"` |
-| `birth_date` | Fecha válida `YYYY-MM-DD`; edad de 18 a 100 años cumplidos a la fecha UTC actual; no futura |
+| `birth_date` | Fecha válida `YYYY-MM-DD`; edad de 18 a 80 años cumplidos a la fecha UTC actual; no futura |
 
-> Rangos provisionales hasta **TEC-12** (`services::profile::WEIGHT_MIN_KG`, etc.). Si cambian, cambia también
-> `macrofit_app/lib/features/profile/domain/validators/profile_validators.dart`.
+> Rangos definidos en **TEC-12** (`services::profile::WEIGHT_MIN_KG`, etc.; justificación en
+> [`src/services/README.md`](src/services/README.md#meta-nutricional-hu-04-y-tec-12)). El registro de peso (HU-21)
+> valida con `services::profile::parse_weight_kg`.
+>
+> **Pendiente en la app (Sprint 3):** `macrofit_app/lib/features/profile/domain/validators/profile_validators.dart`
+> todavía usa los rangos provisionales (30–300 kg, 100–250 cm, 18–100 años) y el cálculo local de la meta en
+> `macrofit_app/lib/features/goals/` no aplica el mínimo de calorías. Hasta entonces el backend rechaza con
+> `VALIDATION_ERROR` lo que la app deje pasar fuera de los rangos nuevos.
 
 **201 Created** — además marca `users.profile_completed = true` (visible en `GET /auth/me`):
 
@@ -300,7 +306,8 @@ actualizado y `updated_at` nuevo. Errores: `400 VALIDATION_ERROR`, `400 INVALID_
 `404 PROFILE_NOT_FOUND`.
 
 **Meta nutricional (HU-04):** al crear el perfil se genera la meta inicial; al editarlo se recalcula solo si cambian
-`weight_kg`, `objective` o `training_days`, y nunca si la meta vigente la fijó un coach.
+`weight_kg`, `objective` o `training_days`, y nunca si la meta vigente la fijó un coach. La fórmula (TEC-12) está en
+[`src/services/README.md`](src/services/README.md#meta-nutricional-hu-04-y-tec-12).
 
 ### Metas por coach — `/coach/clients/{clientId}/goals` (HU-05)
 

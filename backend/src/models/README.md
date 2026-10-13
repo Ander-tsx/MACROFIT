@@ -58,8 +58,8 @@ Perfil inicial del usuario (HU-03). Un documento por cuenta con rol `user`.
 | `objective` | `"lose_fat"` \| `"maintain"` \| `"gain_muscle"` | |
 | `level` | `"beginner"` \| `"intermediate"` \| `"advanced"` | |
 | `training_days` | int | 1 a 7 |
-| `weight_kg` | double | 30 a 300 (provisional, TEC-12) |
-| `height_cm` | double | 100 a 250 (provisional, TEC-12) |
+| `weight_kg` | double | 35 a 250 (TEC-12) |
+| `height_cm` | double | 130 a 230 (TEC-12) |
 | `gender` | `"male"` \| `"female"` | |
 | `birth_date` | ISODate | Medianoche UTC; la API la expone como `YYYY-MM-DD` |
 | `created_at` | ISODate | |
