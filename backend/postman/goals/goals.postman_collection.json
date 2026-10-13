@@ -8,7 +8,7 @@
   "item": [
     {
       "name": "HU-04 Meta calculada",
-      "description": "HU-04: la meta nutricional (calorías, proteína y grasa) se calcula automáticamente con Mifflin-St Jeor a partir del perfil, se recalcula al editarlo y conserva el historial. Endpoints: GET /api/v1/users/me/goals/current y GET /api/v1/users/me/goals.\n\nEjecutar en orden. Las peticiones 02 (registrar perfil) y 03 (edición) usan POST y PATCH /api/v1/users/me/profile de HU-03.",
+      "description": "HU-04: la meta nutricional (calorías, proteína y grasa) se calcula automáticamente con Mifflin-St Jeor a partir del perfil (reglas de TEC-12, con mínimo de calorías), se recalcula al editarlo y conserva el historial. Endpoints: GET /api/v1/users/me/goals/current y GET /api/v1/users/me/goals.\n\nEjecutar en orden. Las peticiones 02 (registrar perfil) y 03 (edición) usan POST y PATCH /api/v1/users/me/profile de HU-03. Las peticiones 07 y 08 comprueban el mínimo de calorías de TEC-12.",
       "item": [
         {
           "name": "00 - Preparación: registrar usuario sin perfil",
@@ -301,7 +301,7 @@
                   "        pm.expect(data.set_by).to.eql(null);",
                   "        pm.expect(data.user_id).to.eql(pm.collectionVariables.get(\"goals_user_id\"));",
                   "    });",
-                  "    // Valor esperado: Mifflin-St Jeor sobre el perfil enviado.",
+                  "    // Valor esperado: Mifflin-St Jeor sobre el perfil enviado (TEC-12: mínimo 1500 kcal hombre / 1200 mujer).",
                   "    const v = (name) => pm.collectionVariables.get(\"goals_profile_\" + name);",
                   "    const weight = Number(v(\"weight_kg\"));",
                   "    const height = Number(v(\"height_cm\"));",
@@ -317,7 +317,7 @@
                   "    const factor = days <= 1 ? 1.2 : days <= 3 ? 1.375 : days <= 5 ? 1.55 : 1.725;",
                   "    const adjustment = { lose_fat: 0.8, maintain: 1.0, gain_muscle: 1.1 }[objective];",
                   "    const proteinPerKg = { lose_fat: 2.0, maintain: 1.6, gain_muscle: 1.8 }[objective];",
-                  "    const kcal = bmr * factor * adjustment;",
+                  "    const kcal = Math.max(bmr * factor * adjustment, v(\"gender\") === \"male\" ? 1500 : 1200);",
                   "    const expected = {",
                   "        calories: Math.round(kcal),",
                   "        protein_g: Math.round(weight * proteinPerKg),",
@@ -462,7 +462,7 @@
                   "        pm.expect(data.set_by).to.eql(null);",
                   "        pm.expect(data.id).to.not.eql(pm.collectionVariables.get(\"goals_goal_initial_id\"));",
                   "    });",
-                  "    // Valor esperado: Mifflin-St Jeor sobre el perfil ya editado.",
+                  "    // Valor esperado: Mifflin-St Jeor sobre el perfil ya editado (TEC-12: mínimo 1500 kcal hombre / 1200 mujer).",
                   "    const v = (name) => pm.collectionVariables.get(\"goals_profile_\" + name);",
                   "    const weight = Number(v(\"weight_kg\"));",
                   "    const height = Number(v(\"height_cm\"));",
@@ -478,7 +478,7 @@
                   "    const factor = days <= 1 ? 1.2 : days <= 3 ? 1.375 : days <= 5 ? 1.55 : 1.725;",
                   "    const adjustment = { lose_fat: 0.8, maintain: 1.0, gain_muscle: 1.1 }[objective];",
                   "    const proteinPerKg = { lose_fat: 2.0, maintain: 1.6, gain_muscle: 1.8 }[objective];",
-                  "    const kcal = bmr * factor * adjustment;",
+                  "    const kcal = Math.max(bmr * factor * adjustment, v(\"gender\") === \"male\" ? 1500 : 1200);",
                   "    const expected = {",
                   "        calories: Math.round(kcal),",
                   "        protein_g: Math.round(weight * proteinPerKg),",
@@ -631,6 +631,170 @@
               ]
             },
             "description": "Un coach no tiene metas propias: 403 FORBIDDEN. Usa {{coach_access_token}} del módulo auth."
+          },
+          "response": []
+        },
+        {
+          "name": "07 - Edición a un perfil bajo el mínimo",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    // TEC-12: con 45 kg, 1 día y bajar grasa el cálculo da menos de 1500 kcal (hombre).",
+                  "    pm.collectionVariables.set(\"goals_profile_weight_kg\", \"45\");",
+                  "    pm.collectionVariables.set(\"goals_profile_objective\", \"lose_fat\");",
+                  "    pm.collectionVariables.set(\"goals_profile_training_days\", \"1\");",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 200\", function () {",
+                  "        pm.response.to.have.status(200);",
+                  "    });",
+                  "    const data = pm.response.json();",
+                  "    pm.test(\"El perfil refleja los cambios\", function () {",
+                  "        pm.expect(data.weight_kg).to.eql(Number(pm.collectionVariables.get(\"goals_profile_weight_kg\")));",
+                  "        pm.expect(data.training_days).to.eql(Number(pm.collectionVariables.get(\"goals_profile_training_days\")));",
+                  "        pm.expect(data.objective).to.eql(pm.collectionVariables.get(\"goals_profile_objective\"));",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{goals_access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/me/profile",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "me",
+                "profile"
+              ]
+            },
+            "description": "TEC-12: edita el perfil a valores cuyo cálculo queda bajo el mínimo de calorías.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"weight_kg\": {{goals_profile_weight_kg}},\n  \"height_cm\": {{goals_profile_height_cm}},\n  \"birth_date\": \"{{goals_profile_birth_date}}\",\n  \"gender\": \"{{goals_profile_gender}}\",\n  \"training_days\": {{goals_profile_training_days}},\n  \"objective\": \"{{goals_profile_objective}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "08 - Meta con el mínimo de calorías",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 200 OK\", function () {",
+                  "        pm.response.to.have.status(200);",
+                  "    });",
+                  "    const data = pm.response.json();",
+                  "    pm.test(\"Estructura: id, user_id, calories, protein_g, fat_g, source, set_by, effective_from, created_at\", function () {",
+                  "        pm.expect(data).to.have.all.keys(\"id\", \"user_id\", \"calories\", \"protein_g\", \"fat_g\", \"source\", \"set_by\", \"effective_from\", \"created_at\");",
+                  "        pm.expect(data.id).to.be.a(\"string\").and.to.match(/^[0-9a-f]{24}$/);",
+                  "        pm.expect(data.calories).to.be.a(\"number\");",
+                  "        pm.expect(data.protein_g).to.be.a(\"number\");",
+                  "        pm.expect(data.fat_g).to.be.a(\"number\");",
+                  "        pm.expect(Date.parse(data.effective_from)).to.not.be.NaN;",
+                  "    });",
+                  "    pm.test(\"Es una meta nueva del sistema (distinta de la recalculada)\", function () {",
+                  "        pm.expect(data.source).to.eql(\"system\");",
+                  "        pm.expect(data.set_by).to.eql(null);",
+                  "        pm.expect(data.id).to.not.eql(pm.collectionVariables.get(\"goals_goal_current_id\"));",
+                  "    });",
+                  "    // Valor esperado: Mifflin-St Jeor sobre el perfil ya editado (TEC-12: mínimo 1500 kcal hombre / 1200 mujer).",
+                  "    const v = (name) => pm.collectionVariables.get(\"goals_profile_\" + name);",
+                  "    const weight = Number(v(\"weight_kg\"));",
+                  "    const height = Number(v(\"height_cm\"));",
+                  "    const days = Number(v(\"training_days\"));",
+                  "    const objective = v(\"objective\");",
+                  "    const [by, bm, bd] = v(\"birth_date\").split(\"-\").map(Number);",
+                  "    const today = new Date();",
+                  "    const month = today.getUTCMonth() + 1;",
+                  "    let age = today.getUTCFullYear() - by;",
+                  "    if (month < bm || (month === bm && today.getUTCDate() < bd)) { age--; }",
+                  "    const base = 10 * weight + 6.25 * height - 5 * age;",
+                  "    const bmr = v(\"gender\") === \"male\" ? base + 5 : base - 161;",
+                  "    const factor = days <= 1 ? 1.2 : days <= 3 ? 1.375 : days <= 5 ? 1.55 : 1.725;",
+                  "    const adjustment = { lose_fat: 0.8, maintain: 1.0, gain_muscle: 1.1 }[objective];",
+                  "    const proteinPerKg = { lose_fat: 2.0, maintain: 1.6, gain_muscle: 1.8 }[objective];",
+                  "    const kcal = Math.max(bmr * factor * adjustment, v(\"gender\") === \"male\" ? 1500 : 1200);",
+                  "    const expected = {",
+                  "        calories: Math.round(kcal),",
+                  "        protein_g: Math.round(weight * proteinPerKg),",
+                  "        fat_g: Math.round(kcal * 0.25 / 9)",
+                  "    };",
+                  "    pm.test(\"calories, protein_g y fat_g coinciden con el nuevo cálculo (± 1)\", function () {",
+                  "        pm.expect(Math.abs(data.calories - expected.calories)).to.be.at.most(1);",
+                  "        pm.expect(Math.abs(data.protein_g - expected.protein_g)).to.be.at.most(1);",
+                  "        pm.expect(Math.abs(data.fat_g - expected.fat_g)).to.be.at.most(1);",
+                  "    });",
+                  "    pm.test(\"Las calorías quedan en el mínimo de 1500 kcal y los macros salen de ese mínimo\", function () {",
+                  "        pm.expect(data.calories).to.eql(1500);",
+                  "        pm.expect(data.protein_g).to.eql(90);",
+                  "        pm.expect(data.fat_g).to.eql(42);",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{goals_access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/me/goals/current",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "me",
+                "goals",
+                "current"
+              ]
+            },
+            "description": "TEC-12: la meta vigente sube al mínimo de 1500 kcal (hombre); proteína 45 kg × 2.0 y grasa 25 % de 1500."
           },
           "response": []
         }
