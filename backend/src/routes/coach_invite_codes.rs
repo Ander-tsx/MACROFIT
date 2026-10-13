@@ -7,8 +7,8 @@ use axum::{
 };
 use serde::{Deserialize, Serialize};
 
-use crate::error::AppError;
 use crate::auth::middleware::CoachOnly;
+use crate::error::AppError;
 use crate::services::coach_invite_codes;
 use crate::state::AppState;
 
