@@ -5,3 +5,4 @@ pub mod legal;
 pub mod photos;
 pub mod profile;
 pub mod session;
+pub mod coach_invite_codes;

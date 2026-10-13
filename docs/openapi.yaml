@@ -1,0 +1,104 @@
+openapi: 3.0.3
+info:
+  title: API MacroFit
+  version: 1.0.0
+  description: API REST de MacroFit.
+servers:
+  - url: http://localhost:3000/api/v1
+    description: Desarrollo
+tags:
+  - name: Coach
+    description: Operaciones exclusivas del rol coach.
+
+paths:
+  /coach/invite-code:
+    get:
+      tags: [Coach]
+      summary: Obtener el código de invitación del coach (HU-12)
+      description: >
+        Devuelve el código de invitación del coach autenticado.
+        Si todavía no tiene uno, se genera y se guarda.
+      operationId: getInviteCode
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Código de invitación del coach.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InviteCodeResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /coach/invite-code/regenerate:
+    post:
+      tags: [Coach]
+      summary: Regenerar el código de invitación del coach (HU-12)
+      description: >
+        Reemplaza el código actual del coach autenticado por uno nuevo y distinto.
+        El código anterior deja de ser válido.
+      operationId: regenerateInviteCode
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Nuevo código de invitación.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InviteCodeResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    InviteCodeResponse:
+      type: object
+      required: [code]
+      properties:
+        code:
+          type: string
+          minLength: 6
+          maxLength: 6
+          pattern: "^[A-Z0-9]{6}$"
+          example: "K7P2QX"
+          description: Código de 6 caracteres alfanuméricos en mayúsculas (A-Z0-9).
+    ErrorResponse:
+      type: object
+      properties:
+        code:
+          type: string
+          example: FORBIDDEN
+        message:
+          type: string
+
+  responses:
+    Unauthorized:
+      description: Token ausente, inválido o expirado.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          example:
+            code: UNAUTHORIZED
+            message: Token inválido o expirado
+    Forbidden:
+      description: La cuenta autenticada no tiene rol coach.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          example:
+            code: FORBIDDEN
+            message: Acceso restringido a coaches
