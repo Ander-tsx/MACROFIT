@@ -8,6 +8,7 @@ pub mod dev;
 pub mod goals;
 pub mod legal;
 pub mod profile;
+pub mod weights;
 
 /// Prefijo común de la API. Una versión nueva incompatible se monta en `/api/v2`.
 pub const API_PREFIX: &str = "/api/v1";
@@ -20,7 +21,8 @@ pub fn api_router(dev_mode: bool) -> Router<AppState> {
         .merge(coach_invite_codes::router())
         .merge(legal::router())
         .merge(profile::router())
-        .merge(goals::router());
+        .merge(goals::router())
+        .merge(weights::router());
     if dev_mode {
         v1 = v1.merge(dev::router());
     }

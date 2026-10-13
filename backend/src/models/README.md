@@ -84,6 +84,19 @@ Historial de metas nutricionales (HU-04 y HU-05). Solo se insertan documentos; n
 
 **Índices:** `user_id_effective_from` → `{ user_id: 1, effective_from: -1 }`.
 
+## Colección `weights` (`weight_entry.rs`)
+
+Historial de peso corporal (HU-21). Solo se insertan documentos; nunca se modifican.
+
+| Campo | Tipo | Notas |
+|---|---|---|
+| `_id` | ObjectId | Se expone como `id` (hex) |
+| `user_id` | ObjectId | Referencia a `users._id` (rol `user`) |
+| `weight_kg` | double | 35 a 250 (rango del perfil, TEC-12) |
+| `recorded_at` | ISODate | La pone el servidor al registrar |
+
+**Índices:** `user_id_recorded_at` → `{ user_id: 1, recorded_at: -1 }` (historial de un usuario, el más reciente primero).
+
 ## Colección `coach_links` (`coach_link.rs`)
 
 Vinculación entre un coach y un cliente (HU-05). Hoy se llena con `POST /dev/seed/coach-links`; HU-13 y HU-14 la
