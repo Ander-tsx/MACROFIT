@@ -160,6 +160,8 @@ El contrato completo (cuerpos, respuestas y códigos de error de cada endpoint) 
 | PATCH | `/users/me/profile` | Bearer (user) | HU-03 | Edita solo los campos enviados del perfil |
 | GET | `/users/me/goals/current` | Bearer (user) | HU-04 | Meta nutricional vigente |
 | GET | `/users/me/goals` | Bearer (user) | HU-04 | Historial de metas (más reciente primero) |
+| POST | `/users/me/weights` | Bearer (user) | HU-21 | Registra un peso y lo pasa al perfil |
+| GET | `/users/me/weights` | Bearer (user) | HU-21 | Historial de peso (más reciente primero) |
 | GET | `/coach/clients` | Bearer (coach) | HU-05 | Clientes con vinculación activa |
 | GET | `/coach/clients/{clientId}/goals` | Bearer (coach) | HU-05 | Historial de metas de un cliente vinculado |
 | POST | `/coach/clients/{clientId}/goals` | Bearer (coach) | HU-05 | Fija una meta para un cliente vinculado |
@@ -360,6 +362,24 @@ aplican). Una meta de coach vigente tiene prioridad sobre las calculadas, y edit
 Un cliente sin perfil recibe la meta del coach en `GET /users/me/goals/current`.
 
 **GET `/coach/clients`** → `200` con `[{ "id", "name", "email" }]` de los clientes vinculados, por nombre.
+
+### Registro de peso — `/users/me/weights` (HU-21)
+
+Solo rol `user` (`UserOnly`); sin sesión `401 UNAUTHORIZED`, una cuenta de coach `403 FORBIDDEN_ROLE`.
+
+**POST** — cuerpo `{ "weight_kg": 78.2 }`. La fecha la pone el servidor (no se envía). `weight_kg` debe ser un número
+de 35 a 250 kg, el mismo rango del perfil (TEC-12, `services::profile::parse_weight_kg`).
+
+```json
+{ "id": "6ac7...", "user_id": "6ac5...", "weight_kg": 78.2, "recorded_at": "2026-10-13T16:05:00Z" }
+```
+
+`201 Created`. Si el usuario ya tiene perfil, el peso pasa a ser su `weight_kg` y la meta calculada se recalcula como
+en una edición del perfil (HU-04; una meta de coach no se toca). Sin perfil, el peso se guarda igual.
+Errores: `400 VALIDATION_ERROR` en `weight_kg` (ausente, `null`, no numérico o fuera de rango), `400 INVALID_BODY`.
+
+**GET** → `200` con `[{ "id", "user_id", "weight_kg", "recorded_at" }]` del usuario de la sesión, del más reciente al
+más antiguo (`[]` si no hay registros).
 
 ### POST `/dev/seed/coach-links` (HU-05)
 

@@ -9,8 +9,61 @@ servers:
 tags:
   - name: Coach
     description: Operaciones exclusivas del rol coach.
+  - name: Usuario
+    description: Operaciones exclusivas del rol user.
 
 paths:
+  /users/me/weights:
+    post:
+      tags: [Usuario]
+      summary: Registrar el peso corporal (HU-21)
+      description: >
+        Guarda un peso con la fecha del servidor. El rango válido es el del perfil (35 a 250 kg, TEC-12).
+        Si el usuario tiene perfil, el peso pasa a ser su weight_kg y la meta calculada se recalcula
+        (una meta fijada por un coach no se toca).
+      operationId: recordWeight
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WeightRequest"
+      responses:
+        "201":
+          description: Peso registrado.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WeightResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+        "403":
+          $ref: "#/components/responses/ForbiddenRoleUser"
+    get:
+      tags: [Usuario]
+      summary: Historial de peso del usuario (HU-21)
+      description: Pesos del usuario de la sesión, del más reciente al más antiguo. Lista vacía si no hay registros.
+      operationId: listWeights
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Historial de peso.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/WeightResponse"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+        "403":
+          $ref: "#/components/responses/ForbiddenRoleUser"
+
   /coach/invite-code:
     get:
       tags: [Coach]
@@ -74,6 +127,52 @@ components:
           pattern: "^[A-Z0-9]{6}$"
           example: "K7P2QX"
           description: Código de 6 caracteres alfanuméricos en mayúsculas (A-Z0-9).
+    WeightRequest:
+      type: object
+      required: [weight_kg]
+      properties:
+        weight_kg:
+          type: number
+          minimum: 35
+          maximum: 250
+          example: 78.2
+          description: Peso en kg (rango del perfil, TEC-12). La fecha no se envía; la pone el servidor.
+    WeightResponse:
+      type: object
+      required: [id, user_id, weight_kg, recorded_at]
+      properties:
+        id:
+          type: string
+          pattern: "^[0-9a-f]{24}$"
+        user_id:
+          type: string
+          pattern: "^[0-9a-f]{24}$"
+        weight_kg:
+          type: number
+          example: 78.2
+        recorded_at:
+          type: string
+          format: date-time
+          example: "2026-10-13T16:05:00Z"
+    ApiError:
+      type: object
+      description: Formato real de error de la API (README del backend, "Formato de error").
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message, fields]
+          properties:
+            code:
+              type: string
+              example: VALIDATION_ERROR
+            message:
+              type: string
+            fields:
+              type: object
+              additionalProperties:
+                type: string
+              description: Mensaje por campo inválido; vacío si el error no es de un campo.
     ErrorResponse:
       type: object
       properties:
@@ -102,3 +201,37 @@ components:
           example:
             code: FORBIDDEN
             message: Acceso restringido a coaches
+    ValidationError:
+      description: Uno o más campos inválidos; cada uno aparece en `error.fields`.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ApiError"
+          example:
+            error:
+              code: VALIDATION_ERROR
+              message: Hay campos inválidos
+              fields:
+                weight_kg: El peso debe estar entre 35 y 250 kg
+    UnauthorizedError:
+      description: Token ausente, inválido o expirado.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ApiError"
+          example:
+            error:
+              code: UNAUTHORIZED
+              message: Token inválido o expirado
+              fields: {}
+    ForbiddenRoleUser:
+      description: La cuenta autenticada no tiene rol user.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ApiError"
+          example:
+            error:
+              code: FORBIDDEN_ROLE
+              message: "Acceso denegado: esta función es exclusiva del rol usuario"
+              fields: {}

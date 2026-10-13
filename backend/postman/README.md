@@ -12,7 +12,8 @@ postman/
 ├── openapi/openapi.postman_collection.json # src/routes/openapi.rs → TEC-14 contrato OpenAPI
 ├── legal/legal.postman_collection.json # src/routes/legal.rs → TEC-07 aviso de privacidad
 ├── auth/auth.postman_collection.json   # src/routes/auth.rs → HU-01, HU-02, roles y cierre de sesión
-└── profile/profile.postman_collection.json # src/routes/profile.rs → HU-03 perfil inicial
+├── profile/profile.postman_collection.json # src/routes/profile.rs → HU-03 perfil inicial
+└── weights/weights.postman_collection.json # src/routes/weights.rs → HU-21 registro de peso
 ```
 
 Regla: **una carpeta `postman/<modulo>/` por cada archivo de `src/routes/<modulo>.rs`**, con el mismo nombre.

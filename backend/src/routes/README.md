@@ -97,3 +97,4 @@ La especificación (`GET /api/v1/openapi.json`, Swagger UI en `/api/v1/docs`) se
 | `dev.rs` | `/dev/seed/coach-links` (HU-05): solo se monta con `APP_ENV=development` |
 | `profile.rs` | `/users/me/profile` POST/GET/PATCH (HU-03), solo rol `user` (`UserOnly`) |
 | `coach_invite_codes.rs` | `/coach/invite-code` y `/coach/invite-code/regenerate` (HU-12), solo rol `coach` (`CoachOnly`) |
+| `weights.rs` | `/users/me/weights` POST/GET (HU-21), solo rol `user` (`UserOnly`) |
