@@ -53,6 +53,10 @@ pub enum AppError {
     ProfileAlreadyExists,
     /// 500 — error inesperado; el detalle solo va al log.
     Internal(String),
+    /// 404 — el código de invitación no existe o ya no está vigente.
+    InviteCodeNotFound,
+    /// 409 — el usuario ya tiene una vinculación activa con un coach.
+    UserAlreadyLinked,
 }
 
 impl AppError {
@@ -169,6 +173,18 @@ impl IntoResponse for AppError {
                     FieldErrors::new(),
                 )
             }
+            Self::InviteCodeNotFound => (
+                StatusCode::NOT_FOUND,
+                "INVITE_CODE_NOT_FOUND",
+                "El código de invitación no existe o ya no está vigente".to_string(),
+                FieldErrors::new(),
+            ),
+            Self::UserAlreadyLinked => (
+                StatusCode::CONFLICT,
+                "USER_ALREADY_LINKED",
+                "Ya tienes una vinculación activa con un coach".to_string(),
+                FieldErrors::new(),
+            ),
         };
 
         let body = json!({

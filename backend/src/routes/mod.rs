@@ -3,24 +3,27 @@ use axum::{Router, routing::get};
 use crate::state::AppState;
 
 pub mod auth;
+pub mod coach_invite_codes;
+pub mod coach_links;
 pub mod dev;
 pub mod goals;
 pub mod legal;
 pub mod profile;
-pub mod coach_invite_codes;
 
 /// Prefijo común de la API. Una versión nueva incompatible se monta en `/api/v2`.
 pub const API_PREFIX: &str = "/api/v1";
 
-/// Une los routers de cada módulo bajo `/api/v1`. Las rutas de `dev` solo se montan en desarrollo.
+/// Une los routers de cada módulo bajo `/api/v1`.
 pub fn api_router(dev_mode: bool) -> Router<AppState> {
     let mut v1 = Router::new()
         .route("/health", get(|| async { "API MacroFit OK" }))
         .merge(auth::router())
-        .merge(coach_invite_codes::router())
         .merge(legal::router())
         .merge(profile::router())
-        .merge(goals::router());
+        .merge(goals::router())
+        .merge(coach_invite_codes::router())
+        .merge(coach_links::router());
+
     if dev_mode {
         v1 = v1.merge(dev::router());
     }

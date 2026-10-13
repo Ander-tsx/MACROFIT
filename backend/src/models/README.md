@@ -86,8 +86,7 @@ Historial de metas nutricionales (HU-04 y HU-05). Solo se insertan documentos; n
 
 ## Colección `coach_links` (`coach_link.rs`)
 
-Vinculación entre un coach y un cliente (HU-05). Hoy se llena con `POST /dev/seed/coach-links`; HU-13 y HU-14 la
-crearán y la cerrarán desde la app.
+Vinculación entre un coach y un cliente (HU-05 y HU-13).
 
 | Campo | Tipo | Notas |
 |---|---|---|
@@ -98,6 +97,20 @@ crearán y la cerrarán desde la app.
 | `created_at` | ISODate | |
 
 **Índices:** `coach_id_user_id_unique` → `{ coach_id: 1, user_id: 1 }`, único.
+
+## Colección `coach_invite_codes` (`coach_invite_code.rs`)
+
+Código de invitación de coach para vinculación de clientes (HU-12).
+
+| Campo | Tipo | Notas |
+|---|---|---|
+| `_id` | ObjectId | Se expone como `id` (hex) |
+| `coach_id` | ObjectId | Referencia a `users._id` (rol `coach`) |
+| `code` | string | Código alfanumérico único de 6 caracteres en mayúsculas |
+| `created_at` | ISODate | |
+| `updated_at` | ISODate | Cambia al regenerar |
+
+**Índices:** `coach_id_unique` → `{ coach_id: 1 }` (único) y `code_unique` → `{ code: 1 }` (único).
 
 ## Bucket de GridFS `meal_photos` (`meal_photo.rs`)
 
