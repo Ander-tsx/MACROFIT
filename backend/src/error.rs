@@ -82,6 +82,8 @@ pub enum AppError {
     InviteCodeNotFound,
     /// 409 — el usuario ya tiene una vinculación activa con un coach.
     UserAlreadyLinked,
+    /// 404 — el usuario no tiene una vinculación activa con un coach.
+    UserNotLinked,
 }
 
 impl AppError {
@@ -221,6 +223,12 @@ impl IntoResponse for AppError {
                 StatusCode::CONFLICT,
                 "USER_ALREADY_LINKED",
                 "Ya tienes una vinculación activa con un coach".to_string(),
+                FieldErrors::new(),
+            ),
+            Self::UserNotLinked => (
+                StatusCode::NOT_FOUND,
+                "USER_NOT_LINKED",
+                "No tienes una vinculación activa con un coach".to_string(),
                 FieldErrors::new(),
             ),
         };

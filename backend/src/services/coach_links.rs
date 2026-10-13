@@ -196,6 +196,25 @@ pub async fn link_with_invite_code(
     Ok((link, coach))
 }
 
+/// HU-14 — desvincula al usuario de su coach activo.
+pub async fn unlink_coach(db: &Database, user_id: ObjectId) -> Result<(), AppError> {
+    let now = DateTime::now();
+    let result = links(db)
+        .find_one_and_update(
+            doc! { "user_id": user_id, "status": "active" },
+            doc! {
+                "$set": { "status": "unlinked", "updated_at": now }
+            },
+        )
+        .await
+        .map_err(AppError::internal)?;
+
+    if result.is_none() {
+        return Err(AppError::UserNotLinked);
+    }
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

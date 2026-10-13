@@ -11,7 +11,7 @@ use utoipa::openapi::security::{HttpAuthScheme, HttpBuilder, SecurityScheme};
 use utoipa::{Modify, OpenApi};
 use utoipa_swagger_ui::SwaggerUi;
 
-use super::{auth, coach_invite_codes, dev, goals, legal, profile};
+use super::{auth, coach_invite_codes, coach_links, dev, goals, legal, profile};
 
 /// Ruta de la especificación en JSON.
 pub const SPEC_PATH: &str = "/api/v1/openapi.json";
@@ -54,6 +54,8 @@ responder `500 INTERNAL_ERROR` ante un error inesperado.";
         goals::set_client_goal_handler,
         coach_invite_codes::get_invite_code_handler,
         coach_invite_codes::regenerate_invite_code_handler,
+        coach_links::link_coach_handler,
+        coach_links::unlink_coach_handler,
         auth::coach_only_handler,
     ),
     modifiers(&BearerAuth),
@@ -192,6 +194,18 @@ mod tests {
             &[200, 401, 403],
         ),
         ("get", "/coach/test", Coach, &[200, 401, 403]),
+        (
+            "post",
+            "/users/me/coach-link",
+            User,
+            &[201, 400, 401, 403, 404, 409],
+        ),
+        (
+            "delete",
+            "/users/me/coach-link",
+            User,
+            &[204, 401, 403, 404],
+        ),
     ];
 
     /// Rutas que solo existen con `APP_ENV=development`.
@@ -292,6 +306,7 @@ mod tests {
             ("post", "/auth/logout"),
             ("post", "/users/me/profile"),
             ("patch", "/users/me/profile"),
+            ("post", "/users/me/coach-link"),
             ("post", "/coach/clients/{clientId}/goals"),
             ("post", "/dev/seed/coach-links"),
         ];

@@ -172,6 +172,7 @@ El contrato completo (cuerpos, respuestas y códigos de error de cada endpoint) 
 | GET | `/coach/invite-code` | Bearer (coach) | HU-12 | Código de invitación del coach; se crea si no existe |
 | POST | `/coach/invite-code/regenerate` | Bearer (coach) | HU-12 | Genera un código nuevo; el anterior deja de ser válido |
 | POST | `/users/me/coach-link` | Bearer (user) | HU-13 | Vincula al usuario con un coach mediante su código de invitación |
+| DELETE | `/users/me/coach-link` | Bearer (user) | HU-14 | Desvincula al usuario de su coach activo |
 
 ### Contrato OpenAPI (TEC-14)
 
@@ -399,6 +400,16 @@ Un usuario solo puede tener **una vinculación activa**. Si ya existía una vinc
 **Errores:** `400 VALIDATION_ERROR` (falta `invite_code`), `400 INVALID_BODY`, `401 UNAUTHORIZED`,
 `403 FORBIDDEN_ROLE`, `404 INVITE_CODE_NOT_FOUND` (el código no existe o su dueño ya no es coach),
 `409 USER_ALREADY_LINKED`.
+
+### DELETE `/users/me/coach-link` (HU-14)
+
+Cabecera `Authorization: Bearer <access_token>`. **Solo rol `user`** (`403 FORBIDDEN_ROLE` para un `coach`).
+
+Desvincula al usuario autenticado de su coach activo actualizando el estado de la vinculación a `"unlinked"`.
+
+**204 No Content**
+
+**Errores:** `401 UNAUTHORIZED`, `403 FORBIDDEN_ROLE`, `404 USER_NOT_LINKED` (el usuario no tiene ninguna vinculación activa).
 
 ### Registro de peso — `/users/me/weights` (HU-21)
 
