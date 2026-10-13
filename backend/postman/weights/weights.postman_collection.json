@@ -1,0 +1,1116 @@
+{
+  "info": {
+    "_postman_id": "3e7d1a5c-8b2f-4c9e-a6d0-7f1b2c3d0021",
+    "name": "MacroFit · Weights",
+    "description": "Módulo de registro de peso (src/routes/weights.rs). Depende de \"auth\" solo para {{coach_access_token}} (peticiones 02 y 03), así que debe ejecutarse después de ese módulo; cada ejecución registra sus propias cuentas.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "HU-21 Registro de peso",
+      "description": "HU-21: POST y GET /api/v1/users/me/weights (RF-17). La fecha la pone el servidor, el rango es el del perfil (TEC-12) y el último peso actualiza el perfil y la meta calculada.",
+      "item": [
+        {
+          "name": "00 - Preparación: registrar al usuario",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    const email = \"weights.\" + Date.now() + \".\" + Math.floor(Math.random() * 1e6) + \"@macrofit.test\";",
+                  "    pm.variables.set(\"email\", email);",
+                  "    pm.collectionVariables.set(\"weights_user_email\", email);",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 201 Created\", function () {",
+                  "        pm.response.to.have.status(201);",
+                  "    });",
+                  "    const data = pm.response.json();",
+                  "    pm.collectionVariables.set(\"weights_user_id\", data.id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "register"
+              ]
+            },
+            "description": "Crea una cuenta nueva con rol user. Guarda su id en {{weights_user_id}}.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Usuario Peso\",\n  \"email\": \"{{email}}\",\n  \"password\": \"{{test_password}}\",\n  \"role\": \"user\",\n  \"privacy_accepted\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "00 - Preparación: iniciar sesión del usuario",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 200\", function () {",
+                  "        pm.response.to.have.status(200);",
+                  "    });",
+                  "    const data = pm.response.json();",
+                  "    pm.collectionVariables.set(\"weights_user_token\", data.access_token);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ]
+            },
+            "description": "Guarda el token en {{weights_user_token}}.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{weights_user_email}}\",\n  \"password\": \"{{test_password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "00 - Preparación: registrar perfil",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 201 Created\", function () {",
+                  "        pm.response.to.have.status(201);",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{weights_user_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/me/profile",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "me",
+                "profile"
+              ]
+            },
+            "description": "Perfil con 80 kg y objetivo mantener (1.6 g/kg de proteína): la meta inicial tiene 128 g.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"objective\": \"maintain\",\n  \"level\": \"intermediate\",\n  \"training_days\": 4,\n  \"weight_kg\": 80,\n  \"height_cm\": 180,\n  \"gender\": \"male\",\n  \"birth_date\": \"1998-03-15\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "00 - Preparación: registrar a otro usuario",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    const email = \"weights.\" + Date.now() + \".\" + Math.floor(Math.random() * 1e6) + \"@macrofit.test\";",
+                  "    pm.variables.set(\"email\", email);",
+                  "    pm.collectionVariables.set(\"weights_other_email\", email);",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 201 Created\", function () {",
+                  "        pm.response.to.have.status(201);",
+                  "    });",
+                  "    const data = pm.response.json();",
+                  "    pm.collectionVariables.set(\"weights_other_id\", data.id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "register"
+              ]
+            },
+            "description": "Crea una cuenta nueva con rol user. Guarda su id en {{weights_other_id}}.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Usuario Peso\",\n  \"email\": \"{{email}}\",\n  \"password\": \"{{test_password}}\",\n  \"role\": \"user\",\n  \"privacy_accepted\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "00 - Preparación: iniciar sesión del otro usuario",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 200\", function () {",
+                  "        pm.response.to.have.status(200);",
+                  "    });",
+                  "    const data = pm.response.json();",
+                  "    pm.collectionVariables.set(\"weights_other_token\", data.access_token);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ]
+            },
+            "description": "Guarda el token en {{weights_other_token}}.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{weights_other_email}}\",\n  \"password\": \"{{test_password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "01 - Sin sesión",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 401\", function () {",
+                  "        pm.response.to.have.status(401);",
+                  "    });",
+                  "    const body = pm.response.json();",
+                  "    pm.test(\"Formato de error { error: { code, message, fields } }\", function () {",
+                  "        pm.expect(body).to.have.all.keys(\"error\");",
+                  "        pm.expect(body.error).to.have.all.keys(\"code\", \"message\", \"fields\");",
+                  "        pm.expect(body.error.message).to.be.a(\"string\").and.not.empty;",
+                  "        pm.expect(body.error.fields).to.be.an(\"object\");",
+                  "    });",
+                  "    pm.test(\"Código UNAUTHORIZED\", function () {",
+                  "        pm.expect(body.error.code).to.eql(\"UNAUTHORIZED\");",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/me/weights",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "me",
+                "weights"
+              ]
+            },
+            "description": "Sin token: 401 UNAUTHORIZED.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"weight_kg\": 80\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "02 - Registro por un coach",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 403\", function () {",
+                  "        pm.response.to.have.status(403);",
+                  "    });",
+                  "    const body = pm.response.json();",
+                  "    pm.test(\"Formato de error { error: { code, message, fields } }\", function () {",
+                  "        pm.expect(body).to.have.all.keys(\"error\");",
+                  "        pm.expect(body.error).to.have.all.keys(\"code\", \"message\", \"fields\");",
+                  "        pm.expect(body.error.message).to.be.a(\"string\").and.not.empty;",
+                  "        pm.expect(body.error.fields).to.be.an(\"object\");",
+                  "    });",
+                  "    pm.test(\"Código FORBIDDEN_ROLE\", function () {",
+                  "        pm.expect(body.error.code).to.eql(\"FORBIDDEN_ROLE\");",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{coach_access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/me/weights",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "me",
+                "weights"
+              ]
+            },
+            "description": "Un coach no registra peso: 403 FORBIDDEN_ROLE. Usa {{coach_access_token}} del módulo auth.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"weight_kg\": 80\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "03 - Historial por un coach",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 403\", function () {",
+                  "        pm.response.to.have.status(403);",
+                  "    });",
+                  "    const body = pm.response.json();",
+                  "    pm.test(\"Formato de error { error: { code, message, fields } }\", function () {",
+                  "        pm.expect(body).to.have.all.keys(\"error\");",
+                  "        pm.expect(body.error).to.have.all.keys(\"code\", \"message\", \"fields\");",
+                  "        pm.expect(body.error.message).to.be.a(\"string\").and.not.empty;",
+                  "        pm.expect(body.error.fields).to.be.an(\"object\");",
+                  "    });",
+                  "    pm.test(\"Código FORBIDDEN_ROLE\", function () {",
+                  "        pm.expect(body.error.code).to.eql(\"FORBIDDEN_ROLE\");",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{coach_access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/me/weights",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "me",
+                "weights"
+              ]
+            },
+            "description": "Un coach no tiene historial de peso propio: 403 FORBIDDEN_ROLE."
+          },
+          "response": []
+        },
+        {
+          "name": "04 - Sin peso",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 400\", function () {",
+                  "        pm.response.to.have.status(400);",
+                  "    });",
+                  "    const body = pm.response.json();",
+                  "    pm.test(\"Formato de error { error: { code, message, fields } }\", function () {",
+                  "        pm.expect(body).to.have.all.keys(\"error\");",
+                  "        pm.expect(body.error).to.have.all.keys(\"code\", \"message\", \"fields\");",
+                  "        pm.expect(body.error.message).to.be.a(\"string\").and.not.empty;",
+                  "        pm.expect(body.error.fields).to.be.an(\"object\");",
+                  "    });",
+                  "    pm.test(\"Código VALIDATION_ERROR\", function () {",
+                  "        pm.expect(body.error.code).to.eql(\"VALIDATION_ERROR\");",
+                  "    });",
+                  "    pm.test(\"Señala exactamente: weight_kg\", function () {",
+                  "        pm.expect(Object.keys(body.error.fields).sort()).to.eql([\"weight_kg\"]);",
+                  "        Object.values(body.error.fields).forEach(function (message) {",
+                  "            pm.expect(message).to.be.a(\"string\").and.not.empty;",
+                  "        });",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{weights_user_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/me/weights",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "me",
+                "weights"
+              ]
+            },
+            "description": "Cuerpo sin weight_kg: 400 VALIDATION_ERROR en weight_kg.",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "05 - Valor no numérico",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 400\", function () {",
+                  "        pm.response.to.have.status(400);",
+                  "    });",
+                  "    const body = pm.response.json();",
+                  "    pm.test(\"Formato de error { error: { code, message, fields } }\", function () {",
+                  "        pm.expect(body).to.have.all.keys(\"error\");",
+                  "        pm.expect(body.error).to.have.all.keys(\"code\", \"message\", \"fields\");",
+                  "        pm.expect(body.error.message).to.be.a(\"string\").and.not.empty;",
+                  "        pm.expect(body.error.fields).to.be.an(\"object\");",
+                  "    });",
+                  "    pm.test(\"Código VALIDATION_ERROR\", function () {",
+                  "        pm.expect(body.error.code).to.eql(\"VALIDATION_ERROR\");",
+                  "    });",
+                  "    pm.test(\"Señala exactamente: weight_kg\", function () {",
+                  "        pm.expect(Object.keys(body.error.fields).sort()).to.eql([\"weight_kg\"]);",
+                  "        Object.values(body.error.fields).forEach(function (message) {",
+                  "            pm.expect(message).to.be.a(\"string\").and.not.empty;",
+                  "        });",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{weights_user_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/me/weights",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "me",
+                "weights"
+              ]
+            },
+            "description": "Texto en lugar de número: 400 VALIDATION_ERROR en weight_kg.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"weight_kg\": \"ochenta\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "06 - Peso fuera de rango",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 400\", function () {",
+                  "        pm.response.to.have.status(400);",
+                  "    });",
+                  "    const body = pm.response.json();",
+                  "    pm.test(\"Formato de error { error: { code, message, fields } }\", function () {",
+                  "        pm.expect(body).to.have.all.keys(\"error\");",
+                  "        pm.expect(body.error).to.have.all.keys(\"code\", \"message\", \"fields\");",
+                  "        pm.expect(body.error.message).to.be.a(\"string\").and.not.empty;",
+                  "        pm.expect(body.error.fields).to.be.an(\"object\");",
+                  "    });",
+                  "    pm.test(\"Código VALIDATION_ERROR\", function () {",
+                  "        pm.expect(body.error.code).to.eql(\"VALIDATION_ERROR\");",
+                  "    });",
+                  "    pm.test(\"Señala exactamente: weight_kg\", function () {",
+                  "        pm.expect(Object.keys(body.error.fields).sort()).to.eql([\"weight_kg\"]);",
+                  "        Object.values(body.error.fields).forEach(function (message) {",
+                  "            pm.expect(message).to.be.a(\"string\").and.not.empty;",
+                  "        });",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{weights_user_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/me/weights",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "me",
+                "weights"
+              ]
+            },
+            "description": "Justo arriba del máximo de TEC-12 (250 kg): 400 VALIDATION_ERROR en weight_kg.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"weight_kg\": 250.1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "07 - Peso válido",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.collectionVariables.set(\"weights_first_kg\", \"80.5\");",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 201 Created\", function () {",
+                  "        pm.response.to.have.status(201);",
+                  "    });",
+                  "    const data = pm.response.json();",
+                  "    pm.test(\"Estructura: id, user_id, weight_kg, recorded_at\", function () {",
+                  "        pm.expect(data).to.have.all.keys(\"id\", \"user_id\", \"weight_kg\", \"recorded_at\");",
+                  "        pm.expect(data.id).to.be.a(\"string\").and.to.match(/^[0-9a-f]{24}$/);",
+                  "        pm.expect(Date.parse(data.recorded_at)).to.not.be.NaN;",
+                  "    });",
+                  "    pm.test(\"Guarda el peso enviado, del usuario de la sesión y con la fecha del servidor\", function () {",
+                  "        pm.expect(data.weight_kg).to.eql(Number(pm.collectionVariables.get(\"weights_first_kg\")));",
+                  "        pm.expect(data.user_id).to.eql(pm.collectionVariables.get(\"weights_user_id\"));",
+                  "        pm.expect(Math.abs(Date.now() - Date.parse(data.recorded_at))).to.be.below(5 * 60 * 1000);",
+                  "    });",
+                  "    pm.collectionVariables.set(\"weights_first_id\", data.id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{weights_user_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/me/weights",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "me",
+                "weights"
+              ]
+            },
+            "description": "Primer registro: 201 con el peso y la fecha del servidor.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"weight_kg\": {{weights_first_kg}}\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "08 - Segundo peso válido",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.collectionVariables.set(\"weights_second_kg\", \"78.2\");",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 201 Created\", function () {",
+                  "        pm.response.to.have.status(201);",
+                  "    });",
+                  "    const data = pm.response.json();",
+                  "    pm.test(\"Estructura: id, user_id, weight_kg, recorded_at\", function () {",
+                  "        pm.expect(data).to.have.all.keys(\"id\", \"user_id\", \"weight_kg\", \"recorded_at\");",
+                  "        pm.expect(data.id).to.be.a(\"string\").and.to.match(/^[0-9a-f]{24}$/);",
+                  "        pm.expect(Date.parse(data.recorded_at)).to.not.be.NaN;",
+                  "    });",
+                  "    pm.test(\"Guarda el peso enviado, del usuario de la sesión y con la fecha del servidor\", function () {",
+                  "        pm.expect(data.weight_kg).to.eql(Number(pm.collectionVariables.get(\"weights_second_kg\")));",
+                  "        pm.expect(data.user_id).to.eql(pm.collectionVariables.get(\"weights_user_id\"));",
+                  "        pm.expect(Math.abs(Date.now() - Date.parse(data.recorded_at))).to.be.below(5 * 60 * 1000);",
+                  "    });",
+                  "    pm.collectionVariables.set(\"weights_second_id\", data.id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{weights_user_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/me/weights",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "me",
+                "weights"
+              ]
+            },
+            "description": "Segundo registro: pasa a ser el peso del perfil.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"weight_kg\": {{weights_second_kg}}\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "09 - Peso de otro usuario",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 201 Created\", function () {",
+                  "        pm.response.to.have.status(201);",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{weights_other_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/me/weights",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "me",
+                "weights"
+              ]
+            },
+            "description": "Otra cuenta registra su peso; no debe aparecer en el historial del primer usuario.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"weight_kg\": 95\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "10 - Historial",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 200 OK\", function () {",
+                  "        pm.response.to.have.status(200);",
+                  "    });",
+                  "    const history = pm.response.json();",
+                  "    const v = (name) => pm.collectionVariables.get(\"weights_\" + name);",
+                  "    pm.test(\"Solo los pesos del usuario de la sesión\", function () {",
+                  "        pm.expect(history).to.be.an(\"array\").with.lengthOf(2);",
+                  "        pm.expect(history.every((w) => w.user_id === v(\"user_id\"))).to.eql(true);",
+                  "    });",
+                  "    pm.test(\"Del más reciente al más antiguo, con los pesos enviados\", function () {",
+                  "        pm.expect(history.map((w) => w.id)).to.eql([v(\"second_id\"), v(\"first_id\")]);",
+                  "        pm.expect(history.map((w) => w.weight_kg)).to.eql([Number(v(\"second_kg\")), Number(v(\"first_kg\"))]);",
+                  "        pm.expect(Date.parse(history[0].recorded_at)).to.be.at.least(Date.parse(history[1].recorded_at));",
+                  "    });",
+                  "    pm.test(\"Estructura: id, user_id, weight_kg, recorded_at\", function () {",
+                  "        history.forEach(function (w) {",
+                  "            pm.expect(w).to.have.all.keys(\"id\", \"user_id\", \"weight_kg\", \"recorded_at\");",
+                  "        });",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{weights_user_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/me/weights",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "me",
+                "weights"
+              ]
+            },
+            "description": "Solo los dos pesos del usuario de la sesión, del más reciente al más antiguo."
+          },
+          "response": []
+        },
+        {
+          "name": "11 - Perfil con el último peso",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 200 OK\", function () {",
+                  "        pm.response.to.have.status(200);",
+                  "    });",
+                  "    pm.test(\"weight_kg del perfil es el último peso registrado\", function () {",
+                  "        pm.expect(pm.response.json().weight_kg).to.eql(Number(pm.collectionVariables.get(\"weights_second_kg\")));",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{weights_user_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/me/profile",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "me",
+                "profile"
+              ]
+            },
+            "description": "Registrar un peso actualiza weight_kg del perfil con el último registrado."
+          },
+          "response": []
+        },
+        {
+          "name": "12 - Meta recalculada con el último peso",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 200 OK\", function () {",
+                  "        pm.response.to.have.status(200);",
+                  "    });",
+                  "    const data = pm.response.json();",
+                  "    pm.test(\"Meta del sistema con la proteína del último peso\", function () {",
+                  "        pm.expect(data.source).to.eql(\"system\");",
+                  "        pm.expect(data.protein_g).to.eql(Math.round(Number(pm.collectionVariables.get(\"weights_second_kg\")) * 1.6));",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{weights_user_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/me/goals/current",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "me",
+                "goals",
+                "current"
+              ]
+            },
+            "description": "La meta del sistema se recalcula con el último peso: proteína = 78.2 kg × 1.6 g/kg (mantener)."
+          },
+          "response": []
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "test_password",
+      "value": "Prueba-MacroFit-2026",
+      "type": "string",
+      "description": "Contraseña ficticia solo para pruebas."
+    },
+    {
+      "key": "weights_user_email",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "weights_user_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "weights_user_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "weights_other_email",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "weights_other_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "weights_other_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "weights_first_kg",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "weights_first_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "weights_second_kg",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "weights_second_id",
+      "value": "",
+      "type": "string"
+    }
+  ]
+}

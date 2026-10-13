@@ -7,6 +7,11 @@
 | TEC-12 | Cálculo de calorías con la fórmula confirmada. | Unitaria | Para al menos 3 perfiles de referencia, el resultado coincide con el cálculo manual de Mifflin-St Jeor (± 1). | [**6**](#caso-03) (mobile 0 · backend 6) |
 | TEC-12 | Distribución de proteína y grasa confirmada para cada objetivo. | Unitaria | Para bajar grasa, mantener y ganar músculo, la proteína es 2.0, 1.6 y 1.8 g/kg y la grasa el 25 % de las calorías. | [**6**](#caso-04) (mobile 0 · backend 6) |
 | TEC-12 | Mínimo de calorías de la meta calculada. | Integración | Un cálculo bajo el mínimo sube a 1 200 kcal (mujer) o 1 500 kcal (hombre), con la grasa calculada sobre ese mínimo; en los límites del perfil la meta queda entre el mínimo y 10 000 kcal. | [**5**](#caso-05) (mobile 0 · backend 5) |
+| HU-21 | Registro de un peso válido. | Integración | `POST /users/me/weights` con un peso dentro del rango de TEC-12 responde 201 con el peso, el usuario de la sesión y la fecha del servidor. | [**4**](#caso-06) (mobile 0 · backend 4) |
+| HU-21 | Validación del peso. | Unitaria | Un peso ausente, nulo, no numérico o fuera de 35–250 kg responde 400 `VALIDATION_ERROR` en `weight_kg`, con el mismo rango y mensaje que el perfil. | [**7**](#caso-07) (mobile 0 · backend 7) |
+| HU-21 | Historial de peso del usuario. | Integración | `GET /users/me/weights` devuelve solo los pesos del usuario de la sesión, del más reciente al más antiguo, iguales a los enviados. | [**2**](#caso-08) (mobile 0 · backend 2) |
+| HU-21 | Restricción por sesión y rol. | Integración | Sin sesión responde 401 `UNAUTHORIZED`; una cuenta de coach responde 403 `FORBIDDEN_ROLE` al registrar y al consultar. | [**3**](#caso-09) (mobile 0 · backend 3) |
+| HU-21 | El último peso actualiza el perfil y la meta. | Integración | Tras registrar un peso, `weight_kg` del perfil es ese peso y la meta calculada se recalcula con él. | [**2**](#caso-10) (mobile 0 · backend 2) |
 
 ## Cómo se cuentan las pruebas
 
@@ -15,7 +20,7 @@
 - Una misma prueba puede contar en más de un caso cuando verifica varios criterios (p. ej. el cálculo de un perfil de referencia comprueba calorías y macros).
 - No se cuentan las pruebas manuales de punta a punta ni las capturas de evidencia.
 
-Inventario al cerrar TEC-12: **119** pruebas mobile, **71** pruebas unitarias de Rust y **75** requests de Postman (sin contar los de preparación). Incluye las pruebas de TEC-13 y HU-12-API, que todavía no tienen casos en este esquema.
+Inventario al cerrar HU-21-API: **119** pruebas mobile, **76** pruebas unitarias de Rust y **87** requests de Postman (sin contar los de preparación). Incluye las pruebas de TEC-13 y HU-12-API, que todavía no tienen casos en este esquema.
 
 ## Detalle de las pruebas por caso
 
@@ -91,3 +96,62 @@ Mobile: 0 · Backend: 5
 
 - Postman › HU-04 Meta calculada › 07 - Edición a un perfil bajo el mínimo
 - Postman › HU-04 Meta calculada › 08 - Meta con el mínimo de calorías
+
+### <a id="caso-06"></a>Caso 06 · HU-21 — Registro de un peso válido
+
+Mobile: 0 · Backend: 4
+
+**Backend (Rust)**
+
+- `backend/src/services/weights.rs` › `peso_valido_se_acepta`
+- `backend/src/services/weights.rs` › `limites_del_rango_se_aceptan`
+
+**Backend (Postman)**
+
+- Postman › HU-21 Registro de peso › 07 - Peso válido
+- Postman › HU-21 Registro de peso › 08 - Segundo peso válido
+
+### <a id="caso-07"></a>Caso 07 · HU-21 — Validación del peso
+
+Mobile: 0 · Backend: 7
+
+**Backend (Rust)**
+
+- `backend/src/services/weights.rs` › `peso_ausente_o_nulo_es_obligatorio`
+- `backend/src/services/weights.rs` › `peso_no_numerico_se_senala`
+- `backend/src/services/weights.rs` › `peso_fuera_de_rango_usa_el_rango_del_perfil`
+- `backend/src/services/profile.rs` › `peso_reutilizable_aplica_el_mismo_rango`
+
+**Backend (Postman)**
+
+- Postman › HU-21 Registro de peso › 04 - Sin peso
+- Postman › HU-21 Registro de peso › 05 - Valor no numérico
+- Postman › HU-21 Registro de peso › 06 - Peso fuera de rango
+
+### <a id="caso-08"></a>Caso 08 · HU-21 — Historial de peso del usuario
+
+Mobile: 0 · Backend: 2
+
+**Backend (Postman)**
+
+- Postman › HU-21 Registro de peso › 09 - Peso de otro usuario
+- Postman › HU-21 Registro de peso › 10 - Historial
+
+### <a id="caso-09"></a>Caso 09 · HU-21 — Restricción por sesión y rol
+
+Mobile: 0 · Backend: 3
+
+**Backend (Postman)**
+
+- Postman › HU-21 Registro de peso › 01 - Sin sesión
+- Postman › HU-21 Registro de peso › 02 - Registro por un coach
+- Postman › HU-21 Registro de peso › 03 - Historial por un coach
+
+### <a id="caso-10"></a>Caso 10 · HU-21 — El último peso actualiza el perfil y la meta
+
+Mobile: 0 · Backend: 2
+
+**Backend (Postman)**
+
+- Postman › HU-21 Registro de peso › 11 - Perfil con el último peso
+- Postman › HU-21 Registro de peso › 12 - Meta recalculada con el último peso

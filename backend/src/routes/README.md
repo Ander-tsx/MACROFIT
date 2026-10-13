@@ -29,3 +29,4 @@ bajo `/api/v1` en `api_router()`.
 | `goals.rs` | `/users/me/goals` y `/users/me/goals/current` (HU-04, `UserOnly`); `/coach/clients` y `/coach/clients/{clientId}/goals` (HU-05, `CoachOnly`) |
 | `dev.rs` | `/dev/seed/coach-links` (HU-05): solo se monta con `APP_ENV=development` |
 | `profile.rs` | `/users/me/profile` POST/GET/PATCH (HU-03), solo rol `user` (`UserOnly`) |
+| `weights.rs` | `/users/me/weights` POST/GET (HU-21), solo rol `user` (`UserOnly`) |
