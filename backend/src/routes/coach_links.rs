@@ -1,11 +1,6 @@
 //! HU-13 — rutas de vinculación con el coach mediante código de invitación.
 
-use axum::{
-    Json, Router,
-    extract::State,
-    http::StatusCode,
-    routing::post,
-};
+use axum::{Json, Router, extract::State, http::StatusCode, routing::post};
 use serde::{Deserialize, Serialize};
 
 use crate::auth::middleware::UserOnly;
