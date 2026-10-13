@@ -62,8 +62,19 @@ fn protein_per_kg(objective: Objective) -> f64 {
     }
 }
 
-/// Calcula calorías, proteína y grasa con Mifflin-St Jeor.
-/// Grasa = 25 % de las calorías totales entre 9 kcal/g.
+/// Parte de las calorías que va a grasa; TEC-12 la fija igual para los tres objetivos.
+const FAT_SHARE: f64 = 0.25;
+
+/// Mínimo de calorías diarias (TEC-12): ninguna meta calculada queda por debajo.
+fn calories_floor(gender: Gender) -> f64 {
+    match gender {
+        Gender::Male => 1500.0,
+        Gender::Female => 1200.0,
+    }
+}
+
+/// Calcula calorías, proteína y grasa con Mifflin-St Jeor (reglas de TEC-12).
+/// Las calorías no bajan de `calories_floor`; la grasa es `FAT_SHARE` de ellas entre 9 kcal/g.
 pub fn calculate_macros(input: &GoalInput) -> Macros {
     let base = 10.0 * input.weight_kg + 6.25 * input.height_cm - 5.0 * f64::from(input.age_years);
     let bmr = match input.gender {
@@ -72,9 +83,10 @@ pub fn calculate_macros(input: &GoalInput) -> Macros {
     };
 
     let calories =
-        bmr * activity_factor(input.training_days) * objective_adjustment(input.objective);
+        (bmr * activity_factor(input.training_days) * objective_adjustment(input.objective))
+            .max(calories_floor(input.gender));
     let protein = input.weight_kg * protein_per_kg(input.objective);
-    let fat = calories * 0.25 / 9.0;
+    let fat = calories * FAT_SHARE / 9.0;
 
     Macros {
         calories: calories.round() as i32,
@@ -461,6 +473,106 @@ mod tests {
                 fat_g: 63
             }
         );
+    }
+
+    #[test]
+    fn proteina_y_grasa_siguen_la_regla_de_cada_objetivo() {
+        // Mismo perfil: TMB = 1805; × 1.55 = 2797.75. Proteína = 80 kg × g/kg; grasa = 25 % / 9.
+        for (objective, calories, protein_g, fat_g) in [
+            (Objective::LoseFat, 2238, 160, 62),    // × 0.80; 2.0 g/kg
+            (Objective::Maintain, 2798, 128, 78),   // × 1.00; 1.6 g/kg
+            (Objective::GainMuscle, 3078, 144, 85), // × 1.10; 1.8 g/kg
+        ] {
+            let m = calculate_macros(&input(80.0, 180.0, 25, Gender::Male, 4, objective));
+            assert_eq!(
+                m,
+                Macros {
+                    calories,
+                    protein_g,
+                    fat_g
+                },
+                "objetivo {objective:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn mujer_bajo_el_minimo_recibe_1200_kcal() {
+        // TMB = 450 + 937.5 - 350 - 161 = 876.5; × 1.2 × 0.8 = 841.44 → mínimo 1200
+        let m = calculate_macros(&input(
+            45.0,
+            150.0,
+            70,
+            Gender::Female,
+            1,
+            Objective::LoseFat,
+        ));
+        assert_eq!(
+            m,
+            Macros {
+                calories: 1200,
+                protein_g: 90,
+                fat_g: 33
+            }
+        );
+    }
+
+    #[test]
+    fn hombre_bajo_el_minimo_recibe_1500_kcal() {
+        // TMB = 550 + 1000 - 375 + 5 = 1180; × 1.2 × 0.8 = 1132.8 → mínimo 1500
+        let m = calculate_macros(&input(55.0, 160.0, 75, Gender::Male, 1, Objective::LoseFat));
+        assert_eq!(
+            m,
+            Macros {
+                calories: 1500,
+                protein_g: 110,
+                fat_g: 42
+            }
+        );
+    }
+
+    #[test]
+    fn esquinas_del_perfil_dan_metas_validas() {
+        use crate::services::profile::{
+            AGE_MAX_YEARS, AGE_MIN_YEARS, HEIGHT_MAX_CM, HEIGHT_MIN_CM, WEIGHT_MAX_KG,
+            WEIGHT_MIN_KG,
+        };
+        let ages = [AGE_MIN_YEARS as i32, AGE_MAX_YEARS as i32];
+        for weight in [WEIGHT_MIN_KG, WEIGHT_MAX_KG] {
+            for height in [HEIGHT_MIN_CM, HEIGHT_MAX_CM] {
+                for age in ages {
+                    for gender in [Gender::Male, Gender::Female] {
+                        for days in [1, 7] {
+                            for objective in [
+                                Objective::LoseFat,
+                                Objective::Maintain,
+                                Objective::GainMuscle,
+                            ] {
+                                let m = calculate_macros(&input(
+                                    weight, height, age, gender, days, objective,
+                                ));
+                                let floor = match gender {
+                                    Gender::Male => 1500,
+                                    Gender::Female => 1200,
+                                };
+                                let case = format!(
+                                    "{weight} kg, {height} cm, {age} años, {gender:?}, {days} días, {objective:?}"
+                                );
+                                assert!(
+                                    (floor..=CALORIES_MAX).contains(&m.calories),
+                                    "calorías {case}"
+                                );
+                                assert!(
+                                    (1..=MACRO_MAX_G).contains(&m.protein_g),
+                                    "proteína {case}"
+                                );
+                                assert!((1..=MACRO_MAX_G).contains(&m.fat_g), "grasa {case}");
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 
     #[test]

@@ -23,9 +23,9 @@ Un archivo por dominio (`auth.rs`, y después `profile.rs`, `goals.rs`, ...). Aq
 | `legal.rs` | TEC-07: `PRIVACY_NOTICE` (Markdown embebido desde `docs/legal/`) y `PRIVACY_VERSION` (leída de su cabecera) |
 | `session.rs` | HU-02: `start` (login), `refresh` (rotación atómica + detección de reuso), `logout`, `is_active` |
 | `coach_links.rs` | HU-05: `require_active_link` (guarda de acceso a un cliente), `list_clients`, `seed_link` (solo desarrollo). TEC-13: `has_active_link` |
-| `goals.rs` | HU-04: cálculo Mifflin-St Jeor (puro), `get_current_goal`, `get_goals_history`, `recalculate_on_profile_change`. HU-05: `validate_coach_goal` (pura), `set_client_goal`, `get_client_goals`; `find_current_goal` decide la meta vigente |
+| `goals.rs` | HU-04 y TEC-12: cálculo Mifflin-St Jeor con mínimo de calorías (puro), `get_current_goal`, `get_goals_history`, `recalculate_on_profile_change`. HU-05: `validate_coach_goal` (pura), `set_client_goal`, `get_client_goals`; `find_current_goal` decide la meta vigente |
 | `photos.rs` | TEC-13: `validate_photo` / `detect_format` (puras), `save_photo`, `read_photo` (dueño o coach vinculado), `delete_photo` (solo el dueño); almacenamiento en GridFS |
-| `profile.rs` | HU-03: `validate_new_profile` / `validate_profile_changes` (puras), `create_profile` (marca `profile_completed`), `get_profile`, `update_profile`; rangos provisionales (TEC-12) |
+| `profile.rs` | HU-03: `validate_new_profile` / `validate_profile_changes` (puras), `create_profile` (marca `profile_completed`), `get_profile`, `update_profile`; rangos válidos de TEC-12 y `parse_weight_kg` (reutilizable en HU-21) |
 
 ### Aviso de privacidad en el registro
 
@@ -41,6 +41,36 @@ y `privacy_version`.
 - `update_profile` solo toca los campos enviados (`$set` + `updated_at`) con `find_one_and_update`.
   Si cambian peso, objetivo o días (`goals::goal_inputs_changed`) llama a `goals::recalculate_on_profile_change`,
   que respeta la meta de un coach. `create_profile` también la llama para generar la meta inicial (HU-04).
+
+### Meta nutricional (HU-04 y TEC-12)
+
+Reglas confirmadas por el PO en **TEC-12** (12/10/2026). Sustituyen los supuestos provisionales del Sprint 1; la única
+regla nueva es el mínimo de calorías. `calculate_macros` (pura) las aplica en este orden y redondea cada valor a entero:
+
+| Paso | Regla | Fuente |
+|---|---|---|
+| 1. Metabolismo basal | Mifflin-St Jeor: `10·peso + 6.25·estatura − 5·edad`, `+5` hombre / `−161` mujer | Mifflin et al. (1990), *Am J Clin Nutr* 51(2):241–247. Es la ecuación más precisa en adultos sanos según la revisión sistemática de Frankenfield et al. (2005), *J Am Diet Assoc* 105(5):775–789 |
+| 2. Actividad | × 1.2 (1 día) · 1.375 (2–3) · 1.55 (4–5) · 1.725 (6–7) | Multiplicadores de actividad estándar (sedentario a muy activo) |
+| 3. Objetivo | × 0.80 `lose_fat` · 1.00 `maintain` · 1.10 `gain_muscle` | Déficit de 20 % y superávit de 10 %: proporcionales al tamaño de la persona |
+| 4. Mínimo de calorías | No menos de **1 200 kcal** (mujer) / **1 500 kcal** (hombre) | Extremo superior de las dietas bajas en calorías sin supervisión médica de NHLBI (1998), *Clinical Guidelines on the Identification, Evaluation, and Treatment of Overweight and Obesity in Adults* |
+| 5. Proteína | `peso × g/kg`: **2.0** `lose_fat` · **1.6** `maintain` · **1.8** `gain_muscle` | Jäger et al. (2017), ISSN, *J Int Soc Sports Nutr* 14:20 (1.4–2.0 g/kg); Morton et al. (2018), *Br J Sports Med* 52(6):376–384 |
+| 6. Grasa | **25 %** de las calorías del paso 4 ÷ 9 kcal/g, igual para los tres objetivos (`FAT_SHARE`) | Dentro del 20–35 % recomendado (AMDR) por el Institute of Medicine (2005), *Dietary Reference Intakes for Energy, Carbohydrate, Fiber, Fat…* |
+
+Los carbohidratos no se registran: quedan implícitos como el resto de las calorías.
+
+**Rangos válidos del perfil** (`services::profile`):
+
+| Campo | Rango | Motivo |
+|---|---|---|
+| Edad | 18 a 80 años | Mifflin-St Jeor se validó en adultos de 19 a 78 años; los menores quedan fuera también por el aviso de privacidad (TEC-07) |
+| Peso | 35 a 250 kg | Cubre adultos reales y evita metas sin sentido en los extremos. También lo usa el registro de peso (HU-21, `parse_weight_kg`) |
+| Estatura | 130 a 230 cm | Igual que el peso |
+
+En todas las combinaciones de estos límites la meta queda entre el mínimo y `CALORIES_MAX`
+(prueba `esquinas_del_perfil_dan_metas_validas`).
+
+Las metas que ya están guardadas no se recalculan con estas reglas: una meta `system` se actualiza en la siguiente
+edición del perfil que cambie peso, objetivo o días, y el historial anterior queda intacto.
 
 ### Fotos de comidas (TEC-13)
 
