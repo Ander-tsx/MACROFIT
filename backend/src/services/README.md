@@ -26,6 +26,14 @@ Un archivo por dominio (`auth.rs`, y después `profile.rs`, `goals.rs`, ...). Aq
 | `goals.rs` | HU-04 y TEC-12: cálculo Mifflin-St Jeor con mínimo de calorías (puro), `get_current_goal`, `get_goals_history`, `recalculate_on_profile_change`. HU-05: `validate_coach_goal` (pura), `set_client_goal`, `get_client_goals`; `find_current_goal` decide la meta vigente |
 | `photos.rs` | TEC-13: `validate_photo` / `detect_format` (puras), `save_photo`, `read_photo` (dueño o coach vinculado), `delete_photo` (solo el dueño); almacenamiento en GridFS |
 | `profile.rs` | HU-03: `validate_new_profile` / `validate_profile_changes` (puras), `create_profile` (marca `profile_completed`), `get_profile`, `update_profile`; rangos válidos de TEC-12 y `parse_weight_kg` (reutilizable en HU-21) |
+| `weights.rs` | HU-21: `validate_weight` (pura, con `profile::parse_weight_kg`), `record_weight` (guarda y actualiza el perfil), `list_weights` |
+
+### Registro de peso (HU-21)
+
+- La fecha (`recorded_at`) la pone el servidor; el cliente solo envía `weight_kg`.
+- `record_weight` inserta el registro y, si el usuario tiene perfil, llama a `profile::update_profile` con el nuevo
+  `weight_kg`. Así se reutilizan la validación y el recálculo de la meta (HU-04, que respeta la meta de un coach).
+  Sin perfil (`PROFILE_NOT_FOUND`), el peso se guarda igual y no se toca nada más.
 
 ### Aviso de privacidad en el registro
 

@@ -16,6 +16,7 @@ use crate::models::meal_photo::{MEAL_PHOTOS_CHUNKS_COLLECTION, MEAL_PHOTOS_FILES
 use crate::models::profile::{PROFILES_COLLECTION, UserProfile};
 use crate::models::refresh_token::{REFRESH_TOKENS_COLLECTION, RefreshToken};
 use crate::models::user::{USERS_COLLECTION, User};
+use crate::models::weight_entry::{WEIGHTS_COLLECTION, WeightEntry};
 
 /// Conecta con MongoDB, verifica la conexión con un `ping` y crea los índices.
 pub async fn connect(mongo_uri: &str, db_name: &str) -> Database {
@@ -225,4 +226,18 @@ async fn ensure_indexes(db: &Database) {
         .create_indexes(exercise_indexes)
         .await
         .expect("No se pudieron crear los índices de exercises");
+
+    // HU-21: historial de peso por usuario, el más reciente primero.
+    let weights_by_user = IndexModel::builder()
+        .keys(doc! { "user_id": 1, "recorded_at": -1 })
+        .options(
+            IndexOptions::builder()
+                .name("user_id_recorded_at".to_string())
+                .build(),
+        )
+        .build();
+    db.collection::<WeightEntry>(WEIGHTS_COLLECTION)
+        .create_index(weights_by_user)
+        .await
+        .expect("No se pudo crear el índice de weights");
 }

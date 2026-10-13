@@ -2,8 +2,9 @@
 
 use axum::{Json, Router, extract::State, http::StatusCode, routing::post};
 use serde::{Deserialize, Serialize};
+use utoipa::ToSchema;
 
-use crate::error::{ApiJson, AppError};
+use crate::error::{ApiJson, AppError, ErrorResponse};
 use crate::models::coach_link::{CoachLink, LinkStatus};
 use crate::services::coach_links::{self, SeedLinkInput};
 use crate::state::AppState;
@@ -17,18 +18,23 @@ pub fn router() -> Router<AppState> {
         )
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, ToSchema)]
 pub struct SeedCoachLinkRequest {
+    /// Id de una cuenta existente con rol `coach`.
+    #[schema(value_type = String, required = true)]
     pub coach_id: Option<String>,
+    /// Id de una cuenta existente con rol `user`.
+    #[schema(value_type = String, required = true)]
     pub user_id: Option<String>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, ToSchema)]
 pub struct CoachLinkResponse {
     pub id: String,
     pub coach_id: String,
     pub user_id: String,
     pub status: LinkStatus,
+    #[schema(format = DateTime)]
     pub created_at: String,
 }
 
@@ -45,7 +51,19 @@ impl From<CoachLink> for CoachLinkResponse {
 }
 
 /// HU-05 — `POST /api/v1/dev/seed/coach-links`. Vincula a un coach con un usuario (solo desarrollo).
-async fn seed_coach_link_handler(
+#[utoipa::path(
+    post,
+    path = "/dev/seed/coach-links",
+    tag = "Desarrollo",
+    summary = "Vincula un coach con un usuario de prueba",
+    description = "Solo existe con `APP_ENV=development`; en otro ambiente la ruta no se monta (404). Sin autenticación. Crea la vinculación o la reactiva.",
+    request_body = SeedCoachLinkRequest,
+    responses(
+        (status = 201, description = "Vinculación activa", body = CoachLinkResponse),
+        (status = 400, description = "`VALIDATION_ERROR` (ids inválidos o de cuentas con otro rol) o `INVALID_BODY`", body = ErrorResponse),
+    )
+)]
+pub async fn seed_coach_link_handler(
     State(state): State<AppState>,
     ApiJson(body): ApiJson<SeedCoachLinkRequest>,
 ) -> Result<(StatusCode, Json<CoachLinkResponse>), AppError> {

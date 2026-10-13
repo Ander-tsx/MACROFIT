@@ -29,3 +29,8 @@ dotenvy = "0.15" # Manejo de archivo .env
 tower-http = { version = "0.5", features = ["cors", "trace"] } # CORS
 chrono = { version = "0.4", features = ["serde"] }
 futures-util = { version = "0.3", features = ["io"] } # Escribir y leer los streams de GridFS (fotos)
+utoipa = { version = "5", features = ["preserve_order"] }
+utoipa-swagger-ui = { version = "8", features = ["axum", "vendored"] }
+
+[dev-dependencies]
+tower = { version = "0.5", features = ["util"] }
