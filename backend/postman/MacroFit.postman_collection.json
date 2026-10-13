@@ -2,7 +2,7 @@
   "info": {
     "_postman_id": "b3e0d869-7c85-4871-9d22-4f6a1c2e0001",
     "name": "MacroFit",
-    "description": "ARCHIVO GENERADO por postman/build.js: no lo edites, modifica postman/<modulo>/ y regenera.\n\nAPI del backend de MacroFit (/api/v1). Una carpeta por historia del backlog (HU-XX / TEC-XX). Requiere el entorno \"MacroFit - Local\" (postman/MacroFit.postman_environment.json).\n\nMódulos (en orden): core, legal, auth, profile, goals, coach_invite_codes. Las carpetas \"... · Cierre\" van al final.",
+    "description": "ARCHIVO GENERADO por postman/build.js: no lo edites, modifica postman/<modulo>/ y regenera.\n\nAPI del backend de MacroFit (/api/v1). Una carpeta por historia del backlog (HU-XX / TEC-XX). Requiere el entorno \"MacroFit - Local\" (postman/MacroFit.postman_environment.json).\n\nMódulos (en orden): core, legal, auth, profile, goals, coach_invite_codes, exercises. Las carpetas \"... · Cierre\" van al final.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "item": [
@@ -5035,6 +5035,156 @@
                   "  });",
                   "  pm.test('error.code == FORBIDDEN_ROLE', function () {",
                   "    pm.expect(pm.response.json().error.code).to.eql('FORBIDDEN_ROLE');",
+                  "  });",
+                  "}"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "TEC-09 Catálogo de ejercicios",
+      "item": [
+        {
+          "name": "01 - Sembrar catálogo de ejercicios",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/dev/seed/exercises",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "dev",
+                "seed",
+                "exercises"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "  pm.test('Status 201 Created', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "  });",
+                  "  const data = pm.response.json();",
+                  "  pm.test('Responde mensaje de éxito y contador', function () {",
+                  "    pm.expect(data).to.have.property('count');",
+                  "    pm.expect(data.count).to.be.at.least(18);",
+                  "  });",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "02 - Consultar catálogo de ejercicios",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{user_access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/exercises",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "exercises"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "  pm.test('Status 200 OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "  });",
+                  "  const items = pm.response.json();",
+                  "  pm.test('Responde un arreglo de ejercicios', function () {",
+                  "    pm.expect(items).to.be.an('array');",
+                  "    pm.expect(items.length).to.be.at.least(18);",
+                  "  });",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "03 - Filtrar por grupo muscular y nivel",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{user_access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/exercises?muscle_group=chest&level=beginner",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "exercises"
+              ],
+              "query": [
+                {
+                  "key": "muscle_group",
+                  "value": "chest"
+                },
+                {
+                  "key": "level",
+                  "value": "beginner"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "  pm.test('Status 200 OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "  });",
+                  "  const items = pm.response.json();",
+                  "  pm.test('Filtra correctamente por chest y beginner', function () {",
+                  "    pm.expect(items).to.be.an('array');",
+                  "    pm.expect(items.length).to.be.at.least(1);",
+                  "    items.forEach(function (item) {",
+                  "      pm.expect(item.muscle_group).to.eql('chest');",
+                  "      pm.expect(item.level).to.eql('beginner');",
+                  "    });",
                   "  });",
                   "}"
                 ]

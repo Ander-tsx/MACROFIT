@@ -9,7 +9,12 @@ use crate::services::coach_links::{self, SeedLinkInput};
 use crate::state::AppState;
 
 pub fn router() -> Router<AppState> {
-    Router::new().route("/dev/seed/coach-links", post(seed_coach_link_handler))
+    Router::new()
+        .route("/dev/seed/coach-links", post(seed_coach_link_handler))
+        .route(
+            "/dev/seed/exercises",
+            post(crate::routes::exercises::seed_exercises_handler),
+        )
 }
 
 #[derive(Debug, Deserialize)]

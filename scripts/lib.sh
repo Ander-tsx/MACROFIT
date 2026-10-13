@@ -12,6 +12,13 @@ backend_bin() {
   echo "$bin"
 }
 
+# Binario del sembrador de ejercicios (en Windows lleva .exe).
+seed_exercises_bin() {
+  local bin="$ROOT/backend/target/debug/seed_exercises"
+  [ -f "$bin.exe" ] && bin="$bin.exe"
+  echo "$bin"
+}
+
 # Ejecuta JavaScript de mongosh sobre una base: usa mongosh local o el contenedor de Docker.
 mongo_eval() {
   local db="$1" script="$2"

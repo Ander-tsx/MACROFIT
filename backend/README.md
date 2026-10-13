@@ -60,7 +60,7 @@ Conectando y verificando cluster de MongoDB...
 Servidor MacroFit corriendo en http://0.0.0.0:3000/api/v1
 ```
 
-Al arrancar se crean los índices (`users.email` único, los de `refresh_tokens`, `profiles.user_id` único, `goals`, `coach_links` y los del bucket de fotos `meal_photos`). Si la colección `users` ya tenía correos repetidos,
+Al arrancar se crean los índices (`users.email` único, los de `refresh_tokens`, `profiles.user_id` único, `goals`, `coach_links`, `exercises.name` único y compuesto por grupo/nivel, y los del bucket de fotos `meal_photos`). Si la colección `users` ya tenía correos repetidos,
 el arranque falla con un mensaje que lo indica: limpia esos documentos primero.
 
 ## ✅ Comprobaciones antes de subir
@@ -348,6 +348,82 @@ Cuerpo `{ "coach_id", "user_id" }` (ids de cuentas existentes con rol `coach` y 
 ### GET `/coach/test`
 
 Misma autenticación que `/auth/me`. **200 OK** `{ "user_id", "role" }` para coaches; `403 FORBIDDEN_ROLE` para `user`.
+
+### Catálogo de ejercicios — `/exercises` (TEC-09)
+
+Cabecera `Authorization: Bearer <access_token>`. Disponible para roles `user` y `coach`.
+
+**GET** con filtros opcionales por parámetros de consulta (query params):
+- `muscle_group`: `"chest"`, `"back"`, `"legs"`, `"shoulders"`, `"arms"`, `"core"`
+- `level`: `"beginner"`, `"intermediate"`, `"advanced"`
+
+Ejemplo: `GET /api/v1/exercises?muscle_group=chest&level=beginner`
+
+Respuesta **200 OK**:
+```json
+[
+  {
+    "id": "6ac6...",
+    "name": "Flexiones de pecho",
+    "muscle_group": "chest",
+    "equipment": "bodyweight",
+    "level": "beginner",
+    "created_at": "2026-10-13T12:00:00Z"
+  }
+]
+```
+
+### POST `/dev/seed/exercises` (TEC-09)
+
+Solo existe con `APP_ENV=development`; en cualquier otro ambiente la ruta no se monta (`404`). Sin autenticación.
+Ejecuta la siembra del catálogo inicial en la base de datos de manera reproducible e idempotente (no duplica ejercicios).
+
+**201 Created**:
+```json
+{
+  "message": "Catálogo de ejercicios cargado correctamente",
+  "count": 18
+}
+```
+
+---
+
+## 🏋️‍♂️ Carga del Catálogo Inicial de Ejercicios (TEC-09)
+
+Catálogo base de ejercicios que usan las rutinas del coach (HU-18) y el motor de reglas (TEC-10 / RF-14).
+Sebastián lo trabaja en paralelo con la vinculación. Es la tercera en salir del sprint si en la revisión del día 5 la ruta crítica va atrasada; fecha límite: día 7 (20/10).
+
+El catálogo inicial de ejercicios cuenta con un mínimo acordado en el Sprint Planning de **18 ejercicios**,
+cubriendo exhaustivamente todas las 18 combinaciones de 6 grupos musculares (`chest`, `back`, `legs`, `shoulders`, `arms`, `core`)
+y 3 niveles de dificultad (`beginner`, `intermediate`, `advanced`, con los mismos valores que el perfil de usuario),
+garantizando que el motor de reglas (TEC-10 / RF-14) pueda generar una rutina válida en cualquier caso.
+
+La carga es **reproducible e idempotente**: ejecutar el proceso dos o más veces actualiza la información pero **no duplica registros**
+(gracias al índice único sobre `name` y a la operación `find_one_and_update` con `upsert: true`).
+
+### Ejecución Local
+
+1. **Binario de Cargo:**
+   ```bash
+   cd backend
+   cargo run --bin seed_exercises
+   ```
+2. **Atajo Bash:**
+   ```bash
+   scripts/dev.sh seed-exercises
+   ```
+
+### Ejecución en Ambiente Desplegado
+
+1. **Vía API REST:**
+   Si la API está desplegada con `APP_ENV=development`:
+   ```bash
+   curl -X POST https://<tu-api-desplegada>/api/v1/dev/seed/exercises
+   ```
+2. **Vía Binario en Contenedor / Tarea de Despliegue:**
+   ```bash
+   MONGO_URI="mongodb+srv://..." DB_NAME="macrofit_prod" cargo run --bin seed_exercises
+   ```
 
 ---
 

@@ -9,6 +9,8 @@ servers:
 tags:
   - name: Coach
     description: Operaciones exclusivas del rol coach.
+  - name: Ejercicios
+    description: Catálogo base de ejercicios para rutinas y recomendaciones (TEC-09).
 
 paths:
   /coach/invite-code:
@@ -55,6 +57,45 @@ paths:
         "403":
           $ref: "#/components/responses/Forbidden"
 
+  /exercises:
+    get:
+      tags: [Ejercicios]
+      summary: Consultar el catálogo de ejercicios (TEC-09)
+      description: >
+        Devuelve la lista de ejercicios precargados en el catálogo base.
+        Soporta filtrado opcional por grupo muscular y nivel de dificultad.
+      operationId: listExercises
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: muscle_group
+          in: query
+          required: false
+          description: Grupo muscular principal
+          schema:
+            type: string
+            enum: [chest, back, legs, shoulders, arms, core]
+        - name: level
+          in: query
+          required: false
+          description: Nivel de dificultad (mismos valores que el perfil)
+          schema:
+            type: string
+            enum: [beginner, intermediate, advanced]
+      responses:
+        "200":
+          description: Lista de ejercicios.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ExerciseResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
 components:
   securitySchemes:
     bearerAuth:
@@ -74,6 +115,31 @@ components:
           pattern: "^[A-Z0-9]{6}$"
           example: "K7P2QX"
           description: Código de 6 caracteres alfanuméricos en mayúsculas (A-Z0-9).
+    ExerciseResponse:
+      type: object
+      required: [id, name, muscle_group, equipment, level, created_at]
+      properties:
+        id:
+          type: string
+          example: "670c2a5e4b6c9f2284981101"
+        name:
+          type: string
+          example: "Flexiones de pecho"
+        muscle_group:
+          type: string
+          enum: [chest, back, legs, shoulders, arms, core]
+          example: "chest"
+        equipment:
+          type: string
+          example: "bodyweight"
+        level:
+          type: string
+          enum: [beginner, intermediate, advanced]
+          example: "beginner"
+        created_at:
+          type: string
+          format: date-time
+          example: "2026-10-13T12:00:00Z"
     ErrorResponse:
       type: object
       properties:
@@ -82,8 +148,23 @@ components:
           example: FORBIDDEN
         message:
           type: string
+        fields:
+          type: object
+          additionalProperties:
+            type: string
 
   responses:
+    ValidationError:
+      description: Uno o más parámetros de la petición no son válidos.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          example:
+            code: VALIDATION_ERROR
+            message: Error de validación
+            fields:
+              muscle_group: "El grupo muscular debe ser 'chest', 'back', 'legs', 'shoulders', 'arms' o 'core'"
     Unauthorized:
       description: Token ausente, inválido o expirado.
       content:
@@ -94,11 +175,11 @@ components:
             code: UNAUTHORIZED
             message: Token inválido o expirado
     Forbidden:
-      description: La cuenta autenticada no tiene rol coach.
+      description: La cuenta autenticada no tiene el rol requerido.
       content:
         application/json:
           schema:
             $ref: "#/components/schemas/ErrorResponse"
           example:
             code: FORBIDDEN
-            message: Acceso restringido a coaches
+            message: Acceso restringido
