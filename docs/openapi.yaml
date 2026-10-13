@@ -9,10 +9,64 @@ servers:
 tags:
   - name: Coach
     description: Operaciones exclusivas del rol coach.
+  - name: Usuario
+    description: Operaciones exclusivas del rol user.
+  - name: Ejercicios
+    description: Catálogo base de ejercicios para rutinas y recomendaciones (TEC-09).
   - name: Vinculaciones
     description: Vinculación entre un usuario y su coach.
-
 paths:
+  /users/me/weights:
+    post:
+      tags: [Usuario]
+      summary: Registrar el peso corporal (HU-21)
+      description: >
+        Guarda un peso con la fecha del servidor. El rango válido es el del perfil (35 a 250 kg, TEC-12).
+        Si el usuario tiene perfil, el peso pasa a ser su weight_kg y la meta calculada se recalcula
+        (una meta fijada por un coach no se toca).
+      operationId: recordWeight
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WeightRequest"
+      responses:
+        "201":
+          description: Peso registrado.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WeightResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/ForbiddenUserOnly"
+    get:
+      tags: [Usuario]
+      summary: Historial de peso del usuario (HU-21)
+      description: Pesos del usuario de la sesión, del más reciente al más antiguo. Lista vacía si no hay registros.
+      operationId: listWeights
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Historial de peso.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/WeightResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/ForbiddenUserOnly"
+
   /coach/invite-code:
     get:
       tags: [Coach]
@@ -93,6 +147,45 @@ paths:
         "409":
           $ref: "#/components/responses/UserAlreadyLinked"
 
+  /exercises:
+    get:
+      tags: [Ejercicios]
+      summary: Consultar el catálogo de ejercicios (TEC-09)
+      description: >
+        Devuelve la lista de ejercicios precargados en el catálogo base.
+        Soporta filtrado opcional por grupo muscular y nivel de dificultad.
+      operationId: listExercises
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: muscle_group
+          in: query
+          required: false
+          description: Grupo muscular principal
+          schema:
+            type: string
+            enum: [chest, back, legs, shoulders, arms, core]
+        - name: level
+          in: query
+          required: false
+          description: Nivel de dificultad (mismos valores que el perfil)
+          schema:
+            type: string
+            enum: [beginner, intermediate, advanced]
+      responses:
+        "200":
+          description: Lista de ejercicios.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ExerciseResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
 components:
   securitySchemes:
     bearerAuth:
@@ -147,6 +240,7 @@ components:
 
     ErrorResponse:
       type: object
+      description: Formato de error de la API (README del backend, "Formato de error").
       required: [error]
       properties:
         error:
@@ -164,6 +258,61 @@ components:
               additionalProperties:
                 type: string
 
+    WeightRequest:
+      type: object
+      required: [weight_kg]
+      properties:
+        weight_kg:
+          type: number
+          minimum: 35
+          maximum: 250
+          example: 78.2
+          description: Peso en kg (rango del perfil, TEC-12). La fecha no se envía; la pone el servidor.
+
+    WeightResponse:
+      type: object
+      required: [id, user_id, weight_kg, recorded_at]
+      properties:
+        id:
+          type: string
+          pattern: "^[0-9a-f]{24}$"
+        user_id:
+          type: string
+          pattern: "^[0-9a-f]{24}$"
+        weight_kg:
+          type: number
+          example: 78.2
+        recorded_at:
+          type: string
+          format: date-time
+          example: "2026-10-13T16:05:00Z"
+
+    ExerciseResponse:
+      type: object
+      required: [id, name, muscle_group, equipment, level, created_at]
+      properties:
+        id:
+          type: string
+          example: "670c2a5e4b6c9f2284981101"
+        name:
+          type: string
+          example: "Flexiones de pecho"
+        muscle_group:
+          type: string
+          enum: [chest, back, legs, shoulders, arms, core]
+          example: "chest"
+        equipment:
+          type: string
+          example: "bodyweight"
+        level:
+          type: string
+          enum: [beginner, intermediate, advanced]
+          example: "beginner"
+        created_at:
+          type: string
+          format: date-time
+          example: "2026-10-13T12:00:00Z"
+
   responses:
     BadRequest:
       description: >
@@ -179,6 +328,18 @@ components:
               message: Hay campos inválidos
               fields:
                 invite_code: invite_code es obligatorio
+    ValidationError:
+      description: Uno o más campos o parámetros inválidos; cada uno aparece en `error.fields`.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          example:
+            error:
+              code: VALIDATION_ERROR
+              message: Hay campos inválidos
+              fields:
+                weight_kg: El peso debe estar entre 35 y 250 kg
     Unauthorized:
       description: Token ausente, inválido o expirado.
       content:
@@ -202,7 +363,7 @@ components:
               message: Acceso restringido a coaches
               fields: {}
     ForbiddenUserOnly:
-      description: La cuenta autenticada es un coach; esta función es solo para usuarios.
+      description: La cuenta autenticada no tiene rol user.
       content:
         application/json:
           schema:
@@ -210,7 +371,7 @@ components:
           example:
             error:
               code: FORBIDDEN_ROLE
-              message: Esta función es solo para usuarios
+              message: "Acceso denegado: esta función es exclusiva del rol usuario"
               fields: {}
     InviteCodeNotFound:
       description: El código no existe o ya no está vigente.

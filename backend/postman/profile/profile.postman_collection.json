@@ -28,6 +28,7 @@
                   "    pm.collectionVariables.set(\"profile_birth_date\", yearsAgo(30));",
                   "    pm.collectionVariables.set(\"profile_new_birth_date\", yearsAgo(41));",
                   "    pm.collectionVariables.set(\"profile_minor_birth_date\", yearsAgo(17));",
+                  "    pm.collectionVariables.set(\"profile_senior_birth_date\", yearsAgo(81));",
                   "}"
                 ]
               }
@@ -330,10 +331,10 @@
                 "profile"
               ]
             },
-            "description": "Peso < 30, estatura > 250, 8 días y 17 años → 400 con esos cuatro campos (el resto es válido).",
+            "description": "Peso < 35, estatura > 230 (justo fuera de los rangos de TEC-12), 8 días y 17 años → 400 con esos cuatro campos (el resto es válido).",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"objective\": \"lose_fat\",\n  \"level\": \"beginner\",\n  \"training_days\": 8,\n  \"weight_kg\": 29.9,\n  \"height_cm\": 250.5,\n  \"gender\": \"female\",\n  \"birth_date\": \"{{profile_minor_birth_date}}\"\n}",
+              "raw": "{\n  \"objective\": \"lose_fat\",\n  \"level\": \"beginner\",\n  \"training_days\": 8,\n  \"weight_kg\": 34.9,\n  \"height_cm\": 230.1,\n  \"gender\": \"female\",\n  \"birth_date\": \"{{profile_minor_birth_date}}\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -762,8 +763,8 @@
                   "    pm.test(\"Código VALIDATION_ERROR\", function () {",
                   "        pm.expect(body.error.code).to.eql(\"VALIDATION_ERROR\");",
                   "    });",
-                  "    pm.test(\"Señala exactamente: height_cm, gender\", function () {",
-                  "        pm.expect(Object.keys(body.error.fields).sort()).to.eql([\"gender\",\"height_cm\"]);",
+                  "    pm.test(\"Señala exactamente: height_cm, gender, birth_date\", function () {",
+                  "        pm.expect(Object.keys(body.error.fields).sort()).to.eql([\"birth_date\",\"gender\",\"height_cm\"]);",
                   "        Object.values(body.error.fields).forEach(function (message) {",
                   "            pm.expect(message).to.be.a(\"string\").and.not.empty;",
                   "        });",
@@ -798,10 +799,10 @@
                 "profile"
               ]
             },
-            "description": "Estatura fuera de rango y sexo no permitido → 400 con esos campos; el perfil no cambia.",
+            "description": "Estatura < 130, sexo no permitido y 81 años (fuera de los rangos de TEC-12) → 400 con esos campos; el perfil no cambia.",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"height_cm\": 99,\n  \"gender\": \"x\"\n}",
+              "raw": "{\n  \"height_cm\": 129.9,\n  \"gender\": \"x\",\n  \"birth_date\": \"{{profile_senior_birth_date}}\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -952,6 +953,11 @@
     },
     {
       "key": "profile_minor_birth_date",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "profile_senior_birth_date",
       "value": "",
       "type": "string"
     },

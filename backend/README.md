@@ -2,7 +2,7 @@
 
 API REST de MacroFit: autenticación, persistencia en MongoDB y reglas de acceso por rol (`user` y `coach`).
 Historias cubiertas: **TEC-05** (base), **TEC-07** (aviso de privacidad), **HU-01** (registro con rol), **HU-02** (inicio y cierre de sesión)
-**HU-03** (perfil inicial del usuario) y **TEC-13** (almacenamiento de fotos de comidas).
+**HU-03** (perfil inicial del usuario), **TEC-13** (almacenamiento de fotos de comidas) y **TEC-14** (contrato de la API en OpenAPI).
 
 > **Si eres una persona o una sesión de IA que va a modificar este backend, lee primero
 > la sección [Forma de trabajo](#-forma-de-trabajo) y el README de la carpeta que vas a tocar.**
@@ -22,6 +22,7 @@ Historias cubiertas: **TEC-05** (base), **TEC-07** (aviso de privacidad), **HU-0
 | `sha2` + `rand` | Refresh tokens opacos (solo se guarda su SHA-256) |
 | `dotenvy` | Variables de entorno desde `.env` |
 | GridFS (driver de MongoDB) + `futures-util` | Almacenamiento de fotos de comidas (TEC-13) |
+| [`utoipa`](https://github.com/juhaku/utoipa) + `utoipa-swagger-ui` | Especificación OpenAPI generada desde el código y Swagger UI (TEC-14) |
 
 ## 📋 Requisitos
 
@@ -60,7 +61,7 @@ Conectando y verificando cluster de MongoDB...
 Servidor MacroFit corriendo en http://0.0.0.0:3000/api/v1
 ```
 
-Al arrancar se crean los índices (`users.email` único, los de `refresh_tokens`, `profiles.user_id` único, `goals`, `coach_links` y los del bucket de fotos `meal_photos`). Si la colección `users` ya tenía correos repetidos,
+Al arrancar se crean los índices (`users.email` único, los de `refresh_tokens`, `profiles.user_id` único, `goals`, `coach_links`, `exercises.name` único y compuesto por grupo/nivel, y los del bucket de fotos `meal_photos`). Si la colección `users` ya tenía correos repetidos,
 el arranque falla con un mensaje que lo indica: limpia esos documentos primero.
 
 ## ✅ Comprobaciones antes de subir
@@ -129,9 +130,10 @@ HTTP → routes (DTO + handler) → services (validación + reglas + Mongo) → 
 1. Si hay colección nueva: modelo en `src/models/` + índices en `db.rs::ensure_indexes`.
 2. Lógica en `src/services/<dominio>.rs` (validación + acceso a Mongo), con pruebas unitarias.
 3. DTOs y handler en `src/routes/<dominio>.rs`; registra la ruta en su `router()` y, si el módulo es nuevo, haz `merge` en `routes::api_router`.
-4. Si aparece un código de error nuevo: variante en `AppError` + fila en la [tabla de códigos](#códigos-de-error).
-5. Carpeta `HU-XX <nombre>` en `postman/<modulo>/<modulo>.postman_collection.json` (mismo nombre que `src/routes/<modulo>.rs`) con tests de estado y estructura, y `node postman/build.js` para regenerar el combinado.
-6. Actualiza el [catálogo de endpoints](#-catálogo-de-endpoints) de este README.
+4. **Contrato OpenAPI**: `#[utoipa::path(...)]` en el handler, `ToSchema` en sus DTOs y el handler en `paths(...)` de `src/routes/openapi.rs`. Pasos en [src/routes/README.md](src/routes/README.md#documentar-un-endpoint-en-openapi-tec-14).
+5. Si aparece un código de error nuevo: variante en `AppError` + fila en la [tabla de códigos](#códigos-de-error).
+6. Carpeta `HU-XX <nombre>` en `postman/<modulo>/<modulo>.postman_collection.json` (mismo nombre que `src/routes/<modulo>.rs`) con tests de estado y estructura, y `node postman/build.js` para regenerar el combinado.
+7. Actualiza el [catálogo de endpoints](#-catálogo-de-endpoints) de este README.
 
 ---
 
@@ -139,9 +141,14 @@ HTTP → routes (DTO + handler) → services (validación + reglas + Mongo) → 
 
 URL base: `http://localhost:3000/api/v1`
 
+El contrato completo (cuerpos, respuestas y códigos de error de cada endpoint) está en **Swagger UI**:
+`http://localhost:3000/api/v1/docs` (ver [Contrato OpenAPI](#contrato-openapi-tec-14)).
+
 | Método | Ruta | Auth | Historia | Descripción |
 |---|---|---|---|---|
 | GET | `/health` | — | TEC-05 | Responde `API MacroFit OK` |
+| GET | `/openapi.json` | — | TEC-14 | Especificación OpenAPI 3.1 generada desde el código |
+| GET | `/docs` | — | TEC-14 | Swagger UI: documentación navegable del contrato |
 | GET | `/legal/privacy` | — | TEC-07 | Versión vigente y texto completo (Markdown) del aviso de privacidad |
 | POST | `/auth/register` | — | HU-01 | Crea una cuenta con rol |
 | POST | `/auth/login` | — | HU-02 | Abre una sesión: access + refresh token |
@@ -153,14 +160,31 @@ URL base: `http://localhost:3000/api/v1`
 | PATCH | `/users/me/profile` | Bearer (user) | HU-03 | Edita solo los campos enviados del perfil |
 | GET | `/users/me/goals/current` | Bearer (user) | HU-04 | Meta nutricional vigente |
 | GET | `/users/me/goals` | Bearer (user) | HU-04 | Historial de metas (más reciente primero) |
+| POST | `/users/me/weights` | Bearer (user) | HU-21 | Registra un peso y lo pasa al perfil |
+| GET | `/users/me/weights` | Bearer (user) | HU-21 | Historial de peso (más reciente primero) |
 | GET | `/coach/clients` | Bearer (coach) | HU-05 | Clientes con vinculación activa |
 | GET | `/coach/clients/{clientId}/goals` | Bearer (coach) | HU-05 | Historial de metas de un cliente vinculado |
 | POST | `/coach/clients/{clientId}/goals` | Bearer (coach) | HU-05 | Fija una meta para un cliente vinculado |
+| GET | `/coach/invite-code` | Bearer (coach) | HU-12 | Código de invitación del coach (lo crea si no existe) |
+| POST | `/coach/invite-code/regenerate` | Bearer (coach) | HU-12 | Reemplaza el código de invitación por uno nuevo |
 | POST | `/dev/seed/coach-links` | — (solo `APP_ENV=development`) | HU-05 | Vincula un coach con un usuario de prueba |
 | GET | `/coach/test` | Bearer (coach) | TEC-05 | Prueba de la regla de acceso por rol |
 | GET | `/coach/invite-code` | Bearer (coach) | HU-12 | Código de invitación del coach; se crea si no existe |
 | POST | `/coach/invite-code/regenerate` | Bearer (coach) | HU-12 | Genera un código nuevo; el anterior deja de ser válido |
 | POST | `/users/me/coach-link` | Bearer (user) | HU-13 | Vincula al usuario con un coach mediante su código de invitación |
+
+### Contrato OpenAPI (TEC-14)
+
+- `GET /api/v1/openapi.json`: especificación **OpenAPI 3.1** generada al compilar desde los handlers y DTOs
+  (`utoipa`); nunca se edita a mano. `GET /api/v1/docs`: Swagger UI con *Try it out*.
+- Se monta en **todos los ambientes** (la Sprint Review se hace con esta documentación sobre el ambiente
+  desplegado). Las rutas `/dev` solo aparecen con `APP_ENV=development`, igual que se montan.
+- Rutas protegidas: esquema `bearer_auth` (JWT). Su lista indica el rol: vacía = cualquier sesión,
+  `["user"]` o `["coach"]`. En Swagger UI, **Authorize** con el `access_token` de `/auth/login`.
+- Errores: todas las respuestas de error referencian el esquema único `ErrorResponse`, el mismo struct que
+  serializa `AppError`; la descripción de cada respuesta nombra sus códigos.
+- Cada elemento -API documenta sus endpoints al terminarse: ver
+  [src/routes/README.md](src/routes/README.md#documentar-un-endpoint-en-openapi-tec-14).
 
 ### POST `/auth/register` (HU-01)
 
@@ -275,13 +299,19 @@ Cabecera `Authorization: Bearer <access_token>`. **Solo rol `user`**: un coach r
 | `objective` | `"lose_fat"`, `"maintain"` o `"gain_muscle"` (exacto, en minúsculas) |
 | `level` | `"beginner"`, `"intermediate"` o `"advanced"` |
 | `training_days` | Entero de 1 a 7 (un número con decimales se señala en el campo) |
-| `weight_kg` | Número de 30 a 300 (kg) |
-| `height_cm` | Número de 100 a 250 (cm) |
+| `weight_kg` | Número de 35 a 250 (kg) |
+| `height_cm` | Número de 130 a 230 (cm) |
 | `gender` | `"male"` o `"female"` |
-| `birth_date` | Fecha válida `YYYY-MM-DD`; edad de 18 a 100 años cumplidos a la fecha UTC actual; no futura |
+| `birth_date` | Fecha válida `YYYY-MM-DD`; edad de 18 a 80 años cumplidos a la fecha UTC actual; no futura |
 
-> Rangos provisionales hasta **TEC-12** (`services::profile::WEIGHT_MIN_KG`, etc.). Si cambian, cambia también
-> `macrofit_app/lib/features/profile/domain/validators/profile_validators.dart`.
+> Rangos definidos en **TEC-12** (`services::profile::WEIGHT_MIN_KG`, etc.; justificación en
+> [`src/services/README.md`](src/services/README.md#meta-nutricional-hu-04-y-tec-12)). El registro de peso (HU-21)
+> valida con `services::profile::parse_weight_kg`.
+>
+> **Pendiente en la app (Sprint 3):** `macrofit_app/lib/features/profile/domain/validators/profile_validators.dart`
+> todavía usa los rangos provisionales (30–300 kg, 100–250 cm, 18–100 años) y el cálculo local de la meta en
+> `macrofit_app/lib/features/goals/` no aplica el mínimo de calorías. Hasta entonces el backend rechaza con
+> `VALIDATION_ERROR` lo que la app deje pasar fuera de los rangos nuevos.
 
 **201 Created** — además marca `users.profile_completed = true` (visible en `GET /auth/me`):
 
@@ -303,7 +333,8 @@ actualizado y `updated_at` nuevo. Errores: `400 VALIDATION_ERROR`, `400 INVALID_
 `404 PROFILE_NOT_FOUND`.
 
 **Meta nutricional (HU-04):** al crear el perfil se genera la meta inicial; al editarlo se recalcula solo si cambian
-`weight_kg`, `objective` o `training_days`, y nunca si la meta vigente la fijó un coach.
+`weight_kg`, `objective` o `training_days`, y nunca si la meta vigente la fijó un coach. La fórmula (TEC-12) está en
+[`src/services/README.md`](src/services/README.md#meta-nutricional-hu-04-y-tec-12).
 
 ### Metas por coach — `/coach/clients/{clientId}/goals` (HU-05)
 
@@ -369,6 +400,24 @@ Un usuario solo puede tener **una vinculación activa**. Si ya existía una vinc
 `403 FORBIDDEN_ROLE`, `404 INVITE_CODE_NOT_FOUND` (el código no existe o su dueño ya no es coach),
 `409 USER_ALREADY_LINKED`.
 
+### Registro de peso — `/users/me/weights` (HU-21)
+
+Solo rol `user` (`UserOnly`); sin sesión `401 UNAUTHORIZED`, una cuenta de coach `403 FORBIDDEN_ROLE`.
+
+**POST** — cuerpo `{ "weight_kg": 78.2 }`. La fecha la pone el servidor (no se envía). `weight_kg` debe ser un número
+de 35 a 250 kg, el mismo rango del perfil (TEC-12, `services::profile::parse_weight_kg`).
+
+```json
+{ "id": "6ac7...", "user_id": "6ac5...", "weight_kg": 78.2, "recorded_at": "2026-10-13T16:05:00Z" }
+```
+
+`201 Created`. Si el usuario ya tiene perfil, el peso pasa a ser su `weight_kg` y la meta calculada se recalcula como
+en una edición del perfil (HU-04; una meta de coach no se toca). Sin perfil, el peso se guarda igual.
+Errores: `400 VALIDATION_ERROR` en `weight_kg` (ausente, `null`, no numérico o fuera de rango), `400 INVALID_BODY`.
+
+**GET** → `200` con `[{ "id", "user_id", "weight_kg", "recorded_at" }]` del usuario de la sesión, del más reciente al
+más antiguo (`[]` si no hay registros).
+
 ### POST `/dev/seed/coach-links` (HU-05)
 
 Solo existe con `APP_ENV=development`; en cualquier otro ambiente la ruta no se monta (`404`). Sin autenticación.
@@ -378,6 +427,82 @@ Cuerpo `{ "coach_id", "user_id" }` (ids de cuentas existentes con rol `coach` y 
 ### GET `/coach/test`
 
 Misma autenticación que `/auth/me`. **200 OK** `{ "user_id", "role" }` para coaches; `403 FORBIDDEN_ROLE` para `user`.
+
+### Catálogo de ejercicios — `/exercises` (TEC-09)
+
+Cabecera `Authorization: Bearer <access_token>`. Disponible para roles `user` y `coach`.
+
+**GET** con filtros opcionales por parámetros de consulta (query params):
+- `muscle_group`: `"chest"`, `"back"`, `"legs"`, `"shoulders"`, `"arms"`, `"core"`
+- `level`: `"beginner"`, `"intermediate"`, `"advanced"`
+
+Ejemplo: `GET /api/v1/exercises?muscle_group=chest&level=beginner`
+
+Respuesta **200 OK**:
+```json
+[
+  {
+    "id": "6ac6...",
+    "name": "Flexiones de pecho",
+    "muscle_group": "chest",
+    "equipment": "bodyweight",
+    "level": "beginner",
+    "created_at": "2026-10-13T12:00:00Z"
+  }
+]
+```
+
+### POST `/dev/seed/exercises` (TEC-09)
+
+Solo existe con `APP_ENV=development`; en cualquier otro ambiente la ruta no se monta (`404`). Sin autenticación.
+Ejecuta la siembra del catálogo inicial en la base de datos de manera reproducible e idempotente (no duplica ejercicios).
+
+**201 Created**:
+```json
+{
+  "message": "Catálogo de ejercicios cargado correctamente",
+  "count": 18
+}
+```
+
+---
+
+## 🏋️‍♂️ Carga del Catálogo Inicial de Ejercicios (TEC-09)
+
+Catálogo base de ejercicios que usan las rutinas del coach (HU-18) y el motor de reglas (TEC-10 / RF-14).
+Sebastián lo trabaja en paralelo con la vinculación. Es la tercera en salir del sprint si en la revisión del día 5 la ruta crítica va atrasada; fecha límite: día 7 (20/10).
+
+El catálogo inicial de ejercicios cuenta con un mínimo acordado en el Sprint Planning de **18 ejercicios**,
+cubriendo exhaustivamente todas las 18 combinaciones de 6 grupos musculares (`chest`, `back`, `legs`, `shoulders`, `arms`, `core`)
+y 3 niveles de dificultad (`beginner`, `intermediate`, `advanced`, con los mismos valores que el perfil de usuario),
+garantizando que el motor de reglas (TEC-10 / RF-14) pueda generar una rutina válida en cualquier caso.
+
+La carga es **reproducible e idempotente**: ejecutar el proceso dos o más veces actualiza la información pero **no duplica registros**
+(gracias al índice único sobre `name` y a la operación `find_one_and_update` con `upsert: true`).
+
+### Ejecución Local
+
+1. **Binario de Cargo:**
+   ```bash
+   cd backend
+   cargo run --bin seed_exercises
+   ```
+2. **Atajo Bash:**
+   ```bash
+   scripts/dev.sh seed-exercises
+   ```
+
+### Ejecución en Ambiente Desplegado
+
+1. **Vía API REST:**
+   Si la API está desplegada con `APP_ENV=development`:
+   ```bash
+   curl -X POST https://<tu-api-desplegada>/api/v1/dev/seed/exercises
+   ```
+2. **Vía Binario en Contenedor / Tarea de Despliegue:**
+   ```bash
+   MONGO_URI="mongodb+srv://..." DB_NAME="macrofit_prod" cargo run --bin seed_exercises
+   ```
 
 ---
 

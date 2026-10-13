@@ -2,18 +2,11 @@ use std::net::SocketAddr;
 
 use tower_http::cors::CorsLayer;
 
-mod auth;
-mod config;
-mod db;
-mod error;
-mod models;
-mod routes;
-mod services;
-mod state;
-mod validation;
-
-use config::Config;
-use state::AppState;
+use backend::config::Config;
+use backend::db;
+use backend::routes;
+use backend::services;
+use backend::state::AppState;
 
 #[tokio::main]
 async fn main() {

@@ -1,8 +1,10 @@
 pub mod auth;
+pub mod coach_invite_codes;
 pub mod coach_links;
+pub mod exercises;
 pub mod goals;
 pub mod legal;
 pub mod photos;
 pub mod profile;
 pub mod session;
-pub mod coach_invite_codes;
+pub mod weights;

@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 pub const GOALS_COLLECTION: &str = "goals";
 
 /// Quién fijó la meta: el cálculo automático o un coach.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, utoipa::ToSchema)]
 #[serde(rename_all = "lowercase")]
 pub enum GoalSource {
     System,
