@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 pub const USERS_COLLECTION: &str = "users";
 
 /// Rol de la cuenta. Se guarda y se expone en minúsculas: `"user"` o `"coach"`.
-#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone, Copy)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone, Copy, utoipa::ToSchema)]
 #[serde(rename_all = "lowercase")]
 pub enum Role {
     User,

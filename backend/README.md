@@ -2,7 +2,7 @@
 
 API REST de MacroFit: autenticación, persistencia en MongoDB y reglas de acceso por rol (`user` y `coach`).
 Historias cubiertas: **TEC-05** (base), **TEC-07** (aviso de privacidad), **HU-01** (registro con rol), **HU-02** (inicio y cierre de sesión)
-**HU-03** (perfil inicial del usuario) y **TEC-13** (almacenamiento de fotos de comidas).
+**HU-03** (perfil inicial del usuario), **TEC-13** (almacenamiento de fotos de comidas) y **TEC-14** (contrato de la API en OpenAPI).
 
 > **Si eres una persona o una sesión de IA que va a modificar este backend, lee primero
 > la sección [Forma de trabajo](#-forma-de-trabajo) y el README de la carpeta que vas a tocar.**
@@ -22,6 +22,7 @@ Historias cubiertas: **TEC-05** (base), **TEC-07** (aviso de privacidad), **HU-0
 | `sha2` + `rand` | Refresh tokens opacos (solo se guarda su SHA-256) |
 | `dotenvy` | Variables de entorno desde `.env` |
 | GridFS (driver de MongoDB) + `futures-util` | Almacenamiento de fotos de comidas (TEC-13) |
+| [`utoipa`](https://github.com/juhaku/utoipa) + `utoipa-swagger-ui` | Especificación OpenAPI generada desde el código y Swagger UI (TEC-14) |
 
 ## 📋 Requisitos
 
@@ -129,9 +130,10 @@ HTTP → routes (DTO + handler) → services (validación + reglas + Mongo) → 
 1. Si hay colección nueva: modelo en `src/models/` + índices en `db.rs::ensure_indexes`.
 2. Lógica en `src/services/<dominio>.rs` (validación + acceso a Mongo), con pruebas unitarias.
 3. DTOs y handler en `src/routes/<dominio>.rs`; registra la ruta en su `router()` y, si el módulo es nuevo, haz `merge` en `routes::api_router`.
-4. Si aparece un código de error nuevo: variante en `AppError` + fila en la [tabla de códigos](#códigos-de-error).
-5. Carpeta `HU-XX <nombre>` en `postman/<modulo>/<modulo>.postman_collection.json` (mismo nombre que `src/routes/<modulo>.rs`) con tests de estado y estructura, y `node postman/build.js` para regenerar el combinado.
-6. Actualiza el [catálogo de endpoints](#-catálogo-de-endpoints) de este README.
+4. **Contrato OpenAPI**: `#[utoipa::path(...)]` en el handler, `ToSchema` en sus DTOs y el handler en `paths(...)` de `src/routes/openapi.rs`. Pasos en [src/routes/README.md](src/routes/README.md#documentar-un-endpoint-en-openapi-tec-14).
+5. Si aparece un código de error nuevo: variante en `AppError` + fila en la [tabla de códigos](#códigos-de-error).
+6. Carpeta `HU-XX <nombre>` en `postman/<modulo>/<modulo>.postman_collection.json` (mismo nombre que `src/routes/<modulo>.rs`) con tests de estado y estructura, y `node postman/build.js` para regenerar el combinado.
+7. Actualiza el [catálogo de endpoints](#-catálogo-de-endpoints) de este README.
 
 ---
 
@@ -139,9 +141,14 @@ HTTP → routes (DTO + handler) → services (validación + reglas + Mongo) → 
 
 URL base: `http://localhost:3000/api/v1`
 
+El contrato completo (cuerpos, respuestas y códigos de error de cada endpoint) está en **Swagger UI**:
+`http://localhost:3000/api/v1/docs` (ver [Contrato OpenAPI](#contrato-openapi-tec-14)).
+
 | Método | Ruta | Auth | Historia | Descripción |
 |---|---|---|---|---|
 | GET | `/health` | — | TEC-05 | Responde `API MacroFit OK` |
+| GET | `/openapi.json` | — | TEC-14 | Especificación OpenAPI 3.1 generada desde el código |
+| GET | `/docs` | — | TEC-14 | Swagger UI: documentación navegable del contrato |
 | GET | `/legal/privacy` | — | TEC-07 | Versión vigente y texto completo (Markdown) del aviso de privacidad |
 | POST | `/auth/register` | — | HU-01 | Crea una cuenta con rol |
 | POST | `/auth/login` | — | HU-02 | Abre una sesión: access + refresh token |
@@ -156,8 +163,23 @@ URL base: `http://localhost:3000/api/v1`
 | GET | `/coach/clients` | Bearer (coach) | HU-05 | Clientes con vinculación activa |
 | GET | `/coach/clients/{clientId}/goals` | Bearer (coach) | HU-05 | Historial de metas de un cliente vinculado |
 | POST | `/coach/clients/{clientId}/goals` | Bearer (coach) | HU-05 | Fija una meta para un cliente vinculado |
+| GET | `/coach/invite-code` | Bearer (coach) | HU-12 | Código de invitación del coach (lo crea si no existe) |
+| POST | `/coach/invite-code/regenerate` | Bearer (coach) | HU-12 | Reemplaza el código de invitación por uno nuevo |
 | POST | `/dev/seed/coach-links` | — (solo `APP_ENV=development`) | HU-05 | Vincula un coach con un usuario de prueba |
 | GET | `/coach/test` | Bearer (coach) | TEC-05 | Prueba de la regla de acceso por rol |
+
+### Contrato OpenAPI (TEC-14)
+
+- `GET /api/v1/openapi.json`: especificación **OpenAPI 3.1** generada al compilar desde los handlers y DTOs
+  (`utoipa`); nunca se edita a mano. `GET /api/v1/docs`: Swagger UI con *Try it out*.
+- Se monta en **todos los ambientes** (la Sprint Review se hace con esta documentación sobre el ambiente
+  desplegado). Las rutas `/dev` solo aparecen con `APP_ENV=development`, igual que se montan.
+- Rutas protegidas: esquema `bearer_auth` (JWT). Su lista indica el rol: vacía = cualquier sesión,
+  `["user"]` o `["coach"]`. En Swagger UI, **Authorize** con el `access_token` de `/auth/login`.
+- Errores: todas las respuestas de error referencian el esquema único `ErrorResponse`, el mismo struct que
+  serializa `AppError`; la descripción de cada respuesta nombra sus códigos.
+- Cada elemento -API documenta sus endpoints al terminarse: ver
+  [src/routes/README.md](src/routes/README.md#documentar-un-endpoint-en-openapi-tec-14).
 
 ### POST `/auth/register` (HU-01)
 
