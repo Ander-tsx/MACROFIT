@@ -5,9 +5,10 @@ use axum::{
     routing::{get, post},
 };
 use serde::{Deserialize, Serialize};
+use utoipa::ToSchema;
 
 use crate::auth::middleware::{AuthenticatedUser, CoachOnly};
-use crate::error::{ApiJson, AppError};
+use crate::error::{ApiJson, AppError, ErrorResponse};
 use crate::models::user::{Role, User};
 use crate::services::auth::{self as auth_service, RegisterInput};
 use crate::services::session::{self, IssuedTokens};
@@ -27,28 +28,46 @@ pub fn router() -> Router<AppState> {
 
 /// Cuerpo de `POST /auth/register`. Todos los campos son opcionales para que
 /// la validación pueda señalar cuál falta en lugar de rechazar el JSON completo.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, ToSchema)]
+#[schema(description = "Datos de la cuenta nueva. Todos los campos son obligatorios.")]
 pub struct RegisterRequest {
+    /// No vacío tras quitar espacios; máximo 100 caracteres.
+    #[schema(value_type = String, required = true, example = "Ana")]
     pub name: Option<String>,
+    /// Formato válido, máximo 254. Se guarda en minúsculas y sin espacios.
+    #[schema(value_type = String, required = true, example = "ana@macrofit.com")]
     pub email: Option<String>,
+    /// De 8 a 128 caracteres. Se guarda solo como hash Argon2id.
+    #[schema(value_type = String, required = true, example = "MinimoOcho")]
     pub password: Option<String>,
+    /// `user` o `coach` (exacto, en minúsculas).
+    #[schema(value_type = Role, required = true)]
     pub role: Option<String>,
+    /// Debe ser `true`: aceptación del aviso de privacidad vigente.
+    #[schema(value_type = bool, required = true, example = true)]
     pub privacy_accepted: Option<bool>,
 }
 
-#[derive(Debug, Deserialize)]
+/// Cuerpo de `POST /auth/login`.
+#[derive(Debug, Deserialize, ToSchema)]
 pub struct LoginRequest {
+    #[schema(value_type = String, required = true, example = "ana@macrofit.com")]
     pub email: Option<String>,
+    #[schema(value_type = String, required = true, example = "MinimoOcho")]
     pub password: Option<String>,
 }
 
 /// Representación pública de una cuenta. Nunca incluye la contraseña ni su hash.
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, ToSchema)]
 pub struct UserResponse {
+    #[schema(example = "6ac67c70a1b2c3d4e5f60718")]
     pub id: String,
+    #[schema(example = "Ana")]
     pub name: String,
+    #[schema(example = "ana@macrofit.com")]
     pub email: String,
     pub role: Role,
+    /// `true` cuando el usuario ya capturó su perfil inicial (HU-03).
     pub profile_completed: bool,
 }
 
@@ -65,18 +84,24 @@ impl From<User> for UserResponse {
 }
 
 /// Cuerpo de `POST /auth/refresh` y `POST /auth/logout`.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, ToSchema)]
 pub struct RefreshRequest {
+    /// Refresh token opaco de la sesión (64 caracteres hexadecimales).
+    #[schema(value_type = String, required = true)]
     pub refresh_token: Option<String>,
 }
 
 /// Respuesta de login y refresh.
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, ToSchema)]
 pub struct TokenResponse {
+    /// JWT para `Authorization: Bearer <token>`.
     pub access_token: String,
+    /// Valor opaco para `/auth/refresh` y `/auth/logout`. Se rota en cada renovación.
     pub refresh_token: String,
+    #[schema(example = "Bearer")]
     pub token_type: &'static str,
     /// Segundos de vida del access token.
+    #[schema(example = 900)]
     pub expires_in: i64,
     pub user: UserResponse,
 }
@@ -93,7 +118,7 @@ impl TokenResponse {
     }
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, ToSchema)]
 pub struct SessionResponse {
     pub user_id: String,
     pub role: Role,
@@ -102,6 +127,19 @@ pub struct SessionResponse {
 // ---------- Handlers ----------
 
 /// HU-01 — `POST /api/v1/auth/register`
+#[utoipa::path(
+    post,
+    path = "/auth/register",
+    tag = "Autenticación",
+    summary = "Crea una cuenta con rol",
+    description = "Registra una cuenta `user` o `coach`. La confirmación de contraseña la valida la app.",
+    request_body = RegisterRequest,
+    responses(
+        (status = 201, description = "Cuenta creada", body = UserResponse),
+        (status = 400, description = "`VALIDATION_ERROR` (cada campo inválido en `fields`), `PRIVACY_NOT_ACCEPTED` (resto de campos válido) o `INVALID_BODY`", body = ErrorResponse),
+        (status = 409, description = "`EMAIL_ALREADY_EXISTS` (también si el correo solo difiere en mayúsculas)", body = ErrorResponse),
+    )
+)]
 pub async fn register_handler(
     State(state): State<AppState>,
     ApiJson(body): ApiJson<RegisterRequest>,
@@ -118,6 +156,19 @@ pub async fn register_handler(
 }
 
 /// HU-02 — `POST /api/v1/auth/login`. Abre una sesión nueva.
+#[utoipa::path(
+    post,
+    path = "/auth/login",
+    tag = "Autenticación",
+    summary = "Abre una sesión",
+    description = "Entrega un access token (JWT, 15 min) y un refresh token (30 días, se rota en cada renovación).",
+    request_body = LoginRequest,
+    responses(
+        (status = 200, description = "Sesión abierta", body = TokenResponse),
+        (status = 400, description = "`VALIDATION_ERROR` o `INVALID_BODY`", body = ErrorResponse),
+        (status = 401, description = "`INVALID_CREDENTIALS` (mismo código si el correo no existe o la contraseña es incorrecta)", body = ErrorResponse),
+    )
+)]
 pub async fn login_handler(
     State(state): State<AppState>,
     ApiJson(body): ApiJson<LoginRequest>,
@@ -128,6 +179,19 @@ pub async fn login_handler(
 }
 
 /// HU-02 — `POST /api/v1/auth/refresh`. Rota el refresh token.
+#[utoipa::path(
+    post,
+    path = "/auth/refresh",
+    tag = "Autenticación",
+    summary = "Renueva los tokens",
+    description = "Revoca el refresh token usado y entrega tokens nuevos en la misma sesión. Presentar un refresh token ya revocado revoca la sesión completa.",
+    request_body = RefreshRequest,
+    responses(
+        (status = 200, description = "Tokens nuevos", body = TokenResponse),
+        (status = 400, description = "`VALIDATION_ERROR` o `INVALID_BODY`", body = ErrorResponse),
+        (status = 401, description = "`INVALID_REFRESH_TOKEN` (desconocido o expirado) o `TOKEN_REVOKED` (ya rotado o sesión cerrada; revoca la sesión)", body = ErrorResponse),
+    )
+)]
 pub async fn refresh_handler(
     State(state): State<AppState>,
     ApiJson(body): ApiJson<RefreshRequest>,
@@ -137,6 +201,20 @@ pub async fn refresh_handler(
 }
 
 /// HU-02 — `POST /api/v1/auth/logout`. Requiere Bearer; revoca la sesión completa.
+#[utoipa::path(
+    post,
+    path = "/auth/logout",
+    tag = "Autenticación",
+    summary = "Cierra la sesión",
+    description = "Revoca todos los refresh tokens de la sesión; el access token deja de funcionar al instante. Cualquier rol.",
+    security(("bearer_auth" = [])),
+    request_body = RefreshRequest,
+    responses(
+        (status = 204, description = "Sesión cerrada"),
+        (status = 400, description = "`VALIDATION_ERROR` o `INVALID_BODY`", body = ErrorResponse),
+        (status = 401, description = "`UNAUTHORIZED` (sin token, alterado o expirado), `TOKEN_REVOKED` (sesión ya cerrada) o `INVALID_REFRESH_TOKEN` (el refresh token no es de esta sesión)", body = ErrorResponse),
+    )
+)]
 pub async fn logout_handler(
     State(state): State<AppState>,
     auth_user: AuthenticatedUser,
@@ -147,6 +225,18 @@ pub async fn logout_handler(
 }
 
 /// HU-02 — `GET /api/v1/auth/me`. Datos de la cuenta del token.
+#[utoipa::path(
+    get,
+    path = "/auth/me",
+    tag = "Autenticación",
+    summary = "Cuenta de la sesión",
+    description = "Datos y rol de la cuenta del token. Cualquier rol.",
+    security(("bearer_auth" = [])),
+    responses(
+        (status = 200, description = "Cuenta de la sesión", body = UserResponse),
+        (status = 401, description = "`UNAUTHORIZED` (sin token, alterado o expirado) o `TOKEN_REVOKED` (sesión cerrada)", body = ErrorResponse),
+    )
+)]
 pub async fn me_handler(
     State(state): State<AppState>,
     auth_user: AuthenticatedUser,
@@ -158,6 +248,19 @@ pub async fn me_handler(
 }
 
 /// TEC-05 — `GET /api/v1/coach/test`. Prueba de la regla de acceso por rol (solo coach).
+#[utoipa::path(
+    get,
+    path = "/coach/test",
+    tag = "Coach",
+    summary = "Prueba de acceso por rol",
+    description = "Responde solo a cuentas `coach`. Sirve para comprobar la regla de acceso por rol.",
+    security(("bearer_auth" = ["coach"])),
+    responses(
+        (status = 200, description = "Sesión de coach", body = SessionResponse),
+        (status = 401, description = "`UNAUTHORIZED` o `TOKEN_REVOKED`", body = ErrorResponse),
+        (status = 403, description = "`FORBIDDEN_ROLE` (cuenta `user`)", body = ErrorResponse),
+    )
+)]
 pub async fn coach_only_handler(CoachOnly(auth_user): CoachOnly) -> Json<SessionResponse> {
     Json(SessionResponse {
         user_id: auth_user.user_id.to_hex(),

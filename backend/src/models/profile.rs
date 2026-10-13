@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 pub const PROFILES_COLLECTION: &str = "profiles";
 
 /// Sexo biológico que usa la fórmula de la meta (HU-04). Se guarda en minúsculas.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, utoipa::ToSchema)]
 #[serde(rename_all = "lowercase")]
 pub enum Gender {
     Male,
@@ -22,7 +22,7 @@ impl Gender {
 }
 
 /// Objetivo del usuario. Se guarda en `snake_case`: `lose_fat`, `maintain`, `gain_muscle`.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, utoipa::ToSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum Objective {
     LoseFat,
@@ -42,7 +42,7 @@ impl Objective {
 }
 
 /// Nivel de entrenamiento: `beginner`, `intermediate`, `advanced`.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, utoipa::ToSchema)]
 #[serde(rename_all = "lowercase")]
 pub enum Level {
     Beginner,

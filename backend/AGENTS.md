@@ -127,6 +127,8 @@ Desde `backend/`:
 1. **Colección nueva**: modelo en `src/models/`, índices en `db.rs::ensure_indexes`, esquema en `src/models/README.md`.
 2. **Lógica**: `src/services/<modulo>.rs` con pruebas `#[cfg(test)]` en el mismo archivo (nombres en español que describan el caso).
 3. **HTTP**: DTOs y handler en `src/routes/<modulo>.rs`, comentario `/// HU-XX — MÉTODO /api/v1/ruta`.
+   **Contrato OpenAPI** (TEC-14): `ToSchema` en los DTOs, `#[utoipa::path]` en el handler, registro en
+   `src/routes/openapi.rs` y fila en su `CATALOG` de pruebas (pasos en `src/routes/README.md`).
 4. **Postman**: carpeta `HU-XX <Nombre>` en `postman/<modulo>/<modulo>.postman_collection.json` (mismo nombre que
    `src/routes/<modulo>.rs`), luego `node postman/build.js`. Nunca edites `postman/MacroFit.postman_collection.json` a mano.
    Reglas: tests de estado y estructura en cada request, scripts envueltos en `{ ... }`, correos únicos `@macrofit.test`,

@@ -6,10 +6,35 @@ use axum::{
     http::StatusCode,
     response::{IntoResponse, Response},
 };
-use serde_json::json;
+use serde::Serialize;
+use utoipa::ToSchema;
 
 /// Errores por campo: nombre del campo → mensaje para mostrar.
 pub type FieldErrors = BTreeMap<String, String>;
+
+/// Cuerpo de toda respuesta de error. Es el único formato de error de la API: lo serializa
+/// `AppError` y lo referencian todas las respuestas de error de la especificación OpenAPI.
+#[derive(Debug, Serialize, ToSchema)]
+pub struct ErrorResponse {
+    pub error: ErrorBody,
+}
+
+/// Detalle del error.
+#[derive(Debug, Serialize, ToSchema)]
+pub struct ErrorBody {
+    /// Código estable para la app (tabla de códigos en `backend/README.md`).
+    #[schema(example = "VALIDATION_ERROR")]
+    pub code: &'static str,
+    /// Mensaje en español para mostrar.
+    #[schema(example = "Hay campos inválidos")]
+    pub message: String,
+    /// Campo → mensaje. Siempre presente; vacío si el error no es de un campo.
+    #[schema(
+        value_type = std::collections::HashMap<String, String>,
+        example = json!({ "email": "El correo no tiene un formato válido" })
+    )]
+    pub fields: FieldErrors,
+}
 
 /// Todos los errores que puede devolver la API.
 ///
@@ -171,13 +196,13 @@ impl IntoResponse for AppError {
             }
         };
 
-        let body = json!({
-            "error": {
-                "code": code,
-                "message": message,
-                "fields": fields,
-            }
-        });
+        let body = ErrorResponse {
+            error: ErrorBody {
+                code,
+                message,
+                fields,
+            },
+        };
         (status, Json(body)).into_response()
     }
 }
@@ -193,3 +218,40 @@ impl From<JsonRejection> for AppError {
 #[derive(axum::extract::FromRequest)]
 #[from_request(via(axum::Json), rejection(AppError))]
 pub struct ApiJson<T>(pub T);
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn el_error_serializado_tiene_la_forma_documentada() {
+        let response = AppError::Validation(FieldErrors::from([(
+            "email".to_string(),
+            "El correo no tiene un formato válido".to_string(),
+        )]))
+        .into_response();
+        assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+        let bytes = axum::body::to_bytes(response.into_body(), usize::MAX)
+            .await
+            .expect("cuerpo");
+        let body: serde_json::Value = serde_json::from_slice(&bytes).expect("JSON");
+        assert_eq!(
+            body,
+            serde_json::json!({
+                "error": {
+                    "code": "VALIDATION_ERROR",
+                    "message": "Hay campos inválidos",
+                    "fields": { "email": "El correo no tiene un formato válido" }
+                }
+            })
+        );
+
+        // Sin campos, `fields` sigue presente como objeto vacío.
+        let response = AppError::TokenRevoked.into_response();
+        let bytes = axum::body::to_bytes(response.into_body(), usize::MAX)
+            .await
+            .expect("cuerpo");
+        let body: serde_json::Value = serde_json::from_slice(&bytes).expect("JSON");
+        assert_eq!(body["error"]["fields"], serde_json::json!({}));
+    }
+}

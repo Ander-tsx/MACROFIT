@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 pub const COACH_LINKS_COLLECTION: &str = "coach_links";
 
 /// Estado de la vinculación entre un coach y un cliente.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, utoipa::ToSchema)]
 #[serde(rename_all = "lowercase")]
 pub enum LinkStatus {
     Active,
