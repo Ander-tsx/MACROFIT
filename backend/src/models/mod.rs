@@ -4,3 +4,4 @@ pub mod meal_photo;
 pub mod profile;
 pub mod refresh_token;
 pub mod user;
+pub mod coach_invite_code;
