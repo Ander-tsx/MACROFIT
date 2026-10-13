@@ -5,6 +5,7 @@ use crate::state::AppState;
 pub mod auth;
 pub mod coach_invite_codes;
 pub mod dev;
+pub mod exercises;
 pub mod goals;
 pub mod legal;
 pub mod openapi;
@@ -21,6 +22,7 @@ pub fn api_router(dev_mode: bool) -> Router<AppState> {
         .route("/health", get(health_handler))
         .merge(auth::router())
         .merge(coach_invite_codes::router())
+        .merge(exercises::router())
         .merge(legal::router())
         .merge(profile::router())
         .merge(goals::router())

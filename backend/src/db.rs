@@ -10,6 +10,7 @@ use std::time::Duration;
 use crate::error::AppError;
 use crate::models::coach_invite_code::{COACH_INVITE_CODES_COLLECTION, CoachInviteCode};
 use crate::models::coach_link::{COACH_LINKS_COLLECTION, CoachLink};
+use crate::models::exercise::{EXERCISES_COLLECTION, Exercise};
 use crate::models::goal::{GOALS_COLLECTION, NutritionalGoal};
 use crate::models::meal_photo::{MEAL_PHOTOS_CHUNKS_COLLECTION, MEAL_PHOTOS_FILES_COLLECTION};
 use crate::models::profile::{PROFILES_COLLECTION, UserProfile};
@@ -200,6 +201,31 @@ async fn ensure_indexes(db: &Database) {
         .create_indexes(invite_code_indexes)
         .await
         .expect("No se pudieron crear los índices de coach_invite_codes");
+
+    // TEC-09: Catálogo de ejercicios (índice único sobre name para reproducibilidad y compuesto para filtros)
+    let exercise_indexes = [
+        IndexModel::builder()
+            .keys(doc! { "name": 1 })
+            .options(
+                IndexOptions::builder()
+                    .unique(true)
+                    .name("exercise_name_unique".to_string())
+                    .build(),
+            )
+            .build(),
+        IndexModel::builder()
+            .keys(doc! { "muscle_group": 1, "level": 1 })
+            .options(
+                IndexOptions::builder()
+                    .name("exercise_muscle_group_level".to_string())
+                    .build(),
+            )
+            .build(),
+    ];
+    db.collection::<Exercise>(EXERCISES_COLLECTION)
+        .create_indexes(exercise_indexes)
+        .await
+        .expect("No se pudieron crear los índices de exercises");
 
     // HU-21: historial de peso por usuario, el más reciente primero.
     let weights_by_user = IndexModel::builder()

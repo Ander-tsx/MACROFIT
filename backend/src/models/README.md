@@ -133,3 +133,25 @@ es el único que las usa. El contenido no se guarda nunca en otra colección: lo
 
 **Índices:** `filename_1_uploadDate_1` en `files` y `files_id_1_n_1` (único) en `chunks`, los estándar de GridFS con su
 nombre automático; y `metadata_owner_id` → `{ "metadata.owner_id": 1 }` en `files`, para las fotos de un usuario.
+
+## Colección `exercises` (`exercise.rs`)
+
+Catálogo base de ejercicios precargados (TEC-09) para las rutinas recomendadas del motor de reglas (TEC-10 / RF-14)
+y la asignación de rutinas de coach (HU-18). Sebastián lo trabaja en paralelo con la vinculación.
+Fecha límite: día 7 (20/10); es la tercera en salir si en la revisión del día 5 la ruta crítica va atrasada.
+Cuenta con un mínimo acordado en el Sprint Planning de **18 ejercicios**, garantizando al menos uno por cada combinación
+de los 6 grupos musculares y los 3 niveles de dificultad (`beginner`, `intermediate`, `advanced`).
+
+| Campo | Tipo | Notas |
+|---|---|---|
+| `_id` | ObjectId | Se expone como `id` (hex) |
+| `name` | string | Nombre único del ejercicio (identificador de negocio para upsert reproducible) |
+| `muscle_group` | `"chest"` \| `"back"` \| `"legs"` \| `"shoulders"` \| `"arms"` \| `"core"` | Grupo muscular principal |
+| `equipment` | string | Equipo requerido (p. ej. `"bodyweight"`, `"dumbbell"`, `"barbell"`, `"cable"`, `"machine"`, `"band"`) |
+| `level` | `"beginner"` \| `"intermediate"` \| `"advanced"` | Nivel de dificultad (mismos valores que el perfil de usuario en HU-03) |
+| `created_at` | ISODate | Momento de registro en el catálogo |
+
+**Índices:**
+- `exercise_name_unique` → `{ name: 1 }`, único (garantiza la reproducibilidad e idempotencia del script de carga, impidiendo duplicados).
+- `exercise_muscle_group_level` → `{ muscle_group: 1, level: 1 }` (optimiza las consultas filtradas requeridas por el motor de reglas TEC-10 / RF-14 y la API).
+

@@ -3,6 +3,18 @@ name = "backend"
 version = "0.1.0"
 edition = "2024"
 
+[lib]
+name = "backend"
+path = "src/lib.rs"
+
+[[bin]]
+name = "backend"
+path = "src/main.rs"
+
+[[bin]]
+name = "seed_exercises"
+path = "src/bin/seed_exercises.rs"
+
 [dependencies]
 axum = { version = "0.7", features = ["macros"] }
 tokio = { version = "1.0", features = ["full"] }

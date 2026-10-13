@@ -19,6 +19,10 @@
 | TEC-14 | Esquema Bearer declarado y aplicado a las rutas protegidas con su rol. | Unitaria | `bearer_auth` es HTTP bearer JWT; cada ruta protegida lo exige con `[]` (cualquier sesión), `["user"]` o `["coach"]`, y las públicas no tienen seguridad. | [**2**](#caso-15) (mobile 0 · backend 2) |
 | TEC-14 | Las rutas `/dev` solo aparecen con `APP_ENV=development`. | Integración | Sin desarrollo, `/dev/seed/coach-links` no está en la especificación y responde 404; con desarrollo está documentada y responde 400 a un cuerpo vacío. | [**3**](#caso-16) (mobile 0 · backend 3) |
 | TEC-14 | La documentación se ve en una ruta registrada en el catálogo. | Integración | `/api/v1/openapi.json` responde la especificación en JSON y `/api/v1/docs/` la página HTML de Swagger UI. | [**2**](#caso-17) (mobile 0 · backend 2) |
+| TEC-09 | Catálogo base con cantidad mínima acordada (18 ejercicios) y cobertura de todas las combinaciones de grupo muscular y nivel (RF-14). | Unitaria | Al menos 18 ejercicios registrados; cada combinación de los 6 grupos musculares y 3 niveles tiene al menos un ejercicio; nombres únicos y no vacíos. | [**5**](#caso-18) (mobile 0 · backend 5) |
+| TEC-09 | Niveles de dificultad idénticos al perfil (beginner, intermediate, advanced) y grupos musculares esperados. | Unitaria | Los niveles de ejercicio coinciden con `Level` de `UserProfile`; los parsers aceptan valores válidos y rechazan inválidos. | [**3**](#caso-19) (mobile 0 · backend 3) |
+| TEC-09 | Carga reproducible e idempotente sin duplicación de ejercicios. | Integración | Ejecutar `seed_exercises` repetidas veces mantiene exactamente 18 ejercicios en la colección `exercises` sin duplicados. | [**2**](#caso-20) (mobile 0 · backend 2) |
+| TEC-09 | Consulta y filtrado del catálogo de ejercicios vía API REST. | Integración | `GET /api/v1/exercises` responde la lista completa; los parámetros de consulta `muscle_group` y `level` filtran correctamente; `POST /api/v1/dev/seed/exercises` realiza la siembra en desarrollo. | [**4**](#caso-21) (mobile 0 · backend 4) |
 
 ## Cómo se cuentan las pruebas
 
@@ -27,7 +31,7 @@
 - Una misma prueba puede contar en más de un caso cuando verifica varios criterios (p. ej. el cálculo de un perfil de referencia comprueba calorías y macros).
 - No se cuentan las pruebas manuales de punta a punta ni las capturas de evidencia.
 
-Inventario al cerrar TEC-14: **119** pruebas mobile, **<RUST>** pruebas de Rust (`cargo test`, incluidas las 6 de TEC-13 que requieren MongoDB y se ejecutan con `--ignored`) y **<POSTMAN>** requests de Postman (sin contar los de preparación). Incluye las pruebas de TEC-13, HU-12-API y HU-21-API, que todavía no tienen casos en este esquema.
+Inventario al cerrar TEC-09: **119** pruebas mobile, **<RUST>** pruebas de Rust (`cargo test`, incluidas las 6 de TEC-13 que requieren MongoDB y se ejecutan con `--ignored`) y **<POSTMAN>** requests de Postman (sin contar los de preparación). Incluye las pruebas de TEC-13, HU-12-API, HU-21-API y los 3 requests del catálogo de ejercicios de TEC-09, que todavía no tienen casos en este esquema.
 
 ## Detalle de las pruebas por caso
 
@@ -250,3 +254,62 @@ Mobile: 0 · Backend: 2
 **Backend (Postman)**
 
 - Postman › TEC-14 Contrato OpenAPI › Documentación (Swagger UI)
+
+### <a id="caso-18"></a>Caso 18 · TEC-09 — Catálogo base con cantidad mínima acordada (18 ejercicios) y cobertura de combinaciones
+
+Mobile: 0 · Backend: 5
+
+Verifica que el catálogo inicial cuenta con la cantidad mínima de ejercicios acordada en el Sprint Planning (18 ejercicios) y que existe al menos un ejercicio para cada una de las 18 combinaciones de grupo muscular (`chest`, `back`, `legs`, `shoulders`, `arms`, `core`) y nivel (`beginner`, `intermediate`, `advanced`), requisito para que el motor de reglas (TEC-10 / RF-14) genere una rutina válida en cualquier caso.
+
+**Backend (Rust)**
+
+- `backend/src/services/exercises.rs` › `cantidad_minima_de_ejercicios_cumple_acuerdo_sprint_planning`
+- `backend/src/services/exercises.rs` › `el_catalogo_contiene_ejercicios_para_todas_las_combinaciones`
+- `backend/src/services/exercises.rs` › `grupos_musculares_son_los_seis_esperados`
+- `backend/src/services/exercises.rs` › `todos_los_nombres_del_catalogo_son_unicos_y_no_vacios`
+
+**Backend (Postman)**
+
+- Postman › TEC-09 Catálogo de ejercicios › 02 - Consultar catálogo de ejercicios
+
+### <a id="caso-19"></a>Caso 19 · TEC-09 — Niveles de dificultad idénticos al perfil y grupos musculares
+
+Mobile: 0 · Backend: 3
+
+Comprueba que los niveles de dificultad del catálogo coinciden exactamente con los del perfil de usuario (`beginner`, `intermediate`, `advanced`) y que la conversión y validación de enumerados procesa entradas válidas e inválidas.
+
+**Backend (Rust)**
+
+- `backend/src/services/exercises.rs` › `niveles_de_ejercicios_coinciden_con_los_niveles_del_perfil`
+- `backend/src/models/exercise.rs` › `parse_muscle_group_acepta_todos_los_validos_y_rechaza_invalidos`
+- `backend/src/models/exercise.rs` › `parse_exercise_level_acepta_todos_los_validos_y_rechaza_invalidos`
+
+### <a id="caso-20"></a>Caso 20 · TEC-09 — Carga reproducible e idempotente sin duplicación de ejercicios
+
+Mobile: 0 · Backend: 2
+
+Comprueba que el script de carga (`seed_exercises`) utiliza `find_one_and_update` con `upsert: true` sobre el índice único `name` (`exercise_name_unique`), de modo que ejecutarlo dos o más veces actualiza la información sin duplicar documentos en la colección `exercises` ni generar errores de clave duplicada.
+
+**Backend (Rust)**
+
+- `backend/src/services/exercises.rs` › `seed_exercises_es_reproducible_e_idempotente`
+
+**Backend (Postman)**
+
+- Postman › TEC-09 Catálogo de ejercicios › 01 - Sembrar catálogo de ejercicios
+
+### <a id="caso-21"></a>Caso 21 · TEC-09 — Consulta y filtrado del catálogo de ejercicios vía API REST
+
+Mobile: 0 · Backend: 4
+
+Comprueba los endpoints de la API: `GET /api/v1/exercises` responde la lista completa serializada correctamente, soporta filtrado por `muscle_group` y `level`, y `POST /api/v1/dev/seed/exercises` permite la siembra en ambientes de desarrollo.
+
+**Backend (Rust)**
+
+- `backend/src/routes/exercises.rs` › `exercise_response_serializa_todos_los_campos`
+
+**Backend (Postman)**
+
+- Postman › TEC-09 Catálogo de ejercicios › 01 - Sembrar catálogo de ejercicios
+- Postman › TEC-09 Catálogo de ejercicios › 02 - Consultar catálogo de ejercicios
+- Postman › TEC-09 Catálogo de ejercicios › 03 - Filtrar por grupo muscular y nivel

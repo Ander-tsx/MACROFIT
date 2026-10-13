@@ -86,6 +86,19 @@ impl AppError {
     }
 }
 
+impl std::fmt::Display for AppError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Internal(detail) => write!(f, "Internal error: {detail}"),
+            Self::Validation(fields) => write!(f, "Validation error: {fields:?}"),
+            Self::InvalidBody(detail) => write!(f, "Invalid body: {detail}"),
+            Self::Unauthorized(msg) => write!(f, "Unauthorized: {msg}"),
+            Self::ForbiddenRole(role) => write!(f, "Forbidden role: {role}"),
+            other => write!(f, "{other:?}"),
+        }
+    }
+}
+
 impl IntoResponse for AppError {
     fn into_response(self) -> Response {
         let (status, code, message, fields) = match self {
