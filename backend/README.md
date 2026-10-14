@@ -74,7 +74,7 @@ cargo test
 node postman/build.js --check
 ```
 
-La CI del backend ([backend-ci.yml](../.github/workflows/backend-ci.yml)) corre `cargo fmt --check`, `cargo clippy` y `cargo test` en cada pull request que modifique `backend/`; con la CI en rojo no se fusiona. No usa secretos ni MongoDB.
+La CI del backend ([backend-ci.yml](../.github/workflows/backend-ci.yml)) corre `cargo fmt --check`, `cargo clippy` y `cargo test` en cada pull request; con la CI en rojo no se fusiona. No usa secretos ni MongoDB.
 
 Y la colección de Postman sin fallos (ver [postman/README.md](postman/README.md)). Los scripts de [../scripts](../scripts/README.md) hacen todo esto con un comando: `scripts/check.sh backend` y `scripts/api-test.sh`.
 
