@@ -8,6 +8,7 @@ postman/
 ├── build.js                            # Une los módulos → MacroFit.postman_collection.json
 ├── MacroFit.postman_collection.json    # GENERADO: no editar a mano
 ├── MacroFit.postman_environment.json   # Entorno "MacroFit - Local": solo baseUrl, sin credenciales
+├── MacroFit.deployed.postman_environment.json # Entorno "MacroFit - Desplegado": solo baseUrl del ambiente en Railway
 ├── core/core.postman_collection.json   # src/routes/mod.rs  → health
 ├── openapi/openapi.postman_collection.json # src/routes/openapi.rs → TEC-14 contrato OpenAPI
 ├── legal/legal.postman_collection.json # src/routes/legal.rs → TEC-07 aviso de privacidad
@@ -31,6 +32,11 @@ Dentro del módulo, una carpeta de Postman por historia (`HU-XX <Nombre>` / `TEC
 4. Clic en la colección **MacroFit** → **Run** → **Run MacroFit**. Todo debe quedar en verde.
 
 Cada colección de módulo también se puede importar y ejecutar sola (útil mientras trabajas en una historia).
+
+**Contra el ambiente desplegado:** usa el entorno **MacroFit - Desplegado** (`MacroFit.deployed.postman_environment.json`)
+en lugar del local. Allí `APP_ENV=production`, así que las carpetas que siembran datos con `/dev/seed/*`
+(HU-05 *Metas por coach* y TEC-09 *Catálogo de ejercicios*) fallan con 404: es lo esperado. Ver
+[Despliegue](../README.md#-despliegue).
 
 Desde terminal, en `backend/` (sin instalar nada):
 

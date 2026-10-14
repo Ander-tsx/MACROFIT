@@ -1,0 +1,9 @@
+.git
+.github
+**/target
+**/.env
+**/.env.*
+!**/.env.example
+macrofit_app
+backend/postman
+**/.DS_Store
