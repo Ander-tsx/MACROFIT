@@ -538,6 +538,8 @@ La carga es **reproducible e idempotente**: ejecutar el proceso dos o más veces
 
 ### Ejecución en Ambiente Desplegado
 
+El ambiente desplegado corre con `APP_ENV=production`, así que `/dev/seed/*` responde 404 ahí (ver [Despliegue](#-despliegue)).
+
 1. **Vía API REST:**
    Si la API está desplegada con `APP_ENV=development`:
    ```bash
@@ -547,6 +549,57 @@ La carga es **reproducible e idempotente**: ejecutar el proceso dos o más veces
    ```bash
    MONGO_URI="mongodb+srv://..." DB_NAME="macrofit_prod" cargo run --bin seed_exercises
    ```
+
+---
+
+## 🚀 Despliegue
+
+El backend y su base de datos corren en [Railway](https://railway.app), proyecto `macrofit`, ambiente `production`:
+
+| Servicio | Qué es |
+|---|---|
+| `backend` | Imagen construida con [Dockerfile](Dockerfile); URL pública con HTTPS |
+| `MongoDB` | Base de datos del ambiente, separada de la de desarrollo de cada integrante. El backend la alcanza por la red privada de Railway |
+
+URL: `https://backend-production-3f327.up.railway.app` (health: `/api/v1/health`).
+
+### Variables
+
+Se configuran en el servicio `backend` de Railway; ninguna está en el repositorio.
+
+| Variable | Valor en el ambiente desplegado |
+|---|---|
+| `MONGO_URI` | Referencia al servicio de Mongo: `${{MongoDB.MONGO_URL}}` |
+| `DB_NAME` | `macrofit_prod` |
+| `JWT_SECRET` | Cadena aleatoria propia de este ambiente |
+| `APP_ENV` | `production` (no `development`: así `/dev/seed/*` no se monta y responde 404) |
+| `RAILWAY_DOCKERFILE_PATH` | `backend/Dockerfile` (el contexto de build es la raíz del repo) |
+
+### Desplegar una versión nueva
+
+Con la [CLI de Railway](https://docs.railway.com/cli) instalada y la sesión iniciada (`railway login`):
+
+```bash
+railway link            # una vez: proyecto macrofit, ambiente production
+railway up --service backend --ci
+```
+
+Desde la raíz del repositorio. `railway up` sube el código local y espera a que el healthcheck (`/api/v1/health`, definido en [../railway.json](../railway.json)) responda. Después de desplegar:
+
+```bash
+curl https://backend-production-3f327.up.railway.app/api/v1/health                 # 200
+curl -X POST https://backend-production-3f327.up.railway.app/api/v1/dev/seed/coach-links   # 404
+```
+
+Para probar la API en este ambiente, importa `postman/MacroFit.deployed.postman_environment.json` ([postman/README.md](postman/README.md)).
+
+### Límites del plan
+
+El plan gratuito de Railway funciona con un crédito de uso limitado, no con recursos ilimitados (riesgo S-05). Revisa el consumo en el panel del proyecto (*Usage*) antes de las pruebas del Sprint 3. Si se agota, los servicios se detienen hasta renovar el crédito o cambiar de plan.
+
+### Datos de prueba en el ambiente desplegado
+
+Las carpetas de Postman que dependen de `/dev/seed` (HU-05 *Metas por coach* y TEC-09 *Catálogo de ejercicios*) fallan contra este ambiente porque esa ruta no existe en producción. Es lo esperado. El resto de la colección pasa. El catálogo de ejercicios se puede cargar con `cargo run --bin seed_exercises` apuntando `MONGO_URI` a la base desplegada.
 
 ---
 
