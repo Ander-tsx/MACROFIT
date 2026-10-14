@@ -1,0 +1,137 @@
+{
+  "foodName": [
+    "chilaquiles verdes",
+    "frijoles refritos",
+    "crema"
+  ],
+  "hasNutritionalInfo": true,
+  "ids": [
+    1001,
+    1002,
+    null
+  ],
+  "imageId": 1234567,
+  "nutritional_info": {
+    "calories": 645.5,
+    "totalNutrients": {
+      "ENERC_KCAL": {
+        "label": "Energy",
+        "quantity": 645.5,
+        "unit": "kcal"
+      },
+      "PROCNT": {
+        "label": "Protein",
+        "quantity": 22.4,
+        "unit": "g"
+      },
+      "FAT": {
+        "label": "Fat",
+        "quantity": 30.1,
+        "unit": "g"
+      },
+      "CHOCDF": {
+        "label": "Carbs",
+        "quantity": 40.0,
+        "unit": "g"
+      }
+    },
+    "dailyIntakeReference": {
+      "FAT": {
+        "label": "Fat",
+        "level": "MEDIUM",
+        "percent": 25.0
+      }
+    }
+  },
+  "nutritional_info_per_item": [
+    {
+      "food_item_position": 1,
+      "hasNutriScore": false,
+      "hasNutritionalInfo": 1,
+      "id": 1001,
+      "nutritional_info": {
+        "calories": 480.3,
+        "totalNutrients": {
+          "ENERC_KCAL": {
+            "label": "Energy",
+            "quantity": 480.3,
+            "unit": "kcal"
+          },
+          "PROCNT": {
+            "label": "Protein",
+            "quantity": 14.2,
+            "unit": "g"
+          },
+          "FAT": {
+            "label": "Fat",
+            "quantity": 22.6,
+            "unit": "g"
+          },
+          "CHOCDF": {
+            "label": "Carbs",
+            "quantity": 40.0,
+            "unit": "g"
+          }
+        },
+        "dailyIntakeReference": {
+          "FAT": {
+            "label": "Fat",
+            "level": "MEDIUM",
+            "percent": 25.0
+          }
+        }
+      },
+      "serving_size": 280.0
+    },
+    {
+      "food_item_position": 2,
+      "hasNutriScore": false,
+      "hasNutritionalInfo": 1,
+      "id": 1002,
+      "nutritional_info": {
+        "calories": 165.2,
+        "totalNutrients": {
+          "ENERC_KCAL": {
+            "label": "Energy",
+            "quantity": 165.2,
+            "unit": "kcal"
+          },
+          "PROCNT": {
+            "label": "Protein",
+            "quantity": 8.2,
+            "unit": "g"
+          },
+          "FAT": {
+            "label": "Fat",
+            "quantity": 7.5,
+            "unit": "g"
+          },
+          "CHOCDF": {
+            "label": "Carbs",
+            "quantity": 40.0,
+            "unit": "g"
+          }
+        },
+        "dailyIntakeReference": {
+          "FAT": {
+            "label": "Fat",
+            "level": "MEDIUM",
+            "percent": 25.0
+          }
+        }
+      },
+      "serving_size": 120.0
+    },
+    {
+      "food_item_position": 3,
+      "hasNutriScore": false,
+      "hasNutritionalInfo": 0,
+      "id": null,
+      "nutritional_info": {
+        "dailyIntakeReference": {}
+      },
+      "serving_size": null
+    }
+  ],
+  "serving_size": 415.0
+}

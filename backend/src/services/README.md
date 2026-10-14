@@ -28,6 +28,7 @@ Un archivo por dominio (`auth.rs`, y después `profile.rs`, `goals.rs`, ...). Aq
 | `profile.rs` | HU-03: `validate_new_profile` / `validate_profile_changes` (puras), `create_profile` (marca `profile_completed`), `get_profile`, `update_profile`; rangos válidos de TEC-12 y `parse_weight_kg` (reutilizable en HU-21) |
 | `coach_invite_codes.rs` | HU-12: `generate_code` (puro), `get_or_create_invite_code`, `regenerate_invite_code` |
 | `weights.rs` | HU-21: `validate_weight` (pura, con `profile::parse_weight_kg`), `record_weight` (guarda y actualiza el perfil), `list_weights` |
+| `food_recognition/` | TEC-02 (RNF-13): trait `FoodRecognizer` y `FoodService` (tiempo de espera); proveedores `simulator`, `logmeal`, `gemini` y `gemini_fatsecret`; `preprocess::prepare` (JPEG ≤ 1000 px). Sección abajo |
 
 ### Registro de peso (HU-21)
 
@@ -112,3 +113,33 @@ usa `save_photo` / `read_photo` / `delete_photo` y el id de la foto.
 - **Pruebas:** las puras corren con `cargo test`; las de MongoDB real (guardar, leer, permisos, borrado de trozos, índices)
   con `cargo test -- --ignored` contra un Mongo sin autenticación (`TEST_MONGO_URI`, por defecto `mongodb://localhost:27017`).
   Cada prueba crea y borra su propia base `macrofit_test_<id>`.
+
+
+## Reconocimiento de alimentos — `food_recognition/` (TEC-02)
+
+Capa del adaptador (RNF-13). Quien estima una foto solo conoce `FoodService` y el trait `FoodRecognizer`;
+el proveedor se elige con `FOOD_PROVIDER` y cambiarlo no toca handlers ni rutas. La comparación de proveedores y la
+decisión están en [`docs/spikes/TEC-02-reconocimiento-de-alimentos.md`](../../../docs/spikes/TEC-02-reconocimiento-de-alimentos.md).
+
+**Contrato:**
+
+| | |
+|---|---|
+| Entrada | `FoodImage { bytes, mime }`: la foto ya pasada por `preprocess::prepare` (orientación EXIF aplicada, lado mayor ≤ 1000 px, JPEG calidad 85). Usa CPU: dentro de `spawn_blocking` |
+| Salida | `FoodEstimate { foods: [IdentifiedFood { name, grams?, nutrients }], totals }` con `Nutrients { calories_kcal, protein_g, fat_g }`, redondeados a 1 decimal; `totals` es la suma de `foods` |
+| Errores | `RecognitionError::NotRecognized` (sin comida; lista vacía nunca es éxito), `Provider(detalle)` (HTTP ≠ 2xx, JSON inesperado, cuota; el detalle es solo para el log) y `Timeout` |
+| Tiempo de espera | Lo aplica `FoodService::estimate` a cualquier proveedor (`FOOD_PROVIDER_TIMEOUT_SECS`, máximo 10 s) |
+
+| Archivo | Proveedor |
+|---|---|
+| `mod.rs` | Trait, tipos, `FoodService`, `build_recognizer` (según `FoodConfig`) |
+| `simulator.rs` | Sin red. `FOOD_SIMULATOR_MODE`: `ok` (plato fijo de 3 alimentos), `not_recognized`, `error`, `timeout` |
+| `logmeal.rs` | `segmentation/complete` + `nutrition/recipe/nutritionalInfo` (token APIUser) |
+| `gemini.rs` | `generateContent` con `responseSchema` (`recognized`, `foods[]`) |
+| `fatsecret.rs` | Híbrido: Gemini identifica alimentos y gramos; `foods.search` de FatSecret da los valores por 100 g |
+| `preprocess.rs` | Preparación de la foto común a todos |
+| `fixtures/` | Respuestas de ejemplo de cada proveedor para las pruebas (sin red) |
+
+**Reglas:** las credenciales llegan como `config::Secret` (su `Debug` no las muestra) y van siempre en cabeceras, nunca
+en la URL; los errores de `reqwest` se registran `without_url()`. Las pruebas de cada proveedor usan los *fixtures*,
+no la red; el comportamiento real se mide con el banco de pruebas (`backend/bench/`).

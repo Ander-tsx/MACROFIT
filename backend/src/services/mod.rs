@@ -2,6 +2,7 @@ pub mod auth;
 pub mod coach_invite_codes;
 pub mod coach_links;
 pub mod exercises;
+pub mod food_recognition;
 pub mod goals;
 pub mod legal;
 pub mod photos;

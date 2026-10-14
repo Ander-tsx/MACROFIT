@@ -1,0 +1,13 @@
+file,source,ref_kcal,ref_protein_g,ref_fat_g,expects_food,notes
+# Fotos propias en bench/photos/. Los valores de referencia son opcionales (vacíos = solo se revisa RF-06).
+# Comida mexicana: anota kcal/proteína/grasa si pesaste la porción o viene de una etiqueta.
+arepa.png,propia,,,,true,4 arepas
+antojito.png,propia,,,,true,antojito de media noche
+acorazado.png,propia,,,,true,acorazado de milanesa
+pastor.png,propia,,,,true,tacos de pastor
+quesabirrias.png,propia,,,,true,4 quesabirrias
+hamburguesa.png,propia,1000.0,,,true,hamburguesa
+# Fotos SIN comida: el servicio debe decir que no reconoció comida.
+vacio1.png,propia,,,,false,vacio
+vacio2.png,propia,,,,false,vacio
+vacio3.png,propia,,,,false,vacio

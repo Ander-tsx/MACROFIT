@@ -24,6 +24,7 @@ Historias cubiertas: **TEC-05** (base), **TEC-07** (aviso de privacidad), **HU-0
 | `dotenvy` | Variables de entorno desde `.env` |
 | GridFS (driver de MongoDB) + `futures-util` | Almacenamiento de fotos de comidas (TEC-13) |
 | [`utoipa`](https://github.com/juhaku/utoipa) + `utoipa-swagger-ui` | Especificación OpenAPI generada desde el código y Swagger UI (TEC-14) |
+| `reqwest` + `async-trait` + `base64` + `image` | Adaptadores de reconocimiento de alimentos y preparación de la foto (TEC-02) |
 
 ## 📋 Requisitos
 
@@ -44,6 +45,12 @@ Copia `.env.example` a `.env` dentro de `backend/`. **`.env` nunca se sube al re
 | `APP_ENV` | No | `development` monta las rutas de datos de prueba (`/dev`); omítela en producción |
 | `ACCESS_TOKEN_MINUTES` | No (15) | Vida del access token (JWT) |
 | `REFRESH_TOKEN_DAYS` | No (30) | Vida del refresh token; se renueva en cada rotación |
+| `FOOD_PROVIDER` | No (`simulator`) | Proveedor de reconocimiento de alimentos: `simulator`, `logmeal`, `gemini` o `gemini_fatsecret` (TEC-02) |
+| `FOOD_PROVIDER_TIMEOUT_SECS` | No (10) | Tiempo de espera con el proveedor, de 1 a 10 s (RNF-01) |
+| `FOOD_SIMULATOR_MODE` | No (`ok`) | Respuesta del simulador: `ok`, `not_recognized`, `error` o `timeout` |
+| `LOGMEAL_API_TOKEN` | Con `logmeal` | Token de un **APIUser** de LogMeal |
+| `GEMINI_API_KEY`, `GEMINI_MODEL` | Con `gemini*` | Llave de Google AI Studio y modelo (por defecto `gemini-2.5-flash`) |
+| `FATSECRET_CLIENT_ID`, `FATSECRET_CLIENT_SECRET` | Con `gemini_fatsecret` | Credenciales OAuth 2.0 de FatSecret Platform |
 
 > Si la contraseña de Atlas tiene `@`, `:` o `/`, codifícalos en formato URL.
 
@@ -88,6 +95,7 @@ backend/
 ├── Cargo.toml
 ├── .env.example          # Plantilla de configuración (sin secretos)
 ├── postman/              # Una colección por módulo + combinado generado → postman/README.md
+├── bench/                # TEC-02: banco de pruebas de reconocimiento de alimentos → bench/README.md
 └── src/
     ├── main.rs           # Arranque: config → db → router. Sin lógica de negocio
     ├── config.rs         # Lectura de variables de entorno

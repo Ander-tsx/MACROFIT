@@ -1,0 +1,22 @@
+{
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "text": "{\"recognized\": true, \"foods\": [{\"name\": \"Tacos de bistec\", \"name_en\": \"beef tacos\", \"grams\": 240, \"calories_kcal\": 520, \"protein_g\": 34.5, \"fat_g\": 22}, {\"name\": \"Salsa verde\", \"name_en\": \"green salsa\", \"grams\": 60, \"calories_kcal\": 130, \"protein_g\": 4, \"fat_g\": 5}]}"
+          }
+        ],
+        "role": "model"
+      },
+      "finishReason": "STOP",
+      "index": 0
+    }
+  ],
+  "usageMetadata": {
+    "promptTokenCount": 1290,
+    "candidatesTokenCount": 120,
+    "totalTokenCount": 1410
+  },
+  "modelVersion": "gemini-2.5-flash"
+}
