@@ -16,9 +16,7 @@ pub enum PhotoFormat {
 }
 
 impl PhotoFormat {
-    /// Tipo MIME con el que se devuelve la foto.
-    // TODO(HU-25): quitar el `allow` cuando una ruta sirva la foto con su Content-Type.
-    #[allow(dead_code)]
+    /// Tipo MIME de la foto (lo usa la preparación de la foto para el reconocimiento de alimentos, TEC-02).
     pub fn mime_type(self) -> &'static str {
         match self {
             Self::Jpeg => "image/jpeg",
