@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 # Entorno local para probar la app contra el backend (simulador, emulador o web).
-#   scripts/dev.sh backend   levanta la API en el puerto 3000 con una base temporal (macrofit_dev)
-#   scripts/dev.sh link      vincula al primer coach con el primer usuario registrado (HU-05)
-#   scripts/dev.sh clean     borra la base temporal
+#   scripts/dev.sh backend          levanta la API en el puerto 3000 con una base temporal (macrofit_dev)
+#   scripts/dev.sh link             vincula al primer coach con el primer usuario registrado (HU-05)
+#   scripts/dev.sh seed-exercises   siembra el catálogo inicial de ejercicios en macrofit_dev (TEC-09)
+#   scripts/dev.sh clean            borra la base temporal
 # La app usa localhost:3000 por defecto, así que basta `flutter run` en macrofit_app/.
 set -euo pipefail
 source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
@@ -31,12 +32,17 @@ case "${1:-}" in
       -H 'Content-Type: application/json' -d "$ids"
     echo
     ;;
+  seed-exercises)
+    cd "$ROOT/backend"
+    cargo build -q --bin seed_exercises
+    MONGO_URI="$MONGO_URI" DB_NAME="$DB_NAME" exec "$(seed_exercises_bin)"
+    ;;
   clean)
     drop_db "$DB_NAME"
     echo "Base $DB_NAME borrada"
     ;;
   *)
-    echo "Uso: scripts/dev.sh [backend|link|clean]" >&2
+    echo "Uso: scripts/dev.sh [backend|link|seed-exercises|clean]" >&2
     exit 1
     ;;
 esac

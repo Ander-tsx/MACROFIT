@@ -1,0 +1,397 @@
+openapi: 3.0.3
+info:
+  title: API MacroFit
+  version: 1.0.0
+  description: API REST de MacroFit.
+servers:
+  - url: http://localhost:3000/api/v1
+    description: Desarrollo
+tags:
+  - name: Coach
+    description: Operaciones exclusivas del rol coach.
+  - name: Usuario
+    description: Operaciones exclusivas del rol user.
+  - name: Ejercicios
+    description: Catálogo base de ejercicios para rutinas y recomendaciones (TEC-09).
+  - name: Vinculaciones
+    description: Vinculación entre un usuario y su coach.
+paths:
+  /users/me/weights:
+    post:
+      tags: [Usuario]
+      summary: Registrar el peso corporal (HU-21)
+      description: >
+        Guarda un peso con la fecha del servidor. El rango válido es el del perfil (35 a 250 kg, TEC-12).
+        Si el usuario tiene perfil, el peso pasa a ser su weight_kg y la meta calculada se recalcula
+        (una meta fijada por un coach no se toca).
+      operationId: recordWeight
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WeightRequest"
+      responses:
+        "201":
+          description: Peso registrado.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WeightResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/ForbiddenUserOnly"
+    get:
+      tags: [Usuario]
+      summary: Historial de peso del usuario (HU-21)
+      description: Pesos del usuario de la sesión, del más reciente al más antiguo. Lista vacía si no hay registros.
+      operationId: listWeights
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Historial de peso.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/WeightResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/ForbiddenUserOnly"
+
+  /coach/invite-code:
+    get:
+      tags: [Coach]
+      summary: Obtener el código de invitación del coach (HU-12)
+      description: >
+        Devuelve el código de invitación del coach autenticado.
+        Si todavía no tiene uno, se genera y se guarda.
+      operationId: getInviteCode
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Código de invitación del coach.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InviteCodeResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/ForbiddenCoachOnly"
+
+  /coach/invite-code/regenerate:
+    post:
+      tags: [Coach]
+      summary: Regenerar el código de invitación del coach (HU-12)
+      description: >
+        Reemplaza el código actual del coach autenticado por uno nuevo y distinto.
+        El código anterior deja de ser válido.
+      operationId: regenerateInviteCode
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Nuevo código de invitación.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InviteCodeResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/ForbiddenCoachOnly"
+
+  /users/me/coach-link:
+    post:
+      tags: [Vinculaciones]
+      summary: Vincularse con un coach mediante su código de invitación (HU-13)
+      description: >
+        El usuario autenticado se vincula con el coach dueño del código.
+        El código se normaliza (sin espacios alrededor y en mayúsculas).
+        Si ya existía una vinculación previa con ese coach, se reactiva.
+        Un usuario solo puede tener una vinculación activa a la vez.
+      operationId: linkCoach
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LinkCoachRequest"
+      responses:
+        "201":
+          description: Vinculación activa creada o reactivada.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CoachLinkResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/ForbiddenUserOnly"
+        "404":
+          $ref: "#/components/responses/InviteCodeNotFound"
+        "409":
+          $ref: "#/components/responses/UserAlreadyLinked"
+
+  /exercises:
+    get:
+      tags: [Ejercicios]
+      summary: Consultar el catálogo de ejercicios (TEC-09)
+      description: >
+        Devuelve la lista de ejercicios precargados en el catálogo base.
+        Soporta filtrado opcional por grupo muscular y nivel de dificultad.
+      operationId: listExercises
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: muscle_group
+          in: query
+          required: false
+          description: Grupo muscular principal
+          schema:
+            type: string
+            enum: [chest, back, legs, shoulders, arms, core]
+        - name: level
+          in: query
+          required: false
+          description: Nivel de dificultad (mismos valores que el perfil)
+          schema:
+            type: string
+            enum: [beginner, intermediate, advanced]
+      responses:
+        "200":
+          description: Lista de ejercicios.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ExerciseResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    InviteCodeResponse:
+      type: object
+      required: [code]
+      properties:
+        code:
+          type: string
+          minLength: 6
+          maxLength: 6
+          pattern: "^[A-Z0-9]{6}$"
+          example: "K7P2QX"
+          description: Código de 6 caracteres alfanuméricos en mayúsculas (A-Z0-9).
+
+    LinkCoachRequest:
+      type: object
+      required: [invite_code]
+      properties:
+        invite_code:
+          type: string
+          example: "K7P2QX"
+          description: Código de invitación del coach. No distingue mayúsculas ni espacios alrededor.
+
+    CoachLinkResponse:
+      type: object
+      required: [id, coach_id, coach_name, coach_email, status]
+      properties:
+        id:
+          type: string
+          example: "6720c1f4a1b2c3d4e5f60718"
+          description: Id de la vinculación.
+        coach_id:
+          type: string
+          example: "6720c1f4a1b2c3d4e5f60719"
+        coach_name:
+          type: string
+          example: "Laura Pérez"
+        coach_email:
+          type: string
+          format: email
+          example: "laura@example.com"
+        status:
+          type: string
+          enum: [active]
+          example: active
+
+    ErrorResponse:
+      type: object
+      description: Formato de error de la API (README del backend, "Formato de error").
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message, fields]
+          properties:
+            code:
+              type: string
+              example: FORBIDDEN_ROLE
+            message:
+              type: string
+            fields:
+              type: object
+              description: Errores por campo (nombre del campo a mensaje). Vacío si no aplica.
+              additionalProperties:
+                type: string
+
+    WeightRequest:
+      type: object
+      required: [weight_kg]
+      properties:
+        weight_kg:
+          type: number
+          minimum: 35
+          maximum: 250
+          example: 78.2
+          description: Peso en kg (rango del perfil, TEC-12). La fecha no se envía; la pone el servidor.
+
+    WeightResponse:
+      type: object
+      required: [id, user_id, weight_kg, recorded_at]
+      properties:
+        id:
+          type: string
+          pattern: "^[0-9a-f]{24}$"
+        user_id:
+          type: string
+          pattern: "^[0-9a-f]{24}$"
+        weight_kg:
+          type: number
+          example: 78.2
+        recorded_at:
+          type: string
+          format: date-time
+          example: "2026-10-13T16:05:00Z"
+
+    ExerciseResponse:
+      type: object
+      required: [id, name, muscle_group, equipment, level, created_at]
+      properties:
+        id:
+          type: string
+          example: "670c2a5e4b6c9f2284981101"
+        name:
+          type: string
+          example: "Flexiones de pecho"
+        muscle_group:
+          type: string
+          enum: [chest, back, legs, shoulders, arms, core]
+          example: "chest"
+        equipment:
+          type: string
+          example: "bodyweight"
+        level:
+          type: string
+          enum: [beginner, intermediate, advanced]
+          example: "beginner"
+        created_at:
+          type: string
+          format: date-time
+          example: "2026-10-13T12:00:00Z"
+
+  responses:
+    BadRequest:
+      description: >
+        Cuerpo inválido. `VALIDATION_ERROR` si falta `invite_code` o viene vacío;
+        `INVALID_BODY` si el JSON está mal formado o un campo tiene un tipo incorrecto.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          example:
+            error:
+              code: VALIDATION_ERROR
+              message: Hay campos inválidos
+              fields:
+                invite_code: invite_code es obligatorio
+    ValidationError:
+      description: Uno o más campos o parámetros inválidos; cada uno aparece en `error.fields`.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          example:
+            error:
+              code: VALIDATION_ERROR
+              message: Hay campos inválidos
+              fields:
+                weight_kg: El peso debe estar entre 35 y 250 kg
+    Unauthorized:
+      description: Token ausente, inválido o expirado.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          example:
+            error:
+              code: UNAUTHORIZED
+              message: Token inválido o expirado
+              fields: {}
+    ForbiddenCoachOnly:
+      description: La cuenta autenticada no tiene rol coach.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          example:
+            error:
+              code: FORBIDDEN_ROLE
+              message: Acceso restringido a coaches
+              fields: {}
+    ForbiddenUserOnly:
+      description: La cuenta autenticada no tiene rol user.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          example:
+            error:
+              code: FORBIDDEN_ROLE
+              message: "Acceso denegado: esta función es exclusiva del rol usuario"
+              fields: {}
+    InviteCodeNotFound:
+      description: El código no existe o ya no está vigente.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          example:
+            error:
+              code: INVITE_CODE_NOT_FOUND
+              message: El código de invitación no existe o ya no está vigente
+              fields: {}
+    UserAlreadyLinked:
+      description: El usuario ya tiene una vinculación activa con un coach.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          example:
+            error:
+              code: USER_ALREADY_LINKED
+              message: Ya tienes una vinculación activa con un coach
+              fields: {}

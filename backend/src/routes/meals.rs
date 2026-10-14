@@ -10,7 +10,7 @@ use axum::{
 use serde::Serialize;
 
 use crate::auth::middleware::UserOnly;
-use crate::error::AppError;
+use crate::error::{AppError, ErrorResponse};
 use crate::models::meal_photo::PhotoFormat;
 use crate::services::photos::{self, MAX_PHOTO_BYTES, UploadedPhoto};
 use crate::state::AppState;
@@ -22,10 +22,27 @@ const PHOTO_FIELD: &str = "photo";
 /// (separadores, cabeceras de cada campo y campos extra). Axum limita a 2 MB por defecto.
 const PHOTO_UPLOAD_BODY_LIMIT: usize = MAX_PHOTO_BYTES + 1024 * 1024;
 
-#[derive(Debug, Serialize)]
+/// Solo documenta el formulario en OpenAPI: el handler lee el multipart a mano (`read_photo_field`).
+#[derive(utoipa::ToSchema)]
+#[schema(
+    description = "Formulario `multipart/form-data` con la foto. Los demás campos se ignoran."
+)]
+#[allow(dead_code)]
+pub struct PhotoUploadForm {
+    /// Archivo JPEG o PNG de hasta 5 MiB. El tipo se detecta por el contenido, no por la extensión.
+    #[schema(value_type = String, format = Binary)]
+    photo: Vec<u8>,
+}
+
+#[derive(Debug, Serialize, utoipa::ToSchema)]
+#[schema(description = "Foto guardada a nombre del usuario de la sesión.")]
 pub struct PhotoUploadResponse {
+    /// Id de la foto; lo usan la estimación (HU-07) y el registro de comida (HU-09).
+    #[schema(example = "6acd4140ac968514f27322cd")]
     pub id: String,
     pub format: PhotoFormat,
+    /// Tamaño del archivo en bytes.
+    #[schema(example = 134)]
     pub size_bytes: usize,
 }
 
@@ -40,7 +57,24 @@ impl From<UploadedPhoto> for PhotoUploadResponse {
 }
 
 /// HU-06 — POST /api/v1/meals/photos. Sube la foto de una comida (multipart, campo `photo`) a nombre del usuario.
-async fn upload_photo_handler(
+#[utoipa::path(
+    post,
+    path = "/meals/photos",
+    tag = "Comidas",
+    summary = "Sube la foto de una comida (HU-06)",
+    description = "Guarda la foto en GridFS a nombre del usuario de la sesión y devuelve su id. Solo JPEG o PNG (se revisa el contenido) y como máximo 5 MiB; el tamaño se revisa antes que el tipo. Si hay varios campos `photo`, se toma el primero.",
+    security(("bearer_auth" = ["user"])),
+    request_body(content = PhotoUploadForm, content_type = "multipart/form-data"),
+    responses(
+        (status = 201, description = "Foto guardada", body = PhotoUploadResponse),
+        (status = 400, description = "`VALIDATION_ERROR` (falta `photo` o está vacío) o `INVALID_BODY` (no es `multipart/form-data`)", body = ErrorResponse),
+        (status = 401, description = "`UNAUTHORIZED` o `TOKEN_REVOKED`", body = ErrorResponse),
+        (status = 403, description = "`FORBIDDEN_ROLE` (cuenta `coach`)", body = ErrorResponse),
+        (status = 413, description = "`PHOTO_TOO_LARGE` (más de 5 MiB)", body = ErrorResponse),
+        (status = 415, description = "`UNSUPPORTED_PHOTO_TYPE` (no es JPEG ni PNG)", body = ErrorResponse),
+    )
+)]
+pub async fn upload_photo_handler(
     State(state): State<AppState>,
     UserOnly(auth): UserOnly,
     multipart: Result<Multipart, MultipartRejection>,

@@ -2,7 +2,7 @@
   "info": {
     "_postman_id": "b3e0d869-7c85-4871-9d22-4f6a1c2e0001",
     "name": "MacroFit",
-    "description": "ARCHIVO GENERADO por postman/build.js: no lo edites, modifica postman/<modulo>/ y regenera.\n\nAPI del backend de MacroFit (/api/v1). Una carpeta por historia del backlog (HU-XX / TEC-XX). Requiere el entorno \"MacroFit - Local\" (postman/MacroFit.postman_environment.json).\n\nMódulos (en orden): core, legal, auth, profile, goals, meals. Las carpetas \"... · Cierre\" van al final.",
+    "description": "ARCHIVO GENERADO por postman/build.js: no lo edites, modifica postman/<modulo>/ y regenera.\n\nAPI del backend de MacroFit (/api/v1). Una carpeta por historia del backlog (HU-XX / TEC-XX). Requiere el entorno \"MacroFit - Local\" (postman/MacroFit.postman_environment.json).\n\nMódulos (en orden): core, openapi, legal, auth, profile, goals, coach_invite_codes, coach_links, weights, exercises, meals. Las carpetas \"... · Cierre\" van al final.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "item": [
@@ -45,6 +45,196 @@
               ]
             },
             "description": "Verifica que el servidor esté activo."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "TEC-14 Contrato OpenAPI",
+      "description": "La especificación se genera desde el código (utoipa) y se publica con Swagger UI.",
+      "item": [
+        {
+          "name": "Especificación OpenAPI",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test('Status 200', function () {",
+                  "        pm.response.to.have.status(200);",
+                  "    });",
+                  "    const spec = pm.response.json();",
+                  "    pm.test('Es OpenAPI 3.1 de MacroFit con servidor /api/v1', function () {",
+                  "        pm.expect(spec.openapi).to.match(/^3\\.1\\./);",
+                  "        pm.expect(spec.info.title).to.eql('MacroFit API');",
+                  "        pm.expect(spec.servers[0].url).to.eql('/api/v1');",
+                  "    });",
+                  "    // Catálogo de endpoints del README: método, ruta y rol ('' = cualquier sesión, null = pública).",
+                  "    const catalog = [",
+                  "        ['get', '/health', null], ['get', '/legal/privacy', null],",
+                  "        ['post', '/auth/register', null], ['post', '/auth/login', null], ['post', '/auth/refresh', null],",
+                  "        ['post', '/auth/logout', ''], ['get', '/auth/me', ''],",
+                  "        ['post', '/users/me/profile', 'user'], ['get', '/users/me/profile', 'user'], ['patch', '/users/me/profile', 'user'],",
+                  "        ['get', '/users/me/goals/current', 'user'], ['get', '/users/me/goals', 'user'],",
+                  "        ['get', '/coach/clients', 'coach'], ['get', '/coach/clients/{clientId}/goals', 'coach'],",
+                  "        ['post', '/coach/clients/{clientId}/goals', 'coach'], ['get', '/coach/invite-code', 'coach'],",
+                  "        ['post', '/coach/invite-code/regenerate', 'coach'], ['get', '/coach/test', 'coach'],",
+                  "        ['post', '/meals/photos', 'user'],",
+                  "    ];",
+                  "    pm.test('Incluye todos los endpoints del catálogo', function () {",
+                  "        catalog.forEach(([method, route]) => {",
+                  "            pm.expect(spec.paths, route).to.have.property(route);",
+                  "            pm.expect(spec.paths[route], `${method} ${route}`).to.have.property(method);",
+                  "        });",
+                  "    });",
+                  "    pm.test('Rutas protegidas con bearer_auth y su rol; públicas sin seguridad', function () {",
+                  "        catalog.forEach(([method, route, role]) => {",
+                  "            const security = spec.paths[route][method].security;",
+                  "            if (role === null) {",
+                  "                pm.expect(security, `${method} ${route}`).to.be.undefined;",
+                  "            } else {",
+                  "                pm.expect(security, `${method} ${route}`).to.eql([{ bearer_auth: role ? [role] : [] }]);",
+                  "            }",
+                  "        });",
+                  "        const scheme = spec.components.securitySchemes.bearer_auth;",
+                  "        pm.expect(scheme).to.include({ type: 'http', scheme: 'bearer', bearerFormat: 'JWT' });",
+                  "    });",
+                  "    pm.test('Formato de error definido una vez y usado por todas las respuestas de error', function () {",
+                  "        pm.expect(spec.components.schemas.ErrorResponse.required).to.eql(['error']);",
+                  "        pm.expect(spec.components.schemas.ErrorBody.required).to.eql(['code', 'message', 'fields']);",
+                  "        Object.entries(spec.paths).forEach(([route, item]) => {",
+                  "            Object.entries(item).forEach(([method, op]) => {",
+                  "                Object.entries(op.responses || {}).filter(([status]) => Number(status) >= 400).forEach(([status, res]) => {",
+                  "                    pm.expect(res.content['application/json'].schema.$ref, `${method} ${route} ${status}`)",
+                  "                        .to.eql('#/components/schemas/ErrorResponse');",
+                  "                });",
+                  "            });",
+                  "        });",
+                  "    });",
+                  "    pm.collectionVariables.set('openapi_has_dev', String(Object.keys(spec.paths).some((p) => p.startsWith('/dev'))));",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/openapi.json",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "openapi.json"
+              ]
+            },
+            "description": "Especificación generada desde el código."
+          },
+          "response": []
+        },
+        {
+          "name": "Rutas /dev según el ambiente",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    // Con APP_ENV=development la ruta existe (400 por el cuerpo vacío) y está documentada;",
+                  "    // en otro ambiente no se monta (404) y tampoco aparece en la especificación.",
+                  "    const documented = pm.collectionVariables.get('openapi_has_dev') === 'true';",
+                  "    pm.test('Status 400 o 404', function () {",
+                  "        pm.expect(pm.response.code).to.be.oneOf([400, 404]);",
+                  "    });",
+                  "    pm.test('La especificación documenta /dev solo si la ruta existe', function () {",
+                  "        pm.expect(documented).to.eql(pm.response.code === 400);",
+                  "    });",
+                  "    if (pm.response.code === 400) {",
+                  "        pm.test('Estructura de error VALIDATION_ERROR con los dos campos', function () {",
+                  "            const body = pm.response.json();",
+                  "            pm.expect(body).to.have.all.keys('error');",
+                  "            pm.expect(body.error).to.have.all.keys('code', 'message', 'fields');",
+                  "            pm.expect(body.error.code).to.eql('VALIDATION_ERROR');",
+                  "            pm.expect(body.error.fields).to.have.all.keys('coach_id', 'user_id');",
+                  "        });",
+                  "    }",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/dev/seed/coach-links",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "dev",
+                "seed",
+                "coach-links"
+              ]
+            },
+            "description": "La ruta de datos de prueba solo existe (y solo se documenta) con APP_ENV=development."
+          },
+          "response": []
+        },
+        {
+          "name": "Documentación (Swagger UI)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test('Status 200', function () {",
+                  "        pm.response.to.have.status(200);",
+                  "    });",
+                  "    pm.test('Es la página HTML de Swagger UI', function () {",
+                  "        pm.expect(pm.response.headers.get('Content-Type')).to.include('text/html');",
+                  "        pm.expect(pm.response.text()).to.include('swagger-ui');",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/docs/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "docs"
+              ]
+            },
+            "description": "Documentación navegable del contrato."
           },
           "response": []
         }
@@ -1898,6 +2088,7 @@
                   "    pm.collectionVariables.set(\"profile_birth_date\", yearsAgo(30));",
                   "    pm.collectionVariables.set(\"profile_new_birth_date\", yearsAgo(41));",
                   "    pm.collectionVariables.set(\"profile_minor_birth_date\", yearsAgo(17));",
+                  "    pm.collectionVariables.set(\"profile_senior_birth_date\", yearsAgo(81));",
                   "}"
                 ]
               }
@@ -2200,10 +2391,10 @@
                 "profile"
               ]
             },
-            "description": "Peso < 30, estatura > 250, 8 días y 17 años → 400 con esos cuatro campos (el resto es válido).",
+            "description": "Peso < 35, estatura > 230 (justo fuera de los rangos de TEC-12), 8 días y 17 años → 400 con esos cuatro campos (el resto es válido).",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"objective\": \"lose_fat\",\n  \"level\": \"beginner\",\n  \"training_days\": 8,\n  \"weight_kg\": 29.9,\n  \"height_cm\": 250.5,\n  \"gender\": \"female\",\n  \"birth_date\": \"{{profile_minor_birth_date}}\"\n}",
+              "raw": "{\n  \"objective\": \"lose_fat\",\n  \"level\": \"beginner\",\n  \"training_days\": 8,\n  \"weight_kg\": 34.9,\n  \"height_cm\": 230.1,\n  \"gender\": \"female\",\n  \"birth_date\": \"{{profile_minor_birth_date}}\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -2632,8 +2823,8 @@
                   "    pm.test(\"Código VALIDATION_ERROR\", function () {",
                   "        pm.expect(body.error.code).to.eql(\"VALIDATION_ERROR\");",
                   "    });",
-                  "    pm.test(\"Señala exactamente: height_cm, gender\", function () {",
-                  "        pm.expect(Object.keys(body.error.fields).sort()).to.eql([\"gender\",\"height_cm\"]);",
+                  "    pm.test(\"Señala exactamente: height_cm, gender, birth_date\", function () {",
+                  "        pm.expect(Object.keys(body.error.fields).sort()).to.eql([\"birth_date\",\"gender\",\"height_cm\"]);",
                   "        Object.values(body.error.fields).forEach(function (message) {",
                   "            pm.expect(message).to.be.a(\"string\").and.not.empty;",
                   "        });",
@@ -2668,10 +2859,10 @@
                 "profile"
               ]
             },
-            "description": "Estatura fuera de rango y sexo no permitido → 400 con esos campos; el perfil no cambia.",
+            "description": "Estatura < 130, sexo no permitido y 81 años (fuera de los rangos de TEC-12) → 400 con esos campos; el perfil no cambia.",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"height_cm\": 99,\n  \"gender\": \"x\"\n}",
+              "raw": "{\n  \"height_cm\": 129.9,\n  \"gender\": \"x\",\n  \"birth_date\": \"{{profile_senior_birth_date}}\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -2810,7 +3001,7 @@
     },
     {
       "name": "HU-04 Meta calculada",
-      "description": "HU-04: la meta nutricional (calorías, proteína y grasa) se calcula automáticamente con Mifflin-St Jeor a partir del perfil, se recalcula al editarlo y conserva el historial. Endpoints: GET /api/v1/users/me/goals/current y GET /api/v1/users/me/goals.\n\nEjecutar en orden. Las peticiones 02 (registrar perfil) y 03 (edición) usan POST y PATCH /api/v1/users/me/profile de HU-03.",
+      "description": "HU-04: la meta nutricional (calorías, proteína y grasa) se calcula automáticamente con Mifflin-St Jeor a partir del perfil (reglas de TEC-12, con mínimo de calorías), se recalcula al editarlo y conserva el historial. Endpoints: GET /api/v1/users/me/goals/current y GET /api/v1/users/me/goals.\n\nEjecutar en orden. Las peticiones 02 (registrar perfil) y 03 (edición) usan POST y PATCH /api/v1/users/me/profile de HU-03. Las peticiones 07 y 08 comprueban el mínimo de calorías de TEC-12.",
       "item": [
         {
           "name": "00 - Preparación: registrar usuario sin perfil",
@@ -3103,7 +3294,7 @@
                   "        pm.expect(data.set_by).to.eql(null);",
                   "        pm.expect(data.user_id).to.eql(pm.collectionVariables.get(\"goals_user_id\"));",
                   "    });",
-                  "    // Valor esperado: Mifflin-St Jeor sobre el perfil enviado.",
+                  "    // Valor esperado: Mifflin-St Jeor sobre el perfil enviado (TEC-12: mínimo 1500 kcal hombre / 1200 mujer).",
                   "    const v = (name) => pm.collectionVariables.get(\"goals_profile_\" + name);",
                   "    const weight = Number(v(\"weight_kg\"));",
                   "    const height = Number(v(\"height_cm\"));",
@@ -3119,7 +3310,7 @@
                   "    const factor = days <= 1 ? 1.2 : days <= 3 ? 1.375 : days <= 5 ? 1.55 : 1.725;",
                   "    const adjustment = { lose_fat: 0.8, maintain: 1.0, gain_muscle: 1.1 }[objective];",
                   "    const proteinPerKg = { lose_fat: 2.0, maintain: 1.6, gain_muscle: 1.8 }[objective];",
-                  "    const kcal = bmr * factor * adjustment;",
+                  "    const kcal = Math.max(bmr * factor * adjustment, v(\"gender\") === \"male\" ? 1500 : 1200);",
                   "    const expected = {",
                   "        calories: Math.round(kcal),",
                   "        protein_g: Math.round(weight * proteinPerKg),",
@@ -3264,7 +3455,7 @@
                   "        pm.expect(data.set_by).to.eql(null);",
                   "        pm.expect(data.id).to.not.eql(pm.collectionVariables.get(\"goals_goal_initial_id\"));",
                   "    });",
-                  "    // Valor esperado: Mifflin-St Jeor sobre el perfil ya editado.",
+                  "    // Valor esperado: Mifflin-St Jeor sobre el perfil ya editado (TEC-12: mínimo 1500 kcal hombre / 1200 mujer).",
                   "    const v = (name) => pm.collectionVariables.get(\"goals_profile_\" + name);",
                   "    const weight = Number(v(\"weight_kg\"));",
                   "    const height = Number(v(\"height_cm\"));",
@@ -3280,7 +3471,7 @@
                   "    const factor = days <= 1 ? 1.2 : days <= 3 ? 1.375 : days <= 5 ? 1.55 : 1.725;",
                   "    const adjustment = { lose_fat: 0.8, maintain: 1.0, gain_muscle: 1.1 }[objective];",
                   "    const proteinPerKg = { lose_fat: 2.0, maintain: 1.6, gain_muscle: 1.8 }[objective];",
-                  "    const kcal = bmr * factor * adjustment;",
+                  "    const kcal = Math.max(bmr * factor * adjustment, v(\"gender\") === \"male\" ? 1500 : 1200);",
                   "    const expected = {",
                   "        calories: Math.round(kcal),",
                   "        protein_g: Math.round(weight * proteinPerKg),",
@@ -3433,6 +3624,170 @@
               ]
             },
             "description": "Un coach no tiene metas propias: 403 FORBIDDEN. Usa {{coach_access_token}} del módulo auth."
+          },
+          "response": []
+        },
+        {
+          "name": "07 - Edición a un perfil bajo el mínimo",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    // TEC-12: con 45 kg, 1 día y bajar grasa el cálculo da menos de 1500 kcal (hombre).",
+                  "    pm.collectionVariables.set(\"goals_profile_weight_kg\", \"45\");",
+                  "    pm.collectionVariables.set(\"goals_profile_objective\", \"lose_fat\");",
+                  "    pm.collectionVariables.set(\"goals_profile_training_days\", \"1\");",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 200\", function () {",
+                  "        pm.response.to.have.status(200);",
+                  "    });",
+                  "    const data = pm.response.json();",
+                  "    pm.test(\"El perfil refleja los cambios\", function () {",
+                  "        pm.expect(data.weight_kg).to.eql(Number(pm.collectionVariables.get(\"goals_profile_weight_kg\")));",
+                  "        pm.expect(data.training_days).to.eql(Number(pm.collectionVariables.get(\"goals_profile_training_days\")));",
+                  "        pm.expect(data.objective).to.eql(pm.collectionVariables.get(\"goals_profile_objective\"));",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{goals_access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/me/profile",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "me",
+                "profile"
+              ]
+            },
+            "description": "TEC-12: edita el perfil a valores cuyo cálculo queda bajo el mínimo de calorías.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"weight_kg\": {{goals_profile_weight_kg}},\n  \"height_cm\": {{goals_profile_height_cm}},\n  \"birth_date\": \"{{goals_profile_birth_date}}\",\n  \"gender\": \"{{goals_profile_gender}}\",\n  \"training_days\": {{goals_profile_training_days}},\n  \"objective\": \"{{goals_profile_objective}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "08 - Meta con el mínimo de calorías",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 200 OK\", function () {",
+                  "        pm.response.to.have.status(200);",
+                  "    });",
+                  "    const data = pm.response.json();",
+                  "    pm.test(\"Estructura: id, user_id, calories, protein_g, fat_g, source, set_by, effective_from, created_at\", function () {",
+                  "        pm.expect(data).to.have.all.keys(\"id\", \"user_id\", \"calories\", \"protein_g\", \"fat_g\", \"source\", \"set_by\", \"effective_from\", \"created_at\");",
+                  "        pm.expect(data.id).to.be.a(\"string\").and.to.match(/^[0-9a-f]{24}$/);",
+                  "        pm.expect(data.calories).to.be.a(\"number\");",
+                  "        pm.expect(data.protein_g).to.be.a(\"number\");",
+                  "        pm.expect(data.fat_g).to.be.a(\"number\");",
+                  "        pm.expect(Date.parse(data.effective_from)).to.not.be.NaN;",
+                  "    });",
+                  "    pm.test(\"Es una meta nueva del sistema (distinta de la recalculada)\", function () {",
+                  "        pm.expect(data.source).to.eql(\"system\");",
+                  "        pm.expect(data.set_by).to.eql(null);",
+                  "        pm.expect(data.id).to.not.eql(pm.collectionVariables.get(\"goals_goal_current_id\"));",
+                  "    });",
+                  "    // Valor esperado: Mifflin-St Jeor sobre el perfil ya editado (TEC-12: mínimo 1500 kcal hombre / 1200 mujer).",
+                  "    const v = (name) => pm.collectionVariables.get(\"goals_profile_\" + name);",
+                  "    const weight = Number(v(\"weight_kg\"));",
+                  "    const height = Number(v(\"height_cm\"));",
+                  "    const days = Number(v(\"training_days\"));",
+                  "    const objective = v(\"objective\");",
+                  "    const [by, bm, bd] = v(\"birth_date\").split(\"-\").map(Number);",
+                  "    const today = new Date();",
+                  "    const month = today.getUTCMonth() + 1;",
+                  "    let age = today.getUTCFullYear() - by;",
+                  "    if (month < bm || (month === bm && today.getUTCDate() < bd)) { age--; }",
+                  "    const base = 10 * weight + 6.25 * height - 5 * age;",
+                  "    const bmr = v(\"gender\") === \"male\" ? base + 5 : base - 161;",
+                  "    const factor = days <= 1 ? 1.2 : days <= 3 ? 1.375 : days <= 5 ? 1.55 : 1.725;",
+                  "    const adjustment = { lose_fat: 0.8, maintain: 1.0, gain_muscle: 1.1 }[objective];",
+                  "    const proteinPerKg = { lose_fat: 2.0, maintain: 1.6, gain_muscle: 1.8 }[objective];",
+                  "    const kcal = Math.max(bmr * factor * adjustment, v(\"gender\") === \"male\" ? 1500 : 1200);",
+                  "    const expected = {",
+                  "        calories: Math.round(kcal),",
+                  "        protein_g: Math.round(weight * proteinPerKg),",
+                  "        fat_g: Math.round(kcal * 0.25 / 9)",
+                  "    };",
+                  "    pm.test(\"calories, protein_g y fat_g coinciden con el nuevo cálculo (± 1)\", function () {",
+                  "        pm.expect(Math.abs(data.calories - expected.calories)).to.be.at.most(1);",
+                  "        pm.expect(Math.abs(data.protein_g - expected.protein_g)).to.be.at.most(1);",
+                  "        pm.expect(Math.abs(data.fat_g - expected.fat_g)).to.be.at.most(1);",
+                  "    });",
+                  "    pm.test(\"Las calorías quedan en el mínimo de 1500 kcal y los macros salen de ese mínimo\", function () {",
+                  "        pm.expect(data.calories).to.eql(1500);",
+                  "        pm.expect(data.protein_g).to.eql(90);",
+                  "        pm.expect(data.fat_g).to.eql(42);",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{goals_access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/me/goals/current",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "me",
+                "goals",
+                "current"
+              ]
+            },
+            "description": "TEC-12: la meta vigente sube al mínimo de 1500 kcal (hombre); proteína 45 kg × 2.0 y grasa 25 % de 1500."
           },
           "response": []
         }
@@ -4695,6 +5050,1916 @@
       ]
     },
     {
+      "name": "HU-12 Código de invitación",
+      "item": [
+        {
+          "name": "01 - Primera consulta (Coach)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{coach_access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/coach/invite-code",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "coach",
+                "invite-code"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "  pm.test('Status 200 OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "  });",
+                  "  const data = pm.response.json();",
+                  "  pm.test('Responde { code } de 6 caracteres A-Z0-9', function () {",
+                  "    pm.expect(data).to.have.property('code');",
+                  "    pm.expect(data.code).to.match(/^[A-Z0-9]{6}$/);",
+                  "  });",
+                  "  pm.collectionVariables.set('coach_invite_code', data.code);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "02 - Segunda consulta (Mismo código)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{coach_access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/coach/invite-code",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "coach",
+                "invite-code"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "  pm.test('Status 200 OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "  });",
+                  "  const data = pm.response.json();",
+                  "  pm.test('Devuelve el mismo código que la primera consulta', function () {",
+                  "    pm.expect(data.code).to.eql(pm.collectionVariables.get('coach_invite_code'));",
+                  "  });",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "03 - Regenerar código",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{coach_access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/coach/invite-code/regenerate",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "coach",
+                "invite-code",
+                "regenerate"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "  pm.test('Status 200 OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "  });",
+                  "  const data = pm.response.json();",
+                  "  const previous = pm.collectionVariables.get('coach_invite_code');",
+                  "  pm.collectionVariables.set('coach_previous_invite_code', previous);",
+                  "  pm.collectionVariables.set('coach_invite_code', data.code);",
+                  "  pm.test('El nuevo código tiene formato válido', function () {",
+                  "    pm.expect(data.code).to.match(/^[A-Z0-9]{6}$/);",
+                  "  });",
+                  "  pm.test('El nuevo código es distinto del anterior', function () {",
+                  "    pm.expect(data.code).to.not.eql(previous);",
+                  "  });",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "04 - Consulta con cuenta de usuario",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{user_access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/coach/invite-code",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "coach",
+                "invite-code"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "  pm.test('Status 403 Forbidden', function () {",
+                  "    pm.response.to.have.status(403);",
+                  "  });",
+                  "  pm.test('error.code == FORBIDDEN_ROLE', function () {",
+                  "    pm.expect(pm.response.json().error.code).to.eql('FORBIDDEN_ROLE');",
+                  "  });",
+                  "}"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "HU-13 Vinculación",
+      "item": [
+        {
+          "name": "01 - Vincular con código válido",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{user_access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"invite_code\": \"{{coach_invite_code}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/me/coach-link",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "me",
+                "coach-link"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "  pm.test('Status 201 Created', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "  });",
+                  "  const data = pm.response.json();",
+                  "  pm.test('Responde la vinculación activa con los datos del coach', function () {",
+                  "    pm.expect(data).to.have.all.keys('id', 'coach_id', 'coach_name', 'coach_email', 'status');",
+                  "    pm.expect(data.status).to.eql('active');",
+                  "  });",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "02 - Verificación en lista del coach",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{coach_access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/coach/clients",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "coach",
+                "clients"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "  // Id del usuario vinculado en el paso 01.",
+                  "  pm.sendRequest({",
+                  "    url: pm.variables.replaceIn('{{baseUrl}}') + '/api/v1/auth/me',",
+                  "    method: 'GET',",
+                  "    header: { Authorization: 'Bearer ' + pm.variables.replaceIn('{{user_access_token}}') }",
+                  "  }, function (err, res) {",
+                  "    if (err || res.code !== 200) {",
+                  "      throw new Error('No se pudo obtener /auth/me del usuario');",
+                  "    }",
+                  "    pm.collectionVariables.set('linked_user_id', res.json().id);",
+                  "  });",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "  pm.test('Status 200 OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "  });",
+                  "  const clients = pm.response.json();",
+                  "  pm.test('El usuario vinculado aparece en el listado del coach', function () {",
+                  "    pm.expect(clients).to.be.an('array');",
+                  "    const ids = clients.map(function (c) { return c.id; });",
+                  "    pm.expect(ids).to.include(pm.collectionVariables.get('linked_user_id'));",
+                  "  });",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "03 - Código inexistente",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{user_access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"invite_code\": \"CODIGO_INEXISTENTE\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/me/coach-link",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "me",
+                "coach-link"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "  pm.test('Status 404 Not Found', function () {",
+                  "    pm.response.to.have.status(404);",
+                  "  });",
+                  "  pm.test('error.code == INVITE_CODE_NOT_FOUND', function () {",
+                  "    pm.expect(pm.response.json().error.code).to.eql('INVITE_CODE_NOT_FOUND');",
+                  "  });",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "04 - Código regenerado",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{user_access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"invite_code\": \"{{coach_previous_invite_code}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/me/coach-link",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "me",
+                "coach-link"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "  pm.test('Status 404 Not Found', function () {",
+                  "    pm.response.to.have.status(404);",
+                  "  });",
+                  "  pm.test('error.code == INVITE_CODE_NOT_FOUND', function () {",
+                  "    pm.expect(pm.response.json().error.code).to.eql('INVITE_CODE_NOT_FOUND');",
+                  "  });",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "05 - Usuario ya vinculado",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{user_access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"invite_code\": \"{{other_coach_invite_code}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/me/coach-link",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "me",
+                "coach-link"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "  // Crea un segundo coach y obtiene su código de invitación.",
+                  "  const baseUrl = pm.variables.replaceIn('{{baseUrl}}');",
+                  "  const email = 'coach_otro_' + Date.now() + '@macrofit.com';",
+                  "  const password = 'MinimoOcho1';",
+                  "  const headers = { 'Content-Type': 'application/json' };",
+                  "  const raw = function (body) {",
+                  "    return { mode: 'raw', raw: JSON.stringify(body), options: { raw: { language: 'json' } } };",
+                  "  };",
+                  "",
+                  "  pm.sendRequest({",
+                  "    url: baseUrl + '/api/v1/auth/register',",
+                  "    method: 'POST',",
+                  "    header: headers,",
+                  "    body: raw({ name: 'Coach Otro', email: email, password: password, role: 'coach', privacy_accepted: true })",
+                  "  }, function (err, res) {",
+                  "    if (err || res.code !== 201) { throw new Error('No se pudo registrar al segundo coach'); }",
+                  "    pm.sendRequest({",
+                  "      url: baseUrl + '/api/v1/auth/login',",
+                  "      method: 'POST',",
+                  "      header: headers,",
+                  "      body: raw({ email: email, password: password })",
+                  "    }, function (err2, res2) {",
+                  "      if (err2 || res2.code !== 200) { throw new Error('No se pudo iniciar sesión con el segundo coach'); }",
+                  "      pm.sendRequest({",
+                  "        url: baseUrl + '/api/v1/coach/invite-code',",
+                  "        method: 'GET',",
+                  "        header: { Authorization: 'Bearer ' + res2.json().access_token }",
+                  "      }, function (err3, res3) {",
+                  "        if (err3 || res3.code !== 200) { throw new Error('No se pudo obtener el código del segundo coach'); }",
+                  "        pm.collectionVariables.set('other_coach_invite_code', res3.json().code);",
+                  "      });",
+                  "    });",
+                  "  });",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "  pm.test('Status 409 Conflict', function () {",
+                  "    pm.response.to.have.status(409);",
+                  "  });",
+                  "  pm.test('error.code == USER_ALREADY_LINKED', function () {",
+                  "    pm.expect(pm.response.json().error.code).to.eql('USER_ALREADY_LINKED');",
+                  "  });",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "06 - Cuenta de coach",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{coach_access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"invite_code\": \"{{coach_invite_code}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/me/coach-link",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "me",
+                "coach-link"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "  pm.test('Status 403 Forbidden', function () {",
+                  "    pm.response.to.have.status(403);",
+                  "  });",
+                  "  pm.test('error.code == FORBIDDEN_ROLE', function () {",
+                  "    pm.expect(pm.response.json().error.code).to.eql('FORBIDDEN_ROLE');",
+                  "  });",
+                  "}"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "HU-14 Desvinculación",
+      "item": [
+        {
+          "name": "01 - Desvincular exitosamente",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{user_access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/me/coach-link",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "me",
+                "coach-link"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "  pm.test('Status 204 No Content', function () {",
+                  "    pm.response.to.have.status(204);",
+                  "  });",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "02 - Desvincular sin estar vinculado",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{user_access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/me/coach-link",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "me",
+                "coach-link"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "  pm.test('Status 404 Not Found', function () {",
+                  "    pm.response.to.have.status(404);",
+                  "  });",
+                  "  pm.test('error.code == USER_NOT_LINKED', function () {",
+                  "    pm.expect(pm.response.json().error.code).to.eql('USER_NOT_LINKED');",
+                  "  });",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "03 - Cuenta de coach intenta desvincularse",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{coach_access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/me/coach-link",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "me",
+                "coach-link"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "  pm.test('Status 403 Forbidden', function () {",
+                  "    pm.response.to.have.status(403);",
+                  "  });",
+                  "  pm.test('error.code == FORBIDDEN_ROLE', function () {",
+                  "    pm.expect(pm.response.json().error.code).to.eql('FORBIDDEN_ROLE');",
+                  "  });",
+                  "}"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "HU-21 Registro de peso",
+      "description": "HU-21: POST y GET /api/v1/users/me/weights (RF-17). La fecha la pone el servidor, el rango es el del perfil (TEC-12) y el último peso actualiza el perfil y la meta calculada.",
+      "item": [
+        {
+          "name": "00 - Preparación: registrar al usuario",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    const email = \"weights.\" + Date.now() + \".\" + Math.floor(Math.random() * 1e6) + \"@macrofit.test\";",
+                  "    pm.variables.set(\"email\", email);",
+                  "    pm.collectionVariables.set(\"weights_user_email\", email);",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 201 Created\", function () {",
+                  "        pm.response.to.have.status(201);",
+                  "    });",
+                  "    const data = pm.response.json();",
+                  "    pm.collectionVariables.set(\"weights_user_id\", data.id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "register"
+              ]
+            },
+            "description": "Crea una cuenta nueva con rol user. Guarda su id en {{weights_user_id}}.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Usuario Peso\",\n  \"email\": \"{{email}}\",\n  \"password\": \"{{test_password}}\",\n  \"role\": \"user\",\n  \"privacy_accepted\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "00 - Preparación: iniciar sesión del usuario",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 200\", function () {",
+                  "        pm.response.to.have.status(200);",
+                  "    });",
+                  "    const data = pm.response.json();",
+                  "    pm.collectionVariables.set(\"weights_user_token\", data.access_token);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ]
+            },
+            "description": "Guarda el token en {{weights_user_token}}.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{weights_user_email}}\",\n  \"password\": \"{{test_password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "00 - Preparación: registrar perfil",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 201 Created\", function () {",
+                  "        pm.response.to.have.status(201);",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{weights_user_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/me/profile",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "me",
+                "profile"
+              ]
+            },
+            "description": "Perfil con 80 kg y objetivo mantener (1.6 g/kg de proteína): la meta inicial tiene 128 g.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"objective\": \"maintain\",\n  \"level\": \"intermediate\",\n  \"training_days\": 4,\n  \"weight_kg\": 80,\n  \"height_cm\": 180,\n  \"gender\": \"male\",\n  \"birth_date\": \"1998-03-15\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "00 - Preparación: registrar a otro usuario",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    const email = \"weights.\" + Date.now() + \".\" + Math.floor(Math.random() * 1e6) + \"@macrofit.test\";",
+                  "    pm.variables.set(\"email\", email);",
+                  "    pm.collectionVariables.set(\"weights_other_email\", email);",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 201 Created\", function () {",
+                  "        pm.response.to.have.status(201);",
+                  "    });",
+                  "    const data = pm.response.json();",
+                  "    pm.collectionVariables.set(\"weights_other_id\", data.id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "register"
+              ]
+            },
+            "description": "Crea una cuenta nueva con rol user. Guarda su id en {{weights_other_id}}.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Usuario Peso\",\n  \"email\": \"{{email}}\",\n  \"password\": \"{{test_password}}\",\n  \"role\": \"user\",\n  \"privacy_accepted\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "00 - Preparación: iniciar sesión del otro usuario",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 200\", function () {",
+                  "        pm.response.to.have.status(200);",
+                  "    });",
+                  "    const data = pm.response.json();",
+                  "    pm.collectionVariables.set(\"weights_other_token\", data.access_token);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ]
+            },
+            "description": "Guarda el token en {{weights_other_token}}.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{weights_other_email}}\",\n  \"password\": \"{{test_password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "01 - Sin sesión",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 401\", function () {",
+                  "        pm.response.to.have.status(401);",
+                  "    });",
+                  "    const body = pm.response.json();",
+                  "    pm.test(\"Formato de error { error: { code, message, fields } }\", function () {",
+                  "        pm.expect(body).to.have.all.keys(\"error\");",
+                  "        pm.expect(body.error).to.have.all.keys(\"code\", \"message\", \"fields\");",
+                  "        pm.expect(body.error.message).to.be.a(\"string\").and.not.empty;",
+                  "        pm.expect(body.error.fields).to.be.an(\"object\");",
+                  "    });",
+                  "    pm.test(\"Código UNAUTHORIZED\", function () {",
+                  "        pm.expect(body.error.code).to.eql(\"UNAUTHORIZED\");",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/me/weights",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "me",
+                "weights"
+              ]
+            },
+            "description": "Sin token: 401 UNAUTHORIZED.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"weight_kg\": 80\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "02 - Registro por un coach",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 403\", function () {",
+                  "        pm.response.to.have.status(403);",
+                  "    });",
+                  "    const body = pm.response.json();",
+                  "    pm.test(\"Formato de error { error: { code, message, fields } }\", function () {",
+                  "        pm.expect(body).to.have.all.keys(\"error\");",
+                  "        pm.expect(body.error).to.have.all.keys(\"code\", \"message\", \"fields\");",
+                  "        pm.expect(body.error.message).to.be.a(\"string\").and.not.empty;",
+                  "        pm.expect(body.error.fields).to.be.an(\"object\");",
+                  "    });",
+                  "    pm.test(\"Código FORBIDDEN_ROLE\", function () {",
+                  "        pm.expect(body.error.code).to.eql(\"FORBIDDEN_ROLE\");",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{coach_access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/me/weights",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "me",
+                "weights"
+              ]
+            },
+            "description": "Un coach no registra peso: 403 FORBIDDEN_ROLE. Usa {{coach_access_token}} del módulo auth.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"weight_kg\": 80\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "03 - Historial por un coach",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 403\", function () {",
+                  "        pm.response.to.have.status(403);",
+                  "    });",
+                  "    const body = pm.response.json();",
+                  "    pm.test(\"Formato de error { error: { code, message, fields } }\", function () {",
+                  "        pm.expect(body).to.have.all.keys(\"error\");",
+                  "        pm.expect(body.error).to.have.all.keys(\"code\", \"message\", \"fields\");",
+                  "        pm.expect(body.error.message).to.be.a(\"string\").and.not.empty;",
+                  "        pm.expect(body.error.fields).to.be.an(\"object\");",
+                  "    });",
+                  "    pm.test(\"Código FORBIDDEN_ROLE\", function () {",
+                  "        pm.expect(body.error.code).to.eql(\"FORBIDDEN_ROLE\");",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{coach_access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/me/weights",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "me",
+                "weights"
+              ]
+            },
+            "description": "Un coach no tiene historial de peso propio: 403 FORBIDDEN_ROLE."
+          },
+          "response": []
+        },
+        {
+          "name": "04 - Sin peso",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 400\", function () {",
+                  "        pm.response.to.have.status(400);",
+                  "    });",
+                  "    const body = pm.response.json();",
+                  "    pm.test(\"Formato de error { error: { code, message, fields } }\", function () {",
+                  "        pm.expect(body).to.have.all.keys(\"error\");",
+                  "        pm.expect(body.error).to.have.all.keys(\"code\", \"message\", \"fields\");",
+                  "        pm.expect(body.error.message).to.be.a(\"string\").and.not.empty;",
+                  "        pm.expect(body.error.fields).to.be.an(\"object\");",
+                  "    });",
+                  "    pm.test(\"Código VALIDATION_ERROR\", function () {",
+                  "        pm.expect(body.error.code).to.eql(\"VALIDATION_ERROR\");",
+                  "    });",
+                  "    pm.test(\"Señala exactamente: weight_kg\", function () {",
+                  "        pm.expect(Object.keys(body.error.fields).sort()).to.eql([\"weight_kg\"]);",
+                  "        Object.values(body.error.fields).forEach(function (message) {",
+                  "            pm.expect(message).to.be.a(\"string\").and.not.empty;",
+                  "        });",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{weights_user_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/me/weights",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "me",
+                "weights"
+              ]
+            },
+            "description": "Cuerpo sin weight_kg: 400 VALIDATION_ERROR en weight_kg.",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "05 - Valor no numérico",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 400\", function () {",
+                  "        pm.response.to.have.status(400);",
+                  "    });",
+                  "    const body = pm.response.json();",
+                  "    pm.test(\"Formato de error { error: { code, message, fields } }\", function () {",
+                  "        pm.expect(body).to.have.all.keys(\"error\");",
+                  "        pm.expect(body.error).to.have.all.keys(\"code\", \"message\", \"fields\");",
+                  "        pm.expect(body.error.message).to.be.a(\"string\").and.not.empty;",
+                  "        pm.expect(body.error.fields).to.be.an(\"object\");",
+                  "    });",
+                  "    pm.test(\"Código VALIDATION_ERROR\", function () {",
+                  "        pm.expect(body.error.code).to.eql(\"VALIDATION_ERROR\");",
+                  "    });",
+                  "    pm.test(\"Señala exactamente: weight_kg\", function () {",
+                  "        pm.expect(Object.keys(body.error.fields).sort()).to.eql([\"weight_kg\"]);",
+                  "        Object.values(body.error.fields).forEach(function (message) {",
+                  "            pm.expect(message).to.be.a(\"string\").and.not.empty;",
+                  "        });",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{weights_user_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/me/weights",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "me",
+                "weights"
+              ]
+            },
+            "description": "Texto en lugar de número: 400 VALIDATION_ERROR en weight_kg.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"weight_kg\": \"ochenta\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "06 - Peso fuera de rango",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 400\", function () {",
+                  "        pm.response.to.have.status(400);",
+                  "    });",
+                  "    const body = pm.response.json();",
+                  "    pm.test(\"Formato de error { error: { code, message, fields } }\", function () {",
+                  "        pm.expect(body).to.have.all.keys(\"error\");",
+                  "        pm.expect(body.error).to.have.all.keys(\"code\", \"message\", \"fields\");",
+                  "        pm.expect(body.error.message).to.be.a(\"string\").and.not.empty;",
+                  "        pm.expect(body.error.fields).to.be.an(\"object\");",
+                  "    });",
+                  "    pm.test(\"Código VALIDATION_ERROR\", function () {",
+                  "        pm.expect(body.error.code).to.eql(\"VALIDATION_ERROR\");",
+                  "    });",
+                  "    pm.test(\"Señala exactamente: weight_kg\", function () {",
+                  "        pm.expect(Object.keys(body.error.fields).sort()).to.eql([\"weight_kg\"]);",
+                  "        Object.values(body.error.fields).forEach(function (message) {",
+                  "            pm.expect(message).to.be.a(\"string\").and.not.empty;",
+                  "        });",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{weights_user_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/me/weights",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "me",
+                "weights"
+              ]
+            },
+            "description": "Justo arriba del máximo de TEC-12 (250 kg): 400 VALIDATION_ERROR en weight_kg.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"weight_kg\": 250.1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "07 - Peso válido",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.collectionVariables.set(\"weights_first_kg\", \"80.5\");",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 201 Created\", function () {",
+                  "        pm.response.to.have.status(201);",
+                  "    });",
+                  "    const data = pm.response.json();",
+                  "    pm.test(\"Estructura: id, user_id, weight_kg, recorded_at\", function () {",
+                  "        pm.expect(data).to.have.all.keys(\"id\", \"user_id\", \"weight_kg\", \"recorded_at\");",
+                  "        pm.expect(data.id).to.be.a(\"string\").and.to.match(/^[0-9a-f]{24}$/);",
+                  "        pm.expect(Date.parse(data.recorded_at)).to.not.be.NaN;",
+                  "    });",
+                  "    pm.test(\"Guarda el peso enviado, del usuario de la sesión y con la fecha del servidor\", function () {",
+                  "        pm.expect(data.weight_kg).to.eql(Number(pm.collectionVariables.get(\"weights_first_kg\")));",
+                  "        pm.expect(data.user_id).to.eql(pm.collectionVariables.get(\"weights_user_id\"));",
+                  "        pm.expect(Math.abs(Date.now() - Date.parse(data.recorded_at))).to.be.below(5 * 60 * 1000);",
+                  "    });",
+                  "    pm.collectionVariables.set(\"weights_first_id\", data.id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{weights_user_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/me/weights",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "me",
+                "weights"
+              ]
+            },
+            "description": "Primer registro: 201 con el peso y la fecha del servidor.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"weight_kg\": {{weights_first_kg}}\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "08 - Segundo peso válido",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.collectionVariables.set(\"weights_second_kg\", \"78.2\");",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 201 Created\", function () {",
+                  "        pm.response.to.have.status(201);",
+                  "    });",
+                  "    const data = pm.response.json();",
+                  "    pm.test(\"Estructura: id, user_id, weight_kg, recorded_at\", function () {",
+                  "        pm.expect(data).to.have.all.keys(\"id\", \"user_id\", \"weight_kg\", \"recorded_at\");",
+                  "        pm.expect(data.id).to.be.a(\"string\").and.to.match(/^[0-9a-f]{24}$/);",
+                  "        pm.expect(Date.parse(data.recorded_at)).to.not.be.NaN;",
+                  "    });",
+                  "    pm.test(\"Guarda el peso enviado, del usuario de la sesión y con la fecha del servidor\", function () {",
+                  "        pm.expect(data.weight_kg).to.eql(Number(pm.collectionVariables.get(\"weights_second_kg\")));",
+                  "        pm.expect(data.user_id).to.eql(pm.collectionVariables.get(\"weights_user_id\"));",
+                  "        pm.expect(Math.abs(Date.now() - Date.parse(data.recorded_at))).to.be.below(5 * 60 * 1000);",
+                  "    });",
+                  "    pm.collectionVariables.set(\"weights_second_id\", data.id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{weights_user_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/me/weights",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "me",
+                "weights"
+              ]
+            },
+            "description": "Segundo registro: pasa a ser el peso del perfil.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"weight_kg\": {{weights_second_kg}}\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "09 - Peso de otro usuario",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 201 Created\", function () {",
+                  "        pm.response.to.have.status(201);",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{weights_other_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/me/weights",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "me",
+                "weights"
+              ]
+            },
+            "description": "Otra cuenta registra su peso; no debe aparecer en el historial del primer usuario.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"weight_kg\": 95\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "10 - Historial",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 200 OK\", function () {",
+                  "        pm.response.to.have.status(200);",
+                  "    });",
+                  "    const history = pm.response.json();",
+                  "    const v = (name) => pm.collectionVariables.get(\"weights_\" + name);",
+                  "    pm.test(\"Solo los pesos del usuario de la sesión\", function () {",
+                  "        pm.expect(history).to.be.an(\"array\").with.lengthOf(2);",
+                  "        pm.expect(history.every((w) => w.user_id === v(\"user_id\"))).to.eql(true);",
+                  "    });",
+                  "    pm.test(\"Del más reciente al más antiguo, con los pesos enviados\", function () {",
+                  "        pm.expect(history.map((w) => w.id)).to.eql([v(\"second_id\"), v(\"first_id\")]);",
+                  "        pm.expect(history.map((w) => w.weight_kg)).to.eql([Number(v(\"second_kg\")), Number(v(\"first_kg\"))]);",
+                  "        pm.expect(Date.parse(history[0].recorded_at)).to.be.at.least(Date.parse(history[1].recorded_at));",
+                  "    });",
+                  "    pm.test(\"Estructura: id, user_id, weight_kg, recorded_at\", function () {",
+                  "        history.forEach(function (w) {",
+                  "            pm.expect(w).to.have.all.keys(\"id\", \"user_id\", \"weight_kg\", \"recorded_at\");",
+                  "        });",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{weights_user_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/me/weights",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "me",
+                "weights"
+              ]
+            },
+            "description": "Solo los dos pesos del usuario de la sesión, del más reciente al más antiguo."
+          },
+          "response": []
+        },
+        {
+          "name": "11 - Perfil con el último peso",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 200 OK\", function () {",
+                  "        pm.response.to.have.status(200);",
+                  "    });",
+                  "    pm.test(\"weight_kg del perfil es el último peso registrado\", function () {",
+                  "        pm.expect(pm.response.json().weight_kg).to.eql(Number(pm.collectionVariables.get(\"weights_second_kg\")));",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{weights_user_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/me/profile",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "me",
+                "profile"
+              ]
+            },
+            "description": "Registrar un peso actualiza weight_kg del perfil con el último registrado."
+          },
+          "response": []
+        },
+        {
+          "name": "12 - Meta recalculada con el último peso",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 200 OK\", function () {",
+                  "        pm.response.to.have.status(200);",
+                  "    });",
+                  "    const data = pm.response.json();",
+                  "    pm.test(\"Meta del sistema con la proteína del último peso\", function () {",
+                  "        pm.expect(data.source).to.eql(\"system\");",
+                  "        pm.expect(data.protein_g).to.eql(Math.round(Number(pm.collectionVariables.get(\"weights_second_kg\")) * 1.6));",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{weights_user_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/me/goals/current",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "me",
+                "goals",
+                "current"
+              ]
+            },
+            "description": "La meta del sistema se recalcula con el último peso: proteína = 78.2 kg × 1.6 g/kg (mantener)."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "TEC-09 Catálogo de ejercicios",
+      "item": [
+        {
+          "name": "01 - Sembrar catálogo de ejercicios",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/dev/seed/exercises",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "dev",
+                "seed",
+                "exercises"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "  pm.test('Status 201 Created', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "  });",
+                  "  const data = pm.response.json();",
+                  "  pm.test('Responde mensaje de éxito y contador', function () {",
+                  "    pm.expect(data).to.have.property('count');",
+                  "    pm.expect(data.count).to.be.at.least(18);",
+                  "  });",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "02 - Consultar catálogo de ejercicios",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{user_access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/exercises",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "exercises"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "  pm.test('Status 200 OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "  });",
+                  "  const items = pm.response.json();",
+                  "  pm.test('Responde un arreglo de ejercicios', function () {",
+                  "    pm.expect(items).to.be.an('array');",
+                  "    pm.expect(items.length).to.be.at.least(18);",
+                  "  });",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "03 - Filtrar por grupo muscular y nivel",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{user_access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/exercises?muscle_group=chest&level=beginner",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "exercises"
+              ],
+              "query": [
+                {
+                  "key": "muscle_group",
+                  "value": "chest"
+                },
+                {
+                  "key": "level",
+                  "value": "beginner"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "  pm.test('Status 200 OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "  });",
+                  "  const items = pm.response.json();",
+                  "  pm.test('Filtra correctamente por chest y beginner', function () {",
+                  "    pm.expect(items).to.be.an('array');",
+                  "    pm.expect(items.length).to.be.at.least(1);",
+                  "    items.forEach(function (item) {",
+                  "      pm.expect(item.muscle_group).to.eql('chest');",
+                  "      pm.expect(item.level).to.eql('beginner');",
+                  "    });",
+                  "  });",
+                  "}"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
       "name": "HU-06 Carga de foto",
       "description": "HU-06: el usuario sube la foto de su comida (POST /api/v1/meals/photos, multipart con el campo \"photo\"). Solo JPEG y PNG, detectados por contenido, y máximo 5 MiB (TEC-13).\n\nLos archivos de prueba están en backend/postman/meals/files/ y se referencian relativos a backend/: en Postman, Settings → General → Working directory debe ser la carpeta backend/ del repositorio (newman se ejecuta desde backend/). Ejecutar en orden.",
       "item": [
@@ -5608,6 +7873,10 @@
   ],
   "variable": [
     {
+      "key": "openapi_has_dev",
+      "value": ""
+    },
+    {
       "key": "test_password",
       "value": "Prueba-MacroFit-2026",
       "type": "string",
@@ -5695,6 +7964,11 @@
     },
     {
       "key": "profile_minor_birth_date",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "profile_senior_birth_date",
       "value": "",
       "type": "string"
     },
@@ -5825,6 +8099,72 @@
     },
     {
       "key": "goals_future_date",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "coach_invite_code",
+      "value": ""
+    },
+    {
+      "key": "coach_previous_invite_code",
+      "value": ""
+    },
+    {
+      "key": "linked_user_id",
+      "value": ""
+    },
+    {
+      "key": "other_coach_invite_code",
+      "value": ""
+    },
+    {
+      "key": "weights_user_email",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "weights_user_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "weights_user_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "weights_other_email",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "weights_other_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "weights_other_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "weights_first_kg",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "weights_first_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "weights_second_kg",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "weights_second_id",
       "value": "",
       "type": "string"
     },

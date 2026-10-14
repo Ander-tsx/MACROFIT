@@ -9,10 +9,12 @@ postman/
 ├── MacroFit.postman_collection.json    # GENERADO: no editar a mano
 ├── MacroFit.postman_environment.json   # Entorno "MacroFit - Local": solo baseUrl, sin credenciales
 ├── core/core.postman_collection.json   # src/routes/mod.rs  → health
+├── openapi/openapi.postman_collection.json # src/routes/openapi.rs → TEC-14 contrato OpenAPI
 ├── legal/legal.postman_collection.json # src/routes/legal.rs → TEC-07 aviso de privacidad
 ├── auth/auth.postman_collection.json   # src/routes/auth.rs → HU-01, HU-02, roles y cierre de sesión
 ├── profile/profile.postman_collection.json # src/routes/profile.rs → HU-03 perfil inicial
 ├── goals/goals.postman_collection.json # src/routes/goals.rs → HU-04 y HU-05 metas
+├── weights/weights.postman_collection.json # src/routes/weights.rs → HU-21 registro de peso
 └── meals/meals.postman_collection.json # src/routes/meals.rs → HU-06 carga de foto (archivos de prueba en meals/files/)
 ```
 
@@ -70,6 +72,7 @@ ponlos en la carpeta o en el request).
 | Módulo | Carpeta | Requests |
 |---|---|---|
 | `core` | `Servicio` | Health check |
+| `openapi` | `TEC-14 Contrato OpenAPI` | Especificación OpenAPI, Rutas /dev según el ambiente, Documentación (Swagger UI) |
 | `legal` | `TEC-07 Aviso de privacidad` | Aviso de privacidad vigente |
 | `auth` | `HU-01 Registro` | Usuario válido, Coach válido, Segundo coach válido, Correo duplicado, Correo duplicado con mayúsculas, Sin rol, Rol inválido, Sin aviso de privacidad, Sin aviso y con correo inválido, Correo inválido, Contraseña corta, Nombre vacío |
 | `auth` | `HU-02 Sesión` | Inicio de sesión de usuario, Inicio de sesión de coach, Contraseña incorrecta, Correo inexistente, /auth/me sin token, /auth/me con token inválido, /auth/me con token válido, Inicio de sesión auxiliar para renovación, Renovación, Token anterior tras la rotación, Reuso revoca la sesión, /auth/me con sesión revocada |
@@ -85,6 +88,7 @@ ponlos en la carpeta o en el request).
 | `user_id`, `user_email`, `coach_id`, `coach_email`, `coach2_id`, `coach2_email` | HU-01 | Cuentas de prueba |
 | `user_access_token`, `user_refresh_token` | HU-02 · Inicio de sesión de usuario | `Authorization: Bearer {{user_access_token}}`. Válidos hasta la carpeta de cierre |
 | `coach_access_token`, `coach_refresh_token` | HU-02 · Inicio de sesión de coach | Peticiones como coach. No se cierran |
+| `openapi_has_dev` | TEC-14 · Especificación OpenAPI | `true` si la especificación documenta rutas `/dev`; la usa *Rutas /dev según el ambiente* |
 | `profile_id`, `profile_sent`, `profile_expected` | HU-03 · Creación válida / Edición | Id del perfil y valores enviados/editados (JSON) para comparar en las consultas. El usuario de HU-01 queda **con perfil** |
 
 | `meal_photo_id` | HU-06 · Foto JPEG válida | Id de una foto del usuario de `meals` (`meals_user_token`), para HU-07 y HU-09 |

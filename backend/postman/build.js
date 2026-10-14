@@ -10,7 +10,7 @@ const fs = require('fs');
 const path = require('path');
 
 // Orden de ejecución en el Runner. Un módulo que usa datos de otro va después.
-const MODULES = ['core', 'legal', 'auth', 'profile', 'goals', 'meals'];
+const MODULES = ['core', 'openapi', 'legal', 'auth', 'profile', 'goals', 'coach_invite_codes', 'coach_links', 'weights', 'exercises', 'meals'];
 
 // Carpetas de cierre: las que terminan así van al final de la colección combinada,
 // después de todos los módulos (p. ej. el cierre de sesión, que invalida tokens que
