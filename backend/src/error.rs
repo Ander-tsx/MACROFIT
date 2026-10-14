@@ -49,14 +49,10 @@ pub enum AppError {
     /// 400 — no se aceptó el aviso de privacidad (y el resto de campos es válido).
     PrivacyNotAccepted,
     /// 404 — la foto no existe o la cuenta no tiene permiso para verla (no se distingue).
-    // TODO(HU-06): quitar los `allow` de las tres variantes de fotos cuando las use una ruta.
-    #[allow(dead_code)]
     PhotoNotFound,
     /// 413 — la foto supera `services::photos::MAX_PHOTO_BYTES`.
-    #[allow(dead_code)]
     PhotoTooLarge,
     /// 415 — el archivo no es JPEG ni PNG (se revisa el contenido, no la extensión).
-    #[allow(dead_code)]
     UnsupportedPhotoType,
     /// 409 — ya existe una cuenta con ese correo.
     EmailAlreadyExists,

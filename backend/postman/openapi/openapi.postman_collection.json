@@ -38,6 +38,7 @@
                   "        ['get', '/coach/clients', 'coach'], ['get', '/coach/clients/{clientId}/goals', 'coach'],",
                   "        ['post', '/coach/clients/{clientId}/goals', 'coach'], ['get', '/coach/invite-code', 'coach'],",
                   "        ['post', '/coach/invite-code/regenerate', 'coach'], ['get', '/coach/test', 'coach'],",
+                  "        ['post', '/meals/photos', 'user'],",
                   "    ];",
                   "    pm.test('Incluye todos los endpoints del catálogo', function () {",
                   "        catalog.forEach(([method, route]) => {",

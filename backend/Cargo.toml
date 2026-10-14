@@ -16,7 +16,7 @@ name = "seed_exercises"
 path = "src/bin/seed_exercises.rs"
 
 [dependencies]
-axum = { version = "0.7", features = ["macros"] }
+axum = { version = "0.7", features = ["macros", "multipart"] } # multipart: subida de fotos (HU-06)
 tokio = { version = "1.0", features = ["full"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
@@ -33,4 +33,4 @@ utoipa = { version = "5", features = ["preserve_order"] }
 utoipa-swagger-ui = { version = "8", features = ["axum", "vendored"] }
 
 [dev-dependencies]
-tower = { version = "0.5", features = ["util"] }
+tower = { version = "0.5", features = ["util"] } # `oneshot` para probar rutas sin levantar el servidor

@@ -11,7 +11,7 @@ use utoipa::openapi::security::{HttpAuthScheme, HttpBuilder, SecurityScheme};
 use utoipa::{Modify, OpenApi};
 use utoipa_swagger_ui::SwaggerUi;
 
-use super::{auth, coach_invite_codes, coach_links, dev, goals, legal, profile};
+use super::{auth, coach_invite_codes, coach_links, dev, goals, legal, meals, profile};
 
 /// Ruta de la especificación en JSON.
 pub const SPEC_PATH: &str = "/api/v1/openapi.json";
@@ -56,6 +56,7 @@ responder `500 INTERNAL_ERROR` ante un error inesperado.";
         coach_invite_codes::regenerate_invite_code_handler,
         coach_links::link_coach_handler,
         coach_links::unlink_coach_handler,
+        meals::upload_photo_handler,
         auth::coach_only_handler,
     ),
     modifiers(&BearerAuth),
@@ -66,6 +67,7 @@ responder `500 INTERNAL_ERROR` ante un error inesperado.";
         (name = "Perfil", description = "Perfil inicial del usuario (HU-03)"),
         (name = "Metas", description = "Meta nutricional del usuario (HU-04)"),
         (name = "Coach", description = "Clientes, metas por coach (HU-05) y código de invitación (HU-12)"),
+        (name = "Comidas", description = "Foto de la comida (HU-06)"),
     )
 )]
 struct ApiDoc;
@@ -206,6 +208,12 @@ mod tests {
             User,
             &[204, 401, 403, 404],
         ),
+        (
+            "post",
+            "/meals/photos",
+            User,
+            &[201, 400, 401, 403, 413, 415],
+        ),
     ];
 
     /// Rutas que solo existen con `APP_ENV=development`.
@@ -310,11 +318,19 @@ mod tests {
             ("post", "/coach/clients/{clientId}/goals"),
             ("post", "/dev/seed/coach-links"),
         ];
+        let with_multipart = [("post", "/meals/photos")];
         for (method, path) in operations(&spec) {
             let body = &operation(&spec, &method, &path)["requestBody"];
-            if with_body.contains(&(method.as_str(), path.as_str())) {
+            let key = (method.as_str(), path.as_str());
+            if with_body.contains(&key) {
                 let schema = &body["content"]["application/json"]["schema"];
                 assert!(schema.is_object(), "{method} {path} sin cuerpo de petición");
+            } else if with_multipart.contains(&key) {
+                let schema = &body["content"]["multipart/form-data"]["schema"];
+                assert!(
+                    schema.is_object(),
+                    "{method} {path} sin formulario multipart"
+                );
             } else {
                 assert!(body.is_null(), "{method} {path} no recibe cuerpo");
             }

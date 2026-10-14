@@ -13,7 +13,9 @@ postman/
 ├── legal/legal.postman_collection.json # src/routes/legal.rs → TEC-07 aviso de privacidad
 ├── auth/auth.postman_collection.json   # src/routes/auth.rs → HU-01, HU-02, roles y cierre de sesión
 ├── profile/profile.postman_collection.json # src/routes/profile.rs → HU-03 perfil inicial
-└── weights/weights.postman_collection.json # src/routes/weights.rs → HU-21 registro de peso
+├── goals/goals.postman_collection.json # src/routes/goals.rs → HU-04 y HU-05 metas
+├── weights/weights.postman_collection.json # src/routes/weights.rs → HU-21 registro de peso
+└── meals/meals.postman_collection.json # src/routes/meals.rs → HU-06 carga de foto (archivos de prueba en meals/files/)
 ```
 
 Regla: **una carpeta `postman/<modulo>/` por cada archivo de `src/routes/<modulo>.rs`**, con el mismo nombre.
@@ -23,7 +25,10 @@ Dentro del módulo, una carpeta de Postman por historia (`HU-XX <Nombre>` / `TEC
 
 1. Levanta el backend (`cargo run` en `backend/`).
 2. En Postman: **Import** → `MacroFit.postman_collection.json` y `MacroFit.postman_environment.json` → selecciona el entorno **MacroFit - Local**.
-3. Clic en la colección **MacroFit** → **Run** → **Run MacroFit**. Todo debe quedar en verde.
+3. **Archivos de prueba (HU-06):** en Postman, *Settings → General → Working directory* debe apuntar a la carpeta
+   `backend/` del repositorio; las peticiones de subida leen `postman/meals/files/...` relativo a ella. Newman se
+   ejecuta desde `backend/`, así que no necesita nada más.
+4. Clic en la colección **MacroFit** → **Run** → **Run MacroFit**. Todo debe quedar en verde.
 
 Cada colección de módulo también se puede importar y ejecutar sola (útil mientras trabajas en una historia).
 
@@ -73,6 +78,7 @@ ponlos en la carpeta o en el request).
 | `auth` | `HU-02 Sesión` | Inicio de sesión de usuario, Inicio de sesión de coach, Contraseña incorrecta, Correo inexistente, /auth/me sin token, /auth/me con token inválido, /auth/me con token válido, Inicio de sesión auxiliar para renovación, Renovación, Token anterior tras la rotación, Reuso revoca la sesión, /auth/me con sesión revocada |
 | `auth` | `Auth y roles (base)` | Ruta coach con coach, Ruta coach con usuario |
 | `profile` | `HU-03 Perfil` | Consulta antes de crear, Creación por coach, Consulta por coach, Campos faltantes, Valores fuera de rango, Valores no permitidos, Creación válida, Creación duplicada, Consulta, Verificación en /auth/me, Edición, Edición con valores inválidos, Edición sin campos, Consulta tras la edición |
+| `meals` | `HU-06 Carga de foto` | Foto JPEG válida, Foto PNG válida, Tipo no permitido (GIF), Texto con extensión .jpg, Archivo demasiado grande, Sin archivo, Sin sesión, Cuenta de coach |
 | `auth` | `HU-02 Sesión · Cierre` *(al final)* | Cierre de sesión, Renovación con token revocado, /auth/me tras cerrar sesión |
 
 ### Variables para las siguientes historias
@@ -84,6 +90,8 @@ ponlos en la carpeta o en el request).
 | `coach_access_token`, `coach_refresh_token` | HU-02 · Inicio de sesión de coach | Peticiones como coach. No se cierran |
 | `openapi_has_dev` | TEC-14 · Especificación OpenAPI | `true` si la especificación documenta rutas `/dev`; la usa *Rutas /dev según el ambiente* |
 | `profile_id`, `profile_sent`, `profile_expected` | HU-03 · Creación válida / Edición | Id del perfil y valores enviados/editados (JSON) para comparar en las consultas. El usuario de HU-01 queda **con perfil** |
+
+| `meal_photo_id` | HU-06 · Foto JPEG válida | Id de una foto del usuario de `meals` (`meals_user_token`), para HU-07 y HU-09 |
 
 El access token dura 15 minutos: si una ejecución completa tardara más, las historias siguientes deberán renovar con
 `/auth/refresh` y actualizar las variables.

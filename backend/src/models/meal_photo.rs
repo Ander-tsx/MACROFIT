@@ -8,7 +8,7 @@ pub const MEAL_PHOTOS_FILES_COLLECTION: &str = "meal_photos.files";
 pub const MEAL_PHOTOS_CHUNKS_COLLECTION: &str = "meal_photos.chunks";
 
 /// Formatos de imagen permitidos. Se detectan por el contenido del archivo, no por su extensión.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, utoipa::ToSchema)]
 #[serde(rename_all = "lowercase")]
 pub enum PhotoFormat {
     Jpeg,

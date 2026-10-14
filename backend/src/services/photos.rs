@@ -5,10 +5,7 @@
 //! - Una foto la leen su dueño y el coach con vinculación activa (RN-04, RNF-05). Para cualquier otra cuenta la foto
 //!   "no existe" (`PHOTO_NOT_FOUND`), igual que un id inexistente: no se revela que la foto está ahí.
 //! - Solo el dueño la elimina; se borran el documento de `meal_photos.files` y todos sus trozos.
-
-// TODO(HU-06): quitar este `allow` cuando POST /meals/photos use `validate_photo` y `save_photo`,
-// HU-09 use `delete_photo` y HU-25 use `read_photo`.
-#![allow(dead_code)]
+//! - HU-06 sube la foto con [`upload_photo`] (POST /meals/photos).
 
 use futures_util::io::{AsyncReadExt, AsyncWriteExt};
 use mongodb::{
@@ -19,7 +16,7 @@ use mongodb::{
     options::GridFsBucketOptions,
 };
 
-use crate::error::AppError;
+use crate::error::{AppError, FieldErrors};
 use crate::models::meal_photo::{MEAL_PHOTOS_BUCKET, MealPhotoMetadata, PhotoFormat};
 use crate::services::coach_links;
 
@@ -50,6 +47,10 @@ impl ValidPhoto {
     pub fn format(&self) -> PhotoFormat {
         self.format
     }
+
+    pub fn size_bytes(&self) -> usize {
+        self.bytes.len()
+    }
 }
 
 /// Formato de la imagen según su firma (primeros bytes), o `None` si no es JPEG ni PNG.
@@ -72,6 +73,18 @@ pub fn validate_photo(bytes: Vec<u8>) -> Result<ValidPhoto, AppError> {
     Ok(ValidPhoto { bytes, format })
 }
 
+/// HU-06 — valida el archivo recibido en la subida. Sin archivo, o con un archivo vacío, señala el campo `photo`;
+/// después aplica las reglas de tamaño y tipo de [`validate_photo`].
+pub fn validate_upload(bytes: Option<Vec<u8>>) -> Result<ValidPhoto, AppError> {
+    match bytes {
+        Some(bytes) if !bytes.is_empty() => validate_photo(bytes),
+        _ => Err(AppError::Validation(FieldErrors::from([(
+            "photo".to_string(),
+            "Adjunta una foto de tu comida".to_string(),
+        )]))),
+    }
+}
+
 /// Regla de acceso de lectura: el dueño, o un coach con vinculación activa con el dueño.
 fn may_read(requester_id: ObjectId, owner_id: ObjectId, has_active_link: bool) -> bool {
     requester_id == owner_id || has_active_link
@@ -80,12 +93,38 @@ fn may_read(requester_id: ObjectId, owner_id: ObjectId, has_active_link: bool) -
 // ───────────────────────── Persistencia ─────────────────────────
 
 /// Foto leída del almacenamiento.
+// TODO(HU-25): quitar el `allow` cuando una ruta sirva la foto.
+#[allow(dead_code)]
 #[derive(Debug)]
 pub struct StoredPhoto {
     pub id: ObjectId,
     pub owner_id: ObjectId,
     pub format: PhotoFormat,
     pub bytes: Vec<u8>,
+}
+
+/// Foto recién subida (HU-06).
+#[derive(Debug)]
+pub struct UploadedPhoto {
+    pub id: ObjectId,
+    pub format: PhotoFormat,
+    pub size_bytes: usize,
+}
+
+/// HU-06 — valida el archivo recibido y lo guarda a nombre de `owner_id`.
+pub async fn upload_photo(
+    db: &Database,
+    owner_id: ObjectId,
+    bytes: Option<Vec<u8>>,
+) -> Result<UploadedPhoto, AppError> {
+    let photo = validate_upload(bytes)?;
+    let (format, size_bytes) = (photo.format(), photo.size_bytes());
+    let id = save_photo(db, owner_id, photo).await?;
+    Ok(UploadedPhoto {
+        id,
+        format,
+        size_bytes,
+    })
 }
 
 /// Guarda la foto a nombre de `owner_id` y devuelve su id.
@@ -140,6 +179,8 @@ fn file_metadata(file: FilesCollectionDocument) -> Result<MealPhotoMetadata, App
 
 /// Lee una foto si `requester_id` es su dueño o un coach con vinculación activa con el dueño.
 /// Un id mal formado, inexistente o sin permiso responde igual: `PHOTO_NOT_FOUND`.
+// TODO(HU-25): quitar el `allow` cuando la ruta que sirve la foto use `read_photo`.
+#[allow(dead_code)]
 pub async fn read_photo(
     db: &Database,
     requester_id: ObjectId,
@@ -176,6 +217,8 @@ pub async fn read_photo(
 
 /// Elimina la foto del almacenamiento (documento y trozos). Solo su dueño puede hacerlo;
 /// para cualquier otra cuenta responde `PHOTO_NOT_FOUND` y la foto no se toca.
+// TODO(HU-09): quitar el `allow` cuando DELETE /meals/{id} use `delete_photo`.
+#[allow(dead_code)]
 pub async fn delete_photo(
     db: &Database,
     owner_id: ObjectId,
@@ -277,6 +320,41 @@ mod tests {
     }
 
     #[test]
+    fn subida_sin_archivo_senala_photo() {
+        match validate_upload(None) {
+            Err(AppError::Validation(fields)) => assert!(fields.contains_key("photo")),
+            other => panic!("se esperaba VALIDATION_ERROR, llegó {other:?}"),
+        }
+    }
+
+    #[test]
+    fn subida_con_archivo_vacio_senala_photo() {
+        match validate_upload(Some(Vec::new())) {
+            Err(AppError::Validation(fields)) => assert!(fields.contains_key("photo")),
+            other => panic!("se esperaba VALIDATION_ERROR, llegó {other:?}"),
+        }
+    }
+
+    #[test]
+    fn subida_valida_conserva_formato_y_tamano() {
+        let photo = validate_upload(Some(png(1234))).unwrap();
+        assert_eq!(photo.format(), PhotoFormat::Png);
+        assert_eq!(photo.size_bytes(), 1234);
+    }
+
+    #[test]
+    fn subida_aplica_las_reglas_de_tamano_y_tipo() {
+        assert!(matches!(
+            validate_upload(Some(jpeg(MAX_PHOTO_BYTES + 1))),
+            Err(AppError::PhotoTooLarge)
+        ));
+        assert!(matches!(
+            validate_upload(Some(b"GIF89a".to_vec())),
+            Err(AppError::UnsupportedPhotoType)
+        ));
+    }
+
+    #[test]
     fn el_dueno_puede_leer_su_foto() {
         let owner = ObjectId::new();
         assert!(may_read(owner, owner, false));
@@ -364,6 +442,23 @@ mod tests {
                     .unwrap(),
                 owner
             );
+            db.drop().await.unwrap();
+        }
+
+        #[tokio::test]
+        #[ignore = "requiere MongoDB"]
+        async fn subir_guarda_la_foto_a_nombre_del_usuario() {
+            let db = test_db().await;
+            let owner = ObjectId::new();
+            let bytes = jpeg(2048);
+
+            let uploaded = upload_photo(&db, owner, Some(bytes.clone())).await.unwrap();
+            assert_eq!(uploaded.format, PhotoFormat::Jpeg);
+            assert_eq!(uploaded.size_bytes, 2048);
+
+            let photo = read_photo(&db, owner, &uploaded.id.to_hex()).await.unwrap();
+            assert_eq!(photo.owner_id, owner);
+            assert_eq!(photo.bytes, bytes);
             db.drop().await.unwrap();
         }
 

@@ -9,6 +9,7 @@ pub mod dev;
 pub mod exercises;
 pub mod goals;
 pub mod legal;
+pub mod meals;
 pub mod openapi;
 pub mod profile;
 pub mod weights;
@@ -28,7 +29,8 @@ pub fn api_router(dev_mode: bool) -> Router<AppState> {
         .merge(legal::router())
         .merge(profile::router())
         .merge(goals::router())
-        .merge(weights::router());
+        .merge(weights::router())
+        .merge(meals::router());
     if dev_mode {
         v1 = v1.merge(dev::router());
     }
