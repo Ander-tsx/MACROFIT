@@ -62,7 +62,8 @@ Ejemplos: `feat(auth): registro con selección de rol`, `fix(nutricion): redonde
 
 - Se usa la plantilla (`.github/pull_request_template.md`); el título sigue Conventional Commits.
 - **Al menos una aprobación** de otra persona del equipo antes del merge.
-- La CI (formato, análisis y pruebas) tiene que pasar.
+- La CI (formato, análisis y pruebas) tiene que pasar: `Flutter CI` para `macrofit_app` y `Backend CI`
+  (`cargo fmt --check`, `cargo clippy`, `cargo test`).
 - **Formato automático**: si en un PR hay archivos de `macrofit_app` sin `dart format`, la CI los formatea, sube un
   commit `style(app): aplicar dart format` a tu rama y vuelve a correr sobre él. Haz `git pull` antes de seguir
   trabajando en esa rama. En `main`/`develop` y en PRs desde forks no se corrige solo: ahí el formato incorrecto falla.
