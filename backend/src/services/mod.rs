@@ -5,6 +5,7 @@ pub mod exercises;
 pub mod food_recognition;
 pub mod goals;
 pub mod legal;
+pub mod meal_estimates;
 pub mod photos;
 pub mod profile;
 pub mod session;

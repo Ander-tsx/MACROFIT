@@ -7,11 +7,13 @@ use axum::{
     http::StatusCode,
     routing::post,
 };
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 use crate::auth::middleware::UserOnly;
-use crate::error::{AppError, ErrorResponse};
+use crate::error::{ApiJson, AppError, ErrorResponse};
 use crate::models::meal_photo::PhotoFormat;
+use crate::services::food_recognition::{IdentifiedFood, Nutrients};
+use crate::services::meal_estimates::{self, MealEstimate};
 use crate::services::photos::{self, MAX_PHOTO_BYTES, UploadedPhoto};
 use crate::state::AppState;
 
@@ -107,6 +109,123 @@ async fn read_photo_field(mut multipart: Multipart) -> Result<Option<Vec<u8>>, A
     Ok(photo)
 }
 
+// ───────────────────────── HU-07 — estimación nutricional ─────────────────────────
+
+#[derive(Debug, Deserialize, utoipa::ToSchema)]
+#[schema(description = "Foto a estimar.")]
+pub struct EstimateRequest {
+    /// Id de una foto propia subida con `POST /meals/photos` (HU-06).
+    #[schema(value_type = String, required = true, example = "6acd4140ac968514f27322cd")]
+    pub photo_id: Option<String>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, utoipa::ToSchema)]
+#[schema(description = "Calorías, proteína y grasa, redondeadas a un decimal.")]
+pub struct NutrientsResponse {
+    #[schema(example = 413.0)]
+    pub calories_kcal: f64,
+    #[schema(example = 42.2)]
+    pub protein_g: f64,
+    #[schema(example = 4.9)]
+    pub fat_g: f64,
+}
+
+impl From<Nutrients> for NutrientsResponse {
+    fn from(n: Nutrients) -> Self {
+        Self {
+            calories_kcal: n.calories_kcal,
+            protein_g: n.protein_g,
+            fat_g: n.fat_g,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, utoipa::ToSchema)]
+#[schema(description = "Alimento identificado en la foto (RF-06).")]
+pub struct EstimatedFoodResponse {
+    #[schema(example = "Arroz blanco cocido")]
+    pub name: String,
+    /// Peso estimado de la porción; `null` si el servicio no lo da.
+    #[schema(example = 150.0)]
+    pub grams: Option<f64>,
+    #[schema(example = 195.0)]
+    pub calories_kcal: f64,
+    #[schema(example = 4.0)]
+    pub protein_g: f64,
+    #[schema(example = 0.4)]
+    pub fat_g: f64,
+}
+
+impl From<IdentifiedFood> for EstimatedFoodResponse {
+    fn from(food: IdentifiedFood) -> Self {
+        Self {
+            name: food.name,
+            grams: food.grams,
+            calories_kcal: food.nutrients.calories_kcal,
+            protein_g: food.nutrients.protein_g,
+            fat_g: food.nutrients.fat_g,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, utoipa::ToSchema)]
+#[schema(
+    description = "Estimación de la foto. Es una sugerencia: el usuario la revisa y corrige antes de guardar (HU-08)."
+)]
+pub struct EstimateResponse {
+    #[schema(example = "6acd4140ac968514f27322cd")]
+    pub photo_id: String,
+    /// Alimentos identificados. Nunca está vacía: sin alimentos se responde `422 FOOD_NOT_RECOGNIZED`.
+    pub foods: Vec<EstimatedFoodResponse>,
+    /// Suma de los alimentos.
+    pub totals: NutrientsResponse,
+}
+
+impl From<MealEstimate> for EstimateResponse {
+    fn from(meal: MealEstimate) -> Self {
+        Self {
+            photo_id: meal.photo_id,
+            foods: meal
+                .estimate
+                .foods
+                .into_iter()
+                .map(EstimatedFoodResponse::from)
+                .collect(),
+            totals: meal.estimate.totals.into(),
+        }
+    }
+}
+
+/// HU-07 — POST /api/v1/meals/estimate. Estima calorías, proteína y grasa de una foto propia (RF-06).
+#[utoipa::path(
+    post,
+    path = "/meals/estimate",
+    tag = "Comidas",
+    summary = "Estima los valores nutricionales de una foto (HU-07)",
+    description = "Envía la foto al servicio de reconocimiento de alimentos configurado (`FOOD_PROVIDER`; el simulador en desarrollo) y devuelve los alimentos identificados con sus calorías, proteína y grasa. No guarda nada. El servicio externo tiene un tiempo de espera de 10 s como máximo.",
+    security(("bearer_auth" = ["user"])),
+    request_body = EstimateRequest,
+    responses(
+        (status = 200, description = "Alimentos identificados y totales", body = EstimateResponse),
+        (status = 400, description = "`VALIDATION_ERROR` (falta `photo_id`) o `INVALID_BODY`", body = ErrorResponse),
+        (status = 401, description = "`UNAUTHORIZED` o `TOKEN_REVOKED`", body = ErrorResponse),
+        (status = 403, description = "`FORBIDDEN_ROLE` (cuenta `coach`)", body = ErrorResponse),
+        (status = 404, description = "`PHOTO_NOT_FOUND` (no existe, id mal formado o es de otro usuario)", body = ErrorResponse),
+        (status = 422, description = "`FOOD_NOT_RECOGNIZED`: no se reconoció comida; la app ofrece la captura manual", body = ErrorResponse),
+        (status = 502, description = "`FOOD_PROVIDER_ERROR`: el servicio de reconocimiento falló", body = ErrorResponse),
+        (status = 504, description = "`FOOD_PROVIDER_TIMEOUT`: el servicio de reconocimiento no respondió a tiempo", body = ErrorResponse),
+    )
+)]
+pub async fn estimate_meal_handler(
+    State(state): State<AppState>,
+    UserOnly(auth): UserOnly,
+    ApiJson(body): ApiJson<EstimateRequest>,
+) -> Result<Json<EstimateResponse>, AppError> {
+    let meal =
+        meal_estimates::estimate_meal(&state.db, &state.food, auth.user_id, body.photo_id).await?;
+    Ok(Json(meal.into()))
+}
+
 /// Un cuerpo que pasa el límite de la ruta es una foto demasiado grande; cualquier otro error, un multipart mal formado.
 fn multipart_error(err: MultipartError) -> AppError {
     if err.status() == StatusCode::PAYLOAD_TOO_LARGE {
@@ -117,10 +236,12 @@ fn multipart_error(err: MultipartError) -> AppError {
 }
 
 pub fn router() -> Router<AppState> {
-    Router::new().route(
-        "/meals/photos",
-        post(upload_photo_handler).layer(DefaultBodyLimit::max(PHOTO_UPLOAD_BODY_LIMIT)),
-    )
+    Router::new()
+        .route(
+            "/meals/photos",
+            post(upload_photo_handler).layer(DefaultBodyLimit::max(PHOTO_UPLOAD_BODY_LIMIT)),
+        )
+        .route("/meals/estimate", post(estimate_meal_handler))
 }
 
 #[cfg(test)]

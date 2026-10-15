@@ -6,6 +6,7 @@ use backend::config::Config;
 use backend::db;
 use backend::routes;
 use backend::services;
+use backend::services::food_recognition::FoodService;
 use backend::state::AppState;
 
 #[tokio::main]
@@ -18,10 +19,18 @@ async fn main() {
         *services::legal::PRIVACY_VERSION
     );
 
+    let food = FoodService::from_config(&config.food);
+    println!(
+        "Reconocimiento de alimentos: {} (tiempo de espera {} s)",
+        food.provider_name(),
+        config.food.timeout.as_secs()
+    );
+
     let db = db::connect(&config.mongo_uri, &config.db_name).await;
     let state = AppState {
         db,
         tokens: config.tokens,
+        food,
     };
 
     let app = routes::api_router(config.dev_mode)

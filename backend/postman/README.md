@@ -35,7 +35,9 @@ Cada colección de módulo también se puede importar y ejecutar sola (útil mie
 
 **Contra el ambiente desplegado:** usa el entorno **MacroFit - Desplegado** (`MacroFit.deployed.postman_environment.json`)
 en lugar del local. Allí `APP_ENV=production`, así que las carpetas que siembran datos con `/dev/seed/*`
-(HU-05 *Metas por coach* y TEC-09 *Catálogo de ejercicios*) fallan con 404: es lo esperado. Ver
+(HU-05 *Metas por coach* y TEC-09 *Catálogo de ejercicios*) fallan con 404: es lo esperado. Además, con
+`FOOD_PROVIDER=gemini`, *HU-07 · Estimación válida* manda la foto de prueba (`comida.jpg`, una imagen mínima sin comida)
+al servicio real y puede responder `422 FOOD_NOT_RECOGNIZED`: esa carpeta se valida contra el simulador. Ver
 [Despliegue](../README.md#-despliegue).
 
 Desde terminal, en `backend/` (sin instalar nada):
@@ -85,6 +87,7 @@ ponlos en la carpeta o en el request).
 | `auth` | `Auth y roles (base)` | Ruta coach con coach, Ruta coach con usuario |
 | `profile` | `HU-03 Perfil` | Consulta antes de crear, Creación por coach, Consulta por coach, Campos faltantes, Valores fuera de rango, Valores no permitidos, Creación válida, Creación duplicada, Consulta, Verificación en /auth/me, Edición, Edición con valores inválidos, Edición sin campos, Consulta tras la edición |
 | `meals` | `HU-06 Carga de foto` | Foto JPEG válida, Foto PNG válida, Tipo no permitido (GIF), Texto con extensión .jpg, Archivo demasiado grande, Sin archivo, Sin sesión, Cuenta de coach |
+| `meals` | `HU-07 Estimación nutricional` | Estimación válida, Sin photo_id, Foto inexistente, Id de foto mal formado, Foto de otro usuario, Sin sesión, Cuenta de coach. Contra el **simulador** (`FOOD_PROVIDER=simulator`) |
 | `auth` | `HU-02 Sesión · Cierre` *(al final)* | Cierre de sesión, Renovación con token revocado, /auth/me tras cerrar sesión |
 
 ### Variables para las siguientes historias
@@ -98,6 +101,7 @@ ponlos en la carpeta o en el request).
 | `profile_id`, `profile_sent`, `profile_expected` | HU-03 · Creación válida / Edición | Id del perfil y valores enviados/editados (JSON) para comparar en las consultas. El usuario de HU-01 queda **con perfil** |
 
 | `meal_photo_id` | HU-06 · Foto JPEG válida | Id de una foto del usuario de `meals` (`meals_user_token`), para HU-07 y HU-09 |
+| `meals_other_token`, `meals_other_photo_id` | HU-07 · Preparación | Segundo usuario y su foto, para probar que no se puede estimar la foto de otro |
 
 El access token dura 15 minutos: si una ejecución completa tardara más, las historias siguientes deberán renovar con
 `/auth/refresh` y actualizar las variables.
