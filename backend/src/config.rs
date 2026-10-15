@@ -7,6 +7,8 @@ pub struct Config {
     /// `APP_ENV=development`: habilita las rutas de datos de prueba (`/dev`).
     pub dev_mode: bool,
     pub tokens: TokenConfig,
+    /// Proveedor de reconocimiento de alimentos (HU-07; elegido en TEC-02).
+    pub food: FoodConfig,
 }
 
 /// Parámetros de los tokens de sesión.
@@ -32,6 +34,7 @@ impl Config {
                 access_ttl: chrono::Duration::minutes(optional("ACCESS_TOKEN_MINUTES", 15)),
                 refresh_ttl: chrono::Duration::days(optional("REFRESH_TOKEN_DAYS", 30)),
             },
+            food: FoodConfig::from_env().unwrap_or_else(|err| panic!("{err}")),
         }
     }
 }

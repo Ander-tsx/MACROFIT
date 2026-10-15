@@ -6,6 +6,7 @@
 //!   "no existe" (`PHOTO_NOT_FOUND`), igual que un id inexistente: no se revela que la foto está ahí.
 //! - Solo el dueño la elimina; se borran el documento de `meal_photos.files` y todos sus trozos.
 //! - HU-06 sube la foto con [`upload_photo`] (POST /meals/photos).
+//! - HU-07 la lee con [`read_own_photo`] (solo el dueño) para estimar sus valores (POST /meals/estimate).
 
 use futures_util::io::{AsyncReadExt, AsyncWriteExt};
 use mongodb::{
@@ -93,8 +94,6 @@ fn may_read(requester_id: ObjectId, owner_id: ObjectId, has_active_link: bool) -
 // ───────────────────────── Persistencia ─────────────────────────
 
 /// Foto leída del almacenamiento.
-// TODO(HU-25): quitar el `allow` cuando una ruta sirva la foto.
-#[allow(dead_code)]
 #[derive(Debug)]
 pub struct StoredPhoto {
     pub id: ObjectId,
@@ -196,7 +195,30 @@ pub async fn read_photo(
     if !may_read(requester_id, metadata.owner_id, has_active_link) {
         return Err(AppError::PhotoNotFound);
     }
+    download(db, photo_id, metadata).await
+}
 
+/// HU-07 — lee una foto **solo si es de `owner_id`**. Un id mal formado, inexistente o de otra cuenta (aunque sea de
+/// un cliente vinculado) responde igual: `PHOTO_NOT_FOUND`.
+pub async fn read_own_photo(
+    db: &Database,
+    owner_id: ObjectId,
+    photo_id: &str,
+) -> Result<StoredPhoto, AppError> {
+    let photo_id = ObjectId::parse_str(photo_id).map_err(|_| AppError::PhotoNotFound)?;
+    let metadata = find_photo(db, photo_id)
+        .await?
+        .filter(|metadata| metadata.owner_id == owner_id)
+        .ok_or(AppError::PhotoNotFound)?;
+    download(db, photo_id, metadata).await
+}
+
+/// Contenido de una foto cuyo permiso ya se revisó.
+async fn download(
+    db: &Database,
+    photo_id: ObjectId,
+    metadata: MealPhotoMetadata,
+) -> Result<StoredPhoto, AppError> {
     let mut stream = bucket(db)
         .open_download_stream(Bson::ObjectId(photo_id))
         .await
@@ -489,6 +511,28 @@ mod tests {
 
             for requester in [unlinked_coach, other_coach, other_user] {
                 let result = read_photo(&db, requester, &id.to_hex()).await;
+                assert!(matches!(result, Err(AppError::PhotoNotFound)));
+            }
+            db.drop().await.unwrap();
+        }
+
+        #[tokio::test]
+        #[ignore = "requiere MongoDB"]
+        async fn solo_el_dueno_lee_su_foto_para_estimarla() {
+            let db = test_db().await;
+            let (owner, coach, other) = (ObjectId::new(), ObjectId::new(), ObjectId::new());
+            // Ni un coach vinculado: la estimación (HU-07) es solo del dueño.
+            link(&db, coach, owner, LinkStatus::Active).await;
+            let (id, bytes) = saved_photo(&db, owner).await;
+
+            let photo = read_own_photo(&db, owner, &id.to_hex()).await.unwrap();
+            assert_eq!(photo.bytes, bytes);
+            for requester in [coach, other] {
+                let result = read_own_photo(&db, requester, &id.to_hex()).await;
+                assert!(matches!(result, Err(AppError::PhotoNotFound)));
+            }
+            for missing in [ObjectId::new().to_hex(), "no-es-un-id".to_string()] {
+                let result = read_own_photo(&db, owner, &missing).await;
                 assert!(matches!(result, Err(AppError::PhotoNotFound)));
             }
             db.drop().await.unwrap();

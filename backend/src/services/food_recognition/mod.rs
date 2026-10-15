@@ -151,6 +151,11 @@ impl FoodService {
         }
     }
 
+    /// Servicio con el simulador (pruebas).
+    pub fn simulator(mode: crate::config::SimulatorMode, timeout: Duration) -> Self {
+        Self::new(Arc::new(simulator::Simulator::new(mode)), timeout)
+    }
+
     /// Construye el proveedor que indica la configuración.
     pub fn from_config(config: &FoodConfig) -> Self {
         Self::new(build_recognizer(config), config.timeout)

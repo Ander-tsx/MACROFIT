@@ -3,7 +3,7 @@
 API REST de MacroFit: autenticación, persistencia en MongoDB y reglas de acceso por rol (`user` y `coach`).
 Historias cubiertas: **TEC-05** (base), **TEC-07** (aviso de privacidad), **HU-01** (registro con rol), **HU-02** (inicio y cierre de sesión)
 **HU-03** (perfil inicial del usuario), **HU-04** y **HU-05** (metas), **TEC-13** (almacenamiento de fotos de comidas),
-**TEC-14** (contrato de la API en OpenAPI) y **HU-06** (carga de la foto de comida).
+**TEC-14** (contrato de la API en OpenAPI), **HU-06** (carga de la foto de comida), **TEC-02** (comparación de servicios de reconocimiento de alimentos) y **HU-07** (estimación nutricional de la foto).
 
 > **Si eres una persona o una sesión de IA que va a modificar este backend, lee primero
 > la sección [Forma de trabajo](#-forma-de-trabajo) y el README de la carpeta que vas a tocar.**
@@ -179,6 +179,7 @@ El contrato completo (cuerpos, respuestas y códigos de error de cada endpoint) 
 | GET | `/coach/invite-code` | Bearer (coach) | HU-12 | Código de invitación del coach (lo crea si no existe) |
 | POST | `/coach/invite-code/regenerate` | Bearer (coach) | HU-12 | Reemplaza el código de invitación por uno nuevo |
 | POST | `/meals/photos` | Bearer (user) | HU-06 | Sube la foto de una comida (multipart, campo `photo`) |
+| POST | `/meals/estimate` | Bearer (user) | HU-07 | Estima calorías, proteína y grasa de una foto propia |
 | POST | `/dev/seed/coach-links` | — (solo `APP_ENV=development`) | HU-05 | Vincula un coach con un usuario de prueba |
 | GET | `/coach/test` | Bearer (coach) | TEC-05 | Prueba de la regla de acceso por rol |
 | GET | `/coach/invite-code` | Bearer (coach) | HU-12 | Código de invitación del coach; se crea si no existe |
@@ -470,6 +471,44 @@ curl -X POST http://localhost:3000/api/v1/meals/photos   -H "Authorization: Bear
 El límite de cuerpo de esta ruta es 6 MiB (5 MiB de foto + 1 MiB de margen para el multipart); un cuerpo mayor también
 responde `413 PHOTO_TOO_LARGE` con el formato de la API. El `id` es el que usarán HU-07 (estimación) y HU-09 (registro).
 
+### POST `/meals/estimate` (HU-07)
+
+Cabecera `Authorization: Bearer <access_token>`. **Solo rol `user`**. Cuerpo `{ "photo_id": "<id de POST /meals/photos>" }`.
+Manda la foto al servicio de reconocimiento de alimentos mediante el adaptador de `services/food_recognition/` (RNF-13):
+el proveedor se elige con `FOOD_PROVIDER` (`simulator` por defecto; `gemini` en el ambiente desplegado, decisión de
+[TEC-02](../docs/spikes/TEC-02-reconocimiento-de-alimentos.md)) y cambiarlo no toca handlers ni rutas. No guarda nada:
+el usuario revisa y corrige los valores antes de guardar (HU-08 / HU-09).
+
+**200 OK** — alimentos identificados (RF-06) y totales, redondeados a un decimal:
+
+```json
+{
+  "photo_id": "6acd4140ac968514f27322cd",
+  "foods": [
+    { "name": "Arroz blanco cocido", "grams": 150.0, "calories_kcal": 195.0, "protein_g": 4.0, "fat_g": 0.4 },
+    { "name": "Pechuga de pollo a la plancha", "grams": 120.0, "calories_kcal": 198.0, "protein_g": 37.2, "fat_g": 4.3 },
+    { "name": "Ensalada verde", "grams": 80.0, "calories_kcal": 20.0, "protein_g": 1.0, "fat_g": 0.2 }
+  ],
+  "totals": { "calories_kcal": 413.0, "protein_g": 42.2, "fat_g": 4.9 }
+}
+```
+
+`grams` puede ser `null` si el servicio no estima la porción. `foods` nunca está vacía.
+
+| Caso | Respuesta |
+|---|---|
+| Falta `photo_id` o está vacío | `400 VALIDATION_ERROR` con `fields.photo_id` |
+| El cuerpo no es JSON válido | `400 INVALID_BODY` |
+| Sin sesión / token inválido | `401 UNAUTHORIZED` |
+| Cuenta de coach | `403 FORBIDDEN_ROLE` |
+| La foto no existe, el id está mal formado o es de otro usuario | `404 PHOTO_NOT_FOUND` |
+| El servicio no reconoce comida en la foto | `422 FOOD_NOT_RECOGNIZED` → la app ofrece la captura manual (CU-01 flujo 4a) |
+| El servicio externo falla (HTTP de error, cuota, respuesta inesperada) | `502 FOOD_PROVIDER_ERROR` |
+| El servicio no responde dentro de `FOOD_PROVIDER_TIMEOUT_SECS` (máximo 10 s, RNF-01) | `504 FOOD_PROVIDER_TIMEOUT` |
+
+El detalle de un `502`/`504` solo va al log del servidor (`[reconocimiento de alimentos] ...`); nunca al cliente.
+Para probar la app contra cada caso sin red, levanta el backend con `FOOD_SIMULATOR_MODE=not_recognized`, `error` o `timeout`.
+
 ### POST `/dev/seed/coach-links` (HU-05)
 
 Solo existe con `APP_ENV=development`; en cualquier otro ambiente la ruta no se monta (`404`). Sin autenticación.
@@ -581,6 +620,7 @@ Se configuran en el servicio `backend` de Railway; ninguna está en el repositor
 | `DB_NAME` | `macrofit_prod` |
 | `JWT_SECRET` | Cadena aleatoria propia de este ambiente |
 | `APP_ENV` | `production` (no `development`: así `/dev/seed/*` no se monta y responde 404) |
+| `FOOD_PROVIDER`, `GEMINI_API_KEY`, `GEMINI_MODEL` | `gemini`, la llave de Google AI Studio del proyecto y el modelo elegido (HU-07, decisión de TEC-02) |
 | `RAILWAY_DOCKERFILE_PATH` | `backend/Dockerfile` (el contexto de build es la raíz del repo) |
 
 ### Desplegar una versión nueva
@@ -644,11 +684,14 @@ Todas las respuestas de error tienen la misma forma. `fields` siempre es un obje
 | `PROFILE_NOT_FOUND` | 404 | El usuario aún no tiene perfil |
 | `INVITE_CODE_NOT_FOUND` | 404 | El código de invitación no existe o ya no está vigente |
 | `PHOTO_NOT_FOUND` | 404 | La foto no existe o la cuenta no puede verla (no se distingue) |
+| `FOOD_NOT_RECOGNIZED` | 422 | El servicio de reconocimiento no encontró comida en la foto (HU-07): captura manual |
 | `USER_ALREADY_LINKED` | 409 | El usuario ya tiene una vinculación activa con un coach |
 | `EMAIL_ALREADY_EXISTS` | 409 | El correo ya está registrado |
 | `PROFILE_ALREADY_EXISTS` | 409 | El usuario ya tiene un perfil (se edita con `PATCH`) |
 | `PHOTO_TOO_LARGE` | 413 | La foto supera 5 MiB (o el cuerpo de la subida supera el límite de la ruta) |
 | `UNSUPPORTED_PHOTO_TYPE` | 415 | La foto no es JPEG ni PNG (se revisa el contenido) |
+| `FOOD_PROVIDER_ERROR` | 502 | El servicio de reconocimiento de alimentos falló (HU-07) |
+| `FOOD_PROVIDER_TIMEOUT` | 504 | El servicio de reconocimiento de alimentos no respondió en el tiempo de espera (HU-07, máximo 10 s) |
 | `INTERNAL_ERROR` | 500 | Error inesperado (el detalle solo va al log del servidor) |
 
 ---

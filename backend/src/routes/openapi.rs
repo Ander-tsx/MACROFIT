@@ -57,6 +57,7 @@ responder `500 INTERNAL_ERROR` ante un error inesperado.";
         coach_links::link_coach_handler,
         coach_links::unlink_coach_handler,
         meals::upload_photo_handler,
+        meals::estimate_meal_handler,
         auth::coach_only_handler,
     ),
     modifiers(&BearerAuth),
@@ -67,7 +68,7 @@ responder `500 INTERNAL_ERROR` ante un error inesperado.";
         (name = "Perfil", description = "Perfil inicial del usuario (HU-03)"),
         (name = "Metas", description = "Meta nutricional del usuario (HU-04)"),
         (name = "Coach", description = "Clientes, metas por coach (HU-05) y código de invitación (HU-12)"),
-        (name = "Comidas", description = "Foto de la comida (HU-06)"),
+        (name = "Comidas", description = "Foto de la comida (HU-06) y estimación nutricional (HU-07)"),
     )
 )]
 struct ApiDoc;
@@ -214,6 +215,12 @@ mod tests {
             User,
             &[201, 400, 401, 403, 413, 415],
         ),
+        (
+            "post",
+            "/meals/estimate",
+            User,
+            &[200, 400, 401, 403, 404, 422, 502, 504],
+        ),
     ];
 
     /// Rutas que solo existen con `APP_ENV=development`.
@@ -317,6 +324,7 @@ mod tests {
             ("post", "/users/me/coach-link"),
             ("post", "/coach/clients/{clientId}/goals"),
             ("post", "/dev/seed/coach-links"),
+            ("post", "/meals/estimate"),
         ];
         let with_multipart = [("post", "/meals/photos")];
         for (method, path) in operations(&spec) {
@@ -413,6 +421,10 @@ mod tests {
                 access_ttl: chrono::Duration::minutes(15),
                 refresh_ttl: chrono::Duration::days(30),
             },
+            food: crate::services::food_recognition::FoodService::simulator(
+                crate::config::SimulatorMode::Ok,
+                std::time::Duration::from_secs(10),
+            ),
         }
     }
 

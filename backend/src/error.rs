@@ -80,6 +80,12 @@ pub enum AppError {
     UserAlreadyLinked,
     /// 404 — el usuario no tiene una vinculación activa con un coach.
     UserNotLinked,
+    /// 422 — el servicio de reconocimiento no encontró comida en la foto (HU-07). La app ofrece la captura manual.
+    FoodNotRecognized,
+    /// 502 — el servicio de reconocimiento de alimentos falló (HU-07). El detalle solo va al log.
+    FoodProviderError,
+    /// 504 — el servicio de reconocimiento de alimentos no respondió a tiempo (HU-07, máximo 10 s).
+    FoodProviderTimeout,
 }
 
 impl AppError {
@@ -227,6 +233,26 @@ impl IntoResponse for AppError {
                 "No tienes una vinculación activa con un coach".to_string(),
                 FieldErrors::new(),
             ),
+            Self::FoodNotRecognized => (
+                StatusCode::UNPROCESSABLE_ENTITY,
+                "FOOD_NOT_RECOGNIZED",
+                "No reconocimos comida en la foto; captura los valores manualmente".to_string(),
+                FieldErrors::new(),
+            ),
+            Self::FoodProviderError => (
+                StatusCode::BAD_GATEWAY,
+                "FOOD_PROVIDER_ERROR",
+                "El servicio de reconocimiento de alimentos falló; intenta de nuevo o captura los valores manualmente"
+                    .to_string(),
+                FieldErrors::new(),
+            ),
+            Self::FoodProviderTimeout => (
+                StatusCode::GATEWAY_TIMEOUT,
+                "FOOD_PROVIDER_TIMEOUT",
+                "El servicio de reconocimiento de alimentos tardó demasiado; intenta de nuevo o captura los valores manualmente"
+                    .to_string(),
+                FieldErrors::new(),
+            ),
         };
 
         let body = ErrorResponse {
@@ -286,5 +312,35 @@ mod tests {
             .expect("cuerpo");
         let body: serde_json::Value = serde_json::from_slice(&bytes).expect("JSON");
         assert_eq!(body["error"]["fields"], serde_json::json!({}));
+    }
+
+    #[tokio::test]
+    async fn errores_del_reconocimiento_de_alimentos_tienen_su_estado_y_codigo() {
+        for (error, status, code) in [
+            (
+                AppError::FoodNotRecognized,
+                StatusCode::UNPROCESSABLE_ENTITY,
+                "FOOD_NOT_RECOGNIZED",
+            ),
+            (
+                AppError::FoodProviderError,
+                StatusCode::BAD_GATEWAY,
+                "FOOD_PROVIDER_ERROR",
+            ),
+            (
+                AppError::FoodProviderTimeout,
+                StatusCode::GATEWAY_TIMEOUT,
+                "FOOD_PROVIDER_TIMEOUT",
+            ),
+        ] {
+            let response = error.into_response();
+            assert_eq!(response.status(), status);
+            let bytes = axum::body::to_bytes(response.into_body(), usize::MAX)
+                .await
+                .expect("cuerpo");
+            let body: serde_json::Value = serde_json::from_slice(&bytes).expect("JSON");
+            assert_eq!(body["error"]["code"], code);
+            assert_eq!(body["error"]["fields"], serde_json::json!({}));
+        }
     }
 }
