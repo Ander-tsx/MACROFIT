@@ -2,6 +2,7 @@ pub mod coach_invite_code;
 pub mod coach_link;
 pub mod exercise;
 pub mod goal;
+pub mod meal;
 pub mod meal_photo;
 pub mod profile;
 pub mod refresh_token;

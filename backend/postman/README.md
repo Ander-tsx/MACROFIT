@@ -16,7 +16,7 @@ postman/
 ├── profile/profile.postman_collection.json # src/routes/profile.rs → HU-03 perfil inicial
 ├── goals/goals.postman_collection.json # src/routes/goals.rs → HU-04 y HU-05 metas
 ├── weights/weights.postman_collection.json # src/routes/weights.rs → HU-21 registro de peso
-└── meals/meals.postman_collection.json # src/routes/meals.rs → HU-06 carga de foto (archivos de prueba en meals/files/)
+└── meals/meals.postman_collection.json # src/routes/meals.rs → HU-06 carga de foto, HU-07 estimación, HU-09 registros de comida (archivos de prueba en meals/files/)
 ```
 
 Regla: **una carpeta `postman/<modulo>/` por cada archivo de `src/routes/<modulo>.rs`**, con el mismo nombre.
@@ -88,6 +88,7 @@ ponlos en la carpeta o en el request).
 | `profile` | `HU-03 Perfil` | Consulta antes de crear, Creación por coach, Consulta por coach, Campos faltantes, Valores fuera de rango, Valores no permitidos, Creación válida, Creación duplicada, Consulta, Verificación en /auth/me, Edición, Edición con valores inválidos, Edición sin campos, Consulta tras la edición |
 | `meals` | `HU-06 Carga de foto` | Foto JPEG válida, Foto PNG válida, Tipo no permitido (GIF), Texto con extensión .jpg, Archivo demasiado grande, Sin archivo, Sin sesión, Cuenta de coach |
 | `meals` | `HU-07 Estimación nutricional` | Estimación válida, Sin photo_id, Foto inexistente, Id de foto mal formado, Foto de otro usuario, Sin sesión, Cuenta de coach. Contra el **simulador** (`FOOD_PROVIDER=simulator`) |
+| `meals` | `HU-09 Registros de comida` | Crear registro con foto, Captura manual sin foto, Crear registro que se eliminará, Foto ya usada en otro registro, Foto de otro usuario, Valores inválidos, Consultar por fecha, Día sin registros, Fecha inválida, Sin fecha, Eliminar un registro ajeno, Eliminar un registro inexistente, Eliminar, Consultar tras eliminar, La foto del registro eliminado ya no existe, Eliminar de nuevo, Sin sesión, Cuenta de coach (guardar / consultar / eliminar) |
 | `auth` | `HU-02 Sesión · Cierre` *(al final)* | Cierre de sesión, Renovación con token revocado, /auth/me tras cerrar sesión |
 
 ### Variables para las siguientes historias
@@ -102,6 +103,8 @@ ponlos en la carpeta o en el request).
 
 | `meal_photo_id` | HU-06 · Foto JPEG válida | Id de una foto del usuario de `meals` (`meals_user_token`), para HU-07 y HU-09 |
 | `meals_other_token`, `meals_other_photo_id` | HU-07 · Preparación | Segundo usuario y su foto, para probar que no se puede estimar la foto de otro |
+| `meal_id`, `meal_date`, `meal_manual_id` | HU-09 · 01 y 02 | Registros del usuario de `meals` (`meals_user_token`) que **quedan guardados**: `meal_id` con la foto `meal_photo_id` y `meal_manual_id` sin foto, ambos del día `meal_date` (hora de México). Para HU-10, HU-24 y HU-25 |
+| `meals_other_meal_id` | HU-09 · Preparación | Registro del otro usuario: el de `meals` no lo ve ni lo elimina |
 
 El access token dura 15 minutos: si una ejecución completa tardara más, las historias siguientes deberán renovar con
 `/auth/refresh` y actualizar las variables.

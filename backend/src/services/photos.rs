@@ -7,6 +7,7 @@
 //! - Solo el dueño la elimina; se borran el documento de `meal_photos.files` y todos sus trozos.
 //! - HU-06 sube la foto con [`upload_photo`] (POST /meals/photos).
 //! - HU-07 la lee con [`read_own_photo`] (solo el dueño) para estimar sus valores (POST /meals/estimate).
+//! - HU-09 comprueba la foto de un registro con [`ensure_own_photo`] y la borra con [`delete_photo`] al eliminarlo.
 
 use futures_util::io::{AsyncReadExt, AsyncWriteExt};
 use mongodb::{
@@ -213,6 +214,20 @@ pub async fn read_own_photo(
     download(db, photo_id, metadata).await
 }
 
+/// HU-09 — comprueba que la foto existe y es de `owner_id`, sin descargarla, y devuelve su id.
+/// Un id mal formado, inexistente o de otra cuenta responde igual: `PHOTO_NOT_FOUND`.
+pub async fn ensure_own_photo(
+    db: &Database,
+    owner_id: ObjectId,
+    photo_id: &str,
+) -> Result<ObjectId, AppError> {
+    let photo_id = ObjectId::parse_str(photo_id).map_err(|_| AppError::PhotoNotFound)?;
+    match find_photo(db, photo_id).await? {
+        Some(metadata) if metadata.owner_id == owner_id => Ok(photo_id),
+        _ => Err(AppError::PhotoNotFound),
+    }
+}
+
 /// Contenido de una foto cuyo permiso ya se revisó.
 async fn download(
     db: &Database,
@@ -238,9 +253,7 @@ async fn download(
 }
 
 /// Elimina la foto del almacenamiento (documento y trozos). Solo su dueño puede hacerlo;
-/// para cualquier otra cuenta responde `PHOTO_NOT_FOUND` y la foto no se toca.
-// TODO(HU-09): quitar el `allow` cuando DELETE /meals/{id} use `delete_photo`.
-#[allow(dead_code)]
+/// para cualquier otra cuenta responde `PHOTO_NOT_FOUND` y la foto no se toca. HU-09 la usa al eliminar un registro.
 pub async fn delete_photo(
     db: &Database,
     owner_id: ObjectId,

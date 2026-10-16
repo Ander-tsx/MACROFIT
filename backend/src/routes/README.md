@@ -99,7 +99,7 @@ La especificación (`GET /api/v1/openapi.json`, Swagger UI en `/api/v1/docs`) se
 | `auth.rs` | `/auth/register` (HU-01), `/auth/login`, `/auth/refresh`, `/auth/logout`, `/auth/me` (HU-02), `/coach/test` (TEC-05) |
 | `goals.rs` | `/users/me/goals` y `/users/me/goals/current` (HU-04, `UserOnly`); `/coach/clients` y `/coach/clients/{clientId}/goals` (HU-05, `CoachOnly`) |
 | `dev.rs` | `/dev/seed/coach-links` (HU-05): solo se monta con `APP_ENV=development` |
-| `meals.rs` | `/meals/photos` POST (HU-06, `UserOnly`): multipart con el campo `photo`, límite de cuerpo propio (`DefaultBodyLimit`). `/meals/estimate` POST (HU-07, `UserOnly`): `{ photo_id }` → alimentos y totales |
+| `meals.rs` | `/meals/photos` POST (HU-06, `UserOnly`): multipart con el campo `photo`, límite de cuerpo propio (`DefaultBodyLimit`). `/meals/estimate` POST (HU-07, `UserOnly`): `{ photo_id }` → alimentos y totales. `/meals` POST/GET y `/meals/{id}` DELETE (HU-09, `UserOnly`): registros de comida; `?date=` se lee con `Query` y su rechazo se convierte a `INVALID_BODY` |
 | `profile.rs` | `/users/me/profile` POST/GET/PATCH (HU-03), solo rol `user` (`UserOnly`) |
 | `coach_invite_codes.rs` | `/coach/invite-code` GET y POST `/coach/invite-code/regenerate` (HU-12), solo rol `coach` (`CoachOnly`) |
 | `coach_links.rs` | `/users/me/coach-link` POST (HU-13), solo rol `user` (`UserOnly`) |

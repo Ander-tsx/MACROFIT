@@ -9,6 +9,8 @@ pub struct Config {
     pub tokens: TokenConfig,
     /// Proveedor de reconocimiento de alimentos (HU-07; elegido en TEC-02).
     pub food: FoodConfig,
+    /// Zona horaria fija con la que se define el día de un registro de comida (HU-09). Por defecto `-06:00` (México).
+    pub utc_offset: chrono::FixedOffset,
 }
 
 /// Parámetros de los tokens de sesión.
@@ -35,6 +37,12 @@ impl Config {
                 refresh_ttl: chrono::Duration::days(optional("REFRESH_TOKEN_DAYS", 30)),
             },
             food: FoodConfig::from_env().unwrap_or_else(|err| panic!("{err}")),
+            utc_offset: match std::env::var("APP_UTC_OFFSET") {
+                Ok(value) => parse_utc_offset(&value).unwrap_or_else(|| {
+                    panic!("APP_UTC_OFFSET tiene un valor inválido: {value} (formato ±HH:MM, p. ej. -06:00)")
+                }),
+                Err(_) => default_utc_offset(),
+            },
         }
     }
 }
@@ -50,6 +58,39 @@ fn optional<T: std::str::FromStr>(key: &str, default: T) -> T {
             .unwrap_or_else(|_| panic!("{key} tiene un valor inválido: {value}")),
         Err(_) => default,
     }
+}
+
+// ───────────────────────── Zona horaria de los registros (HU-09) ─────────────────────────
+
+/// Desfase por defecto: hora del centro de México (UTC−6, sin horario de verano desde 2022).
+pub const DEFAULT_UTC_OFFSET_SECS: i32 = -6 * 3600;
+
+pub fn default_utc_offset() -> chrono::FixedOffset {
+    chrono::FixedOffset::east_opt(DEFAULT_UTC_OFFSET_SECS).expect("desfase por defecto válido")
+}
+
+/// Lee un desfase `±HH:MM` (de `-12:00` a `+14:00`). `None` si el formato o el valor no son válidos.
+pub fn parse_utc_offset(value: &str) -> Option<chrono::FixedOffset> {
+    let value = value.trim();
+    let (sign, rest) = match value.as_bytes().first()? {
+        b'+' => (1, &value[1..]),
+        b'-' => (-1, &value[1..]),
+        _ => return None,
+    };
+    let (hours, minutes) = rest.split_once(':')?;
+    if hours.len() != 2 || minutes.len() != 2 {
+        return None;
+    }
+    let hours: i32 = hours.parse().ok()?;
+    let minutes: i32 = minutes.parse().ok()?;
+    if minutes >= 60 {
+        return None;
+    }
+    let secs = sign * (hours * 3600 + minutes * 60);
+    if !(-12 * 3600..=14 * 3600).contains(&secs) {
+        return None;
+    }
+    chrono::FixedOffset::east_opt(secs)
 }
 
 // ───────────────────────── Reconocimiento de alimentos (HU-07, TEC-02) ─────────────────────────
@@ -248,6 +289,35 @@ mod tests {
             .map(|(k, v)| (k.to_string(), v.to_string()))
             .collect();
         FoodConfig::from_vars(|key| map.get(key).cloned())
+    }
+
+    #[test]
+    fn desfase_utc_valido_se_acepta() {
+        assert_eq!(
+            parse_utc_offset("-06:00").unwrap().local_minus_utc(),
+            -6 * 3600
+        );
+        assert_eq!(
+            parse_utc_offset(" +05:30 ").unwrap().local_minus_utc(),
+            5 * 3600 + 1800
+        );
+        assert_eq!(parse_utc_offset("+00:00").unwrap().local_minus_utc(), 0);
+        assert_eq!(
+            default_utc_offset().local_minus_utc(),
+            DEFAULT_UTC_OFFSET_SECS
+        );
+    }
+
+    #[test]
+    fn desfase_utc_invalido_se_rechaza() {
+        for value in [
+            "", "06:00", "-6:00", "-06", "-06:60", "+15:00", "-13:00", "UTC", "-0a:00",
+        ] {
+            assert!(
+                parse_utc_offset(value).is_none(),
+                "{value} debería ser inválido"
+            );
+        }
     }
 
     #[test]

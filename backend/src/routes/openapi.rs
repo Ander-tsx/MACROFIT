@@ -58,6 +58,9 @@ responder `500 INTERNAL_ERROR` ante un error inesperado.";
         coach_links::unlink_coach_handler,
         meals::upload_photo_handler,
         meals::estimate_meal_handler,
+        meals::create_meal_handler,
+        meals::list_meals_handler,
+        meals::delete_meal_handler,
         auth::coach_only_handler,
     ),
     modifiers(&BearerAuth),
@@ -68,7 +71,7 @@ responder `500 INTERNAL_ERROR` ante un error inesperado.";
         (name = "Perfil", description = "Perfil inicial del usuario (HU-03)"),
         (name = "Metas", description = "Meta nutricional del usuario (HU-04)"),
         (name = "Coach", description = "Clientes, metas por coach (HU-05) y código de invitación (HU-12)"),
-        (name = "Comidas", description = "Foto de la comida (HU-06) y estimación nutricional (HU-07)"),
+        (name = "Comidas", description = "Foto de la comida (HU-06), estimación nutricional (HU-07) y registros de comida (HU-09)"),
     )
 )]
 struct ApiDoc;
@@ -221,6 +224,9 @@ mod tests {
             User,
             &[200, 400, 401, 403, 404, 422, 502, 504],
         ),
+        ("post", "/meals", User, &[201, 400, 401, 403, 404, 409]),
+        ("get", "/meals", User, &[200, 400, 401, 403]),
+        ("delete", "/meals/{id}", User, &[204, 401, 403, 404]),
     ];
 
     /// Rutas que solo existen con `APP_ENV=development`.
@@ -325,6 +331,7 @@ mod tests {
             ("post", "/coach/clients/{clientId}/goals"),
             ("post", "/dev/seed/coach-links"),
             ("post", "/meals/estimate"),
+            ("post", "/meals"),
         ];
         let with_multipart = [("post", "/meals/photos")];
         for (method, path) in operations(&spec) {
@@ -425,6 +432,7 @@ mod tests {
                 crate::config::SimulatorMode::Ok,
                 std::time::Duration::from_secs(10),
             ),
+            utc_offset: crate::config::default_utc_offset(),
         }
     }
 

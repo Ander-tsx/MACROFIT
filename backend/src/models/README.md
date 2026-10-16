@@ -97,6 +97,25 @@ Historial de peso corporal (HU-21). Solo se insertan documentos; nunca se modifi
 
 **Índices:** `user_id_recorded_at` → `{ user_id: 1, recorded_at: -1 }` (historial de un usuario, el más reciente primero).
 
+## Colección `meals` (`meal.rs`)
+
+Registros de comida (HU-09, RF-08). Se insertan con `POST /meals` y se borran con `DELETE /meals/{id}` (junto con su foto).
+
+| Campo | Tipo | Notas |
+|---|---|---|
+| `_id` | ObjectId | Se expone como `id` (hex) |
+| `user_id` | ObjectId | Dueño (`users._id`, rol `user`) |
+| `photo_id` | ObjectId \| ausente | Foto en el bucket `meal_photos`. Ausente en una captura manual sin foto |
+| `eaten_at` | ISODate | Fecha y hora del registro; la pone el servidor |
+| `date` | string | Día `YYYY-MM-DD` de `eaten_at` en la zona `APP_UTC_OFFSET` (México por defecto). Es el que filtra `GET /meals?date=` |
+| `calories_kcal` | double | Valor final, 0 a 10 000 |
+| `protein_g`, `fat_g` | double | Valores finales, 0 a 1 000 |
+
+**Índices:** `user_id_date_eaten_at` → `{ user_id: 1, date: 1, eaten_at: 1 }` (registros de un usuario en un día, por hora;
+también sirve para buscar por `user_id`) y `photo_id_unique` → `{ photo_id: 1 }`, único y parcial
+(`partialFilterExpression: { photo_id: { $type: "objectId" } }`): una foto solo puede estar en un registro (el error `11000`
+se traduce a `409 PHOTO_ALREADY_USED`), y los registros sin foto no chocan entre sí.
+
 ## Colección `coach_links` (`coach_link.rs`)
 
 Vinculación entre un coach y un cliente (HU-05 y HU-13).
