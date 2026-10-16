@@ -83,6 +83,7 @@
                   "        ['post', '/coach/clients/{clientId}/goals', 'coach'], ['get', '/coach/invite-code', 'coach'],",
                   "        ['post', '/coach/invite-code/regenerate', 'coach'], ['get', '/coach/test', 'coach'],",
                   "        ['post', '/meals/photos', 'user'], ['post', '/meals/estimate', 'user'],",
+                  "        ['post', '/meals', 'user'], ['get', '/meals', 'user'], ['delete', '/meals/{id}', 'user'],",
                   "    ];",
                   "    pm.test('Incluye todos los endpoints del catálogo', function () {",
                   "        catalog.forEach(([method, route]) => {",
@@ -8329,6 +8330,1305 @@
       ]
     },
     {
+      "name": "HU-09 Registros de comida",
+      "description": "HU-09: POST /api/v1/meals, GET /api/v1/meals?date= y DELETE /api/v1/meals/{id} (RF-08). Usa el usuario, el coach y la foto de HU-06 y el otro usuario de HU-07; ejecutar después de esas carpetas.\n\nDeja guardados {{meal_id}} (con la foto {{meal_photo_id}}) y {{meal_manual_id}} (sin foto) del usuario de meals en el día {{meal_date}}, para HU-10, HU-24 y HU-25.",
+      "item": [
+        {
+          "name": "00 - Preparación: subir la foto del registro que se eliminará",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 201 Created\", function () {",
+                  "        pm.response.to.have.status(201);",
+                  "    });",
+                  "    pm.collectionVariables.set(\"meals_delete_photo_id\", pm.response.json().id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{meals_user_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/meals/photos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "meals",
+                "photos"
+              ]
+            },
+            "description": "Foto del usuario de meals para el registro que se elimina en esta carpeta; su id queda en {{meals_delete_photo_id}}.",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "photo",
+                  "type": "file",
+                  "src": "postman/meals/files/comida.jpg"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "00 - Preparación: el otro usuario guarda un registro",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 201 Created\", function () {",
+                  "        pm.response.to.have.status(201);",
+                  "    });",
+                  "    pm.collectionVariables.set(\"meals_other_meal_id\", pm.response.json().id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{meals_other_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/meals",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "meals"
+              ]
+            },
+            "description": "Registro del otro usuario (HU-07 · Preparación): el usuario de meals no debe verlo ni poder eliminarlo.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"calories_kcal\": 300,\n  \"protein_g\": 20,\n  \"fat_g\": 10\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "01 - Crear registro con foto",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 201 Created\", function () {",
+                  "        pm.response.to.have.status(201);",
+                  "    });",
+                  "    const data = pm.response.json();",
+                  "    const sent = {\"calories_kcal\":413,\"protein_g\":42.2,\"fat_g\":4.9};",
+                  "    pm.test(\"Estructura del registro (RF-08)\", function () {",
+                  "        pm.expect(data).to.have.all.keys(\"id\", \"photo_id\", \"eaten_at\", \"date\", \"calories_kcal\", \"protein_g\", \"fat_g\");",
+                  "        pm.expect(data.id).to.match(/^[0-9a-f]{24}$/);",
+                  "    });",
+                  "    pm.test(\"Guarda los valores enviados\", function () {",
+                  "        pm.expect(data.calories_kcal).to.eql(sent.calories_kcal);",
+                  "        pm.expect(data.protein_g).to.eql(sent.protein_g);",
+                  "        pm.expect(data.fat_g).to.eql(sent.fat_g);",
+                  "    });",
+                  "    pm.test(\"Guarda la foto\", function () {",
+                  "        pm.expect(data.photo_id).to.eql(pm.collectionVariables.get(\"meal_photo_id\"));",
+                  "    });",
+                  "    pm.test(\"Fecha y hora del servidor; el día es el de México (UTC-6)\", function () {",
+                  "        const at = Date.parse(data.eaten_at);",
+                  "        pm.expect(at).to.be.a(\"number\").and.not.NaN;",
+                  "        pm.expect(Math.abs(Date.now() - at)).to.be.below(5 * 60 * 1000);",
+                  "        pm.expect(data.date).to.eql(new Date(at - 6 * 3600 * 1000).toISOString().slice(0, 10));",
+                  "    });",
+                  "    pm.collectionVariables.set(\"meal_id\", data.id);",
+                  "    pm.collectionVariables.set(\"meal_date\", data.date);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{meals_user_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/meals",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "meals"
+              ]
+            },
+            "description": "Foto de HU-06 · 01 y los valores de la estimación (HU-07). 201 con id, foto, fecha y hora y valores (RF-08). Este registro se queda guardado para HU-10, HU-24 y HU-25 ({{meal_id}}, {{meal_date}}).",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"photo_id\": \"{{meal_photo_id}}\",\n  \"calories_kcal\": 413,\n  \"protein_g\": 42.2,\n  \"fat_g\": 4.9\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "02 - Captura manual sin foto",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 201 Created\", function () {",
+                  "        pm.response.to.have.status(201);",
+                  "    });",
+                  "    const data = pm.response.json();",
+                  "    const sent = {\"calories_kcal\":0,\"protein_g\":0,\"fat_g\":12.5};",
+                  "    pm.test(\"Estructura del registro (RF-08)\", function () {",
+                  "        pm.expect(data).to.have.all.keys(\"id\", \"photo_id\", \"eaten_at\", \"date\", \"calories_kcal\", \"protein_g\", \"fat_g\");",
+                  "        pm.expect(data.id).to.match(/^[0-9a-f]{24}$/);",
+                  "    });",
+                  "    pm.test(\"Guarda los valores enviados\", function () {",
+                  "        pm.expect(data.calories_kcal).to.eql(sent.calories_kcal);",
+                  "        pm.expect(data.protein_g).to.eql(sent.protein_g);",
+                  "        pm.expect(data.fat_g).to.eql(sent.fat_g);",
+                  "    });",
+                  "    pm.test(\"Sin foto: photo_id es null\", function () {",
+                  "        pm.expect(data.photo_id).to.eql(null);",
+                  "    });",
+                  "    pm.test(\"Fecha y hora del servidor; el día es el de México (UTC-6)\", function () {",
+                  "        const at = Date.parse(data.eaten_at);",
+                  "        pm.expect(at).to.be.a(\"number\").and.not.NaN;",
+                  "        pm.expect(Math.abs(Date.now() - at)).to.be.below(5 * 60 * 1000);",
+                  "        pm.expect(data.date).to.eql(new Date(at - 6 * 3600 * 1000).toISOString().slice(0, 10));",
+                  "    });",
+                  "    pm.collectionVariables.set(\"meal_manual_id\", data.id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{meals_user_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/meals",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "meals"
+              ]
+            },
+            "description": "Sin photo_id (captura manual). El 0 se acepta. Este registro también se queda guardado.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"calories_kcal\": 0,\n  \"protein_g\": 0,\n  \"fat_g\": 12.5\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "03 - Crear registro que se eliminará",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 201 Created\", function () {",
+                  "        pm.response.to.have.status(201);",
+                  "    });",
+                  "    const data = pm.response.json();",
+                  "    const sent = {\"calories_kcal\":520,\"protein_g\":30,\"fat_g\":18};",
+                  "    pm.test(\"Estructura del registro (RF-08)\", function () {",
+                  "        pm.expect(data).to.have.all.keys(\"id\", \"photo_id\", \"eaten_at\", \"date\", \"calories_kcal\", \"protein_g\", \"fat_g\");",
+                  "        pm.expect(data.id).to.match(/^[0-9a-f]{24}$/);",
+                  "    });",
+                  "    pm.test(\"Guarda los valores enviados\", function () {",
+                  "        pm.expect(data.calories_kcal).to.eql(sent.calories_kcal);",
+                  "        pm.expect(data.protein_g).to.eql(sent.protein_g);",
+                  "        pm.expect(data.fat_g).to.eql(sent.fat_g);",
+                  "    });",
+                  "    pm.test(\"Guarda la foto\", function () {",
+                  "        pm.expect(data.photo_id).to.eql(pm.collectionVariables.get(\"meals_delete_photo_id\"));",
+                  "    });",
+                  "    pm.test(\"Fecha y hora del servidor; el día es el de México (UTC-6)\", function () {",
+                  "        const at = Date.parse(data.eaten_at);",
+                  "        pm.expect(at).to.be.a(\"number\").and.not.NaN;",
+                  "        pm.expect(Math.abs(Date.now() - at)).to.be.below(5 * 60 * 1000);",
+                  "        pm.expect(data.date).to.eql(new Date(at - 6 * 3600 * 1000).toISOString().slice(0, 10));",
+                  "    });",
+                  "    pm.collectionVariables.set(\"meal_to_delete_id\", data.id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{meals_user_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/meals",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "meals"
+              ]
+            },
+            "description": "Registro con la foto de la preparación; se elimina en la petición 12.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"photo_id\": \"{{meals_delete_photo_id}}\",\n  \"calories_kcal\": 520,\n  \"protein_g\": 30,\n  \"fat_g\": 18\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "04 - Foto ya usada en otro registro",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 409 Conflict\", function () {",
+                  "        pm.response.to.have.status(409);",
+                  "    });",
+                  "    const body = pm.response.json();",
+                  "    pm.test(\"Formato de error { error: { code, message, fields } }\", function () {",
+                  "        pm.expect(body).to.have.all.keys(\"error\");",
+                  "        pm.expect(body.error).to.have.all.keys(\"code\", \"message\", \"fields\");",
+                  "        pm.expect(body.error.message).to.be.a(\"string\").and.not.empty;",
+                  "        pm.expect(body.error.fields).to.be.an(\"object\");",
+                  "    });",
+                  "    pm.test(\"Código PHOTO_ALREADY_USED\", function () {",
+                  "        pm.expect(body.error.code).to.eql(\"PHOTO_ALREADY_USED\");",
+                  "    });",
+                  "    pm.test(\"Señala el campo photo_id\", function () {",
+                  "        pm.expect(body.error.fields).to.have.all.keys(\"photo_id\");",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{meals_user_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/meals",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "meals"
+              ]
+            },
+            "description": "La foto de 01 ya está en un registro: 409 PHOTO_ALREADY_USED con el campo photo_id.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"photo_id\": \"{{meal_photo_id}}\",\n  \"calories_kcal\": 100,\n  \"protein_g\": 1,\n  \"fat_g\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "05 - Foto de otro usuario",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 404 Not Found\", function () {",
+                  "        pm.response.to.have.status(404);",
+                  "    });",
+                  "    const body = pm.response.json();",
+                  "    pm.test(\"Formato de error { error: { code, message, fields } }\", function () {",
+                  "        pm.expect(body).to.have.all.keys(\"error\");",
+                  "        pm.expect(body.error).to.have.all.keys(\"code\", \"message\", \"fields\");",
+                  "        pm.expect(body.error.message).to.be.a(\"string\").and.not.empty;",
+                  "        pm.expect(body.error.fields).to.be.an(\"object\");",
+                  "    });",
+                  "    pm.test(\"Código PHOTO_NOT_FOUND\", function () {",
+                  "        pm.expect(body.error.code).to.eql(\"PHOTO_NOT_FOUND\");",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{meals_user_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/meals",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "meals"
+              ]
+            },
+            "description": "Foto ajena: 404 PHOTO_NOT_FOUND (no se revela que existe).",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"photo_id\": \"{{meals_other_photo_id}}\",\n  \"calories_kcal\": 100,\n  \"protein_g\": 1,\n  \"fat_g\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "06 - Valores inválidos",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 400 Bad Request\", function () {",
+                  "        pm.response.to.have.status(400);",
+                  "    });",
+                  "    const body = pm.response.json();",
+                  "    pm.test(\"Formato de error { error: { code, message, fields } }\", function () {",
+                  "        pm.expect(body).to.have.all.keys(\"error\");",
+                  "        pm.expect(body.error).to.have.all.keys(\"code\", \"message\", \"fields\");",
+                  "        pm.expect(body.error.message).to.be.a(\"string\").and.not.empty;",
+                  "        pm.expect(body.error.fields).to.be.an(\"object\");",
+                  "    });",
+                  "    pm.test(\"Código VALIDATION_ERROR\", function () {",
+                  "        pm.expect(body.error.code).to.eql(\"VALIDATION_ERROR\");",
+                  "    });",
+                  "    pm.test(\"Señala los campos photo_id, calories_kcal, protein_g, fat_g\", function () {",
+                  "        pm.expect(body.error.fields).to.have.all.keys(\"photo_id\", \"calories_kcal\", \"protein_g\", \"fat_g\");",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{meals_user_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/meals",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "meals"
+              ]
+            },
+            "description": "Calorías negativas, proteína no numérica, grasa ausente y photo_id que no es texto: 400 VALIDATION_ERROR con todos los campos.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"photo_id\": 123,\n  \"calories_kcal\": -5,\n  \"protein_g\": \"veinte\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "07 - Consultar por fecha",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 200 OK\", function () {",
+                  "        pm.response.to.have.status(200);",
+                  "    });",
+                  "    const data = pm.response.json();",
+                  "    const ids = data.map(function (meal) { return meal.id; });",
+                  "    pm.test(\"Es una lista de registros con la estructura del registro\", function () {",
+                  "        pm.expect(data).to.be.an(\"array\");",
+                  "        data.forEach(function (meal) {",
+                  "            pm.expect(meal).to.have.all.keys(\"id\", \"photo_id\", \"eaten_at\", \"date\", \"calories_kcal\", \"protein_g\", \"fat_g\");",
+                  "        });",
+                  "    });",
+                  "    pm.test(\"Incluye los registros creados en esta carpeta\", function () {",
+                  "        [\"meal_id\", \"meal_manual_id\", \"meal_to_delete_id\"].forEach(function (key) {",
+                  "            pm.expect(ids).to.include(pm.collectionVariables.get(key));",
+                  "        });",
+                  "    });",
+                  "    pm.test(\"Todos son del día consultado\", function () {",
+                  "        data.forEach(function (meal) {",
+                  "            pm.expect(meal.date).to.eql(pm.collectionVariables.get(\"meal_date\"));",
+                  "        });",
+                  "    });",
+                  "    pm.test(\"Solo los del usuario de la sesión\", function () {",
+                  "        pm.expect(ids).to.not.include(pm.collectionVariables.get(\"meals_other_meal_id\"));",
+                  "    });",
+                  "    pm.test(\"Ordenados por hora\", function () {",
+                  "        const times = data.map(function (meal) { return Date.parse(meal.eaten_at); });",
+                  "        pm.expect(times).to.eql(times.slice().sort(function (a, b) { return a - b; }));",
+                  "        pm.expect(ids.indexOf(pm.collectionVariables.get(\"meal_id\"))).to.be.below(ids.indexOf(pm.collectionVariables.get(\"meal_to_delete_id\")));",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{meals_user_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/meals?date={{meal_date}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "meals"
+              ],
+              "query": [
+                {
+                  "key": "date",
+                  "value": "{{meal_date}}"
+                }
+              ]
+            },
+            "description": "Registros del usuario en el día de 01: los suyos de esta ejecución, ordenados por hora; nunca el del otro usuario."
+          },
+          "response": []
+        },
+        {
+          "name": "08 - Día sin registros",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 200 OK\", function () {",
+                  "        pm.response.to.have.status(200);",
+                  "    });",
+                  "    pm.test(\"Lista vacía\", function () {",
+                  "        pm.expect(pm.response.json()).to.eql([]);",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{meals_user_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/meals?date=2000-01-01",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "meals"
+              ],
+              "query": [
+                {
+                  "key": "date",
+                  "value": "2000-01-01"
+                }
+              ]
+            },
+            "description": "Un día sin registros devuelve una lista vacía."
+          },
+          "response": []
+        },
+        {
+          "name": "09 - Fecha inválida",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 400 Bad Request\", function () {",
+                  "        pm.response.to.have.status(400);",
+                  "    });",
+                  "    const body = pm.response.json();",
+                  "    pm.test(\"Formato de error { error: { code, message, fields } }\", function () {",
+                  "        pm.expect(body).to.have.all.keys(\"error\");",
+                  "        pm.expect(body.error).to.have.all.keys(\"code\", \"message\", \"fields\");",
+                  "        pm.expect(body.error.message).to.be.a(\"string\").and.not.empty;",
+                  "        pm.expect(body.error.fields).to.be.an(\"object\");",
+                  "    });",
+                  "    pm.test(\"Código VALIDATION_ERROR\", function () {",
+                  "        pm.expect(body.error.code).to.eql(\"VALIDATION_ERROR\");",
+                  "    });",
+                  "    pm.test(\"Señala el campo date\", function () {",
+                  "        pm.expect(body.error.fields).to.have.all.keys(\"date\");",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{meals_user_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/meals?date=16-10-2026",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "meals"
+              ],
+              "query": [
+                {
+                  "key": "date",
+                  "value": "16-10-2026"
+                }
+              ]
+            },
+            "description": "Formato distinto de YYYY-MM-DD: 400 VALIDATION_ERROR con el campo date."
+          },
+          "response": []
+        },
+        {
+          "name": "10 - Sin fecha",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 400 Bad Request\", function () {",
+                  "        pm.response.to.have.status(400);",
+                  "    });",
+                  "    const body = pm.response.json();",
+                  "    pm.test(\"Formato de error { error: { code, message, fields } }\", function () {",
+                  "        pm.expect(body).to.have.all.keys(\"error\");",
+                  "        pm.expect(body.error).to.have.all.keys(\"code\", \"message\", \"fields\");",
+                  "        pm.expect(body.error.message).to.be.a(\"string\").and.not.empty;",
+                  "        pm.expect(body.error.fields).to.be.an(\"object\");",
+                  "    });",
+                  "    pm.test(\"Código VALIDATION_ERROR\", function () {",
+                  "        pm.expect(body.error.code).to.eql(\"VALIDATION_ERROR\");",
+                  "    });",
+                  "    pm.test(\"Señala el campo date\", function () {",
+                  "        pm.expect(body.error.fields).to.have.all.keys(\"date\");",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{meals_user_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/meals",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "meals"
+              ]
+            },
+            "description": "Sin ?date=: 400 VALIDATION_ERROR con el campo date."
+          },
+          "response": []
+        },
+        {
+          "name": "11 - Eliminar un registro ajeno",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 404 Not Found\", function () {",
+                  "        pm.response.to.have.status(404);",
+                  "    });",
+                  "    const body = pm.response.json();",
+                  "    pm.test(\"Formato de error { error: { code, message, fields } }\", function () {",
+                  "        pm.expect(body).to.have.all.keys(\"error\");",
+                  "        pm.expect(body.error).to.have.all.keys(\"code\", \"message\", \"fields\");",
+                  "        pm.expect(body.error.message).to.be.a(\"string\").and.not.empty;",
+                  "        pm.expect(body.error.fields).to.be.an(\"object\");",
+                  "    });",
+                  "    pm.test(\"Código MEAL_NOT_FOUND\", function () {",
+                  "        pm.expect(body.error.code).to.eql(\"MEAL_NOT_FOUND\");",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{meals_user_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/meals/{{meals_other_meal_id}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "meals",
+                "{{meals_other_meal_id}}"
+              ]
+            },
+            "description": "Registro del otro usuario: 404 MEAL_NOT_FOUND, igual que uno inexistente."
+          },
+          "response": []
+        },
+        {
+          "name": "11 - Eliminar un registro inexistente",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 404 Not Found\", function () {",
+                  "        pm.response.to.have.status(404);",
+                  "    });",
+                  "    const body = pm.response.json();",
+                  "    pm.test(\"Formato de error { error: { code, message, fields } }\", function () {",
+                  "        pm.expect(body).to.have.all.keys(\"error\");",
+                  "        pm.expect(body.error).to.have.all.keys(\"code\", \"message\", \"fields\");",
+                  "        pm.expect(body.error.message).to.be.a(\"string\").and.not.empty;",
+                  "        pm.expect(body.error.fields).to.be.an(\"object\");",
+                  "    });",
+                  "    pm.test(\"Código MEAL_NOT_FOUND\", function () {",
+                  "        pm.expect(body.error.code).to.eql(\"MEAL_NOT_FOUND\");",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{meals_user_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/meals/000000000000000000000000",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "meals",
+                "000000000000000000000000"
+              ]
+            },
+            "description": "Id válido que no existe: 404 MEAL_NOT_FOUND."
+          },
+          "response": []
+        },
+        {
+          "name": "12 - Eliminar",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 204 No Content\", function () {",
+                  "        pm.response.to.have.status(204);",
+                  "    });",
+                  "    pm.test(\"Sin cuerpo\", function () {",
+                  "        pm.expect(pm.response.text()).to.eql(\"\");",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{meals_user_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/meals/{{meal_to_delete_id}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "meals",
+                "{{meal_to_delete_id}}"
+              ]
+            },
+            "description": "Registro propio de 03: 204 sin cuerpo; se elimina también su foto."
+          },
+          "response": []
+        },
+        {
+          "name": "13 - Consultar tras eliminar",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 200 OK\", function () {",
+                  "        pm.response.to.have.status(200);",
+                  "    });",
+                  "    const ids = pm.response.json().map(function (meal) { return meal.id; });",
+                  "    pm.test(\"El registro eliminado ya no aparece\", function () {",
+                  "        pm.expect(ids).to.not.include(pm.collectionVariables.get(\"meal_to_delete_id\"));",
+                  "    });",
+                  "    pm.test(\"Los registros guardados siguen\", function () {",
+                  "        pm.expect(ids).to.include(pm.collectionVariables.get(\"meal_id\"));",
+                  "        pm.expect(ids).to.include(pm.collectionVariables.get(\"meal_manual_id\"));",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{meals_user_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/meals?date={{meal_date}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "meals"
+              ],
+              "query": [
+                {
+                  "key": "date",
+                  "value": "{{meal_date}}"
+                }
+              ]
+            },
+            "description": "El registro eliminado ya no aparece; los demás siguen."
+          },
+          "response": []
+        },
+        {
+          "name": "14 - La foto del registro eliminado ya no existe",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 404 Not Found\", function () {",
+                  "        pm.response.to.have.status(404);",
+                  "    });",
+                  "    const body = pm.response.json();",
+                  "    pm.test(\"Formato de error { error: { code, message, fields } }\", function () {",
+                  "        pm.expect(body).to.have.all.keys(\"error\");",
+                  "        pm.expect(body.error).to.have.all.keys(\"code\", \"message\", \"fields\");",
+                  "        pm.expect(body.error.message).to.be.a(\"string\").and.not.empty;",
+                  "        pm.expect(body.error.fields).to.be.an(\"object\");",
+                  "    });",
+                  "    pm.test(\"Código PHOTO_NOT_FOUND\", function () {",
+                  "        pm.expect(body.error.code).to.eql(\"PHOTO_NOT_FOUND\");",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{meals_user_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/meals/estimate",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "meals",
+                "estimate"
+              ]
+            },
+            "description": "Estimar la foto del registro eliminado responde 404 PHOTO_NOT_FOUND: se borró del almacenamiento (TEC-13). No llega al proveedor.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"photo_id\": \"{{meals_delete_photo_id}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "15 - Eliminar de nuevo",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 404 Not Found\", function () {",
+                  "        pm.response.to.have.status(404);",
+                  "    });",
+                  "    const body = pm.response.json();",
+                  "    pm.test(\"Formato de error { error: { code, message, fields } }\", function () {",
+                  "        pm.expect(body).to.have.all.keys(\"error\");",
+                  "        pm.expect(body.error).to.have.all.keys(\"code\", \"message\", \"fields\");",
+                  "        pm.expect(body.error.message).to.be.a(\"string\").and.not.empty;",
+                  "        pm.expect(body.error.fields).to.be.an(\"object\");",
+                  "    });",
+                  "    pm.test(\"Código MEAL_NOT_FOUND\", function () {",
+                  "        pm.expect(body.error.code).to.eql(\"MEAL_NOT_FOUND\");",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{meals_user_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/meals/{{meal_to_delete_id}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "meals",
+                "{{meal_to_delete_id}}"
+              ]
+            },
+            "description": "El registro ya no existe: 404 MEAL_NOT_FOUND."
+          },
+          "response": []
+        },
+        {
+          "name": "16 - Sin sesión",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 401 Unauthorized\", function () {",
+                  "        pm.response.to.have.status(401);",
+                  "    });",
+                  "    const body = pm.response.json();",
+                  "    pm.test(\"Formato de error { error: { code, message, fields } }\", function () {",
+                  "        pm.expect(body).to.have.all.keys(\"error\");",
+                  "        pm.expect(body.error).to.have.all.keys(\"code\", \"message\", \"fields\");",
+                  "        pm.expect(body.error.message).to.be.a(\"string\").and.not.empty;",
+                  "        pm.expect(body.error.fields).to.be.an(\"object\");",
+                  "    });",
+                  "    pm.test(\"Código UNAUTHORIZED\", function () {",
+                  "        pm.expect(body.error.code).to.eql(\"UNAUTHORIZED\");",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/meals?date={{meal_date}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "meals"
+              ],
+              "query": [
+                {
+                  "key": "date",
+                  "value": "{{meal_date}}"
+                }
+              ]
+            },
+            "description": "Sin token: 401 UNAUTHORIZED."
+          },
+          "response": []
+        },
+        {
+          "name": "17 - Cuenta de coach (guardar)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 403 Forbidden\", function () {",
+                  "        pm.response.to.have.status(403);",
+                  "    });",
+                  "    const body = pm.response.json();",
+                  "    pm.test(\"Formato de error { error: { code, message, fields } }\", function () {",
+                  "        pm.expect(body).to.have.all.keys(\"error\");",
+                  "        pm.expect(body.error).to.have.all.keys(\"code\", \"message\", \"fields\");",
+                  "        pm.expect(body.error.message).to.be.a(\"string\").and.not.empty;",
+                  "        pm.expect(body.error.fields).to.be.an(\"object\");",
+                  "    });",
+                  "    pm.test(\"Código FORBIDDEN_ROLE\", function () {",
+                  "        pm.expect(body.error.code).to.eql(\"FORBIDDEN_ROLE\");",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{meals_coach_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/meals",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "meals"
+              ]
+            },
+            "description": "Un coach no registra comidas: 403 FORBIDDEN_ROLE (RN-07).",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"calories_kcal\": 100,\n  \"protein_g\": 1,\n  \"fat_g\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "17 - Cuenta de coach (consultar)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 403 Forbidden\", function () {",
+                  "        pm.response.to.have.status(403);",
+                  "    });",
+                  "    const body = pm.response.json();",
+                  "    pm.test(\"Formato de error { error: { code, message, fields } }\", function () {",
+                  "        pm.expect(body).to.have.all.keys(\"error\");",
+                  "        pm.expect(body.error).to.have.all.keys(\"code\", \"message\", \"fields\");",
+                  "        pm.expect(body.error.message).to.be.a(\"string\").and.not.empty;",
+                  "        pm.expect(body.error.fields).to.be.an(\"object\");",
+                  "    });",
+                  "    pm.test(\"Código FORBIDDEN_ROLE\", function () {",
+                  "        pm.expect(body.error.code).to.eql(\"FORBIDDEN_ROLE\");",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{meals_coach_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/meals?date={{meal_date}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "meals"
+              ],
+              "query": [
+                {
+                  "key": "date",
+                  "value": "{{meal_date}}"
+                }
+              ]
+            },
+            "description": "Un coach no usa /meals (consulta a sus clientes con HU-25): 403 FORBIDDEN_ROLE."
+          },
+          "response": []
+        },
+        {
+          "name": "17 - Cuenta de coach (eliminar)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 403 Forbidden\", function () {",
+                  "        pm.response.to.have.status(403);",
+                  "    });",
+                  "    const body = pm.response.json();",
+                  "    pm.test(\"Formato de error { error: { code, message, fields } }\", function () {",
+                  "        pm.expect(body).to.have.all.keys(\"error\");",
+                  "        pm.expect(body.error).to.have.all.keys(\"code\", \"message\", \"fields\");",
+                  "        pm.expect(body.error.message).to.be.a(\"string\").and.not.empty;",
+                  "        pm.expect(body.error.fields).to.be.an(\"object\");",
+                  "    });",
+                  "    pm.test(\"Código FORBIDDEN_ROLE\", function () {",
+                  "        pm.expect(body.error.code).to.eql(\"FORBIDDEN_ROLE\");",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{meals_coach_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/meals/{{meal_id}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "meals",
+                "{{meal_id}}"
+              ]
+            },
+            "description": "Un coach no elimina registros: 403 FORBIDDEN_ROLE; el registro sigue (lo usan HU-10, HU-24 y HU-25)."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
       "name": "HU-02 Sesión · Cierre",
       "description": "Cierre de sesión de la sesión principal del usuario. build.js mueve esta carpeta al final de la colección combinada para que las demás historias puedan usar {{user_access_token}} antes.",
       "item": [
@@ -8834,7 +10134,7 @@
       "key": "meal_photo_id",
       "value": "",
       "type": "string",
-      "description": "Id de la foto JPEG subida en HU-06 · 01. Lo usan HU-07 y HU-09."
+      "description": "Id de la foto JPEG subida en HU-06 · 01. La estima HU-07 y queda en el registro {{meal_id}} de HU-09."
     },
     {
       "key": "meals_other_email",
@@ -8851,6 +10151,42 @@
       "value": "",
       "type": "string",
       "description": "Foto de otro usuario (HU-07 · Preparación): el usuario de meals no puede estimarla."
+    },
+    {
+      "key": "meals_delete_photo_id",
+      "value": "",
+      "type": "string",
+      "description": "Foto del registro que HU-09 elimina (para comprobar que se borró)."
+    },
+    {
+      "key": "meals_other_meal_id",
+      "value": "",
+      "type": "string",
+      "description": "Registro del otro usuario (HU-09 · Preparación): el usuario de meals no lo ve ni lo elimina."
+    },
+    {
+      "key": "meal_id",
+      "value": "",
+      "type": "string",
+      "description": "Registro con foto que HU-09 deja guardado. Lo usan HU-10, HU-24 y HU-25."
+    },
+    {
+      "key": "meal_date",
+      "value": "",
+      "type": "string",
+      "description": "Día (YYYY-MM-DD, hora de México) de {{meal_id}}."
+    },
+    {
+      "key": "meal_manual_id",
+      "value": "",
+      "type": "string",
+      "description": "Registro sin foto (captura manual) que HU-09 deja guardado."
+    },
+    {
+      "key": "meal_to_delete_id",
+      "value": "",
+      "type": "string",
+      "description": "Registro que HU-09 elimina."
     }
   ]
 }

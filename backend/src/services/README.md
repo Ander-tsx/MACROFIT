@@ -26,6 +26,7 @@ Un archivo por dominio (`auth.rs`, y después `profile.rs`, `goals.rs`, ...). Aq
 | `goals.rs` | HU-04 y TEC-12: cálculo Mifflin-St Jeor con mínimo de calorías (puro), `get_current_goal`, `get_goals_history`, `recalculate_on_profile_change`. HU-05: `validate_coach_goal` (pura), `set_client_goal`, `get_client_goals`; `find_current_goal` decide la meta vigente |
 | `photos.rs` | TEC-13: `validate_photo` / `detect_format` (puras), `save_photo`, HU-06: `validate_upload` (pura) y `upload_photo`, `read_photo` (dueño o coach vinculado), HU-07: `read_own_photo` (solo el dueño), `delete_photo` (solo el dueño); almacenamiento en GridFS |
 | `meal_estimates.rs` | HU-07: `validate_estimate_request` (pura), `estimate_meal` (lee la foto propia, la prepara y llama a `FoodService`), `map_recognition_error` (adaptador → `FOOD_NOT_RECOGNIZED` / `FOOD_PROVIDER_ERROR` / `FOOD_PROVIDER_TIMEOUT`) |
+| `meals.rs` | HU-09: `validate_new_meal` / `validate_date` / `local_date` (puras), `create_meal`, `list_meals`, `find_meals_by_date` (reutilizable en HU-10 y HU-25), `delete_meal` (borra también la foto) |
 | `profile.rs` | HU-03: `validate_new_profile` / `validate_profile_changes` (puras), `create_profile` (marca `profile_completed`), `get_profile`, `update_profile`; rangos válidos de TEC-12 y `parse_weight_kg` (reutilizable en HU-21) |
 | `coach_invite_codes.rs` | HU-12: `generate_code` (puro), `get_or_create_invite_code`, `regenerate_invite_code` |
 | `weights.rs` | HU-21: `validate_weight` (pura, con `profile::parse_weight_kg`), `record_weight` (guarda y actualiza el perfil), `list_weights` |
@@ -37,6 +38,21 @@ Un archivo por dominio (`auth.rs`, y después `profile.rs`, `goals.rs`, ...). Aq
 - `record_weight` inserta el registro y, si el usuario tiene perfil, llama a `profile::update_profile` con el nuevo
   `weight_kg`. Así se reutilizan la validación y el recálculo de la meta (HU-04, que respeta la meta de un coach).
   Sin perfil (`PROFILE_NOT_FOUND`), el peso se guarda igual y no se toca nada más.
+
+### Registros de comida (HU-09)
+
+- **Día del registro:** `create_meal` guarda `eaten_at` (hora del servidor, UTC) y `date` = día de ese instante en la
+  zona fija `APP_UTC_OFFSET` (`state.utc_offset`, `-06:00` por defecto). La consulta filtra por `date`, así que no hay
+  que convertir rangos de horas al consultar y el usuario y su coach ven el mismo día. Si algún día se necesita otra zona
+  por usuario, solo cambia el cálculo de `date` al guardar.
+- **Foto opcional:** sin `photo_id` es una captura manual. Con `photo_id` se revisa con `photos::ensure_own_photo`
+  (sin descargarla): mal formado, inexistente o ajena → `PHOTO_NOT_FOUND`. Una foto en dos registros la impide el índice
+  único parcial `photo_id_unique` (`PHOTO_ALREADY_USED`); así eliminar un registro nunca deja a otro sin foto.
+- **Eliminar:** busca el registro por `_id` **y** `user_id` (uno ajeno responde igual que uno inexistente,
+  `MEAL_NOT_FOUND`), borra la foto con `photos::delete_photo` y después el registro. Si borrar la foto falla, el registro
+  sigue y se puede reintentar; una foto que ya no existe no impide eliminarlo.
+- **Pruebas:** las puras con `cargo test`; las de MongoDB real (guardar, consultar, orden, foto ajena, foto repetida,
+  eliminación con la foto) con `cargo test -- --ignored`, igual que las de fotos.
 
 ### Aviso de privacidad en el registro
 
@@ -107,6 +123,7 @@ usa `save_photo` / `read_photo` / `delete_photo` y el id de la foto.
 - **Lectura:** el dueño o un coach con vinculación `active` con el dueño (`coach_links::has_active_link`). Cualquier otra
   cuenta, un id inexistente o mal formado reciben lo mismo, `404 PHOTO_NOT_FOUND`, para no revelar que la foto existe.
 - **Eliminación:** solo el dueño; borra el documento de `meal_photos.files` y todos sus trozos. Un coach vinculado no puede.
+  HU-09 la usa al eliminar un registro de comida.
 - **Subida (HU-06):** `upload_photo` valida con `validate_upload` (sin archivo o vacío → `400 VALIDATION_ERROR` en
   `photo`; después tamaño y tipo) y guarda con `save_photo`. La ruta `POST /meals/photos` sube el límite de cuerpo de
   Axum (2 MB por defecto) a `MAX_PHOTO_BYTES` + 1 MiB y guarda como máximo `MAX_PHOTO_BYTES + 1` bytes del archivo,

@@ -3,7 +3,7 @@
 API REST de MacroFit: autenticación, persistencia en MongoDB y reglas de acceso por rol (`user` y `coach`).
 Historias cubiertas: **TEC-05** (base), **TEC-07** (aviso de privacidad), **HU-01** (registro con rol), **HU-02** (inicio y cierre de sesión)
 **HU-03** (perfil inicial del usuario), **HU-04** y **HU-05** (metas), **TEC-13** (almacenamiento de fotos de comidas),
-**TEC-14** (contrato de la API en OpenAPI), **HU-06** (carga de la foto de comida), **TEC-02** (comparación de servicios de reconocimiento de alimentos) y **HU-07** (estimación nutricional de la foto).
+**TEC-14** (contrato de la API en OpenAPI), **HU-06** (carga de la foto de comida), **TEC-02** (comparación de servicios de reconocimiento de alimentos), **HU-07** (estimación nutricional de la foto) y **HU-09** (registros de comida).
 
 > **Si eres una persona o una sesión de IA que va a modificar este backend, lee primero
 > la sección [Forma de trabajo](#-forma-de-trabajo) y el README de la carpeta que vas a tocar.**
@@ -45,6 +45,7 @@ Copia `.env.example` a `.env` dentro de `backend/`. **`.env` nunca se sube al re
 | `APP_ENV` | No | `development` monta las rutas de datos de prueba (`/dev`); omítela en producción |
 | `ACCESS_TOKEN_MINUTES` | No (15) | Vida del access token (JWT) |
 | `REFRESH_TOKEN_DAYS` | No (30) | Vida del refresh token; se renueva en cada rotación |
+| `APP_UTC_OFFSET` | No (`-06:00`) | Zona horaria fija (`±HH:MM`) con la que se define el día de un registro de comida (HU-09). Por defecto, hora del centro de México |
 | `FOOD_PROVIDER` | No (`simulator`) | Proveedor de reconocimiento de alimentos: `simulator`, `logmeal`, `gemini` o `gemini_fatsecret` (TEC-02) |
 | `FOOD_PROVIDER_TIMEOUT_SECS` | No (10) | Tiempo de espera con el proveedor, de 1 a 10 s (RNF-01) |
 | `FOOD_SIMULATOR_MODE` | No (`ok`) | Respuesta del simulador: `ok`, `not_recognized`, `error` o `timeout` |
@@ -69,7 +70,7 @@ Conectando y verificando cluster de MongoDB...
 Servidor MacroFit corriendo en http://0.0.0.0:3000/api/v1
 ```
 
-Al arrancar se crean los índices (`users.email` único, los de `refresh_tokens`, `profiles.user_id` único, `goals`, `coach_links`, `exercises.name` único y compuesto por grupo/nivel, y los del bucket de fotos `meal_photos`). Si la colección `users` ya tenía correos repetidos,
+Al arrancar se crean los índices (`users.email` único, los de `refresh_tokens`, `profiles.user_id` único, `goals`, `coach_links`, `exercises.name` único y compuesto por grupo/nivel, los del bucket de fotos `meal_photos` y los de `meals`). Si la colección `users` ya tenía correos repetidos,
 el arranque falla con un mensaje que lo indica: limpia esos documentos primero.
 
 ## ✅ Comprobaciones antes de subir
@@ -180,6 +181,9 @@ El contrato completo (cuerpos, respuestas y códigos de error de cada endpoint) 
 | POST | `/coach/invite-code/regenerate` | Bearer (coach) | HU-12 | Reemplaza el código de invitación por uno nuevo |
 | POST | `/meals/photos` | Bearer (user) | HU-06 | Sube la foto de una comida (multipart, campo `photo`) |
 | POST | `/meals/estimate` | Bearer (user) | HU-07 | Estima calorías, proteína y grasa de una foto propia |
+| POST | `/meals` | Bearer (user) | HU-09 | Guarda un registro de comida (foto opcional y valores finales) |
+| GET | `/meals?date=YYYY-MM-DD` | Bearer (user) | HU-09 | Registros del usuario en ese día, por hora |
+| DELETE | `/meals/{id}` | Bearer (user) | HU-09 | Elimina un registro propio y su foto |
 | POST | `/dev/seed/coach-links` | — (solo `APP_ENV=development`) | HU-05 | Vincula un coach con un usuario de prueba |
 | GET | `/coach/test` | Bearer (coach) | TEC-05 | Prueba de la regla de acceso por rol |
 | GET | `/coach/invite-code` | Bearer (coach) | HU-12 | Código de invitación del coach; se crea si no existe |
@@ -509,6 +513,60 @@ el usuario revisa y corrige los valores antes de guardar (HU-08 / HU-09).
 El detalle de un `502`/`504` solo va al log del servidor (`[reconocimiento de alimentos] ...`); nunca al cliente.
 Para probar la app contra cada caso sin red, levanta el backend con `FOOD_SIMULATOR_MODE=not_recognized`, `error` o `timeout`.
 
+### Registros de comida — `/meals` (HU-09)
+
+Cabecera `Authorization: Bearer <access_token>`. **Solo rol `user`** en los tres métodos: sin sesión `401 UNAUTHORIZED`,
+una cuenta de coach `403 FORBIDDEN_ROLE` (RN-07; el coach consulta las comidas de un cliente con HU-25, solo lectura).
+
+**Zona horaria del día:** la fecha y hora (`eaten_at`, UTC) las pone el servidor al guardar, y el día del registro
+(`date`) se calcula en ese momento con la zona fija `APP_UTC_OFFSET` (por defecto `-06:00`, centro de México). Así una
+cena a las 19:30 del 16 queda en `2026-10-16` aunque en UTC ya sea el 17, y el usuario y su coach ven el mismo día.
+`?date=` filtra por ese campo.
+
+**POST `/meals`** — guarda los valores **finales** (los que el usuario confirmó tras revisar la estimación):
+
+```json
+{ "photo_id": "6acd4140ac968514f27322cd", "calories_kcal": 413, "protein_g": 42.2, "fat_g": 4.9 }
+```
+
+| Campo | Regla |
+|---|---|
+| `photo_id` | Opcional (captura manual sin foto: omítelo o `null`). Si viene: texto, id de una foto **propia** de `POST /meals/photos` que no esté en otro registro |
+| `calories_kcal` | Obligatorio. Número de 0 a 10 000 |
+| `protein_g`, `fat_g` | Obligatorios. Número de 0 a 1 000 |
+
+**201 Created**
+
+```json
+{
+  "id": "6ad0a1b2c3d4e5f6a7b8c9d0",
+  "photo_id": "6acd4140ac968514f27322cd",
+  "eaten_at": "2026-10-17T01:30:00Z",
+  "date": "2026-10-16",
+  "calories_kcal": 413.0,
+  "protein_g": 42.2,
+  "fat_g": 4.9
+}
+```
+
+`photo_id` es `null` en una captura manual. HU-08 agregará los valores estimados junto a estos finales.
+
+**GET `/meals?date=2026-10-16`** → `200` con la lista de registros (misma forma) del usuario de la sesión en ese día, del
+más antiguo al más reciente; `[]` si no hay registros.
+
+**DELETE `/meals/{id}`** → `204 No Content`. Elimina el registro y su foto del almacenamiento (TEC-13).
+
+| Caso | Respuesta |
+|---|---|
+| Valores ausentes, no numéricos, negativos o fuera de rango; `photo_id` que no es texto | `400 VALIDATION_ERROR` con cada campo en `fields` |
+| `date` ausente o con formato distinto de `YYYY-MM-DD` | `400 VALIDATION_ERROR` con `fields.date` |
+| El cuerpo no es JSON válido | `400 INVALID_BODY` |
+| Sin sesión / token inválido | `401 UNAUTHORIZED` |
+| Cuenta de coach | `403 FORBIDDEN_ROLE` |
+| La foto no existe, el id está mal formado o es de otro usuario | `404 PHOTO_NOT_FOUND` |
+| El registro a eliminar no existe, el id está mal formado o es de otro usuario | `404 MEAL_NOT_FOUND` (no se revela que existe) |
+| La foto ya está en otro registro | `409 PHOTO_ALREADY_USED` con `fields.photo_id` |
+
 ### POST `/dev/seed/coach-links` (HU-05)
 
 Solo existe con `APP_ENV=development`; en cualquier otro ambiente la ruta no se monta (`404`). Sin autenticación.
@@ -684,10 +742,12 @@ Todas las respuestas de error tienen la misma forma. `fields` siempre es un obje
 | `PROFILE_NOT_FOUND` | 404 | El usuario aún no tiene perfil |
 | `INVITE_CODE_NOT_FOUND` | 404 | El código de invitación no existe o ya no está vigente |
 | `PHOTO_NOT_FOUND` | 404 | La foto no existe o la cuenta no puede verla (no se distingue) |
+| `MEAL_NOT_FOUND` | 404 | El registro de comida no existe o es de otra cuenta (no se distingue, HU-09) |
 | `FOOD_NOT_RECOGNIZED` | 422 | El servicio de reconocimiento no encontró comida en la foto (HU-07): captura manual |
 | `USER_ALREADY_LINKED` | 409 | El usuario ya tiene una vinculación activa con un coach |
 | `EMAIL_ALREADY_EXISTS` | 409 | El correo ya está registrado |
 | `PROFILE_ALREADY_EXISTS` | 409 | El usuario ya tiene un perfil (se edita con `PATCH`) |
+| `PHOTO_ALREADY_USED` | 409 | La foto ya está en otro registro de comida (HU-09) |
 | `PHOTO_TOO_LARGE` | 413 | La foto supera 5 MiB (o el cuerpo de la subida supera el límite de la ruta) |
 | `UNSUPPORTED_PHOTO_TYPE` | 415 | La foto no es JPEG ni PNG (se revisa el contenido) |
 | `FOOD_PROVIDER_ERROR` | 502 | El servicio de reconocimiento de alimentos falló (HU-07) |

@@ -10,4 +10,6 @@ pub struct AppState {
     pub tokens: TokenConfig,
     /// Proveedor de reconocimiento de alimentos (HU-07), elegido con `FOOD_PROVIDER`.
     pub food: FoodService,
+    /// Zona horaria con la que se define el día de un registro de comida (HU-09, `APP_UTC_OFFSET`).
+    pub utc_offset: chrono::FixedOffset,
 }

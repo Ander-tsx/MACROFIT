@@ -86,6 +86,10 @@ pub enum AppError {
     FoodProviderError,
     /// 504 — el servicio de reconocimiento de alimentos no respondió a tiempo (HU-07, máximo 10 s).
     FoodProviderTimeout,
+    /// 404 — el registro de comida no existe o es de otra cuenta (no se distingue, HU-09).
+    MealNotFound,
+    /// 409 — la foto ya pertenece a otro registro de comida (HU-09).
+    PhotoAlreadyUsed,
 }
 
 impl AppError {
@@ -252,6 +256,21 @@ impl IntoResponse for AppError {
                 "El servicio de reconocimiento de alimentos tardó demasiado; intenta de nuevo o captura los valores manualmente"
                     .to_string(),
                 FieldErrors::new(),
+            ),
+            Self::MealNotFound => (
+                StatusCode::NOT_FOUND,
+                "MEAL_NOT_FOUND",
+                "El registro de comida no existe".to_string(),
+                FieldErrors::new(),
+            ),
+            Self::PhotoAlreadyUsed => (
+                StatusCode::CONFLICT,
+                "PHOTO_ALREADY_USED",
+                "Esta foto ya está en otro registro de comida".to_string(),
+                FieldErrors::from([(
+                    "photo_id".to_string(),
+                    "Esta foto ya está en otro registro de comida".to_string(),
+                )]),
             ),
         };
 

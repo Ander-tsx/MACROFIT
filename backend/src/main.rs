@@ -31,6 +31,7 @@ async fn main() {
         db,
         tokens: config.tokens,
         food,
+        utc_offset: config.utc_offset,
     };
 
     let app = routes::api_router(config.dev_mode)

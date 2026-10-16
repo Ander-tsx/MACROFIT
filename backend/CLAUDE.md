@@ -16,6 +16,7 @@ Instrucciones para Claude Code al trabajar en `backend/`. Las reglas generales d
   HU-06 (subida de la foto, `POST /meals/photos`), TEC-02 (adaptador de reconocimiento de alimentos en
   `services/food_recognition/`, banco de pruebas `food_bench`), HU-07 (estimación nutricional, `POST /meals/estimate`),
   TEC-12 (fórmula de la meta con mínimo de calorías y rangos válidos del perfil), HU-21 (registro de peso),
+  HU-09 (registros de comida: `POST/GET /meals`, `DELETE /meals/{id}`, día en la zona `APP_UTC_OFFSET`),
   TEC-14 (contrato OpenAPI con utoipa en `/api/v1/docs`; todo endpoint nuevo se documenta ahí, ver
   `src/routes/README.md`).
 - Antes de terminar: `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings`, `cargo test`,

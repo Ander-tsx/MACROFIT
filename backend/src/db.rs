@@ -12,6 +12,7 @@ use crate::models::coach_invite_code::{COACH_INVITE_CODES_COLLECTION, CoachInvit
 use crate::models::coach_link::{COACH_LINKS_COLLECTION, CoachLink};
 use crate::models::exercise::{EXERCISES_COLLECTION, Exercise};
 use crate::models::goal::{GOALS_COLLECTION, NutritionalGoal};
+use crate::models::meal::{MEALS_COLLECTION, Meal};
 use crate::models::meal_photo::{MEAL_PHOTOS_CHUNKS_COLLECTION, MEAL_PHOTOS_FILES_COLLECTION};
 use crate::models::profile::{PROFILES_COLLECTION, UserProfile};
 use crate::models::refresh_token::{REFRESH_TOKENS_COLLECTION, RefreshToken};
@@ -240,4 +241,30 @@ async fn ensure_indexes(db: &Database) {
         .create_index(weights_by_user)
         .await
         .expect("No se pudo crear el índice de weights");
+
+    // HU-09: registros de comida de un usuario por día, ordenados por hora; y una foto en un solo registro.
+    let meal_indexes = [
+        IndexModel::builder()
+            .keys(doc! { "user_id": 1, "date": 1, "eaten_at": 1 })
+            .options(
+                IndexOptions::builder()
+                    .name("user_id_date_eaten_at".to_string())
+                    .build(),
+            )
+            .build(),
+        IndexModel::builder()
+            .keys(doc! { "photo_id": 1 })
+            .options(
+                IndexOptions::builder()
+                    .unique(true)
+                    .partial_filter_expression(doc! { "photo_id": { "$type": "objectId" } })
+                    .name("photo_id_unique".to_string())
+                    .build(),
+            )
+            .build(),
+    ];
+    db.collection::<Meal>(MEALS_COLLECTION)
+        .create_indexes(meal_indexes)
+        .await
+        .expect("No se pudieron crear los índices de meals (¿hay una foto en dos registros?)");
 }
