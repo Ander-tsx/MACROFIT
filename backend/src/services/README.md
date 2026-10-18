@@ -29,6 +29,7 @@ Un archivo por dominio (`auth.rs`, y después `profile.rs`, `goals.rs`, ...). Aq
 | `meals.rs` | HU-09: `validate_new_meal` / `validate_date` / `local_date` (puras), `create_meal`, `list_meals`, `find_meals_by_date` (reutilizable en HU-10 y HU-25), `delete_meal` (borra también la foto). HU-24: `last_meal_pipeline` / `parse_last_meals` (puras) y `last_meal_at_for` (último registro de varios usuarios en una agregación) |
 | `profile.rs` | HU-03: `validate_new_profile` / `validate_profile_changes` (puras), `create_profile` (marca `profile_completed`), `get_profile`, `update_profile`; rangos válidos de TEC-12 y `parse_weight_kg` (reutilizable en HU-21) |
 | `coach_invite_codes.rs` | HU-12: `generate_code` (puro), `get_or_create_invite_code`, `regenerate_invite_code` |
+| `summary.rs` | HU-10: `sum_meals`, `remaining`, `build_daily_summary` y `end_of_day` (puras), `get_daily_summary` (valida la fecha, toma la meta con `goals::get_goal_at` y suma los registros con `meals::find_meals_by_date`) |
 | `weights.rs` | HU-21: `validate_weight` (pura, con `profile::parse_weight_kg`), `record_weight` (guarda y actualiza el perfil), `list_weights` |
 | `food_recognition/` | TEC-02 (RNF-13): trait `FoodRecognizer` y `FoodService` (tiempo de espera); proveedores `simulator`, `logmeal`, `gemini` y `gemini_fatsecret`; `preprocess::prepare` (JPEG ≤ 1000 px). Sección abajo |
 

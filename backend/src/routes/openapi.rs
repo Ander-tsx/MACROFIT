@@ -11,7 +11,7 @@ use utoipa::openapi::security::{HttpAuthScheme, HttpBuilder, SecurityScheme};
 use utoipa::{Modify, OpenApi};
 use utoipa_swagger_ui::SwaggerUi;
 
-use super::{auth, coach_invite_codes, coach_links, dev, goals, legal, meals, profile};
+use super::{auth, coach_invite_codes, coach_links, dev, goals, legal, meals, profile, summary};
 
 /// Ruta de la especificación en JSON.
 pub const SPEC_PATH: &str = "/api/v1/openapi.json";
@@ -61,6 +61,7 @@ responder `500 INTERNAL_ERROR` ante un error inesperado.";
         meals::create_meal_handler,
         meals::list_meals_handler,
         meals::delete_meal_handler,
+        summary::get_daily_summary_handler,
         auth::coach_only_handler,
     ),
     modifiers(&BearerAuth),
@@ -71,6 +72,7 @@ responder `500 INTERNAL_ERROR` ante un error inesperado.";
         (name = "Perfil", description = "Perfil inicial del usuario (HU-03)"),
         (name = "Metas", description = "Meta nutricional del usuario (HU-04)"),
         (name = "Coach", description = "Clientes, metas por coach (HU-05) y código de invitación (HU-12)"),
+        (name = "Resumen", description = "Resumen diario contra la meta (HU-10)"),
         (name = "Comidas", description = "Foto de la comida (HU-06), estimación nutricional (HU-07) y registros de comida (HU-09)"),
     )
 )]
@@ -227,6 +229,12 @@ mod tests {
         ("post", "/meals", User, &[201, 400, 401, 403, 404, 409]),
         ("get", "/meals", User, &[200, 400, 401, 403]),
         ("delete", "/meals/{id}", User, &[204, 401, 403, 404]),
+        (
+            "get",
+            "/users/me/summary/daily",
+            User,
+            &[200, 400, 401, 403, 404],
+        ),
     ];
 
     /// Rutas que solo existen con `APP_ENV=development`.

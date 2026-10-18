@@ -10,4 +10,5 @@ pub mod meals;
 pub mod photos;
 pub mod profile;
 pub mod session;
+pub mod summary;
 pub mod weights;

@@ -12,6 +12,7 @@ pub mod legal;
 pub mod meals;
 pub mod openapi;
 pub mod profile;
+pub mod summary;
 pub mod weights;
 
 /// Prefijo común de la API. Una versión nueva incompatible se monta en `/api/v2`.
@@ -30,7 +31,8 @@ pub fn api_router(dev_mode: bool) -> Router<AppState> {
         .merge(profile::router())
         .merge(goals::router())
         .merge(weights::router())
-        .merge(meals::router());
+        .merge(meals::router())
+        .merge(summary::router());
     if dev_mode {
         v1 = v1.merge(dev::router());
     }

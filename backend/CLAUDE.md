@@ -17,6 +17,7 @@ Instrucciones para Claude Code al trabajar en `backend/`. Las reglas generales d
   `services/food_recognition/`, banco de pruebas `food_bench`), HU-07 (estimación nutricional, `POST /meals/estimate`),
   TEC-12 (fórmula de la meta con mínimo de calorías y rangos válidos del perfil), HU-21 (registro de peso),
   HU-09 (registros de comida: `POST/GET /meals`, `DELETE /meals/{id}`, día en la zona `APP_UTC_OFFSET`),
+  HU-10 (resumen diario: `GET /users/me/summary/daily?date=`, `remaining` negativo si se pasa de la meta),
   HU-24 (lista completa de clientes: `GET /coach/clients` con meta vigente y último registro de comida),
   TEC-14 (contrato OpenAPI con utoipa en `/api/v1/docs`; todo endpoint nuevo se documenta ahí, ver
   `src/routes/README.md`).
