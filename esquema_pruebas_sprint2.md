@@ -29,6 +29,14 @@
 | HU-24 | Respuesta compatible con HU-05 y armada sin una consulta por cliente. | Unitaria | Se conservan `id`, `name`, `email` y el orden por nombre; la meta y el último registro se unen a cada cliente desde consultas en lote, sin mezclar datos de otros usuarios. | [**6**](#caso-25) (mobile 0 · backend 6) |
 | HU-24 | Restricción por sesión y rol. | Integración | Sin sesión responde 401 `UNAUTHORIZED`; una cuenta de usuario responde 403 `FORBIDDEN_ROLE`. | [**2**](#caso-26) (mobile 0 · backend 2) |
 | HU-24 | Contrato OpenAPI de la lista de clientes (TEC-14). | Unitaria | `ClientResponse` documenta `goal` y `last_meal_at` como obligatorios y nulables, y `goal` referencia `ClientGoalSummary`. | [**1**](#caso-27) (mobile 0 · backend 1) |
+| HU-10 | Suma del día y restante contra la meta (RF-09). | Unitaria | Lo consumido es la suma de calorías, proteína y grasa de los registros del día; `remaining` es la meta menos lo consumido; los valores se redondean a 1 decimal sin ruido de punto flotante. | [**4**](#caso-28) (mobile 0 · backend 4) |
+| HU-10 | Día sin registros. | Integración | Un día sin registros devuelve consumo en 0 (nunca `-0`) y restante igual a la meta. | [**3**](#caso-29) (mobile 0 · backend 3) |
+| HU-10 | Consumo por encima de la meta. | Integración | Si lo consumido supera la meta, `remaining` es negativo (meta − consumido), sin recortarse a 0. | [**2**](#caso-30) (mobile 0 · backend 2) |
+| HU-10 | Meta vigente con su origen (RN-06). | Integración | `goal` trae la meta vigente ese día con su origen: `system` o `coach` (la del coach tiene prioridad) y el restante se calcula con ella. | [**2**](#caso-31) (mobile 0 · backend 2) |
+| HU-10 | El resumen refleja guardar y eliminar registros. | Integración | Tras guardar registros, el resumen los suma; tras eliminar uno, la siguiente consulta deja de contarlo. | [**3**](#caso-32) (mobile 0 · backend 3) |
+| HU-10 | El día se define en la zona horaria de la app. | Unitaria | El día consultado termina un milisegundo antes de la medianoche local (`APP_UTC_OFFSET`, UTC−6 por defecto) para elegir la meta vigente. | [**1**](#caso-33) (mobile 0 · backend 1) |
+| HU-10 | Validación de `date`. | Integración | Una fecha inválida o ausente responde 400 `VALIDATION_ERROR` con el campo `date` señalado. | [**2**](#caso-34) (mobile 0 · backend 2) |
+| HU-10 | Restricción por sesión, rol y perfil. | Integración | Sin sesión responde 401 `UNAUTHORIZED`; una cuenta de coach responde 403 `FORBIDDEN_ROLE`; un usuario sin perfil ni meta responde 404 `PROFILE_NOT_FOUND`, igual que `GET /users/me/goals/current`. | [**3**](#caso-35) (mobile 0 · backend 3) |
 
 ## Cómo se cuentan las pruebas
 
@@ -40,6 +48,8 @@
 Inventario al cerrar TEC-09: **119** pruebas mobile, **<RUST>** pruebas de Rust (`cargo test`, incluidas las 6 de TEC-13 que requieren MongoDB y se ejecutan con `--ignored`) y **<POSTMAN>** requests de Postman (sin contar los de preparación). Incluye las pruebas de TEC-13, HU-12-API, HU-21-API y los 3 requests del catálogo de ejercicios de TEC-09, que todavía no tienen casos en este esquema.
 
 Inventario al cerrar HU-24-API: **119** pruebas mobile, **181** pruebas de Rust (`cargo test`: 167 se ejecutan y 14 requieren MongoDB y se ejecutan con `--ignored`) y **143** requests de Postman en la colección combinada (sin contar los 38 de preparación). HU-24 agrega 10 pruebas de Rust y 6 requests de Postman, y actualiza *HU-05 Metas por coach › 06 - Lista de clientes del coach* al contrato nuevo.
+
+Inventario al cerrar HU-10-API: **119** pruebas mobile, **188** pruebas de Rust (`cargo test`: 174 se ejecutan y 14 requieren MongoDB y se ejecutan con `--ignored`) y **158** requests de Postman en la colección combinada (sin contar los 48 de preparación). HU-10 agrega 7 pruebas de Rust y 15 requests de Postman (más 10 de preparación). Su endpoint está en el catálogo de `routes/openapi.rs`, así que lo cubren también las pruebas generales de TEC-14 (casos 11 a 15).
 
 ## Detalle de las pruebas por caso
 
@@ -399,3 +409,103 @@ Mobile: 0 · Backend: 1
 **Backend (Rust)**
 
 - `backend/src/routes/openapi.rs` › `lista_de_clientes_documenta_meta_y_ultimo_registro`
+
+### <a id="caso-28"></a>Caso 28 · HU-10 — Suma del día y restante contra la meta
+
+Mobile: 0 · Backend: 4
+
+`build_daily_summary` es una función pura: suma los registros del día y resta de la meta. Los valores se redondean a 1 decimal.
+
+**Backend (Rust)**
+
+- `backend/src/services/summary.rs` › `suma_los_registros_y_resta_de_la_meta`
+- `backend/src/services/summary.rs` › `redondea_a_un_decimal_sin_ruido_de_punto_flotante`
+
+**Backend (Postman)**
+
+- Postman › HU-10 Resumen diario › 04 - Día con registros
+- Postman › HU-10 Resumen diario › 06 - Resumen tras eliminar un registro
+
+### <a id="caso-29"></a>Caso 29 · HU-10 — Día sin registros
+
+Mobile: 0 · Backend: 3
+
+La suma de un iterador vacío de `f64` da `-0.0`; el resumen lo normaliza a `0` para que el cliente no reciba `-0`.
+
+**Backend (Rust)**
+
+- `backend/src/services/summary.rs` › `un_dia_sin_registros_consume_cero_y_el_restante_es_la_meta`
+- `backend/src/services/summary.rs` › `un_dia_sin_registros_no_devuelve_cero_negativo`
+
+**Backend (Postman)**
+
+- Postman › HU-10 Resumen diario › 01 - Día sin registros
+
+### <a id="caso-30"></a>Caso 30 · HU-10 — Consumo por encima de la meta
+
+Mobile: 0 · Backend: 2
+
+`remaining` = meta − consumido y puede ser negativo (por ejemplo `-150` = se pasó por 150).
+
+**Backend (Rust)**
+
+- `backend/src/services/summary.rs` › `el_restante_es_negativo_cuando_el_consumo_supera_la_meta`
+
+**Backend (Postman)**
+
+- Postman › HU-10 Resumen diario › 08 - Consumo por encima de la meta: el restante es negativo
+
+### <a id="caso-31"></a>Caso 31 · HU-10 — Meta vigente con su origen
+
+Mobile: 0 · Backend: 2
+
+La meta se obtiene con `goals::get_goal_at`, que aplica la misma regla que `GET /users/me/goals/current`: la del coach tiene prioridad sobre la calculada.
+
+**Backend (Rust)**
+
+- `backend/src/services/summary.rs` › `el_origen_de_la_meta_se_conserva`
+
+**Backend (Postman)**
+
+- Postman › HU-10 Resumen diario › 15 - Resumen con la meta del coach
+
+### <a id="caso-32"></a>Caso 32 · HU-10 — El resumen refleja guardar y eliminar registros
+
+Mobile: 0 · Backend: 3
+
+La carpeta guarda dos registros, consulta el resumen, elimina uno y vuelve a consultar. Los valores esperados se calculan a partir de lo enviado.
+
+**Backend (Postman)**
+
+- Postman › HU-10 Resumen diario › 04 - Día con registros
+- Postman › HU-10 Resumen diario › 05 - Eliminar un registro
+- Postman › HU-10 Resumen diario › 06 - Resumen tras eliminar un registro
+
+### <a id="caso-33"></a>Caso 33 · HU-10 — El día se define en la zona horaria de la app
+
+Mobile: 0 · Backend: 1
+
+El día de HU-09 se calcula con `APP_UTC_OFFSET`; el resumen toma la meta vigente al final de ese mismo día.
+
+**Backend (Rust)**
+
+- `backend/src/services/summary.rs` › `el_dia_termina_un_milisegundo_antes_de_la_medianoche_local`
+
+### <a id="caso-34"></a>Caso 34 · HU-10 — Validación de `date`
+
+Mobile: 0 · Backend: 2
+
+**Backend (Postman)**
+
+- Postman › HU-10 Resumen diario › 09 - Fecha inválida
+- Postman › HU-10 Resumen diario › 10 - Sin fecha
+
+### <a id="caso-35"></a>Caso 35 · HU-10 — Restricción por sesión, rol y perfil
+
+Mobile: 0 · Backend: 3
+
+**Backend (Postman)**
+
+- Postman › HU-10 Resumen diario › 11 - Sin sesión
+- Postman › HU-10 Resumen diario › 12 - Cuenta de coach
+- Postman › HU-10 Resumen diario › 13 - Usuario sin meta vigente

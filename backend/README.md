@@ -184,6 +184,7 @@ El contrato completo (cuerpos, respuestas y códigos de error de cada endpoint) 
 | POST | `/meals` | Bearer (user) | HU-09 | Guarda un registro de comida (foto opcional y valores finales) |
 | GET | `/meals?date=YYYY-MM-DD` | Bearer (user) | HU-09 | Registros del usuario en ese día, por hora |
 | DELETE | `/meals/{id}` | Bearer (user) | HU-09 | Elimina un registro propio y su foto |
+| GET | `/users/me/summary/daily?date=YYYY-MM-DD` | Bearer (user) | HU-10 | Consumo del día, meta vigente y lo que falta |
 | POST | `/dev/seed/coach-links` | — (solo `APP_ENV=development`) | HU-05 | Vincula un coach con un usuario de prueba |
 | GET | `/coach/test` | Bearer (coach) | TEC-05 | Prueba de la regla de acceso por rol |
 | GET | `/coach/invite-code` | Bearer (coach) | HU-12 | Código de invitación del coach; se crea si no existe |
@@ -591,6 +592,36 @@ más antiguo al más reciente; `[]` si no hay registros.
 | La foto no existe, el id está mal formado o es de otro usuario | `404 PHOTO_NOT_FOUND` |
 | El registro a eliminar no existe, el id está mal formado o es de otro usuario | `404 MEAL_NOT_FOUND` (no se revela que existe) |
 | La foto ya está en otro registro | `409 PHOTO_ALREADY_USED` con `fields.photo_id` |
+
+### Resumen diario — `GET /users/me/summary/daily` (HU-10)
+
+Cabecera `Authorization: Bearer <access_token>`. **Solo rol `user`**. Query `date=YYYY-MM-DD` (obligatorio). El día es el de
+la zona horaria de la app (`APP_UTC_OFFSET`, México por defecto), el mismo criterio que `GET /meals?date=`.
+
+**200 OK**
+
+```json
+{
+  "date": "2026-10-16",
+  "goal": { "source": "system", "calories_kcal": 2200, "protein_g": 160, "fat_g": 70 },
+  "consumed": { "calories_kcal": 1050.5, "protein_g": 70, "fat_g": 35.5 },
+  "remaining": { "calories_kcal": 1149.5, "protein_g": 90, "fat_g": 34.5 }
+}
+```
+
+- `goal` es la meta vigente al final de ese día, con su origen (`system` o `coach`). Se obtiene con la misma regla que
+  `GET /users/me/goals/current` (la del coach tiene prioridad sobre la calculada). Si ninguna había empezado aún, se usa la vigente hoy.
+- `consumed` es la suma de los registros del día; un día sin registros devuelve `0` en los tres valores.
+- `remaining` = `goal` − `consumed`. **Es negativo cuando el consumo supera la meta** (`-150` = se pasó por 150).
+- Los valores se redondean a 1 decimal.
+- Guardar o eliminar un registro (`POST /meals`, `DELETE /meals/{id}`) se refleja en la siguiente consulta.
+
+| Caso | Respuesta |
+|---|---|
+| `date` ausente o con formato distinto de `YYYY-MM-DD` | `400 VALIDATION_ERROR` con `fields.date` |
+| Sin sesión / token inválido | `401 UNAUTHORIZED` |
+| Cuenta de coach | `403 FORBIDDEN_ROLE` |
+| Usuario sin perfil ni meta | `404 PROFILE_NOT_FOUND` (igual que `GET /users/me/goals/current`) |
 
 ### POST `/dev/seed/coach-links` (HU-05)
 

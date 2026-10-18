@@ -1,0 +1,1731 @@
+{
+  "info": {
+    "_postman_id": "9c4b2e1f-6a3d-4e8b-b7c5-2d1a0f9e0010",
+    "name": "MacroFit · Summary",
+    "description": "Módulo de resúmenes (src/routes/summary.rs). Cada historia registra sus propias cuentas.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "HU-10 Resumen diario",
+      "description": "HU-10: GET /api/v1/users/me/summary/daily?date= (RF-09). Registra sus propias cuentas (usuario, coach y un usuario sin perfil) y sus propios registros de comida; no depende de otras carpetas. Los números esperados se calculan a partir de lo enviado. Ejecutar en orden.",
+      "item": [
+        {
+          "name": "00 - Preparación: registrar al usuario",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    const email = \"summary.user.\" + Date.now() + \".\" + Math.floor(Math.random() * 1e6) + \"@macrofit.test\";",
+                  "    pm.variables.set(\"email\", email);",
+                  "    pm.collectionVariables.set(\"summary_user_email\", email);",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 201 Created\", function () {",
+                  "        pm.response.to.have.status(201);",
+                  "    });",
+                  "    const data = pm.response.json();",
+                  "    pm.test(\"Rol user\", function () {",
+                  "        pm.expect(data.role).to.eql(\"user\");",
+                  "    });",
+                  "    pm.collectionVariables.set(\"summary_user_id\", data.id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "register"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"User Resumen\",\n  \"email\": \"{{email}}\",\n  \"password\": \"{{test_password}}\",\n  \"role\": \"user\",\n  \"privacy_accepted\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "00 - Preparación: iniciar sesión de el usuario",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 200 OK\", function () {",
+                  "        pm.response.to.have.status(200);",
+                  "    });",
+                  "    const data = pm.response.json();",
+                  "    pm.test(\"Devuelve access_token\", function () {",
+                  "        pm.expect(data.access_token).to.be.a(\"string\").and.not.empty;",
+                  "    });",
+                  "    pm.collectionVariables.set(\"summary_user_token\", data.access_token);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{summary_user_email}}\",\n  \"password\": \"{{test_password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "00 - Preparación: crear el perfil del usuario",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 201 Created\", function () {",
+                  "        pm.response.to.have.status(201);",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{summary_user_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/me/profile",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "me",
+                "profile"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"weight_kg\": 72.5,\n  \"height_cm\": 170,\n  \"birth_date\": \"1998-03-15\",\n  \"gender\": \"female\",\n  \"level\": \"intermediate\",\n  \"training_days\": 4,\n  \"objective\": \"lose_fat\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "00 - Preparación: leer la meta calculada del usuario",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 200 OK\", function () {",
+                  "        pm.response.to.have.status(200);",
+                  "    });",
+                  "    const goal = pm.response.json();",
+                  "    pm.test(\"Meta calculada (system)\", function () {",
+                  "        pm.expect(goal.source).to.eql(\"system\");",
+                  "    });",
+                  "    pm.collectionVariables.set(\"summary_goal_calories\", goal.calories);",
+                  "    pm.collectionVariables.set(\"summary_goal_protein\", goal.protein_g);",
+                  "    pm.collectionVariables.set(\"summary_goal_fat\", goal.fat_g);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{summary_user_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/me/goals/current",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "me",
+                "goals",
+                "current"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "00 - Preparación: registrar al coach",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    const email = \"summary.coach.\" + Date.now() + \".\" + Math.floor(Math.random() * 1e6) + \"@macrofit.test\";",
+                  "    pm.variables.set(\"email\", email);",
+                  "    pm.collectionVariables.set(\"summary_coach_email\", email);",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 201 Created\", function () {",
+                  "        pm.response.to.have.status(201);",
+                  "    });",
+                  "    const data = pm.response.json();",
+                  "    pm.test(\"Rol coach\", function () {",
+                  "        pm.expect(data.role).to.eql(\"coach\");",
+                  "    });",
+                  "    pm.collectionVariables.set(\"summary_coach_id\", data.id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "register"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Coach Resumen\",\n  \"email\": \"{{email}}\",\n  \"password\": \"{{test_password}}\",\n  \"role\": \"coach\",\n  \"privacy_accepted\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "00 - Preparación: iniciar sesión de el coach",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 200 OK\", function () {",
+                  "        pm.response.to.have.status(200);",
+                  "    });",
+                  "    const data = pm.response.json();",
+                  "    pm.test(\"Devuelve access_token\", function () {",
+                  "        pm.expect(data.access_token).to.be.a(\"string\").and.not.empty;",
+                  "    });",
+                  "    pm.collectionVariables.set(\"summary_coach_token\", data.access_token);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{summary_coach_email}}\",\n  \"password\": \"{{test_password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "00 - Preparación: código de invitación del coach",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 200 OK\", function () {",
+                  "        pm.response.to.have.status(200);",
+                  "    });",
+                  "    pm.collectionVariables.set(\"summary_invite_code\", pm.response.json().code);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{summary_coach_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/coach/invite-code",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "coach",
+                "invite-code"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "00 - Preparación: vincular al usuario con el coach",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 201 Created\", function () {",
+                  "        pm.response.to.have.status(201);",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{summary_user_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/me/coach-link",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "me",
+                "coach-link"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"invite_code\": \"{{summary_invite_code}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "01 - Día sin registros",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.variables.set(\"summary_query_date\", \"2026-01-02\");",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 200 OK\", function () {",
+                  "        pm.response.to.have.status(200);",
+                  "    });",
+                  "    const data = pm.response.json();",
+                  "    const round1 = (n) => Math.round(n * 10) / 10;",
+                  "    const consumed = { calories_kcal: 0, protein_g: 0, fat_g: 0 };",
+                  "    const goal = { calories_kcal: Number(pm.collectionVariables.get(\"summary_goal_calories\")), protein_g: Number(pm.collectionVariables.get(\"summary_goal_protein\")), fat_g: Number(pm.collectionVariables.get(\"summary_goal_fat\")) };",
+                  "    pm.test(\"Estructura: date, goal, consumed y remaining\", function () {",
+                  "        pm.expect(data).to.have.all.keys(\"date\", \"goal\", \"consumed\", \"remaining\");",
+                  "        pm.expect(data.goal).to.have.all.keys(\"source\", \"calories_kcal\", \"protein_g\", \"fat_g\");",
+                  "        pm.expect(data.consumed).to.have.all.keys(\"calories_kcal\", \"protein_g\", \"fat_g\");",
+                  "        pm.expect(data.remaining).to.have.all.keys(\"calories_kcal\", \"protein_g\", \"fat_g\");",
+                  "    });",
+                  "    pm.test(\"La fecha es la consultada\", function () {",
+                  "        pm.expect(data.date).to.eql(pm.variables.get(\"summary_query_date\"));",
+                  "    });",
+                  "    pm.test(\"Meta vigente con origen system\", function () {",
+                  "        pm.expect(data.goal.source).to.eql(\"system\");",
+                  "        pm.expect(data.goal.calories_kcal).to.eql(goal.calories_kcal);",
+                  "        pm.expect(data.goal.protein_g).to.eql(goal.protein_g);",
+                  "        pm.expect(data.goal.fat_g).to.eql(goal.fat_g);",
+                  "    });",
+                  "    pm.test(\"Lo consumido es la suma de los registros del día\", function () {",
+                  "        pm.expect(data.consumed).to.eql(consumed);",
+                  "    });",
+                  "    pm.test(\"Restante = meta - consumido (calorías, proteína y grasa)\", function () {",
+                  "        pm.expect(data.remaining.calories_kcal).to.eql(round1(goal.calories_kcal - consumed.calories_kcal));",
+                  "        pm.expect(data.remaining.protein_g).to.eql(round1(goal.protein_g - consumed.protein_g));",
+                  "        pm.expect(data.remaining.fat_g).to.eql(round1(goal.fat_g - consumed.fat_g));",
+                  "    });",
+                  "",
+                  "    pm.test(\"Restante igual a la meta\", function () {",
+                  "        pm.expect(data.remaining).to.eql({ calories_kcal: goal.calories_kcal, protein_g: goal.protein_g, fat_g: goal.fat_g });",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{summary_user_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/me/summary/daily?date={{summary_query_date}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "me",
+                "summary",
+                "daily"
+              ],
+              "query": [
+                {
+                  "key": "date",
+                  "value": "{{summary_query_date}}"
+                }
+              ]
+            },
+            "description": "Un día sin registros devuelve consumo en 0 y restante igual a la meta."
+          },
+          "response": []
+        },
+        {
+          "name": "02 - Guardar registro de comida",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 201 Created\", function () {",
+                  "        pm.response.to.have.status(201);",
+                  "    });",
+                  "    const data = pm.response.json();",
+                  "    pm.collectionVariables.set(\"summary_day\", data.date);",
+                  "    pm.collectionVariables.set(\"summary_meal_a_id\", data.id);",
+                  "    pm.collectionVariables.set(\"summary_meal_a_kcal\", data.calories_kcal);",
+                  "    pm.collectionVariables.set(\"summary_meal_a_protein\", data.protein_g);",
+                  "    pm.collectionVariables.set(\"summary_meal_a_fat\", data.fat_g);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{summary_user_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/meals",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "meals"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"calories_kcal\": 600,\n  \"protein_g\": 40,\n  \"fat_g\": 20\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "03 - Guardar registro de comida",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 201 Created\", function () {",
+                  "        pm.response.to.have.status(201);",
+                  "    });",
+                  "    const data = pm.response.json();",
+                  "    pm.collectionVariables.set(\"summary_day\", data.date);",
+                  "    pm.collectionVariables.set(\"summary_meal_b_id\", data.id);",
+                  "    pm.collectionVariables.set(\"summary_meal_b_kcal\", data.calories_kcal);",
+                  "    pm.collectionVariables.set(\"summary_meal_b_protein\", data.protein_g);",
+                  "    pm.collectionVariables.set(\"summary_meal_b_fat\", data.fat_g);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{summary_user_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/meals",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "meals"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"calories_kcal\": 450.5,\n  \"protein_g\": 30,\n  \"fat_g\": 15.5\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "04 - Día con registros",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.variables.set(\"summary_query_date\", pm.collectionVariables.get(\"summary_day\"));",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 200 OK\", function () {",
+                  "        pm.response.to.have.status(200);",
+                  "    });",
+                  "    const data = pm.response.json();",
+                  "    const round1 = (n) => Math.round(n * 10) / 10;",
+                  "    const consumed = { calories_kcal: round1(Number(pm.collectionVariables.get(\"summary_meal_a_kcal\")) + Number(pm.collectionVariables.get(\"summary_meal_b_kcal\"))), protein_g: round1(Number(pm.collectionVariables.get(\"summary_meal_a_protein\")) + Number(pm.collectionVariables.get(\"summary_meal_b_protein\"))), fat_g: round1(Number(pm.collectionVariables.get(\"summary_meal_a_fat\")) + Number(pm.collectionVariables.get(\"summary_meal_b_fat\"))) };",
+                  "    const goal = { calories_kcal: Number(pm.collectionVariables.get(\"summary_goal_calories\")), protein_g: Number(pm.collectionVariables.get(\"summary_goal_protein\")), fat_g: Number(pm.collectionVariables.get(\"summary_goal_fat\")) };",
+                  "    pm.test(\"Estructura: date, goal, consumed y remaining\", function () {",
+                  "        pm.expect(data).to.have.all.keys(\"date\", \"goal\", \"consumed\", \"remaining\");",
+                  "        pm.expect(data.goal).to.have.all.keys(\"source\", \"calories_kcal\", \"protein_g\", \"fat_g\");",
+                  "        pm.expect(data.consumed).to.have.all.keys(\"calories_kcal\", \"protein_g\", \"fat_g\");",
+                  "        pm.expect(data.remaining).to.have.all.keys(\"calories_kcal\", \"protein_g\", \"fat_g\");",
+                  "    });",
+                  "    pm.test(\"La fecha es la consultada\", function () {",
+                  "        pm.expect(data.date).to.eql(pm.variables.get(\"summary_query_date\"));",
+                  "    });",
+                  "    pm.test(\"Meta vigente con origen system\", function () {",
+                  "        pm.expect(data.goal.source).to.eql(\"system\");",
+                  "        pm.expect(data.goal.calories_kcal).to.eql(goal.calories_kcal);",
+                  "        pm.expect(data.goal.protein_g).to.eql(goal.protein_g);",
+                  "        pm.expect(data.goal.fat_g).to.eql(goal.fat_g);",
+                  "    });",
+                  "    pm.test(\"Lo consumido es la suma de los registros del día\", function () {",
+                  "        pm.expect(data.consumed).to.eql(consumed);",
+                  "    });",
+                  "    pm.test(\"Restante = meta - consumido (calorías, proteína y grasa)\", function () {",
+                  "        pm.expect(data.remaining.calories_kcal).to.eql(round1(goal.calories_kcal - consumed.calories_kcal));",
+                  "        pm.expect(data.remaining.protein_g).to.eql(round1(goal.protein_g - consumed.protein_g));",
+                  "        pm.expect(data.remaining.fat_g).to.eql(round1(goal.fat_g - consumed.fat_g));",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{summary_user_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/me/summary/daily?date={{summary_query_date}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "me",
+                "summary",
+                "daily"
+              ],
+              "query": [
+                {
+                  "key": "date",
+                  "value": "{{summary_query_date}}"
+                }
+              ]
+            },
+            "description": "Suma los dos registros guardados hoy y calcula lo que falta. El resultado se compara con lo que se envió."
+          },
+          "response": []
+        },
+        {
+          "name": "05 - Eliminar un registro",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 204 No Content\", function () {",
+                  "        pm.response.to.have.status(204);",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{summary_user_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/meals/{{summary_meal_b_id}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "meals",
+                "{{summary_meal_b_id}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "06 - Resumen tras eliminar un registro",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.variables.set(\"summary_query_date\", pm.collectionVariables.get(\"summary_day\"));",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 200 OK\", function () {",
+                  "        pm.response.to.have.status(200);",
+                  "    });",
+                  "    const data = pm.response.json();",
+                  "    const round1 = (n) => Math.round(n * 10) / 10;",
+                  "    const consumed = { calories_kcal: round1(Number(pm.collectionVariables.get(\"summary_meal_a_kcal\"))), protein_g: round1(Number(pm.collectionVariables.get(\"summary_meal_a_protein\"))), fat_g: round1(Number(pm.collectionVariables.get(\"summary_meal_a_fat\"))) };",
+                  "    const goal = { calories_kcal: Number(pm.collectionVariables.get(\"summary_goal_calories\")), protein_g: Number(pm.collectionVariables.get(\"summary_goal_protein\")), fat_g: Number(pm.collectionVariables.get(\"summary_goal_fat\")) };",
+                  "    pm.test(\"Estructura: date, goal, consumed y remaining\", function () {",
+                  "        pm.expect(data).to.have.all.keys(\"date\", \"goal\", \"consumed\", \"remaining\");",
+                  "        pm.expect(data.goal).to.have.all.keys(\"source\", \"calories_kcal\", \"protein_g\", \"fat_g\");",
+                  "        pm.expect(data.consumed).to.have.all.keys(\"calories_kcal\", \"protein_g\", \"fat_g\");",
+                  "        pm.expect(data.remaining).to.have.all.keys(\"calories_kcal\", \"protein_g\", \"fat_g\");",
+                  "    });",
+                  "    pm.test(\"La fecha es la consultada\", function () {",
+                  "        pm.expect(data.date).to.eql(pm.variables.get(\"summary_query_date\"));",
+                  "    });",
+                  "    pm.test(\"Meta vigente con origen system\", function () {",
+                  "        pm.expect(data.goal.source).to.eql(\"system\");",
+                  "        pm.expect(data.goal.calories_kcal).to.eql(goal.calories_kcal);",
+                  "        pm.expect(data.goal.protein_g).to.eql(goal.protein_g);",
+                  "        pm.expect(data.goal.fat_g).to.eql(goal.fat_g);",
+                  "    });",
+                  "    pm.test(\"Lo consumido es la suma de los registros del día\", function () {",
+                  "        pm.expect(data.consumed).to.eql(consumed);",
+                  "    });",
+                  "    pm.test(\"Restante = meta - consumido (calorías, proteína y grasa)\", function () {",
+                  "        pm.expect(data.remaining.calories_kcal).to.eql(round1(goal.calories_kcal - consumed.calories_kcal));",
+                  "        pm.expect(data.remaining.protein_g).to.eql(round1(goal.protein_g - consumed.protein_g));",
+                  "        pm.expect(data.remaining.fat_g).to.eql(round1(goal.fat_g - consumed.fat_g));",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{summary_user_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/me/summary/daily?date={{summary_query_date}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "me",
+                "summary",
+                "daily"
+              ],
+              "query": [
+                {
+                  "key": "date",
+                  "value": "{{summary_query_date}}"
+                }
+              ]
+            },
+            "description": "Eliminar un registro se refleja en la siguiente consulta del resumen."
+          },
+          "response": []
+        },
+        {
+          "name": "07 - Guardar registro de comida",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.collectionVariables.set(\"summary_over_calories\", Number(pm.collectionVariables.get(\"summary_goal_calories\")) + 150);",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 201 Created\", function () {",
+                  "        pm.response.to.have.status(201);",
+                  "    });",
+                  "    const data = pm.response.json();",
+                  "    pm.collectionVariables.set(\"summary_day\", data.date);",
+                  "    pm.collectionVariables.set(\"summary_meal_c_id\", data.id);",
+                  "    pm.collectionVariables.set(\"summary_meal_c_kcal\", data.calories_kcal);",
+                  "    pm.collectionVariables.set(\"summary_meal_c_protein\", data.protein_g);",
+                  "    pm.collectionVariables.set(\"summary_meal_c_fat\", data.fat_g);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{summary_user_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/meals",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "meals"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"calories_kcal\": {{summary_over_calories}},\n  \"protein_g\": 10,\n  \"fat_g\": 5\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "08 - Consumo por encima de la meta: el restante es negativo",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.variables.set(\"summary_query_date\", pm.collectionVariables.get(\"summary_day\"));",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 200 OK\", function () {",
+                  "        pm.response.to.have.status(200);",
+                  "    });",
+                  "    const data = pm.response.json();",
+                  "    const round1 = (n) => Math.round(n * 10) / 10;",
+                  "    const consumed = { calories_kcal: round1(Number(pm.collectionVariables.get(\"summary_meal_a_kcal\")) + Number(pm.collectionVariables.get(\"summary_meal_c_kcal\"))), protein_g: round1(Number(pm.collectionVariables.get(\"summary_meal_a_protein\")) + Number(pm.collectionVariables.get(\"summary_meal_c_protein\"))), fat_g: round1(Number(pm.collectionVariables.get(\"summary_meal_a_fat\")) + Number(pm.collectionVariables.get(\"summary_meal_c_fat\"))) };",
+                  "    const goal = { calories_kcal: Number(pm.collectionVariables.get(\"summary_goal_calories\")), protein_g: Number(pm.collectionVariables.get(\"summary_goal_protein\")), fat_g: Number(pm.collectionVariables.get(\"summary_goal_fat\")) };",
+                  "    pm.test(\"Estructura: date, goal, consumed y remaining\", function () {",
+                  "        pm.expect(data).to.have.all.keys(\"date\", \"goal\", \"consumed\", \"remaining\");",
+                  "        pm.expect(data.goal).to.have.all.keys(\"source\", \"calories_kcal\", \"protein_g\", \"fat_g\");",
+                  "        pm.expect(data.consumed).to.have.all.keys(\"calories_kcal\", \"protein_g\", \"fat_g\");",
+                  "        pm.expect(data.remaining).to.have.all.keys(\"calories_kcal\", \"protein_g\", \"fat_g\");",
+                  "    });",
+                  "    pm.test(\"La fecha es la consultada\", function () {",
+                  "        pm.expect(data.date).to.eql(pm.variables.get(\"summary_query_date\"));",
+                  "    });",
+                  "    pm.test(\"Meta vigente con origen system\", function () {",
+                  "        pm.expect(data.goal.source).to.eql(\"system\");",
+                  "        pm.expect(data.goal.calories_kcal).to.eql(goal.calories_kcal);",
+                  "        pm.expect(data.goal.protein_g).to.eql(goal.protein_g);",
+                  "        pm.expect(data.goal.fat_g).to.eql(goal.fat_g);",
+                  "    });",
+                  "    pm.test(\"Lo consumido es la suma de los registros del día\", function () {",
+                  "        pm.expect(data.consumed).to.eql(consumed);",
+                  "    });",
+                  "    pm.test(\"Restante = meta - consumido (calorías, proteína y grasa)\", function () {",
+                  "        pm.expect(data.remaining.calories_kcal).to.eql(round1(goal.calories_kcal - consumed.calories_kcal));",
+                  "        pm.expect(data.remaining.protein_g).to.eql(round1(goal.protein_g - consumed.protein_g));",
+                  "        pm.expect(data.remaining.fat_g).to.eql(round1(goal.fat_g - consumed.fat_g));",
+                  "    });",
+                  "",
+                  "    pm.test(\"Restante de calorías negativo\", function () {",
+                  "        pm.expect(data.remaining.calories_kcal).to.be.below(0);",
+                  "        pm.expect(data.remaining.calories_kcal).to.eql(-750);",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{summary_user_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/me/summary/daily?date={{summary_query_date}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "me",
+                "summary",
+                "daily"
+              ],
+              "query": [
+                {
+                  "key": "date",
+                  "value": "{{summary_query_date}}"
+                }
+              ]
+            },
+            "description": "Con 600 + (meta + 150) kcal consumidas, el restante de calorías es -(600 + 150) = -750."
+          },
+          "response": []
+        },
+        {
+          "name": "09 - Fecha inválida",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 400 Bad Request\", function () {",
+                  "        pm.response.to.have.status(400);",
+                  "    });",
+                  "    const body = pm.response.json();",
+                  "    pm.test(\"Formato de error { error: { code, message, fields } }\", function () {",
+                  "        pm.expect(body).to.have.all.keys(\"error\");",
+                  "        pm.expect(body.error).to.have.all.keys(\"code\", \"message\", \"fields\");",
+                  "        pm.expect(body.error.message).to.be.a(\"string\").and.not.empty;",
+                  "        pm.expect(body.error.fields).to.be.an(\"object\");",
+                  "    });",
+                  "    pm.test(\"Código VALIDATION_ERROR\", function () {",
+                  "        pm.expect(body.error.code).to.eql(\"VALIDATION_ERROR\");",
+                  "    });",
+                  "    pm.test(\"Señala el campo date\", function () {",
+                  "        pm.expect(body.error.fields).to.have.property(\"date\");",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{summary_user_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/me/summary/daily?date=2026-13-45",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "me",
+                "summary",
+                "daily"
+              ],
+              "query": [
+                {
+                  "key": "date",
+                  "value": "2026-13-45"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "10 - Sin fecha",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 400 Bad Request\", function () {",
+                  "        pm.response.to.have.status(400);",
+                  "    });",
+                  "    const body = pm.response.json();",
+                  "    pm.test(\"Formato de error { error: { code, message, fields } }\", function () {",
+                  "        pm.expect(body).to.have.all.keys(\"error\");",
+                  "        pm.expect(body.error).to.have.all.keys(\"code\", \"message\", \"fields\");",
+                  "        pm.expect(body.error.message).to.be.a(\"string\").and.not.empty;",
+                  "        pm.expect(body.error.fields).to.be.an(\"object\");",
+                  "    });",
+                  "    pm.test(\"Código VALIDATION_ERROR\", function () {",
+                  "        pm.expect(body.error.code).to.eql(\"VALIDATION_ERROR\");",
+                  "    });",
+                  "    pm.test(\"Señala el campo date\", function () {",
+                  "        pm.expect(body.error.fields).to.have.property(\"date\");",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{summary_user_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/me/summary/daily",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "me",
+                "summary",
+                "daily"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "11 - Sin sesión",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 401 Unauthorized\", function () {",
+                  "        pm.response.to.have.status(401);",
+                  "    });",
+                  "    const body = pm.response.json();",
+                  "    pm.test(\"Formato de error { error: { code, message, fields } }\", function () {",
+                  "        pm.expect(body).to.have.all.keys(\"error\");",
+                  "        pm.expect(body.error).to.have.all.keys(\"code\", \"message\", \"fields\");",
+                  "        pm.expect(body.error.message).to.be.a(\"string\").and.not.empty;",
+                  "        pm.expect(body.error.fields).to.be.an(\"object\");",
+                  "    });",
+                  "    pm.test(\"Código UNAUTHORIZED\", function () {",
+                  "        pm.expect(body.error.code).to.eql(\"UNAUTHORIZED\");",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/me/summary/daily?date=2026-01-02",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "me",
+                "summary",
+                "daily"
+              ],
+              "query": [
+                {
+                  "key": "date",
+                  "value": "2026-01-02"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "12 - Cuenta de coach",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 403 Forbidden\", function () {",
+                  "        pm.response.to.have.status(403);",
+                  "    });",
+                  "    const body = pm.response.json();",
+                  "    pm.test(\"Formato de error { error: { code, message, fields } }\", function () {",
+                  "        pm.expect(body).to.have.all.keys(\"error\");",
+                  "        pm.expect(body.error).to.have.all.keys(\"code\", \"message\", \"fields\");",
+                  "        pm.expect(body.error.message).to.be.a(\"string\").and.not.empty;",
+                  "        pm.expect(body.error.fields).to.be.an(\"object\");",
+                  "    });",
+                  "    pm.test(\"Código FORBIDDEN_ROLE\", function () {",
+                  "        pm.expect(body.error.code).to.eql(\"FORBIDDEN_ROLE\");",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{summary_coach_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/me/summary/daily?date=2026-01-02",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "me",
+                "summary",
+                "daily"
+              ],
+              "query": [
+                {
+                  "key": "date",
+                  "value": "2026-01-02"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "00 - Preparación: registrar a un usuario sin perfil",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    const email = \"summary.sinperfil.\" + Date.now() + \".\" + Math.floor(Math.random() * 1e6) + \"@macrofit.test\";",
+                  "    pm.variables.set(\"email\", email);",
+                  "    pm.collectionVariables.set(\"summary_noprofile_email\", email);",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 201 Created\", function () {",
+                  "        pm.response.to.have.status(201);",
+                  "    });",
+                  "    const data = pm.response.json();",
+                  "    pm.test(\"Rol user\", function () {",
+                  "        pm.expect(data.role).to.eql(\"user\");",
+                  "    });",
+                  "    pm.collectionVariables.set(\"summary_noprofile_id\", data.id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "register"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Sinperfil Resumen\",\n  \"email\": \"{{email}}\",\n  \"password\": \"{{test_password}}\",\n  \"role\": \"user\",\n  \"privacy_accepted\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "00 - Preparación: iniciar sesión de el usuario sin perfil",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 200 OK\", function () {",
+                  "        pm.response.to.have.status(200);",
+                  "    });",
+                  "    const data = pm.response.json();",
+                  "    pm.test(\"Devuelve access_token\", function () {",
+                  "        pm.expect(data.access_token).to.be.a(\"string\").and.not.empty;",
+                  "    });",
+                  "    pm.collectionVariables.set(\"summary_noprofile_token\", data.access_token);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{summary_noprofile_email}}\",\n  \"password\": \"{{test_password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "13 - Usuario sin meta vigente",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 404 Not Found\", function () {",
+                  "        pm.response.to.have.status(404);",
+                  "    });",
+                  "    const body = pm.response.json();",
+                  "    pm.test(\"Formato de error { error: { code, message, fields } }\", function () {",
+                  "        pm.expect(body).to.have.all.keys(\"error\");",
+                  "        pm.expect(body.error).to.have.all.keys(\"code\", \"message\", \"fields\");",
+                  "        pm.expect(body.error.message).to.be.a(\"string\").and.not.empty;",
+                  "        pm.expect(body.error.fields).to.be.an(\"object\");",
+                  "    });",
+                  "    pm.test(\"Código PROFILE_NOT_FOUND\", function () {",
+                  "        pm.expect(body.error.code).to.eql(\"PROFILE_NOT_FOUND\");",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{summary_noprofile_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/me/summary/daily?date=2026-01-02",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "me",
+                "summary",
+                "daily"
+              ],
+              "query": [
+                {
+                  "key": "date",
+                  "value": "2026-01-02"
+                }
+              ]
+            },
+            "description": "Sin perfil no hay meta: responde igual que GET /users/me/goals/current."
+          },
+          "response": []
+        },
+        {
+          "name": "14 - El coach fija una meta al cliente",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 201 Created\", function () {",
+                  "        pm.response.to.have.status(201);",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{summary_coach_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/coach/clients/{{summary_user_id}}/goals",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "coach",
+                "clients",
+                "{{summary_user_id}}",
+                "goals"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"calories\": 2000,\n  \"protein_g\": 150,\n  \"fat_g\": 60,\n  \"effective_from\": \"2026-01-01\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "15 - Resumen con la meta del coach",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.variables.set(\"summary_query_date\", pm.collectionVariables.get(\"summary_day\"));",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 200 OK\", function () {",
+                  "        pm.response.to.have.status(200);",
+                  "    });",
+                  "    const data = pm.response.json();",
+                  "    const round1 = (n) => Math.round(n * 10) / 10;",
+                  "    const consumed = { calories_kcal: round1(Number(pm.collectionVariables.get(\"summary_meal_a_kcal\")) + Number(pm.collectionVariables.get(\"summary_meal_c_kcal\"))), protein_g: round1(Number(pm.collectionVariables.get(\"summary_meal_a_protein\")) + Number(pm.collectionVariables.get(\"summary_meal_c_protein\"))), fat_g: round1(Number(pm.collectionVariables.get(\"summary_meal_a_fat\")) + Number(pm.collectionVariables.get(\"summary_meal_c_fat\"))) };",
+                  "    const goal = { calories_kcal: 2000, protein_g: 150, fat_g: 60 };",
+                  "    pm.test(\"Estructura: date, goal, consumed y remaining\", function () {",
+                  "        pm.expect(data).to.have.all.keys(\"date\", \"goal\", \"consumed\", \"remaining\");",
+                  "        pm.expect(data.goal).to.have.all.keys(\"source\", \"calories_kcal\", \"protein_g\", \"fat_g\");",
+                  "        pm.expect(data.consumed).to.have.all.keys(\"calories_kcal\", \"protein_g\", \"fat_g\");",
+                  "        pm.expect(data.remaining).to.have.all.keys(\"calories_kcal\", \"protein_g\", \"fat_g\");",
+                  "    });",
+                  "    pm.test(\"La fecha es la consultada\", function () {",
+                  "        pm.expect(data.date).to.eql(pm.variables.get(\"summary_query_date\"));",
+                  "    });",
+                  "    pm.test(\"Meta vigente con origen coach\", function () {",
+                  "        pm.expect(data.goal.source).to.eql(\"coach\");",
+                  "        pm.expect(data.goal.calories_kcal).to.eql(goal.calories_kcal);",
+                  "        pm.expect(data.goal.protein_g).to.eql(goal.protein_g);",
+                  "        pm.expect(data.goal.fat_g).to.eql(goal.fat_g);",
+                  "    });",
+                  "    pm.test(\"Lo consumido es la suma de los registros del día\", function () {",
+                  "        pm.expect(data.consumed).to.eql(consumed);",
+                  "    });",
+                  "    pm.test(\"Restante = meta - consumido (calorías, proteína y grasa)\", function () {",
+                  "        pm.expect(data.remaining.calories_kcal).to.eql(round1(goal.calories_kcal - consumed.calories_kcal));",
+                  "        pm.expect(data.remaining.protein_g).to.eql(round1(goal.protein_g - consumed.protein_g));",
+                  "        pm.expect(data.remaining.fat_g).to.eql(round1(goal.fat_g - consumed.fat_g));",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{summary_user_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/me/summary/daily?date={{summary_query_date}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "me",
+                "summary",
+                "daily"
+              ],
+              "query": [
+                {
+                  "key": "date",
+                  "value": "{{summary_query_date}}"
+                }
+              ]
+            },
+            "description": "La meta del coach tiene prioridad sobre la calculada: el origen es coach y el restante se calcula con ella."
+          },
+          "response": []
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "test_password",
+      "value": "Prueba-MacroFit-2026",
+      "type": "string",
+      "description": "Contraseña ficticia solo para pruebas."
+    },
+    {
+      "key": "summary_user_email",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "summary_user_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "summary_user_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "summary_coach_email",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "summary_coach_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "summary_coach_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "summary_noprofile_email",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "summary_noprofile_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "summary_noprofile_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "summary_invite_code",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "summary_goal_calories",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "summary_goal_protein",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "summary_goal_fat",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "summary_day",
+      "value": "",
+      "type": "string",
+      "description": "Día (YYYY-MM-DD, hora de México) en que se guardaron los registros de esta carpeta."
+    },
+    {
+      "key": "summary_meal_a_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "summary_meal_a_kcal",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "summary_meal_a_protein",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "summary_meal_a_fat",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "summary_meal_b_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "summary_meal_b_kcal",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "summary_meal_b_protein",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "summary_meal_b_fat",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "summary_meal_c_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "summary_meal_c_kcal",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "summary_meal_c_protein",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "summary_meal_c_fat",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "summary_over_calories",
+      "value": "",
+      "type": "string"
+    }
+  ]
+}

@@ -369,6 +369,20 @@ pub async fn get_current_goal(
     Ok(goal)
 }
 
+/// HU-10 — meta vigente en el instante `at` (el final del día que se consulta), con la misma regla que
+/// `get_current_goal` (RN-06). Si ninguna había empezado todavía (día anterior a la primera meta), se usa la
+/// meta vigente hoy; sin perfil ni metas → `ProfileNotFound`, igual que `GET /users/me/goals/current`.
+pub async fn get_goal_at(
+    db: &Database,
+    user_id: ObjectId,
+    at: DateTime,
+) -> Result<NutritionalGoal, AppError> {
+    match find_current_goal(db, user_id, at).await? {
+        Some(goal) => Ok(goal),
+        None => get_current_goal(db, user_id).await,
+    }
+}
+
 /// Historial de metas, de la más reciente a la más antigua (`effective_from` DESC).
 /// Sin metas ni perfil → `ProfileNotFound`.
 pub async fn get_goals_history(
