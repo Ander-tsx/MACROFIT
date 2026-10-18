@@ -7,10 +7,12 @@
 //! - Solo el dueño ve y elimina sus registros; para cualquier otra cuenta el registro "no existe" (`MEAL_NOT_FOUND`).
 //!   Eliminar un registro borra también su foto (TEC-13).
 
+use std::collections::HashMap;
+
 use chrono::{FixedOffset, NaiveDate, Utc};
 use mongodb::{
     Collection, Database,
-    bson::{DateTime, doc, oid::ObjectId},
+    bson::{DateTime, Document, doc, oid::ObjectId},
 };
 use serde_json::Value;
 
@@ -186,6 +188,41 @@ pub async fn find_meals_by_date(
         .await
         .map_err(AppError::internal)?;
     collect_cursor(cursor).await
+}
+
+/// HU-24 — agregación que da, por cada usuario de `user_ids`, la fecha y hora de su registro más reciente
+/// (`{ _id: user_id, last_meal_at }`). Un usuario sin registros no aparece.
+pub fn last_meal_pipeline(user_ids: &[ObjectId]) -> Vec<Document> {
+    vec![
+        doc! { "$match": { "user_id": { "$in": user_ids.to_vec() } } },
+        doc! { "$group": { "_id": "$user_id", "last_meal_at": { "$max": "$eaten_at" } } },
+    ]
+}
+
+/// Lee el resultado de `last_meal_pipeline` como mapa usuario → fecha y hora del último registro.
+pub fn parse_last_meals(rows: Vec<Document>) -> HashMap<ObjectId, DateTime> {
+    rows.into_iter()
+        .filter_map(|row| {
+            let user_id = row.get_object_id("_id").ok()?;
+            let last_meal_at = *row.get_datetime("last_meal_at").ok()?;
+            Some((user_id, last_meal_at))
+        })
+        .collect()
+}
+
+/// HU-24 — fecha y hora del último registro de varios usuarios con una sola agregación.
+pub async fn last_meal_at_for(
+    db: &Database,
+    user_ids: &[ObjectId],
+) -> Result<HashMap<ObjectId, DateTime>, AppError> {
+    if user_ids.is_empty() {
+        return Ok(HashMap::new());
+    }
+    let cursor = meals(db)
+        .aggregate(last_meal_pipeline(user_ids))
+        .await
+        .map_err(AppError::internal)?;
+    Ok(parse_last_meals(collect_cursor(cursor).await?))
 }
 
 /// HU-09 — `GET /meals?date=`: valida la fecha y devuelve los registros del usuario de ese día.
@@ -564,5 +601,32 @@ mod tests {
             assert!(photo_exists(&db, photo_id).await);
             db.drop().await.unwrap();
         }
+    }
+
+    #[test]
+    fn ultimo_registro_se_agrupa_por_usuario_en_una_sola_agregacion() {
+        let ana = ObjectId::new();
+        let bruno = ObjectId::new();
+        assert_eq!(
+            last_meal_pipeline(&[ana, bruno]),
+            vec![
+                doc! { "$match": { "user_id": { "$in": [ana, bruno] } } },
+                doc! { "$group": { "_id": "$user_id", "last_meal_at": { "$max": "$eaten_at" } } },
+            ]
+        );
+    }
+
+    #[test]
+    fn ultimo_registro_se_lee_por_usuario_e_ignora_filas_incompletas() {
+        let ana = ObjectId::new();
+        let at = DateTime::parse_rfc3339_str("2026-10-17T01:30:00Z").unwrap();
+        let rows = vec![
+            doc! { "_id": ana, "last_meal_at": at },
+            doc! { "_id": ObjectId::new() },
+            doc! { "_id": "no-es-un-id", "last_meal_at": at },
+        ];
+        let last = parse_last_meals(rows);
+        assert_eq!(last.len(), 1);
+        assert_eq!(last[&ana], at);
     }
 }

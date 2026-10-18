@@ -174,7 +174,7 @@ El contrato completo (cuerpos, respuestas y códigos de error de cada endpoint) 
 | GET | `/users/me/goals` | Bearer (user) | HU-04 | Historial de metas (más reciente primero) |
 | POST | `/users/me/weights` | Bearer (user) | HU-21 | Registra un peso y lo pasa al perfil |
 | GET | `/users/me/weights` | Bearer (user) | HU-21 | Historial de peso (más reciente primero) |
-| GET | `/coach/clients` | Bearer (coach) | HU-05 | Clientes con vinculación activa |
+| GET | `/coach/clients` | Bearer (coach) | HU-05, HU-24 | Clientes con vinculación activa, con su meta vigente y su último registro de comida |
 | GET | `/coach/clients/{clientId}/goals` | Bearer (coach) | HU-05 | Historial de metas de un cliente vinculado |
 | POST | `/coach/clients/{clientId}/goals` | Bearer (coach) | HU-05 | Fija una meta para un cliente vinculado |
 | GET | `/coach/invite-code` | Bearer (coach) | HU-12 | Código de invitación del coach (lo crea si no existe) |
@@ -382,7 +382,32 @@ un texto o un decimal se señalan en su campo), `400 INVALID_BODY`.
 aplican). Una meta de coach vigente tiene prioridad sobre las calculadas, y editar el perfil nunca la reemplaza.
 Un cliente sin perfil recibe la meta del coach en `GET /users/me/goals/current`.
 
-**GET `/coach/clients`** → `200` con `[{ "id", "name", "email" }]` de los clientes vinculados, por nombre.
+### Lista de clientes — GET `/coach/clients` (HU-05, HU-24)
+
+Cabecera `Authorization: Bearer <access_token>`. **Solo rol `coach`** (`403 FORBIDDEN_ROLE` para un `user`; sin sesión
+`401 UNAUTHORIZED`). Devuelve solo los clientes con vinculación **activa** (un cliente desvinculado en HU-14 no aparece),
+ordenados por nombre:
+
+```json
+[
+  {
+    "id": "6ad0a1b2c3d4e5f6a7b8c9d0",
+    "name": "Ana",
+    "email": "ana@macrofit.com",
+    "goal": { "calories": 2200, "protein_g": 160, "fat_g": 70, "source": "coach" },
+    "last_meal_at": "2026-10-17T01:30:00Z"
+  }
+]
+```
+
+| Campo | Contenido |
+|---|---|
+| `id`, `name`, `email` | Los de HU-05; se conservan para no romper la app |
+| `goal` | Meta vigente con la misma regla que `GET /users/me/goals/current` (la del coach tiene prioridad; las de fecha futura no cuentan). `source`: `system` o `coach`. `null` si el cliente aún no tiene metas (sin perfil ni meta del coach) |
+| `last_meal_at` | Fecha y hora (RFC 3339, UTC) del registro de comida más reciente (HU-09). `null` si no tiene registros |
+
+La meta y el último registro se obtienen **en lote** (una consulta de metas con `$in` y una agregación `$group`/`$max`
+sobre `meals`), no con una consulta por cliente.
 
 ### Código de invitación — `/coach/invite-code` (HU-12)
 

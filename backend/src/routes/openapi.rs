@@ -509,4 +509,51 @@ mod tests {
         assert!(content_type.starts_with("text/html"));
         assert!(body.contains("swagger"), "Swagger UI no se sirvió");
     }
+
+    #[test]
+    fn lista_de_clientes_documenta_meta_y_ultimo_registro() {
+        let spec = spec_json(false);
+        let items = &operation(&spec, "get", "/coach/clients")["responses"]["200"]["content"]["application/json"]
+            ["schema"]["items"]["$ref"];
+        assert_eq!(items, "#/components/schemas/ClientResponse");
+
+        let client = &spec["components"]["schemas"]["ClientResponse"];
+        let required: BTreeSet<&str> = client["required"]
+            .as_array()
+            .map(|fields| fields.iter().filter_map(Value::as_str).collect())
+            .unwrap_or_default();
+        assert_eq!(
+            required,
+            BTreeSet::from(["id", "name", "email", "goal", "last_meal_at"])
+        );
+
+        let properties = &client["properties"];
+        assert_eq!(
+            properties["last_meal_at"]["type"],
+            serde_json::json!(["string", "null"])
+        );
+        assert_eq!(properties["last_meal_at"]["format"], "date-time");
+        let goal_variants = properties["goal"]["oneOf"]
+            .as_array()
+            .cloned()
+            .unwrap_or_default();
+        assert!(goal_variants.contains(&serde_json::json!({ "type": "null" })));
+        assert!(
+            goal_variants
+                .iter()
+                .any(|variant| variant["$ref"] == "#/components/schemas/ClientGoalSummary"),
+            "goal debe referenciar ClientGoalSummary: {}",
+            properties["goal"]
+        );
+
+        let goal = &spec["components"]["schemas"]["ClientGoalSummary"];
+        let goal_required: BTreeSet<&str> = goal["required"]
+            .as_array()
+            .map(|fields| fields.iter().filter_map(Value::as_str).collect())
+            .unwrap_or_default();
+        assert_eq!(
+            goal_required,
+            BTreeSet::from(["calories", "protein_g", "fat_g", "source"])
+        );
+    }
 }
