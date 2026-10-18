@@ -11,8 +11,7 @@ use utoipa::ToSchema;
 use crate::auth::middleware::{CoachOnly, UserOnly};
 use crate::error::{ApiJson, AppError, ErrorResponse};
 use crate::models::goal::{GoalSource, NutritionalGoal};
-use crate::models::user::User;
-use crate::services::coach_links;
+use crate::services::coach_links::{self, ClientSummary};
 use crate::services::goals::{self, CoachGoalInput};
 use crate::state::AppState;
 
@@ -130,33 +129,73 @@ impl From<CoachGoalRequest> for CoachGoalInput {
     }
 }
 
+/// Resumen de la meta vigente de un cliente en la lista del coach (HU-24).
 #[derive(Debug, Serialize, ToSchema)]
+#[schema(
+    description = "Meta vigente del cliente: la del coach tiene prioridad sobre la calculada."
+)]
+pub struct ClientGoalSummary {
+    #[schema(example = 2200)]
+    pub calories: i32,
+    #[schema(example = 160)]
+    pub protein_g: i32,
+    #[schema(example = 70)]
+    pub fat_g: i32,
+    /// `system` (calculada) o `coach`.
+    pub source: GoalSource,
+}
+
+impl From<NutritionalGoal> for ClientGoalSummary {
+    fn from(goal: NutritionalGoal) -> Self {
+        Self {
+            calories: goal.calories,
+            protein_g: goal.protein_g,
+            fat_g: goal.fat_g,
+            source: goal.source,
+        }
+    }
+}
+
+#[derive(Debug, Serialize, ToSchema)]
+#[schema(
+    description = "Cliente con vinculación activa (HU-05), con su meta vigente y su último registro de comida (HU-24)."
+)]
 pub struct ClientResponse {
     pub id: String,
     #[schema(example = "Ana")]
     pub name: String,
     #[schema(example = "ana@macrofit.com")]
     pub email: String,
+    /// Meta vigente; null si el cliente aún no tiene metas (sin perfil ni meta del coach).
+    #[schema(required = true)]
+    pub goal: Option<ClientGoalSummary>,
+    /// Fecha y hora del registro de comida más reciente (RFC 3339, UTC); null si no tiene registros.
+    #[schema(required = true, format = DateTime, example = "2026-10-17T01:30:00Z")]
+    pub last_meal_at: Option<String>,
 }
 
-impl From<User> for ClientResponse {
-    fn from(user: User) -> Self {
+impl From<ClientSummary> for ClientResponse {
+    fn from(client: ClientSummary) -> Self {
         Self {
-            id: user.id_hex(),
-            name: user.name,
-            email: user.email,
+            id: client.user.id_hex(),
+            name: client.user.name,
+            email: client.user.email,
+            goal: client.goal.map(ClientGoalSummary::from),
+            last_meal_at: client
+                .last_meal_at
+                .and_then(|at| at.try_to_rfc3339_string().ok()),
         }
     }
 }
 
-/// HU-05 — `GET /api/v1/coach/clients`. Clientes con vinculación activa del coach.
-// TODO(HU-24): la lista completa de clientes (con su información) reemplaza a este endpoint mínimo.
+/// HU-05 y HU-24 — `GET /api/v1/coach/clients`. Clientes con vinculación activa del coach, con su meta
+/// vigente y la fecha de su último registro de comida.
 #[utoipa::path(
     get,
     path = "/coach/clients",
     tag = "Coach",
     summary = "Clientes vinculados",
-    description = "Clientes con vinculación activa, ordenados por nombre.",
+    description = "Clientes con vinculación activa, ordenados por nombre, con su meta vigente (`goal`, misma regla que `GET /users/me/goals/current`) y la fecha y hora de su último registro de comida (`last_meal_at`). Ambos son null si no hay datos.",
     security(("bearer_auth" = ["coach"])),
     responses(
         (status = 200, description = "Clientes", body = [ClientResponse]),
@@ -234,4 +273,81 @@ pub fn router() -> Router<AppState> {
             "/coach/clients/:client_id/goals",
             get(get_client_goals_handler).post(set_client_goal_handler),
         )
+}
+
+#[cfg(test)]
+mod tests {
+    use mongodb::bson::{DateTime, oid::ObjectId};
+    use serde_json::json;
+
+    use super::*;
+    use crate::models::user::{Role, User};
+
+    fn ana() -> User {
+        User {
+            id: Some(ObjectId::parse_str("6ad0a1b2c3d4e5f6a7b8c9d0").unwrap()),
+            name: "Ana".into(),
+            email: "ana@macrofit.test".into(),
+            password_hash: "hash".into(),
+            role: Role::User,
+            privacy_accepted_at: None,
+            privacy_version: None,
+            profile_completed: true,
+            created_at: DateTime::now(),
+        }
+    }
+
+    #[test]
+    fn cliente_con_meta_y_registro_se_serializa_con_el_contrato() {
+        let user = ana();
+        let goal = NutritionalGoal {
+            id: ObjectId::new(),
+            user_id: user.id.unwrap(),
+            calories: 2200,
+            protein_g: 160,
+            fat_g: 70,
+            source: GoalSource::Coach,
+            set_by: Some(ObjectId::new()),
+            effective_from: DateTime::now(),
+            created_at: DateTime::now(),
+        };
+        let client = ClientSummary {
+            user,
+            goal: Some(goal),
+            last_meal_at: Some(DateTime::parse_rfc3339_str("2026-10-17T01:30:00Z").unwrap()),
+        };
+
+        let body = serde_json::to_value(ClientResponse::from(client)).unwrap();
+        assert_eq!(
+            body,
+            json!({
+                "id": "6ad0a1b2c3d4e5f6a7b8c9d0",
+                "name": "Ana",
+                "email": "ana@macrofit.test",
+                "goal": { "calories": 2200, "protein_g": 160, "fat_g": 70, "source": "coach" },
+                "last_meal_at": "2026-10-17T01:30:00Z"
+            })
+        );
+    }
+
+    #[test]
+    fn cliente_sin_meta_ni_registros_conserva_los_campos_en_null() {
+        let client = ClientSummary {
+            user: ana(),
+            goal: None,
+            last_meal_at: None,
+        };
+
+        let body = serde_json::to_value(ClientResponse::from(client)).unwrap();
+        assert_eq!(
+            body,
+            json!({
+                "id": "6ad0a1b2c3d4e5f6a7b8c9d0",
+                "name": "Ana",
+                "email": "ana@macrofit.test",
+                "goal": null,
+                "last_meal_at": null
+            })
+        );
+    }
 }

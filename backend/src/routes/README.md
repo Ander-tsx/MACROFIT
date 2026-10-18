@@ -97,7 +97,7 @@ La especificación (`GET /api/v1/openapi.json`, Swagger UI en `/api/v1/docs`) se
 | `openapi.rs` | `/openapi.json` y `/docs` (TEC-14): `ApiDoc` con los `paths(...)` de todos los handlers, esquema `bearer_auth` y pruebas del contrato |
 | `legal.rs` | `/legal/privacy` (TEC-07) |
 | `auth.rs` | `/auth/register` (HU-01), `/auth/login`, `/auth/refresh`, `/auth/logout`, `/auth/me` (HU-02), `/coach/test` (TEC-05) |
-| `goals.rs` | `/users/me/goals` y `/users/me/goals/current` (HU-04, `UserOnly`); `/coach/clients` y `/coach/clients/{clientId}/goals` (HU-05, `CoachOnly`) |
+| `goals.rs` | `/users/me/goals` y `/users/me/goals/current` (HU-04, `UserOnly`); `/coach/clients` (HU-05 y HU-24: `ClientResponse` con `goal` y `last_meal_at`) y `/coach/clients/{clientId}/goals` (HU-05), ambos `CoachOnly` |
 | `dev.rs` | `/dev/seed/coach-links` (HU-05): solo se monta con `APP_ENV=development` |
 | `meals.rs` | `/meals/photos` POST (HU-06, `UserOnly`): multipart con el campo `photo`, límite de cuerpo propio (`DefaultBodyLimit`). `/meals/estimate` POST (HU-07, `UserOnly`): `{ photo_id }` → alimentos y totales. `/meals` POST/GET y `/meals/{id}` DELETE (HU-09, `UserOnly`): registros de comida; `?date=` se lee con `Query` y su rechazo se convierte a `INVALID_BODY` |
 | `profile.rs` | `/users/me/profile` POST/GET/PATCH (HU-03), solo rol `user` (`UserOnly`) |

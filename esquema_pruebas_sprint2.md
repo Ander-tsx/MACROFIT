@@ -23,6 +23,12 @@
 | TEC-09 | Niveles de dificultad idénticos al perfil (beginner, intermediate, advanced) y grupos musculares esperados. | Unitaria | Los niveles de ejercicio coinciden con `Level` de `UserProfile`; los parsers aceptan valores válidos y rechazan inválidos. | [**3**](#caso-19) (mobile 0 · backend 3) |
 | TEC-09 | Carga reproducible e idempotente sin duplicación de ejercicios. | Integración | Ejecutar `seed_exercises` repetidas veces mantiene exactamente 18 ejercicios en la colección `exercises` sin duplicados. | [**2**](#caso-20) (mobile 0 · backend 2) |
 | TEC-09 | Consulta y filtrado del catálogo de ejercicios vía API REST. | Integración | `GET /api/v1/exercises` responde la lista completa; los parámetros de consulta `muscle_group` y `level` filtran correctamente; `POST /api/v1/dev/seed/exercises` realiza la siembra en desarrollo. | [**4**](#caso-21) (mobile 0 · backend 4) |
+| HU-24 | La lista del coach solo incluye clientes con vínculo activo (RF-19, RN-04). | Integración | `GET /coach/clients` devuelve a los clientes vinculados y no a uno que se desvinculó (HU-14). | [**1**](#caso-22) (mobile 0 · backend 1) |
+| HU-24 | Resumen de la meta vigente de cada cliente. | Integración | `goal` trae calorías, proteína, grasa y origen de la meta vigente (la del coach tiene prioridad y las futuras no cuentan); es `null` si el cliente no tiene metas. | [**5**](#caso-23) (mobile 0 · backend 5) |
+| HU-24 | Fecha del último registro de comida de cada cliente. | Integración | `last_meal_at` es la fecha y hora (RFC 3339, UTC) del registro más reciente; es `null` si el cliente no tiene registros. | [**4**](#caso-24) (mobile 0 · backend 4) |
+| HU-24 | Respuesta compatible con HU-05 y armada sin una consulta por cliente. | Unitaria | Se conservan `id`, `name`, `email` y el orden por nombre; la meta y el último registro se unen a cada cliente desde consultas en lote, sin mezclar datos de otros usuarios. | [**6**](#caso-25) (mobile 0 · backend 6) |
+| HU-24 | Restricción por sesión y rol. | Integración | Sin sesión responde 401 `UNAUTHORIZED`; una cuenta de usuario responde 403 `FORBIDDEN_ROLE`. | [**2**](#caso-26) (mobile 0 · backend 2) |
+| HU-24 | Contrato OpenAPI de la lista de clientes (TEC-14). | Unitaria | `ClientResponse` documenta `goal` y `last_meal_at` como obligatorios y nulables, y `goal` referencia `ClientGoalSummary`. | [**1**](#caso-27) (mobile 0 · backend 1) |
 
 ## Cómo se cuentan las pruebas
 
@@ -32,6 +38,8 @@
 - No se cuentan las pruebas manuales de punta a punta ni las capturas de evidencia.
 
 Inventario al cerrar TEC-09: **119** pruebas mobile, **<RUST>** pruebas de Rust (`cargo test`, incluidas las 6 de TEC-13 que requieren MongoDB y se ejecutan con `--ignored`) y **<POSTMAN>** requests de Postman (sin contar los de preparación). Incluye las pruebas de TEC-13, HU-12-API, HU-21-API y los 3 requests del catálogo de ejercicios de TEC-09, que todavía no tienen casos en este esquema.
+
+Inventario al cerrar HU-24-API: **119** pruebas mobile, **181** pruebas de Rust (`cargo test`: 167 se ejecutan y 14 requieren MongoDB y se ejecutan con `--ignored`) y **143** requests de Postman en la colección combinada (sin contar los 38 de preparación). HU-24 agrega 10 pruebas de Rust y 6 requests de Postman, y actualiza *HU-05 Metas por coach › 06 - Lista de clientes del coach* al contrato nuevo.
 
 ## Detalle de las pruebas por caso
 
@@ -313,3 +321,81 @@ Comprueba los endpoints de la API: `GET /api/v1/exercises` responde la lista com
 - Postman › TEC-09 Catálogo de ejercicios › 01 - Sembrar catálogo de ejercicios
 - Postman › TEC-09 Catálogo de ejercicios › 02 - Consultar catálogo de ejercicios
 - Postman › TEC-09 Catálogo de ejercicios › 03 - Filtrar por grupo muscular y nivel
+
+### <a id="caso-22"></a>Caso 22 · HU-24 — Solo clientes con vínculo activo
+
+Mobile: 0 · Backend: 1
+
+La carpeta crea su propio coach y tres clientes vinculados con el código de invitación (HU-12/HU-13); Carla se desvincula (HU-14) antes de consultar.
+
+**Backend (Postman)**
+
+- Postman › HU-24 Lista de clientes › 03 - Coach con clientes
+
+### <a id="caso-23"></a>Caso 23 · HU-24 — Resumen de la meta vigente
+
+Mobile: 0 · Backend: 5
+
+`pick_current_goals` aplica en lote la misma regla que `GET /users/me/goals/current` sobre las metas de todos los clientes, obtenidas con una sola consulta.
+
+**Backend (Rust)**
+
+- `backend/src/services/goals.rs` › `meta_vigente_en_lote_prioriza_la_del_coach_mas_reciente`
+- `backend/src/services/goals.rs` › `meta_vigente_en_lote_ignora_las_futuras_y_toma_la_calculada_mas_reciente`
+- `backend/src/services/goals.rs` › `meta_vigente_en_lote_omite_usuarios_sin_metas_vigentes`
+
+**Backend (Postman)**
+
+- Postman › HU-24 Lista de clientes › 04 - Cliente sin registros (fecha null)
+- Postman › HU-24 Lista de clientes › 06 - Cliente con meta del coach
+
+### <a id="caso-24"></a>Caso 24 · HU-24 — Fecha del último registro de comida
+
+Mobile: 0 · Backend: 4
+
+Una agregación sobre `meals` (`$match` por los clientes y `$group` con `$max` de `eaten_at`) da el último registro de todos los clientes a la vez.
+
+**Backend (Rust)**
+
+- `backend/src/services/meals.rs` › `ultimo_registro_se_agrupa_por_usuario_en_una_sola_agregacion`
+- `backend/src/services/meals.rs` › `ultimo_registro_se_lee_por_usuario_e_ignora_filas_incompletas`
+
+**Backend (Postman)**
+
+- Postman › HU-24 Lista de clientes › 04 - Cliente sin registros (fecha null)
+- Postman › HU-24 Lista de clientes › 05 - Cliente con registro (fecha del último)
+
+### <a id="caso-25"></a>Caso 25 · HU-24 — Respuesta compatible con HU-05 y armada en lote
+
+Mobile: 0 · Backend: 6
+
+La app usa la lista desde HU-05 y solo lee `id`, `name` y `email`; los campos nuevos se agregan sin quitar ninguno.
+
+**Backend (Rust)**
+
+- `backend/src/services/coach_links.rs` › `la_lista_une_meta_y_ultimo_registro_de_cada_cliente`
+- `backend/src/services/coach_links.rs` › `la_lista_conserva_el_orden_por_nombre_y_no_mezcla_datos_ajenos`
+- `backend/src/routes/goals.rs` › `cliente_con_meta_y_registro_se_serializa_con_el_contrato`
+- `backend/src/routes/goals.rs` › `cliente_sin_meta_ni_registros_conserva_los_campos_en_null`
+
+**Backend (Postman)**
+
+- Postman › HU-24 Lista de clientes › 03 - Coach con clientes
+- Postman › HU-05 Metas por coach › 06 - Lista de clientes del coach
+
+### <a id="caso-26"></a>Caso 26 · HU-24 — Restricción por sesión y rol
+
+Mobile: 0 · Backend: 2
+
+**Backend (Postman)**
+
+- Postman › HU-24 Lista de clientes › 01 - Sin sesión
+- Postman › HU-24 Lista de clientes › 02 - Cuenta de usuario
+
+### <a id="caso-27"></a>Caso 27 · HU-24 — Contrato OpenAPI de la lista de clientes
+
+Mobile: 0 · Backend: 1
+
+**Backend (Rust)**
+
+- `backend/src/routes/openapi.rs` › `lista_de_clientes_documenta_meta_y_ultimo_registro`

@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use mongodb::{
     Database,
     bson::{DateTime, Document, doc, oid::ObjectId, to_bson},
@@ -282,6 +284,53 @@ async fn find_current_goal(
         Some(goal) => Ok(Some(goal)),
         None => find_latest(db, started).await,
     }
+}
+
+/// HU-24 — meta vigente de cada usuario entre `goals`, con la misma regla que `find_current_goal`:
+/// se ignoran las que empiezan después de `now` y la más reciente de un coach tiene prioridad sobre
+/// las calculadas. Un usuario sin metas vigentes no aparece en el mapa.
+pub fn pick_current_goals(
+    goals: Vec<NutritionalGoal>,
+    now: DateTime,
+) -> HashMap<ObjectId, NutritionalGoal> {
+    let mut current: HashMap<ObjectId, NutritionalGoal> = HashMap::new();
+    for goal in goals.into_iter().filter(|goal| goal.effective_from <= now) {
+        let wins = current
+            .get(&goal.user_id)
+            .is_none_or(|best| current_goal_rank(&goal) > current_goal_rank(best));
+        if wins {
+            current.insert(goal.user_id, goal);
+        }
+    }
+    current
+}
+
+/// Orden de preferencia de `pick_current_goals`: primero las del coach, luego la más reciente.
+fn current_goal_rank(goal: &NutritionalGoal) -> (bool, DateTime, ObjectId) {
+    (
+        goal.source == GoalSource::Coach,
+        goal.effective_from,
+        goal.id,
+    )
+}
+
+/// HU-24 — meta vigente de varios usuarios con una sola consulta (sin una por usuario).
+pub async fn current_goals_for(
+    db: &Database,
+    user_ids: &[ObjectId],
+    now: DateTime,
+) -> Result<HashMap<ObjectId, NutritionalGoal>, AppError> {
+    if user_ids.is_empty() {
+        return Ok(HashMap::new());
+    }
+    let cursor = goals(db)
+        .find(doc! {
+            "user_id": { "$in": user_ids.to_vec() },
+            "effective_from": { "$lte": now },
+        })
+        .await
+        .map_err(AppError::internal)?;
+    Ok(pick_current_goals(collect_cursor(cursor).await?, now))
 }
 
 async fn list_goals(db: &Database, user_id: ObjectId) -> Result<Vec<NutritionalGoal>, AppError> {
@@ -675,5 +724,63 @@ mod tests {
             };
             assert_eq!(invalid_fields(input), ["effective_from"], "{value}");
         }
+    }
+
+    fn goal(
+        user_id: ObjectId,
+        source: GoalSource,
+        calories: i32,
+        effective_from: &str,
+    ) -> NutritionalGoal {
+        NutritionalGoal {
+            id: ObjectId::new(),
+            user_id,
+            calories,
+            protein_g: 150,
+            fat_g: 60,
+            source,
+            set_by: None,
+            effective_from: date(effective_from),
+            created_at: date(effective_from),
+        }
+    }
+
+    #[test]
+    fn meta_vigente_en_lote_prioriza_la_del_coach_mas_reciente() {
+        let ana = ObjectId::new();
+        let goals = vec![
+            goal(ana, GoalSource::System, 1800, "2026-10-14T00:00:00Z"),
+            goal(ana, GoalSource::Coach, 2000, "2026-10-01T00:00:00Z"),
+            goal(ana, GoalSource::Coach, 2100, "2026-10-05T00:00:00Z"),
+        ];
+        let current = pick_current_goals(goals, date("2026-10-15T00:00:00Z"));
+        assert_eq!(current.len(), 1);
+        assert_eq!(current[&ana].calories, 2100);
+        assert_eq!(current[&ana].source, GoalSource::Coach);
+    }
+
+    #[test]
+    fn meta_vigente_en_lote_ignora_las_futuras_y_toma_la_calculada_mas_reciente() {
+        let ana = ObjectId::new();
+        let bruno = ObjectId::new();
+        let goals = vec![
+            goal(ana, GoalSource::System, 1800, "2026-10-01T00:00:00Z"),
+            goal(ana, GoalSource::System, 1900, "2026-10-10T00:00:00Z"),
+            goal(ana, GoalSource::Coach, 2500, "2026-11-01T00:00:00Z"),
+            goal(bruno, GoalSource::Coach, 2400, "2026-10-15T00:00:00Z"),
+        ];
+        let current = pick_current_goals(goals, date("2026-10-15T00:00:00Z"));
+        assert_eq!(current[&ana].calories, 1900);
+        assert_eq!(current[&ana].source, GoalSource::System);
+        // Una meta que empieza justo ahora ya está vigente.
+        assert_eq!(current[&bruno].calories, 2400);
+    }
+
+    #[test]
+    fn meta_vigente_en_lote_omite_usuarios_sin_metas_vigentes() {
+        let ana = ObjectId::new();
+        let goals = vec![goal(ana, GoalSource::Coach, 2000, "2026-12-01T00:00:00Z")];
+        assert!(pick_current_goals(goals, date("2026-10-15T00:00:00Z")).is_empty());
+        assert!(pick_current_goals(Vec::new(), date("2026-10-15T00:00:00Z")).is_empty());
     }
 }
