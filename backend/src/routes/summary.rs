@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 use crate::auth::middleware::UserOnly;
 use crate::error::{AppError, ErrorResponse};
 use crate::models::goal::GoalSource;
-use crate::services::summary::{self, DailySummary, DayGoal, Totals};
+use crate::services::summary::{self, DailySummary, DayGoal, Totals, WeekDay, WeeklySummary};
 use crate::state::AppState;
 
 #[derive(Debug, Serialize, utoipa::ToSchema)]
@@ -80,6 +80,72 @@ impl From<DailySummary> for DailySummaryResponse {
     }
 }
 
+#[derive(Debug, Serialize, utoipa::ToSchema)]
+#[schema(description = "Un día de la semana: su resumen diario y si cumplió la meta.")]
+pub struct WeekDayResponse {
+    /// Día, `YYYY-MM-DD`.
+    #[schema(example = "2026-10-16")]
+    pub date: String,
+    pub goal: DayGoalResponse,
+    pub consumed: TotalsResponse,
+    /// Meta de ese día − consumido. Negativo cuando el consumo supera la meta.
+    pub remaining: TotalsResponse,
+    /// `true` si consumió calorías y estas quedan entre el 90 % y el 110 % de la meta de ese día.
+    pub goal_met: bool,
+}
+
+impl From<WeekDay> for WeekDayResponse {
+    fn from(day: WeekDay) -> Self {
+        Self {
+            date: day.summary.date,
+            goal: day.summary.goal.into(),
+            consumed: day.summary.consumed.into(),
+            remaining: day.summary.remaining.into(),
+            goal_met: day.goal_met,
+        }
+    }
+}
+
+#[derive(Debug, Serialize, utoipa::ToSchema)]
+#[schema(
+    description = "Siete días seguidos con sus totales, el promedio diario y los días con la meta cumplida."
+)]
+pub struct WeeklySummaryResponse {
+    /// Primer día, `YYYY-MM-DD`.
+    #[schema(example = "2026-10-12")]
+    pub start: String,
+    /// Último día (`start` + 6), `YYYY-MM-DD`.
+    #[schema(example = "2026-10-18")]
+    pub end: String,
+    /// Exactamente 7 días, del primero al último; los días sin registros aparecen con consumo en 0.
+    pub days: Vec<WeekDayResponse>,
+    /// Total de los 7 días entre 7. Los días sin registros cuentan como 0.
+    pub average: TotalsResponse,
+    /// Cuántos de los 7 días cumplieron la meta.
+    #[schema(example = 3)]
+    pub goal_met_days: usize,
+}
+
+impl From<WeeklySummary> for WeeklySummaryResponse {
+    fn from(week: WeeklySummary) -> Self {
+        Self {
+            start: week.start,
+            end: week.end,
+            days: week.days.into_iter().map(WeekDayResponse::from).collect(),
+            average: week.average.into(),
+            goal_met_days: week.goal_met_days,
+        }
+    }
+}
+
+#[derive(Debug, Deserialize, utoipa::IntoParams)]
+#[into_params(parameter_in = Query)]
+pub struct WeeklySummaryQuery {
+    /// Primer día de la semana (YYYY-MM-DD): cualquier día; la semana son los 7 días desde ahí. Obligatorio.
+    #[param(value_type = String, format = Date, required = true, example = "2026-10-12")]
+    pub start: Option<String>,
+}
+
 #[derive(Debug, Deserialize, utoipa::IntoParams)]
 #[into_params(parameter_in = Query)]
 pub struct DailySummaryQuery {
@@ -116,6 +182,36 @@ pub async fn get_daily_summary_handler(
     Ok(Json(summary.into()))
 }
 
+/// HU-11 — GET /api/v1/users/me/summary/weekly?start=YYYY-MM-DD. Siete días con totales, promedio y metas cumplidas (RF-10).
+#[utoipa::path(
+    get,
+    path = "/users/me/summary/weekly",
+    tag = "Resumen",
+    summary = "Resumen semanal (HU-11)",
+    description = "Devuelve 7 días desde `start` con lo consumido, la meta de cada día (si cambia a mitad de semana, cada día usa la que regía) y si cumplió: un día cumple si consumió calorías y estas quedan entre el 90 % y el 110 % de su meta. El promedio es el total de los 7 días entre 7 (los días sin registros cuentan como 0) y `goal_met_days` cuenta los días cumplidos. Sin meta ni perfil responde igual que `GET /users/me/goals/current`.",
+    security(("bearer_auth" = ["user"])),
+    params(WeeklySummaryQuery),
+    responses(
+        (status = 200, description = "Resumen de la semana", body = WeeklySummaryResponse),
+        (status = 400, description = "`VALIDATION_ERROR` en `start` (ausente o con formato distinto de `YYYY-MM-DD`)", body = ErrorResponse),
+        (status = 401, description = "`UNAUTHORIZED` o `TOKEN_REVOKED`", body = ErrorResponse),
+        (status = 403, description = "`FORBIDDEN_ROLE` (cuenta `coach`)", body = ErrorResponse),
+        (status = 404, description = "`PROFILE_NOT_FOUND`: el usuario no tiene perfil ni meta", body = ErrorResponse),
+    )
+)]
+pub async fn get_weekly_summary_handler(
+    State(state): State<AppState>,
+    UserOnly(auth): UserOnly,
+    query: Result<Query<WeeklySummaryQuery>, QueryRejection>,
+) -> Result<Json<WeeklySummaryResponse>, AppError> {
+    let Query(query) = query.map_err(|rejection| AppError::InvalidBody(rejection.body_text()))?;
+    let week =
+        summary::get_weekly_summary(&state.db, auth.user_id, state.utc_offset, query.start).await?;
+    Ok(Json(week.into()))
+}
+
 pub fn router() -> Router<AppState> {
-    Router::new().route("/users/me/summary/daily", get(get_daily_summary_handler))
+    Router::new()
+        .route("/users/me/summary/daily", get(get_daily_summary_handler))
+        .route("/users/me/summary/weekly", get(get_weekly_summary_handler))
 }

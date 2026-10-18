@@ -62,6 +62,7 @@ responder `500 INTERNAL_ERROR` ante un error inesperado.";
         meals::list_meals_handler,
         meals::delete_meal_handler,
         summary::get_daily_summary_handler,
+        summary::get_weekly_summary_handler,
         auth::coach_only_handler,
     ),
     modifiers(&BearerAuth),
@@ -72,7 +73,7 @@ responder `500 INTERNAL_ERROR` ante un error inesperado.";
         (name = "Perfil", description = "Perfil inicial del usuario (HU-03)"),
         (name = "Metas", description = "Meta nutricional del usuario (HU-04)"),
         (name = "Coach", description = "Clientes, metas por coach (HU-05) y código de invitación (HU-12)"),
-        (name = "Resumen", description = "Resumen diario contra la meta (HU-10)"),
+        (name = "Resumen", description = "Resumen diario contra la meta (HU-10) y resumen semanal (HU-11)"),
         (name = "Comidas", description = "Foto de la comida (HU-06), estimación nutricional (HU-07) y registros de comida (HU-09)"),
     )
 )]
@@ -232,6 +233,12 @@ mod tests {
         (
             "get",
             "/users/me/summary/daily",
+            User,
+            &[200, 400, 401, 403, 404],
+        ),
+        (
+            "get",
+            "/users/me/summary/weekly",
             User,
             &[200, 400, 401, 403, 404],
         ),

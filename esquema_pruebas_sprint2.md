@@ -37,6 +37,13 @@
 | HU-10 | El día se define en la zona horaria de la app. | Unitaria | El día consultado termina un milisegundo antes de la medianoche local (`APP_UTC_OFFSET`, UTC−6 por defecto) para elegir la meta vigente. | [**1**](#caso-33) (mobile 0 · backend 1) |
 | HU-10 | Validación de `date`. | Integración | Una fecha inválida o ausente responde 400 `VALIDATION_ERROR` con el campo `date` señalado. | [**2**](#caso-34) (mobile 0 · backend 2) |
 | HU-10 | Restricción por sesión, rol y perfil. | Integración | Sin sesión responde 401 `UNAUTHORIZED`; una cuenta de coach responde 403 `FORBIDDEN_ROLE`; un usuario sin perfil ni meta responde 404 `PROFILE_NOT_FOUND`, igual que `GET /users/me/goals/current`. | [**3**](#caso-35) (mobile 0 · backend 3) |
+| HU-11 | La semana son 7 días seguidos desde `start` (RF-10). | Unitaria | `start` puede ser cualquier día; la respuesta trae exactamente 7 días desde ahí (también al cruzar de mes), con `start` y `end`; una semana que se sale del calendario se rechaza. | [**3**](#caso-36) (mobile 0 · backend 3) |
+| HU-11 | Totales de calorías, proteína y grasa de cada día. | Integración | Cada día trae lo consumido ese día (igual a lo enviado), la meta de ese día y el restante; los días sin registros aparecen en 0. | [**3**](#caso-37) (mobile 0 · backend 3) |
+| HU-11 | Promedio diario con los días vacíos como 0. | Unitaria | El promedio es el total de los 7 días entre 7, redondeado a 1 decimal; una semana sin registros da promedio 0 (nunca `-0`). | [**3**](#caso-38) (mobile 0 · backend 3) |
+| HU-11 | Día con la meta cumplida. | Unitaria | Un día cumple si consumió calorías y estas quedan entre el 90 % y el 110 % de su meta (límites incluidos); sin consumo nunca cumple; `goal_met_days` cuenta los días cumplidos. | [**6**](#caso-39) (mobile 0 · backend 6) |
+| HU-11 | Meta que cambia a mitad de semana (RF-21). | Integración | Cada día se compara con la meta vigente ese día (calculada antes, del coach después), con la misma regla que `GET /users/me/goals/current`. | [**4**](#caso-40) (mobile 0 · backend 4) |
+| HU-11 | Validación de `start`. | Integración | Un `start` ausente o con formato inválido responde 400 `VALIDATION_ERROR` con el campo `start` señalado. | [**3**](#caso-41) (mobile 0 · backend 3) |
+| HU-11 | Restricción por sesión, rol y perfil. | Integración | Sin sesión responde 401 `UNAUTHORIZED`; una cuenta de coach responde 403 `FORBIDDEN_ROLE`; un usuario sin perfil ni meta responde 404 `PROFILE_NOT_FOUND`. | [**3**](#caso-42) (mobile 0 · backend 3) |
 
 ## Cómo se cuentan las pruebas
 
@@ -50,6 +57,8 @@ Inventario al cerrar TEC-09: **119** pruebas mobile, **<RUST>** pruebas de Rust 
 Inventario al cerrar HU-24-API: **119** pruebas mobile, **181** pruebas de Rust (`cargo test`: 167 se ejecutan y 14 requieren MongoDB y se ejecutan con `--ignored`) y **143** requests de Postman en la colección combinada (sin contar los 38 de preparación). HU-24 agrega 10 pruebas de Rust y 6 requests de Postman, y actualiza *HU-05 Metas por coach › 06 - Lista de clientes del coach* al contrato nuevo.
 
 Inventario al cerrar HU-10-API: **119** pruebas mobile, **188** pruebas de Rust (`cargo test`: 174 se ejecutan y 14 requieren MongoDB y se ejecutan con `--ignored`) y **158** requests de Postman en la colección combinada (sin contar los 48 de preparación). HU-10 agrega 7 pruebas de Rust y 15 requests de Postman (más 10 de preparación). Su endpoint está en el catálogo de `routes/openapi.rs`, así que lo cubren también las pruebas generales de TEC-14 (casos 11 a 15).
+
+Inventario al cerrar HU-11-API: **119** pruebas mobile, **199** pruebas de Rust (`cargo test`: 185 se ejecutan y 14 requieren MongoDB y se ejecutan con `--ignored`) y **172** requests de Postman en la colección combinada (sin contar los 58 de preparación). HU-11 agrega 11 pruebas de Rust y 14 requests de Postman (más 10 de preparación) y reutiliza el cálculo diario de HU-10. Su endpoint también está en el catálogo de `routes/openapi.rs` (casos 11 a 15 de TEC-14).
 
 ## Detalle de las pruebas por caso
 
@@ -509,3 +518,98 @@ Mobile: 0 · Backend: 3
 - Postman › HU-10 Resumen diario › 11 - Sin sesión
 - Postman › HU-10 Resumen diario › 12 - Cuenta de coach
 - Postman › HU-10 Resumen diario › 13 - Usuario sin meta vigente
+
+### <a id="caso-36"></a>Caso 36 · HU-11 — La semana son 7 días seguidos desde `start`
+
+Mobile: 0 · Backend: 3
+
+**Backend (Rust)**
+
+- `backend/src/services/summary.rs` › `la_semana_son_siete_dias_seguidos_aunque_cambie_el_mes`
+- `backend/src/services/summary.rs` › `una_semana_que_se_sale_del_calendario_se_rechaza`
+
+**Backend (Postman)**
+
+- Postman › HU-11 Resumen semanal › 01 - Semana sin registros
+
+### <a id="caso-37"></a>Caso 37 · HU-11 — Totales de calorías, proteína y grasa de cada día
+
+Mobile: 0 · Backend: 3
+
+La carpeta guarda registros de hoy y consulta la semana tres veces; el consumo esperado se calcula a partir de lo enviado.
+
+**Backend (Postman)**
+
+- Postman › HU-11 Resumen semanal › 03 - Semana con registros por debajo del 90 %
+- Postman › HU-11 Resumen semanal › 05 - Semana con el día en la meta (100 %)
+- Postman › HU-11 Resumen semanal › 07 - Semana con el día por encima del 110 %
+
+### <a id="caso-38"></a>Caso 38 · HU-11 — Promedio diario con los días vacíos como 0
+
+Mobile: 0 · Backend: 3
+
+**Backend (Rust)**
+
+- `backend/src/services/summary.rs` › `el_promedio_cuenta_los_dias_sin_registros_como_cero`
+- `backend/src/services/summary.rs` › `una_semana_vacia_no_devuelve_ceros_negativos`
+
+**Backend (Postman)**
+
+- Postman › HU-11 Resumen semanal › 01 - Semana sin registros
+
+### <a id="caso-39"></a>Caso 39 · HU-11 — Día con la meta cumplida
+
+Mobile: 0 · Backend: 6
+
+Calorías entre el 90 % y el 110 % de la meta del día. En Postman el mismo día pasa de 50 % (no cumple) a 100 % (cumple) y a 150 % (no cumple).
+
+**Backend (Rust)**
+
+- `backend/src/services/summary.rs` › `la_meta_se_cumple_entre_el_90_y_el_110_por_ciento_con_limites_incluidos`
+- `backend/src/services/summary.rs` › `sin_consumo_la_meta_nunca_se_cumple`
+- `backend/src/services/summary.rs` › `cuenta_los_dias_que_cumplen_la_meta_y_marca_cada_uno`
+
+**Backend (Postman)**
+
+- Postman › HU-11 Resumen semanal › 03 - Semana con registros por debajo del 90 %
+- Postman › HU-11 Resumen semanal › 05 - Semana con el día en la meta (100 %)
+- Postman › HU-11 Resumen semanal › 07 - Semana con el día por encima del 110 %
+
+### <a id="caso-40"></a>Caso 40 · HU-11 — Meta que cambia a mitad de semana
+
+Mobile: 0 · Backend: 4
+
+`pick_goal_at` aplica la regla de la meta vigente a cualquier instante; la semana la usa una vez por día con una sola consulta (`get_goals_at`). En Postman el coach fija una meta que empieza a mitad de semana; el día justo antes del inicio no se comprueba porque la fecha de la meta es una fecha en UTC y ese día puede quedar a uno u otro lado según la zona horaria.
+
+**Backend (Rust)**
+
+- `backend/src/services/summary.rs` › `cada_dia_se_compara_con_la_meta_vigente_ese_dia`
+- `backend/src/services/goals.rs` › `meta_a_una_fecha_cambia_a_mitad_de_semana_y_la_del_coach_gana`
+- `backend/src/services/goals.rs` › `meta_a_una_fecha_anterior_a_la_primera_meta_no_existe`
+
+**Backend (Postman)**
+
+- Postman › HU-11 Resumen semanal › 14 - Cada día con la meta que regía ese día (RF-21)
+
+### <a id="caso-41"></a>Caso 41 · HU-11 — Validación de `start`
+
+Mobile: 0 · Backend: 3
+
+**Backend (Rust)**
+
+- `backend/src/services/summary.rs` › `start_ausente_o_con_formato_invalido_senala_el_campo_start`
+
+**Backend (Postman)**
+
+- Postman › HU-11 Resumen semanal › 08 - Start inválido
+- Postman › HU-11 Resumen semanal › 09 - Sin start
+
+### <a id="caso-42"></a>Caso 42 · HU-11 — Restricción por sesión, rol y perfil
+
+Mobile: 0 · Backend: 3
+
+**Backend (Postman)**
+
+- Postman › HU-11 Resumen semanal › 10 - Sin sesión
+- Postman › HU-11 Resumen semanal › 11 - Cuenta de coach
+- Postman › HU-11 Resumen semanal › 12 - Usuario sin meta vigente

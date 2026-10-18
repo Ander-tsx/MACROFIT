@@ -5,17 +5,25 @@
 //! - La meta es la vigente al final de ese día (`goals::get_goal_at`, la misma regla que `GET /users/me/goals/current`).
 //! - `remaining` = meta − consumido. Si el consumo supera la meta es **negativo** (por ejemplo `-150` = se pasó por 150).
 //! - Los valores se redondean a 1 decimal para que la suma de decimales binarios no deje ruido (`0.1 + 0.2`).
+//!
+//! HU-11 — resumen semanal (RF-10), sobre el mismo cálculo diario:
+//!
+//! - `start` es cualquier día; la semana son los 7 días desde ahí. Cada día usa su propia meta vigente (RF-21).
+//! - Un día **cumple la meta** si consumió calorías y estas quedan entre el 90 % y el 110 % de la meta de ese día.
+//! - El promedio es el total de los 7 días entre 7: un día sin registros cuenta como 0.
 
 use chrono::{Days, FixedOffset, NaiveDate, NaiveTime};
 use mongodb::{
     Database,
     bson::{DateTime, oid::ObjectId},
 };
+use std::collections::HashMap;
 
-use crate::error::AppError;
+use crate::error::{AppError, FieldErrors};
 use crate::models::goal::{GoalSource, NutritionalGoal};
 use crate::models::meal::Meal;
 use crate::services::{goals, meals};
+use crate::validation::{DATE_FORMAT, parse_date};
 
 /// Calorías y macros que muestra el resumen (RF-09).
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -88,7 +96,7 @@ pub fn build_daily_summary(
     let goal = DayGoal::from(goal);
     let consumed = sum_meals(day_meals);
     DailySummary {
-        date: date.format(crate::validation::DATE_FORMAT).to_string(),
+        date: date.format(DATE_FORMAT).to_string(),
         remaining: remaining(goal.totals, consumed),
         goal,
         consumed,
@@ -117,6 +125,134 @@ pub async fn get_daily_summary(
     let goal = goals::get_goal_at(db, user_id, end_of_day(date, offset)).await?;
     let day_meals = meals::find_meals_by_date(db, user_id, date).await?;
     Ok(build_daily_summary(date, &goal, &day_meals))
+}
+
+// ───────────────────────────── HU-11 · Resumen semanal ─────────────────────────────
+
+/// Días de una semana de resumen.
+pub const WEEK_DAYS: usize = 7;
+
+/// Un día de la semana: su resumen diario y si cumplió la meta.
+#[derive(Debug, Clone, PartialEq)]
+pub struct WeekDay {
+    pub summary: DailySummary,
+    pub goal_met: bool,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct WeeklySummary {
+    /// Primer día, `YYYY-MM-DD`.
+    pub start: String,
+    /// Último día (el sexto después de `start`), `YYYY-MM-DD`.
+    pub end: String,
+    pub days: Vec<WeekDay>,
+    /// Total de los 7 días entre 7; los días sin registros cuentan como 0.
+    pub average: Totals,
+    /// Cuántos de los 7 días cumplieron la meta.
+    pub goal_met_days: usize,
+}
+
+/// Un día cumple la meta si consumió calorías y estas están entre el 90 % y el 110 % de la meta (límites incluidos).
+/// Se compara en enteros (×10) para que 1800 y 2200 con una meta de 2000 queden dentro sin error de punto flotante.
+pub fn goal_met(goal_kcal: f64, consumed_kcal: f64) -> bool {
+    consumed_kcal > 0.0
+        && consumed_kcal * 10.0 >= goal_kcal * 9.0
+        && consumed_kcal * 10.0 <= goal_kcal * 11.0
+}
+
+/// Los 7 días que empiezan en `start`; `None` si se sale del calendario.
+pub fn week_dates(start: NaiveDate) -> Option<[NaiveDate; WEEK_DAYS]> {
+    let mut dates = [start; WEEK_DAYS];
+    for (offset, date) in dates.iter_mut().enumerate() {
+        *date = start.checked_add_days(Days::new(offset as u64))?;
+    }
+    Some(dates)
+}
+
+/// Arma la semana a partir de la meta vigente de cada día y de los registros de toda la semana. Función pura.
+pub fn build_weekly_summary(
+    days: &[(NaiveDate, NutritionalGoal); WEEK_DAYS],
+    week_meals: &[Meal],
+) -> WeeklySummary {
+    let mut by_date: HashMap<&str, Vec<Meal>> = HashMap::new();
+    for meal in week_meals {
+        by_date
+            .entry(meal.date.as_str())
+            .or_default()
+            .push(meal.clone());
+    }
+
+    let week_days: Vec<WeekDay> = days
+        .iter()
+        .map(|(date, goal)| {
+            let key = date.format(DATE_FORMAT).to_string();
+            let day_meals = by_date.get(key.as_str()).map_or(&[][..], Vec::as_slice);
+            let summary = build_daily_summary(*date, goal, day_meals);
+            let goal_met = goal_met(
+                summary.goal.totals.calories_kcal,
+                summary.consumed.calories_kcal,
+            );
+            WeekDay { summary, goal_met }
+        })
+        .collect();
+
+    let total = |value: fn(&Totals) -> f64| {
+        round1(
+            week_days
+                .iter()
+                .map(|day| value(&day.summary.consumed))
+                .sum::<f64>()
+                / WEEK_DAYS as f64,
+        )
+    };
+    WeeklySummary {
+        start: days[0].0.format(DATE_FORMAT).to_string(),
+        end: days[WEEK_DAYS - 1].0.format(DATE_FORMAT).to_string(),
+        average: Totals {
+            calories_kcal: total(|t| t.calories_kcal),
+            protein_g: total(|t| t.protein_g),
+            fat_g: total(|t| t.fat_g),
+        },
+        goal_met_days: week_days.iter().filter(|day| day.goal_met).count(),
+        days: week_days,
+    }
+}
+
+/// HU-11 — valida `?start=`: obligatorio y con formato `YYYY-MM-DD`; el error señala el campo `start`.
+pub fn validate_start(start: Option<String>) -> Result<NaiveDate, AppError> {
+    let error = |message: &str| {
+        AppError::Validation(FieldErrors::from([(
+            "start".to_string(),
+            message.to_string(),
+        )]))
+    };
+    match start.as_deref().map(str::trim) {
+        None | Some("") => Err(error("Indica el primer día de la semana (YYYY-MM-DD)")),
+        Some(value) => parse_date(value)
+            .filter(|date| week_dates(*date).is_some())
+            .ok_or_else(|| error("La fecha debe tener el formato YYYY-MM-DD")),
+    }
+}
+
+/// HU-11 — `GET /users/me/summary/weekly?start=`. Una consulta para las metas y otra para los registros de la semana.
+pub async fn get_weekly_summary(
+    db: &Database,
+    user_id: ObjectId,
+    offset: FixedOffset,
+    start: Option<String>,
+) -> Result<WeeklySummary, AppError> {
+    let start = validate_start(start)?;
+    let dates =
+        week_dates(start).ok_or_else(|| AppError::internal("la semana se sale del calendario"))?;
+    let ends = dates.map(|date| end_of_day(date, offset));
+    let day_goals = goals::get_goals_at(db, user_id, &ends).await?;
+    let week_meals = meals::find_meals_between(db, user_id, dates[0], dates[WEEK_DAYS - 1]).await?;
+
+    let days: Vec<(NaiveDate, NutritionalGoal)> = dates.into_iter().zip(day_goals).collect();
+    let days: [(NaiveDate, NutritionalGoal); WEEK_DAYS] = days
+        .try_into()
+        .map_err(|_| AppError::internal("faltan metas para la semana"))?;
+    Ok(build_weekly_summary(&days, &week_meals))
 }
 
 #[cfg(test)]
@@ -251,5 +387,141 @@ mod tests {
             .unwrap()
             .timestamp_millis();
         assert_eq!(end_of_day(day(), utc).timestamp_millis(), expected);
+    }
+    // ───────────── HU-11 ─────────────
+
+    fn week_goals(calories: i32) -> [(NaiveDate, NutritionalGoal); WEEK_DAYS] {
+        let dates = week_dates(day()).unwrap();
+        dates.map(|date| {
+            let mut g = goal(GoalSource::System);
+            g.calories = calories;
+            (date, g)
+        })
+    }
+
+    fn meal_on(date: &str, calories_kcal: f64, protein_g: f64, fat_g: f64) -> Meal {
+        let mut m = meal(calories_kcal, protein_g, fat_g);
+        m.date = date.to_string();
+        m
+    }
+
+    #[test]
+    fn la_semana_son_siete_dias_seguidos_aunque_cambie_el_mes() {
+        let dates = week_dates(NaiveDate::from_ymd_opt(2026, 10, 29).unwrap()).unwrap();
+        let text: Vec<String> = dates
+            .iter()
+            .map(|d| d.format(DATE_FORMAT).to_string())
+            .collect();
+        assert_eq!(
+            text,
+            [
+                "2026-10-29",
+                "2026-10-30",
+                "2026-10-31",
+                "2026-11-01",
+                "2026-11-02",
+                "2026-11-03",
+                "2026-11-04"
+            ]
+        );
+    }
+
+    #[test]
+    fn una_semana_que_se_sale_del_calendario_se_rechaza() {
+        assert!(week_dates(NaiveDate::MAX).is_none());
+        assert!(validate_start(Some(NaiveDate::MAX.format(DATE_FORMAT).to_string())).is_err());
+    }
+
+    #[test]
+    fn la_meta_se_cumple_entre_el_90_y_el_110_por_ciento_con_limites_incluidos() {
+        assert!(goal_met(2000.0, 1800.0));
+        assert!(goal_met(2000.0, 2000.0));
+        assert!(goal_met(2000.0, 2200.0));
+        assert!(!goal_met(2000.0, 1799.9));
+        assert!(!goal_met(2000.0, 2200.1));
+    }
+
+    #[test]
+    fn sin_consumo_la_meta_nunca_se_cumple() {
+        assert!(!goal_met(2000.0, 0.0));
+        assert!(!goal_met(0.0, 0.0));
+    }
+
+    #[test]
+    fn el_promedio_cuenta_los_dias_sin_registros_como_cero() {
+        let meals = [meal_on("2026-10-16", 700.0, 70.0, 7.0)];
+        let week = build_weekly_summary(&week_goals(2000), &meals);
+        assert_eq!(week.days.len(), 7);
+        assert_eq!(
+            week.average,
+            Totals {
+                calories_kcal: 100.0,
+                protein_g: 10.0,
+                fat_g: 1.0
+            }
+        );
+        assert_eq!(week.days[1].summary.consumed.calories_kcal, 0.0);
+    }
+
+    #[test]
+    fn cuenta_los_dias_que_cumplen_la_meta_y_marca_cada_uno() {
+        let meals = [
+            meal_on("2026-10-16", 2000.0, 100.0, 50.0),
+            meal_on("2026-10-17", 1000.0, 50.0, 25.0),
+            meal_on("2026-10-18", 1000.0, 50.0, 25.0),
+            meal_on("2026-10-18", 1000.0, 50.0, 25.0),
+            meal_on("2026-10-19", 2500.0, 50.0, 25.0),
+        ];
+        let week = build_weekly_summary(&week_goals(2000), &meals);
+        let met: Vec<bool> = week.days.iter().map(|d| d.goal_met).collect();
+        assert_eq!(met, [true, false, true, false, false, false, false]);
+        assert_eq!(week.goal_met_days, 2);
+        assert_eq!(week.days[2].summary.consumed.calories_kcal, 2000.0);
+    }
+
+    #[test]
+    fn cada_dia_se_compara_con_la_meta_vigente_ese_dia() {
+        let mut days = week_goals(2000);
+        for (_, g) in days.iter_mut().skip(3) {
+            g.calories = 1000;
+            g.source = GoalSource::Coach;
+        }
+        let meals = [
+            meal_on("2026-10-17", 2000.0, 1.0, 1.0),
+            meal_on("2026-10-20", 2000.0, 1.0, 1.0),
+        ];
+        let week = build_weekly_summary(&days, &meals);
+        assert_eq!(week.days[1].summary.goal.source, GoalSource::System);
+        assert!(week.days[1].goal_met);
+        assert_eq!(week.days[4].summary.goal.source, GoalSource::Coach);
+        assert!(!week.days[4].goal_met);
+        assert_eq!(week.days[4].summary.remaining.calories_kcal, -1000.0);
+    }
+
+    #[test]
+    fn una_semana_vacia_no_devuelve_ceros_negativos() {
+        let week = build_weekly_summary(&week_goals(2000), &[]);
+        assert_eq!(week.goal_met_days, 0);
+        assert!(week.average.calories_kcal.is_sign_positive());
+        assert!(week.days.iter().all(|d| !d.goal_met));
+    }
+
+    #[test]
+    fn start_ausente_o_con_formato_invalido_senala_el_campo_start() {
+        for value in [
+            None,
+            Some(String::new()),
+            Some("2026-13-45".to_string()),
+            Some("hoy".to_string()),
+        ] {
+            match validate_start(value) {
+                Err(AppError::Validation(fields)) => assert!(fields.contains_key("start")),
+                other => panic!("se esperaba VALIDATION_ERROR en start, llegó {other:?}"),
+            }
+        }
+        assert_eq!(
+            validate_start(Some(" 2026-10-16 ".to_string())).unwrap(),
+            day()
+        );
     }
 }

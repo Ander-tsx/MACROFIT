@@ -185,6 +185,7 @@ El contrato completo (cuerpos, respuestas y códigos de error de cada endpoint) 
 | GET | `/meals?date=YYYY-MM-DD` | Bearer (user) | HU-09 | Registros del usuario en ese día, por hora |
 | DELETE | `/meals/{id}` | Bearer (user) | HU-09 | Elimina un registro propio y su foto |
 | GET | `/users/me/summary/daily?date=YYYY-MM-DD` | Bearer (user) | HU-10 | Consumo del día, meta vigente y lo que falta |
+| GET | `/users/me/summary/weekly?start=YYYY-MM-DD` | Bearer (user) | HU-11 | 7 días con totales, promedio y días con la meta cumplida |
 | POST | `/dev/seed/coach-links` | — (solo `APP_ENV=development`) | HU-05 | Vincula un coach con un usuario de prueba |
 | GET | `/coach/test` | Bearer (coach) | TEC-05 | Prueba de la regla de acceso por rol |
 | GET | `/coach/invite-code` | Bearer (coach) | HU-12 | Código de invitación del coach; se crea si no existe |
@@ -619,6 +620,49 @@ la zona horaria de la app (`APP_UTC_OFFSET`, México por defecto), el mismo crit
 | Caso | Respuesta |
 |---|---|
 | `date` ausente o con formato distinto de `YYYY-MM-DD` | `400 VALIDATION_ERROR` con `fields.date` |
+| Sin sesión / token inválido | `401 UNAUTHORIZED` |
+| Cuenta de coach | `403 FORBIDDEN_ROLE` |
+| Usuario sin perfil ni meta | `404 PROFILE_NOT_FOUND` (igual que `GET /users/me/goals/current`) |
+
+### Resumen semanal — `GET /users/me/summary/weekly` (HU-11)
+
+Cabecera `Authorization: Bearer <access_token>`. **Solo rol `user`**. Query `start=YYYY-MM-DD` (obligatorio): **cualquier día**; la
+semana son los 7 días desde ahí. Los días se definen igual que en HU-09/HU-10 (`APP_UTC_OFFSET`, México por defecto).
+
+**200 OK**
+
+```json
+{
+  "start": "2026-10-16",
+  "end": "2026-10-22",
+  "days": [
+    {
+      "date": "2026-10-16",
+      "goal": { "source": "system", "calories_kcal": 1843, "protein_g": 140, "fat_g": 51 },
+      "consumed": { "calories_kcal": 0, "protein_g": 0, "fat_g": 0 },
+      "remaining": { "calories_kcal": 1843, "protein_g": 140, "fat_g": 51 },
+      "goal_met": false
+    }
+  ],
+  "average": { "calories_kcal": 263.3, "protein_g": 17.2, "fat_g": 7.9 },
+  "goal_met_days": 1
+}
+```
+
+(`days` trae siempre los 7 días, del primero al último.)
+
+- Cada día tiene la misma forma que el resumen diario (HU-10) más `goal_met`.
+- **Meta de cada día:** la vigente al final de ese día, con la regla de `GET /users/me/goals/current`. Si la meta cambia a mitad de
+  semana, cada día se compara con la que regía ese día (RF-21).
+- **`goal_met`:** `true` si el día consumió calorías y estas quedan entre el **90 % y el 110 %** de la meta de calorías de ese día
+  (límites incluidos). Un día sin registros nunca cumple.
+- **`average`:** total de los 7 días entre 7; los días sin registros cuentan como 0. Redondeado a 1 decimal.
+- **`goal_met_days`:** cuántos de los 7 días cumplieron.
+- Las metas y los registros de la semana se leen con una consulta cada uno (no una por día).
+
+| Caso | Respuesta |
+|---|---|
+| `start` ausente o con formato distinto de `YYYY-MM-DD` | `400 VALIDATION_ERROR` con `fields.start` |
 | Sin sesión / token inválido | `401 UNAUTHORIZED` |
 | Cuenta de coach | `403 FORBIDDEN_ROLE` |
 | Usuario sin perfil ni meta | `404 PROFILE_NOT_FOUND` (igual que `GET /users/me/goals/current`) |

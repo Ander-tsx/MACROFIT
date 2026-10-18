@@ -16,7 +16,7 @@ postman/
 ├── profile/profile.postman_collection.json # src/routes/profile.rs → HU-03 perfil inicial
 ├── goals/goals.postman_collection.json # src/routes/goals.rs → HU-04 y HU-05 metas
 ├── weights/weights.postman_collection.json # src/routes/weights.rs → HU-21 registro de peso
-├── summary/summary.postman_collection.json # src/routes/summary.rs → HU-10 resumen diario (cuentas y registros propios)
+├── summary/summary.postman_collection.json # src/routes/summary.rs → HU-10 resumen diario y HU-11 resumen semanal (cuentas y registros propios)
 └── meals/meals.postman_collection.json # src/routes/meals.rs → HU-06 carga de foto, HU-07 estimación, HU-09 registros de comida (archivos de prueba en meals/files/)
 ```
 
