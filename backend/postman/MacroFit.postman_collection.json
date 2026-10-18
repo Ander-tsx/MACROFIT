@@ -12534,6 +12534,1718 @@
       ]
     },
     {
+      "name": "HU-11 Resumen semanal",
+      "description": "HU-11: GET /api/v1/users/me/summary/weekly?start= (RF-10). Registra sus propias cuentas (usuario, coach y un usuario sin perfil) y sus propios registros; no depende de otras carpetas. Los números esperados se calculan a partir de lo enviado. El día cumple la meta con calorías entre el 90 % y el 110 % de la meta de ese día; el promedio es el total de los 7 días entre 7. Ejecutar en orden.",
+      "item": [
+        {
+          "name": "00 - Preparación: registrar al usuario",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    const email = \"summary.wuser.\" + Date.now() + \".\" + Math.floor(Math.random() * 1e6) + \"@macrofit.test\";",
+                  "    pm.variables.set(\"email\", email);",
+                  "    pm.collectionVariables.set(\"weekly_user_email\", email);",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 201 Created\", function () {",
+                  "        pm.response.to.have.status(201);",
+                  "    });",
+                  "    const data = pm.response.json();",
+                  "    pm.test(\"Rol user\", function () {",
+                  "        pm.expect(data.role).to.eql(\"user\");",
+                  "    });",
+                  "    pm.collectionVariables.set(\"weekly_user_id\", data.id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "register"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"WUser Resumen\",\n  \"email\": \"{{email}}\",\n  \"password\": \"{{test_password}}\",\n  \"role\": \"user\",\n  \"privacy_accepted\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "00 - Preparación: iniciar sesión de el usuario",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 200 OK\", function () {",
+                  "        pm.response.to.have.status(200);",
+                  "    });",
+                  "    const data = pm.response.json();",
+                  "    pm.test(\"Devuelve access_token\", function () {",
+                  "        pm.expect(data.access_token).to.be.a(\"string\").and.not.empty;",
+                  "    });",
+                  "    pm.collectionVariables.set(\"weekly_user_token\", data.access_token);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{weekly_user_email}}\",\n  \"password\": \"{{test_password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "00 - Preparación: crear el perfil del usuario",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 201 Created\", function () {",
+                  "        pm.response.to.have.status(201);",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{weekly_user_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/me/profile",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "me",
+                "profile"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"weight_kg\": 72.5,\n  \"height_cm\": 170,\n  \"birth_date\": \"1998-03-15\",\n  \"gender\": \"female\",\n  \"level\": \"intermediate\",\n  \"training_days\": 4,\n  \"objective\": \"lose_fat\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "00 - Preparación: leer la meta calculada del usuario",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 200 OK\", function () {",
+                  "        pm.response.to.have.status(200);",
+                  "    });",
+                  "    const goal = pm.response.json();",
+                  "    pm.test(\"Meta calculada (system)\", function () {",
+                  "        pm.expect(goal.source).to.eql(\"system\");",
+                  "    });",
+                  "    pm.collectionVariables.set(\"weekly_goal_calories\", goal.calories);",
+                  "    pm.collectionVariables.set(\"weekly_goal_protein\", goal.protein_g);",
+                  "    pm.collectionVariables.set(\"weekly_goal_fat\", goal.fat_g);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{weekly_user_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/me/goals/current",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "me",
+                "goals",
+                "current"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "00 - Preparación: registrar al coach",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    const email = \"summary.wcoach.\" + Date.now() + \".\" + Math.floor(Math.random() * 1e6) + \"@macrofit.test\";",
+                  "    pm.variables.set(\"email\", email);",
+                  "    pm.collectionVariables.set(\"weekly_coach_email\", email);",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 201 Created\", function () {",
+                  "        pm.response.to.have.status(201);",
+                  "    });",
+                  "    const data = pm.response.json();",
+                  "    pm.test(\"Rol coach\", function () {",
+                  "        pm.expect(data.role).to.eql(\"coach\");",
+                  "    });",
+                  "    pm.collectionVariables.set(\"weekly_coach_id\", data.id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "register"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"WCoach Resumen\",\n  \"email\": \"{{email}}\",\n  \"password\": \"{{test_password}}\",\n  \"role\": \"coach\",\n  \"privacy_accepted\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "00 - Preparación: iniciar sesión de el coach",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 200 OK\", function () {",
+                  "        pm.response.to.have.status(200);",
+                  "    });",
+                  "    const data = pm.response.json();",
+                  "    pm.test(\"Devuelve access_token\", function () {",
+                  "        pm.expect(data.access_token).to.be.a(\"string\").and.not.empty;",
+                  "    });",
+                  "    pm.collectionVariables.set(\"weekly_coach_token\", data.access_token);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{weekly_coach_email}}\",\n  \"password\": \"{{test_password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "00 - Preparación: código de invitación del coach",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 200 OK\", function () {",
+                  "        pm.response.to.have.status(200);",
+                  "    });",
+                  "    pm.collectionVariables.set(\"weekly_invite_code\", pm.response.json().code);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{weekly_coach_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/coach/invite-code",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "coach",
+                "invite-code"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "00 - Preparación: vincular al usuario con el coach",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 201 Created\", function () {",
+                  "        pm.response.to.have.status(201);",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{weekly_user_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/me/coach-link",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "me",
+                "coach-link"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"invite_code\": \"{{weekly_invite_code}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "01 - Semana sin registros",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    const addDays = (s, n) => new Date(Date.parse(s + \"T00:00:00Z\") + n * 86400000).toISOString().slice(0, 10);",
+                  "    pm.variables.set(\"weekly_query_start\", \"2026-01-05\");",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 200 OK\", function () {",
+                  "        pm.response.to.have.status(200);",
+                  "    });",
+                  "    const data = pm.response.json();",
+                  "    const addDays = (s, n) => new Date(Date.parse(s + \"T00:00:00Z\") + n * 86400000).toISOString().slice(0, 10);",
+                  "    const round1 = (n) => Math.round(n * 10) / 10;",
+                  "    const start = pm.variables.get(\"weekly_query_start\");",
+                  "    const sent = {};",
+                  "    const goalFor = (date, i) => ({ source: \"system\", calories_kcal: Number(pm.collectionVariables.get(\"weekly_goal_calories\")), protein_g: Number(pm.collectionVariables.get(\"weekly_goal_protein\")), fat_g: Number(pm.collectionVariables.get(\"weekly_goal_fat\")) });",
+                  "    const zero = { calories_kcal: 0, protein_g: 0, fat_g: 0 };",
+                  "    pm.test(\"Estructura: start, end, days, average y goal_met_days\", function () {",
+                  "        pm.expect(data).to.have.all.keys(\"start\", \"end\", \"days\", \"average\", \"goal_met_days\");",
+                  "        pm.expect(data.average).to.have.all.keys(\"calories_kcal\", \"protein_g\", \"fat_g\");",
+                  "    });",
+                  "    pm.test(\"Siete días seguidos desde start\", function () {",
+                  "        pm.expect(data.start).to.eql(start);",
+                  "        pm.expect(data.end).to.eql(addDays(start, 6));",
+                  "        pm.expect(data.days).to.have.lengthOf(7);",
+                  "        data.days.forEach(function (day, i) {",
+                  "            pm.expect(day).to.have.all.keys(\"date\", \"goal\", \"consumed\", \"remaining\", \"goal_met\");",
+                  "            pm.expect(day.date).to.eql(addDays(start, i));",
+                  "        });",
+                  "    });",
+                  "    pm.test(\"El consumo de cada día es lo enviado ese día (0 si no hay registros)\", function () {",
+                  "        data.days.forEach(function (day) {",
+                  "            pm.expect(day.consumed).to.eql(sent[day.date] || zero);",
+                  "        });",
+                  "    });",
+                  "    pm.test(\"Cada día usa la meta que regía ese día y el restante es meta - consumido\", function () {",
+                  "        data.days.forEach(function (day, i) {",
+                  "            const expected = goalFor(day.date, i);",
+                  "            if (expected) {",
+                  "                pm.expect(day.goal).to.eql(expected);",
+                  "            }",
+                  "            pm.expect(day.remaining.calories_kcal).to.eql(round1(day.goal.calories_kcal - day.consumed.calories_kcal));",
+                  "            pm.expect(day.remaining.protein_g).to.eql(round1(day.goal.protein_g - day.consumed.protein_g));",
+                  "            pm.expect(day.remaining.fat_g).to.eql(round1(day.goal.fat_g - day.consumed.fat_g));",
+                  "        });",
+                  "    });",
+                  "    pm.test(\"Cumple la meta solo con calorías entre el 90 % y el 110 % de la meta del día\", function () {",
+                  "        data.days.forEach(function (day) {",
+                  "            const kcal = day.consumed.calories_kcal;",
+                  "            const expected = kcal > 0 && kcal * 10 >= day.goal.calories_kcal * 9 && kcal * 10 <= day.goal.calories_kcal * 11;",
+                  "            pm.expect(day.goal_met, day.date).to.eql(expected);",
+                  "        });",
+                  "    });",
+                  "    pm.test(\"El promedio es el total de los 7 días entre 7 (los días vacíos cuentan como 0)\", function () {",
+                  "        const total = (key) => data.days.reduce((sum, day) => sum + day.consumed[key], 0);",
+                  "        pm.expect(data.average.calories_kcal).to.eql(round1(total(\"calories_kcal\") / 7));",
+                  "        pm.expect(data.average.protein_g).to.eql(round1(total(\"protein_g\") / 7));",
+                  "        pm.expect(data.average.fat_g).to.eql(round1(total(\"fat_g\") / 7));",
+                  "    });",
+                  "    pm.test(\"goal_met_days cuenta los días cumplidos\", function () {",
+                  "        pm.expect(data.goal_met_days).to.eql(data.days.filter((day) => day.goal_met).length);",
+                  "    });",
+                  "",
+                  "    pm.test(\"Ningún día cumple y el promedio es 0\", function () {",
+                  "        pm.expect(data.goal_met_days).to.eql(0);",
+                  "        pm.expect(data.average).to.eql(zero);",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{weekly_user_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/me/summary/weekly?start={{weekly_query_start}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "me",
+                "summary",
+                "weekly"
+              ],
+              "query": [
+                {
+                  "key": "start",
+                  "value": "{{weekly_query_start}}"
+                }
+              ]
+            },
+            "description": "Siete días con consumo en 0, ninguno cumple la meta, promedio 0 y 0 días cumplidos."
+          },
+          "response": []
+        },
+        {
+          "name": "02 - Guardar registro de comida",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.collectionVariables.set(\"weekly_meal_a_kcal\", Math.round(Number(pm.collectionVariables.get(\"weekly_goal_calories\")) * 0.5));",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 201 Created\", function () {",
+                  "        pm.response.to.have.status(201);",
+                  "    });",
+                  "    const data = pm.response.json();",
+                  "    pm.collectionVariables.set(\"weekly_today\", data.date);",
+                  "    pm.collectionVariables.set(\"weekly_meal_a_kcal\", data.calories_kcal);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{weekly_user_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/meals",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "meals"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"calories_kcal\": {{weekly_meal_a_kcal}},\n  \"protein_g\": 30,\n  \"fat_g\": 10\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "03 - Semana con registros por debajo del 90 %",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    const addDays = (s, n) => new Date(Date.parse(s + \"T00:00:00Z\") + n * 86400000).toISOString().slice(0, 10);",
+                  "    pm.variables.set(\"weekly_query_start\", addDays(pm.collectionVariables.get(\"weekly_today\"), -2));",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 200 OK\", function () {",
+                  "        pm.response.to.have.status(200);",
+                  "    });",
+                  "    const data = pm.response.json();",
+                  "    const addDays = (s, n) => new Date(Date.parse(s + \"T00:00:00Z\") + n * 86400000).toISOString().slice(0, 10);",
+                  "    const round1 = (n) => Math.round(n * 10) / 10;",
+                  "    const start = pm.variables.get(\"weekly_query_start\");",
+                  "    const sent = (function () { const o = {}; o[pm.collectionVariables.get(\"weekly_today\")] = { calories_kcal: round1(Number(pm.collectionVariables.get(\"weekly_meal_a_kcal\"))), protein_g: 30, fat_g: 10 }; return o; })();",
+                  "    const goalFor = (date, i) => ({ source: \"system\", calories_kcal: Number(pm.collectionVariables.get(\"weekly_goal_calories\")), protein_g: Number(pm.collectionVariables.get(\"weekly_goal_protein\")), fat_g: Number(pm.collectionVariables.get(\"weekly_goal_fat\")) });",
+                  "    const zero = { calories_kcal: 0, protein_g: 0, fat_g: 0 };",
+                  "    pm.test(\"Estructura: start, end, days, average y goal_met_days\", function () {",
+                  "        pm.expect(data).to.have.all.keys(\"start\", \"end\", \"days\", \"average\", \"goal_met_days\");",
+                  "        pm.expect(data.average).to.have.all.keys(\"calories_kcal\", \"protein_g\", \"fat_g\");",
+                  "    });",
+                  "    pm.test(\"Siete días seguidos desde start\", function () {",
+                  "        pm.expect(data.start).to.eql(start);",
+                  "        pm.expect(data.end).to.eql(addDays(start, 6));",
+                  "        pm.expect(data.days).to.have.lengthOf(7);",
+                  "        data.days.forEach(function (day, i) {",
+                  "            pm.expect(day).to.have.all.keys(\"date\", \"goal\", \"consumed\", \"remaining\", \"goal_met\");",
+                  "            pm.expect(day.date).to.eql(addDays(start, i));",
+                  "        });",
+                  "    });",
+                  "    pm.test(\"El consumo de cada día es lo enviado ese día (0 si no hay registros)\", function () {",
+                  "        data.days.forEach(function (day) {",
+                  "            pm.expect(day.consumed).to.eql(sent[day.date] || zero);",
+                  "        });",
+                  "    });",
+                  "    pm.test(\"Cada día usa la meta que regía ese día y el restante es meta - consumido\", function () {",
+                  "        data.days.forEach(function (day, i) {",
+                  "            const expected = goalFor(day.date, i);",
+                  "            if (expected) {",
+                  "                pm.expect(day.goal).to.eql(expected);",
+                  "            }",
+                  "            pm.expect(day.remaining.calories_kcal).to.eql(round1(day.goal.calories_kcal - day.consumed.calories_kcal));",
+                  "            pm.expect(day.remaining.protein_g).to.eql(round1(day.goal.protein_g - day.consumed.protein_g));",
+                  "            pm.expect(day.remaining.fat_g).to.eql(round1(day.goal.fat_g - day.consumed.fat_g));",
+                  "        });",
+                  "    });",
+                  "    pm.test(\"Cumple la meta solo con calorías entre el 90 % y el 110 % de la meta del día\", function () {",
+                  "        data.days.forEach(function (day) {",
+                  "            const kcal = day.consumed.calories_kcal;",
+                  "            const expected = kcal > 0 && kcal * 10 >= day.goal.calories_kcal * 9 && kcal * 10 <= day.goal.calories_kcal * 11;",
+                  "            pm.expect(day.goal_met, day.date).to.eql(expected);",
+                  "        });",
+                  "    });",
+                  "    pm.test(\"El promedio es el total de los 7 días entre 7 (los días vacíos cuentan como 0)\", function () {",
+                  "        const total = (key) => data.days.reduce((sum, day) => sum + day.consumed[key], 0);",
+                  "        pm.expect(data.average.calories_kcal).to.eql(round1(total(\"calories_kcal\") / 7));",
+                  "        pm.expect(data.average.protein_g).to.eql(round1(total(\"protein_g\") / 7));",
+                  "        pm.expect(data.average.fat_g).to.eql(round1(total(\"fat_g\") / 7));",
+                  "    });",
+                  "    pm.test(\"goal_met_days cuenta los días cumplidos\", function () {",
+                  "        pm.expect(data.goal_met_days).to.eql(data.days.filter((day) => day.goal_met).length);",
+                  "    });",
+                  "",
+                  "    pm.test(\"Hoy está en la posición 3 y no cumple (50 % de la meta)\", function () {",
+                  "        pm.expect(data.days[2].date).to.eql(pm.collectionVariables.get(\"weekly_today\"));",
+                  "        pm.expect(data.days[2].goal_met).to.eql(false);",
+                  "        pm.expect(data.goal_met_days).to.eql(0);",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{weekly_user_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/me/summary/weekly?start={{weekly_query_start}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "me",
+                "summary",
+                "weekly"
+              ],
+              "query": [
+                {
+                  "key": "start",
+                  "value": "{{weekly_query_start}}"
+                }
+              ]
+            },
+            "description": "Con la mitad de la meta consumida hoy, el día no cumple. Hoy queda en la posición 3 de la semana."
+          },
+          "response": []
+        },
+        {
+          "name": "04 - Guardar registro de comida",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.collectionVariables.set(\"weekly_meal_b_kcal\", Number(pm.collectionVariables.get(\"weekly_goal_calories\")) - Number(pm.collectionVariables.get(\"weekly_meal_a_kcal\")));",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 201 Created\", function () {",
+                  "        pm.response.to.have.status(201);",
+                  "    });",
+                  "    const data = pm.response.json();",
+                  "    pm.collectionVariables.set(\"weekly_today\", data.date);",
+                  "    pm.collectionVariables.set(\"weekly_meal_b_kcal\", data.calories_kcal);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{weekly_user_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/meals",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "meals"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"calories_kcal\": {{weekly_meal_b_kcal}},\n  \"protein_g\": 30,\n  \"fat_g\": 10\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "05 - Semana con el día en la meta (100 %)",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    const addDays = (s, n) => new Date(Date.parse(s + \"T00:00:00Z\") + n * 86400000).toISOString().slice(0, 10);",
+                  "    pm.variables.set(\"weekly_query_start\", addDays(pm.collectionVariables.get(\"weekly_today\"), -2));",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 200 OK\", function () {",
+                  "        pm.response.to.have.status(200);",
+                  "    });",
+                  "    const data = pm.response.json();",
+                  "    const addDays = (s, n) => new Date(Date.parse(s + \"T00:00:00Z\") + n * 86400000).toISOString().slice(0, 10);",
+                  "    const round1 = (n) => Math.round(n * 10) / 10;",
+                  "    const start = pm.variables.get(\"weekly_query_start\");",
+                  "    const sent = (function () { const o = {}; o[pm.collectionVariables.get(\"weekly_today\")] = { calories_kcal: round1(Number(pm.collectionVariables.get(\"weekly_meal_a_kcal\")) + Number(pm.collectionVariables.get(\"weekly_meal_b_kcal\"))), protein_g: 60, fat_g: 20 }; return o; })();",
+                  "    const goalFor = (date, i) => ({ source: \"system\", calories_kcal: Number(pm.collectionVariables.get(\"weekly_goal_calories\")), protein_g: Number(pm.collectionVariables.get(\"weekly_goal_protein\")), fat_g: Number(pm.collectionVariables.get(\"weekly_goal_fat\")) });",
+                  "    const zero = { calories_kcal: 0, protein_g: 0, fat_g: 0 };",
+                  "    pm.test(\"Estructura: start, end, days, average y goal_met_days\", function () {",
+                  "        pm.expect(data).to.have.all.keys(\"start\", \"end\", \"days\", \"average\", \"goal_met_days\");",
+                  "        pm.expect(data.average).to.have.all.keys(\"calories_kcal\", \"protein_g\", \"fat_g\");",
+                  "    });",
+                  "    pm.test(\"Siete días seguidos desde start\", function () {",
+                  "        pm.expect(data.start).to.eql(start);",
+                  "        pm.expect(data.end).to.eql(addDays(start, 6));",
+                  "        pm.expect(data.days).to.have.lengthOf(7);",
+                  "        data.days.forEach(function (day, i) {",
+                  "            pm.expect(day).to.have.all.keys(\"date\", \"goal\", \"consumed\", \"remaining\", \"goal_met\");",
+                  "            pm.expect(day.date).to.eql(addDays(start, i));",
+                  "        });",
+                  "    });",
+                  "    pm.test(\"El consumo de cada día es lo enviado ese día (0 si no hay registros)\", function () {",
+                  "        data.days.forEach(function (day) {",
+                  "            pm.expect(day.consumed).to.eql(sent[day.date] || zero);",
+                  "        });",
+                  "    });",
+                  "    pm.test(\"Cada día usa la meta que regía ese día y el restante es meta - consumido\", function () {",
+                  "        data.days.forEach(function (day, i) {",
+                  "            const expected = goalFor(day.date, i);",
+                  "            if (expected) {",
+                  "                pm.expect(day.goal).to.eql(expected);",
+                  "            }",
+                  "            pm.expect(day.remaining.calories_kcal).to.eql(round1(day.goal.calories_kcal - day.consumed.calories_kcal));",
+                  "            pm.expect(day.remaining.protein_g).to.eql(round1(day.goal.protein_g - day.consumed.protein_g));",
+                  "            pm.expect(day.remaining.fat_g).to.eql(round1(day.goal.fat_g - day.consumed.fat_g));",
+                  "        });",
+                  "    });",
+                  "    pm.test(\"Cumple la meta solo con calorías entre el 90 % y el 110 % de la meta del día\", function () {",
+                  "        data.days.forEach(function (day) {",
+                  "            const kcal = day.consumed.calories_kcal;",
+                  "            const expected = kcal > 0 && kcal * 10 >= day.goal.calories_kcal * 9 && kcal * 10 <= day.goal.calories_kcal * 11;",
+                  "            pm.expect(day.goal_met, day.date).to.eql(expected);",
+                  "        });",
+                  "    });",
+                  "    pm.test(\"El promedio es el total de los 7 días entre 7 (los días vacíos cuentan como 0)\", function () {",
+                  "        const total = (key) => data.days.reduce((sum, day) => sum + day.consumed[key], 0);",
+                  "        pm.expect(data.average.calories_kcal).to.eql(round1(total(\"calories_kcal\") / 7));",
+                  "        pm.expect(data.average.protein_g).to.eql(round1(total(\"protein_g\") / 7));",
+                  "        pm.expect(data.average.fat_g).to.eql(round1(total(\"fat_g\") / 7));",
+                  "    });",
+                  "    pm.test(\"goal_met_days cuenta los días cumplidos\", function () {",
+                  "        pm.expect(data.goal_met_days).to.eql(data.days.filter((day) => day.goal_met).length);",
+                  "    });",
+                  "",
+                  "    pm.test(\"Hoy cumple la meta y la semana cuenta 1 día\", function () {",
+                  "        pm.expect(data.days[2].goal_met).to.eql(true);",
+                  "        pm.expect(data.goal_met_days).to.eql(1);",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{weekly_user_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/me/summary/weekly?start={{weekly_query_start}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "me",
+                "summary",
+                "weekly"
+              ],
+              "query": [
+                {
+                  "key": "start",
+                  "value": "{{weekly_query_start}}"
+                }
+              ]
+            },
+            "description": "Con los dos registros suman exactamente la meta: hoy cumple y la semana cuenta 1 día cumplido."
+          },
+          "response": []
+        },
+        {
+          "name": "06 - Guardar registro de comida",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.collectionVariables.set(\"weekly_meal_c_kcal\", Math.round(Number(pm.collectionVariables.get(\"weekly_goal_calories\")) * 0.5));",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 201 Created\", function () {",
+                  "        pm.response.to.have.status(201);",
+                  "    });",
+                  "    const data = pm.response.json();",
+                  "    pm.collectionVariables.set(\"weekly_today\", data.date);",
+                  "    pm.collectionVariables.set(\"weekly_meal_c_kcal\", data.calories_kcal);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{weekly_user_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/meals",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "meals"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"calories_kcal\": {{weekly_meal_c_kcal}},\n  \"protein_g\": 30,\n  \"fat_g\": 10\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "07 - Semana con el día por encima del 110 %",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    const addDays = (s, n) => new Date(Date.parse(s + \"T00:00:00Z\") + n * 86400000).toISOString().slice(0, 10);",
+                  "    pm.variables.set(\"weekly_query_start\", addDays(pm.collectionVariables.get(\"weekly_today\"), -2));",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 200 OK\", function () {",
+                  "        pm.response.to.have.status(200);",
+                  "    });",
+                  "    const data = pm.response.json();",
+                  "    const addDays = (s, n) => new Date(Date.parse(s + \"T00:00:00Z\") + n * 86400000).toISOString().slice(0, 10);",
+                  "    const round1 = (n) => Math.round(n * 10) / 10;",
+                  "    const start = pm.variables.get(\"weekly_query_start\");",
+                  "    const sent = (function () { const o = {}; o[pm.collectionVariables.get(\"weekly_today\")] = { calories_kcal: round1(Number(pm.collectionVariables.get(\"weekly_meal_a_kcal\")) + Number(pm.collectionVariables.get(\"weekly_meal_b_kcal\")) + Number(pm.collectionVariables.get(\"weekly_meal_c_kcal\"))), protein_g: 90, fat_g: 30 }; return o; })();",
+                  "    const goalFor = (date, i) => ({ source: \"system\", calories_kcal: Number(pm.collectionVariables.get(\"weekly_goal_calories\")), protein_g: Number(pm.collectionVariables.get(\"weekly_goal_protein\")), fat_g: Number(pm.collectionVariables.get(\"weekly_goal_fat\")) });",
+                  "    const zero = { calories_kcal: 0, protein_g: 0, fat_g: 0 };",
+                  "    pm.test(\"Estructura: start, end, days, average y goal_met_days\", function () {",
+                  "        pm.expect(data).to.have.all.keys(\"start\", \"end\", \"days\", \"average\", \"goal_met_days\");",
+                  "        pm.expect(data.average).to.have.all.keys(\"calories_kcal\", \"protein_g\", \"fat_g\");",
+                  "    });",
+                  "    pm.test(\"Siete días seguidos desde start\", function () {",
+                  "        pm.expect(data.start).to.eql(start);",
+                  "        pm.expect(data.end).to.eql(addDays(start, 6));",
+                  "        pm.expect(data.days).to.have.lengthOf(7);",
+                  "        data.days.forEach(function (day, i) {",
+                  "            pm.expect(day).to.have.all.keys(\"date\", \"goal\", \"consumed\", \"remaining\", \"goal_met\");",
+                  "            pm.expect(day.date).to.eql(addDays(start, i));",
+                  "        });",
+                  "    });",
+                  "    pm.test(\"El consumo de cada día es lo enviado ese día (0 si no hay registros)\", function () {",
+                  "        data.days.forEach(function (day) {",
+                  "            pm.expect(day.consumed).to.eql(sent[day.date] || zero);",
+                  "        });",
+                  "    });",
+                  "    pm.test(\"Cada día usa la meta que regía ese día y el restante es meta - consumido\", function () {",
+                  "        data.days.forEach(function (day, i) {",
+                  "            const expected = goalFor(day.date, i);",
+                  "            if (expected) {",
+                  "                pm.expect(day.goal).to.eql(expected);",
+                  "            }",
+                  "            pm.expect(day.remaining.calories_kcal).to.eql(round1(day.goal.calories_kcal - day.consumed.calories_kcal));",
+                  "            pm.expect(day.remaining.protein_g).to.eql(round1(day.goal.protein_g - day.consumed.protein_g));",
+                  "            pm.expect(day.remaining.fat_g).to.eql(round1(day.goal.fat_g - day.consumed.fat_g));",
+                  "        });",
+                  "    });",
+                  "    pm.test(\"Cumple la meta solo con calorías entre el 90 % y el 110 % de la meta del día\", function () {",
+                  "        data.days.forEach(function (day) {",
+                  "            const kcal = day.consumed.calories_kcal;",
+                  "            const expected = kcal > 0 && kcal * 10 >= day.goal.calories_kcal * 9 && kcal * 10 <= day.goal.calories_kcal * 11;",
+                  "            pm.expect(day.goal_met, day.date).to.eql(expected);",
+                  "        });",
+                  "    });",
+                  "    pm.test(\"El promedio es el total de los 7 días entre 7 (los días vacíos cuentan como 0)\", function () {",
+                  "        const total = (key) => data.days.reduce((sum, day) => sum + day.consumed[key], 0);",
+                  "        pm.expect(data.average.calories_kcal).to.eql(round1(total(\"calories_kcal\") / 7));",
+                  "        pm.expect(data.average.protein_g).to.eql(round1(total(\"protein_g\") / 7));",
+                  "        pm.expect(data.average.fat_g).to.eql(round1(total(\"fat_g\") / 7));",
+                  "    });",
+                  "    pm.test(\"goal_met_days cuenta los días cumplidos\", function () {",
+                  "        pm.expect(data.goal_met_days).to.eql(data.days.filter((day) => day.goal_met).length);",
+                  "    });",
+                  "",
+                  "    pm.test(\"Hoy no cumple (150 %), su restante es negativo y la semana cuenta 0 días\", function () {",
+                  "        pm.expect(data.days[2].goal_met).to.eql(false);",
+                  "        pm.expect(data.days[2].remaining.calories_kcal).to.be.below(0);",
+                  "        pm.expect(data.goal_met_days).to.eql(0);",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{weekly_user_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/me/summary/weekly?start={{weekly_query_start}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "me",
+                "summary",
+                "weekly"
+              ],
+              "query": [
+                {
+                  "key": "start",
+                  "value": "{{weekly_query_start}}"
+                }
+              ]
+            },
+            "description": "Con 150 % de la meta, hoy deja de cumplir y su restante de calorías es negativo."
+          },
+          "response": []
+        },
+        {
+          "name": "08 - Start inválido",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 400 Bad Request\", function () {",
+                  "        pm.response.to.have.status(400);",
+                  "    });",
+                  "    const body = pm.response.json();",
+                  "    pm.test(\"Formato de error { error: { code, message, fields } }\", function () {",
+                  "        pm.expect(body).to.have.all.keys(\"error\");",
+                  "        pm.expect(body.error).to.have.all.keys(\"code\", \"message\", \"fields\");",
+                  "        pm.expect(body.error.message).to.be.a(\"string\").and.not.empty;",
+                  "        pm.expect(body.error.fields).to.be.an(\"object\");",
+                  "    });",
+                  "    pm.test(\"Código VALIDATION_ERROR\", function () {",
+                  "        pm.expect(body.error.code).to.eql(\"VALIDATION_ERROR\");",
+                  "    });",
+                  "    pm.test(\"Señala el campo start\", function () {",
+                  "        pm.expect(body.error.fields).to.have.property(\"start\");",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{weekly_user_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/me/summary/weekly?start=2026-13-45",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "me",
+                "summary",
+                "weekly"
+              ],
+              "query": [
+                {
+                  "key": "start",
+                  "value": "2026-13-45"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "09 - Sin start",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 400 Bad Request\", function () {",
+                  "        pm.response.to.have.status(400);",
+                  "    });",
+                  "    const body = pm.response.json();",
+                  "    pm.test(\"Formato de error { error: { code, message, fields } }\", function () {",
+                  "        pm.expect(body).to.have.all.keys(\"error\");",
+                  "        pm.expect(body.error).to.have.all.keys(\"code\", \"message\", \"fields\");",
+                  "        pm.expect(body.error.message).to.be.a(\"string\").and.not.empty;",
+                  "        pm.expect(body.error.fields).to.be.an(\"object\");",
+                  "    });",
+                  "    pm.test(\"Código VALIDATION_ERROR\", function () {",
+                  "        pm.expect(body.error.code).to.eql(\"VALIDATION_ERROR\");",
+                  "    });",
+                  "    pm.test(\"Señala el campo start\", function () {",
+                  "        pm.expect(body.error.fields).to.have.property(\"start\");",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{weekly_user_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/me/summary/weekly",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "me",
+                "summary",
+                "weekly"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "10 - Sin sesión",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 401 Unauthorized\", function () {",
+                  "        pm.response.to.have.status(401);",
+                  "    });",
+                  "    const body = pm.response.json();",
+                  "    pm.test(\"Formato de error { error: { code, message, fields } }\", function () {",
+                  "        pm.expect(body).to.have.all.keys(\"error\");",
+                  "        pm.expect(body.error).to.have.all.keys(\"code\", \"message\", \"fields\");",
+                  "        pm.expect(body.error.message).to.be.a(\"string\").and.not.empty;",
+                  "        pm.expect(body.error.fields).to.be.an(\"object\");",
+                  "    });",
+                  "    pm.test(\"Código UNAUTHORIZED\", function () {",
+                  "        pm.expect(body.error.code).to.eql(\"UNAUTHORIZED\");",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/me/summary/weekly?start=2026-01-05",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "me",
+                "summary",
+                "weekly"
+              ],
+              "query": [
+                {
+                  "key": "start",
+                  "value": "2026-01-05"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "11 - Cuenta de coach",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 403 Forbidden\", function () {",
+                  "        pm.response.to.have.status(403);",
+                  "    });",
+                  "    const body = pm.response.json();",
+                  "    pm.test(\"Formato de error { error: { code, message, fields } }\", function () {",
+                  "        pm.expect(body).to.have.all.keys(\"error\");",
+                  "        pm.expect(body.error).to.have.all.keys(\"code\", \"message\", \"fields\");",
+                  "        pm.expect(body.error.message).to.be.a(\"string\").and.not.empty;",
+                  "        pm.expect(body.error.fields).to.be.an(\"object\");",
+                  "    });",
+                  "    pm.test(\"Código FORBIDDEN_ROLE\", function () {",
+                  "        pm.expect(body.error.code).to.eql(\"FORBIDDEN_ROLE\");",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{weekly_coach_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/me/summary/weekly?start=2026-01-05",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "me",
+                "summary",
+                "weekly"
+              ],
+              "query": [
+                {
+                  "key": "start",
+                  "value": "2026-01-05"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "00 - Preparación: registrar a un usuario sin perfil",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    const email = \"summary.wsinperfil.\" + Date.now() + \".\" + Math.floor(Math.random() * 1e6) + \"@macrofit.test\";",
+                  "    pm.variables.set(\"email\", email);",
+                  "    pm.collectionVariables.set(\"weekly_noprofile_email\", email);",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 201 Created\", function () {",
+                  "        pm.response.to.have.status(201);",
+                  "    });",
+                  "    const data = pm.response.json();",
+                  "    pm.test(\"Rol user\", function () {",
+                  "        pm.expect(data.role).to.eql(\"user\");",
+                  "    });",
+                  "    pm.collectionVariables.set(\"weekly_noprofile_id\", data.id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "register"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"WSinperfil Resumen\",\n  \"email\": \"{{email}}\",\n  \"password\": \"{{test_password}}\",\n  \"role\": \"user\",\n  \"privacy_accepted\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "00 - Preparación: iniciar sesión de el usuario sin perfil",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 200 OK\", function () {",
+                  "        pm.response.to.have.status(200);",
+                  "    });",
+                  "    const data = pm.response.json();",
+                  "    pm.test(\"Devuelve access_token\", function () {",
+                  "        pm.expect(data.access_token).to.be.a(\"string\").and.not.empty;",
+                  "    });",
+                  "    pm.collectionVariables.set(\"weekly_noprofile_token\", data.access_token);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{weekly_noprofile_email}}\",\n  \"password\": \"{{test_password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "12 - Usuario sin meta vigente",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 404 Not Found\", function () {",
+                  "        pm.response.to.have.status(404);",
+                  "    });",
+                  "    const body = pm.response.json();",
+                  "    pm.test(\"Formato de error { error: { code, message, fields } }\", function () {",
+                  "        pm.expect(body).to.have.all.keys(\"error\");",
+                  "        pm.expect(body.error).to.have.all.keys(\"code\", \"message\", \"fields\");",
+                  "        pm.expect(body.error.message).to.be.a(\"string\").and.not.empty;",
+                  "        pm.expect(body.error.fields).to.be.an(\"object\");",
+                  "    });",
+                  "    pm.test(\"Código PROFILE_NOT_FOUND\", function () {",
+                  "        pm.expect(body.error.code).to.eql(\"PROFILE_NOT_FOUND\");",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{weekly_noprofile_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/me/summary/weekly?start=2026-01-05",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "me",
+                "summary",
+                "weekly"
+              ],
+              "query": [
+                {
+                  "key": "start",
+                  "value": "2026-01-05"
+                }
+              ]
+            },
+            "description": "Sin perfil no hay meta: responde igual que GET /users/me/goals/current."
+          },
+          "response": []
+        },
+        {
+          "name": "13 - El coach fija una meta que empieza a mitad de semana",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    const addDays = (s, n) => new Date(Date.parse(s + \"T00:00:00Z\") + n * 86400000).toISOString().slice(0, 10);",
+                  "    pm.collectionVariables.set(\"weekly_coach_from\", addDays(pm.collectionVariables.get(\"weekly_today\"), 3));",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 201 Created\", function () {",
+                  "        pm.response.to.have.status(201);",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{weekly_coach_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/coach/clients/{{weekly_user_id}}/goals",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "coach",
+                "clients",
+                "{{weekly_user_id}}",
+                "goals"
+              ]
+            },
+            "description": "La meta del coach empieza 3 días después de hoy; la semana de la siguiente petición va de ayer a dentro de 5 días.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"calories\": 2000,\n  \"protein_g\": 150,\n  \"fat_g\": 60,\n  \"effective_from\": \"{{weekly_coach_from}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "14 - Cada día con la meta que regía ese día (RF-21)",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    const addDays = (s, n) => new Date(Date.parse(s + \"T00:00:00Z\") + n * 86400000).toISOString().slice(0, 10);",
+                  "    pm.variables.set(\"weekly_query_start\", addDays(pm.collectionVariables.get(\"weekly_today\"), -1));",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 200 OK\", function () {",
+                  "        pm.response.to.have.status(200);",
+                  "    });",
+                  "    const data = pm.response.json();",
+                  "    const addDays = (s, n) => new Date(Date.parse(s + \"T00:00:00Z\") + n * 86400000).toISOString().slice(0, 10);",
+                  "    const round1 = (n) => Math.round(n * 10) / 10;",
+                  "    const start = pm.variables.get(\"weekly_query_start\");",
+                  "    const sent = (function () { const o = {}; o[pm.collectionVariables.get(\"weekly_today\")] = { calories_kcal: round1(Number(pm.collectionVariables.get(\"weekly_meal_a_kcal\")) + Number(pm.collectionVariables.get(\"weekly_meal_b_kcal\")) + Number(pm.collectionVariables.get(\"weekly_meal_c_kcal\"))), protein_g: 90, fat_g: 30 }; return o; })();",
+                  "    const goalFor = (function (date) { const from = addDays(pm.collectionVariables.get(\"weekly_today\"), 3); if (date < addDays(from, -1)) { return { source: \"system\", calories_kcal: Number(pm.collectionVariables.get(\"weekly_goal_calories\")), protein_g: Number(pm.collectionVariables.get(\"weekly_goal_protein\")), fat_g: Number(pm.collectionVariables.get(\"weekly_goal_fat\")) }; } if (date >= from) { return { source: \"coach\", calories_kcal: 2000, protein_g: 150, fat_g: 60 }; } return null; });",
+                  "    const zero = { calories_kcal: 0, protein_g: 0, fat_g: 0 };",
+                  "    pm.test(\"Estructura: start, end, days, average y goal_met_days\", function () {",
+                  "        pm.expect(data).to.have.all.keys(\"start\", \"end\", \"days\", \"average\", \"goal_met_days\");",
+                  "        pm.expect(data.average).to.have.all.keys(\"calories_kcal\", \"protein_g\", \"fat_g\");",
+                  "    });",
+                  "    pm.test(\"Siete días seguidos desde start\", function () {",
+                  "        pm.expect(data.start).to.eql(start);",
+                  "        pm.expect(data.end).to.eql(addDays(start, 6));",
+                  "        pm.expect(data.days).to.have.lengthOf(7);",
+                  "        data.days.forEach(function (day, i) {",
+                  "            pm.expect(day).to.have.all.keys(\"date\", \"goal\", \"consumed\", \"remaining\", \"goal_met\");",
+                  "            pm.expect(day.date).to.eql(addDays(start, i));",
+                  "        });",
+                  "    });",
+                  "    pm.test(\"El consumo de cada día es lo enviado ese día (0 si no hay registros)\", function () {",
+                  "        data.days.forEach(function (day) {",
+                  "            pm.expect(day.consumed).to.eql(sent[day.date] || zero);",
+                  "        });",
+                  "    });",
+                  "    pm.test(\"Cada día usa la meta que regía ese día y el restante es meta - consumido\", function () {",
+                  "        data.days.forEach(function (day, i) {",
+                  "            const expected = goalFor(day.date, i);",
+                  "            if (expected) {",
+                  "                pm.expect(day.goal).to.eql(expected);",
+                  "            }",
+                  "            pm.expect(day.remaining.calories_kcal).to.eql(round1(day.goal.calories_kcal - day.consumed.calories_kcal));",
+                  "            pm.expect(day.remaining.protein_g).to.eql(round1(day.goal.protein_g - day.consumed.protein_g));",
+                  "            pm.expect(day.remaining.fat_g).to.eql(round1(day.goal.fat_g - day.consumed.fat_g));",
+                  "        });",
+                  "    });",
+                  "    pm.test(\"Cumple la meta solo con calorías entre el 90 % y el 110 % de la meta del día\", function () {",
+                  "        data.days.forEach(function (day) {",
+                  "            const kcal = day.consumed.calories_kcal;",
+                  "            const expected = kcal > 0 && kcal * 10 >= day.goal.calories_kcal * 9 && kcal * 10 <= day.goal.calories_kcal * 11;",
+                  "            pm.expect(day.goal_met, day.date).to.eql(expected);",
+                  "        });",
+                  "    });",
+                  "    pm.test(\"El promedio es el total de los 7 días entre 7 (los días vacíos cuentan como 0)\", function () {",
+                  "        const total = (key) => data.days.reduce((sum, day) => sum + day.consumed[key], 0);",
+                  "        pm.expect(data.average.calories_kcal).to.eql(round1(total(\"calories_kcal\") / 7));",
+                  "        pm.expect(data.average.protein_g).to.eql(round1(total(\"protein_g\") / 7));",
+                  "        pm.expect(data.average.fat_g).to.eql(round1(total(\"fat_g\") / 7));",
+                  "    });",
+                  "    pm.test(\"goal_met_days cuenta los días cumplidos\", function () {",
+                  "        pm.expect(data.goal_met_days).to.eql(data.days.filter((day) => day.goal_met).length);",
+                  "    });",
+                  "",
+                  "    pm.test(\"La semana mezcla metas: calculada antes y del coach después\", function () {",
+                  "        const sources = data.days.map((day) => day.goal.source);",
+                  "        pm.expect(sources[0]).to.eql(\"system\");",
+                  "        pm.expect(sources[6]).to.eql(\"coach\");",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{weekly_user_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/me/summary/weekly?start={{weekly_query_start}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "me",
+                "summary",
+                "weekly"
+              ],
+              "query": [
+                {
+                  "key": "start",
+                  "value": "{{weekly_query_start}}"
+                }
+              ]
+            },
+            "description": "Semana de ayer a hoy+5. Los días anteriores al inicio de la meta del coach usan la calculada y los posteriores la del coach. El día justo antes del inicio no se comprueba: la fecha de la meta es una fecha en UTC y ese día puede quedar a uno u otro lado según la zona horaria."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
       "name": "HU-02 Sesión · Cierre",
       "description": "Cierre de sesión de la sesión principal del usuario. build.js mueve esta carpeta al final de la colección combinada para que las demás historias puedan usar {{user_access_token}} antes.",
       "item": [
@@ -13306,6 +15018,97 @@
     },
     {
       "key": "summary_over_calories",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "weekly_user_email",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "weekly_user_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "weekly_user_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "weekly_coach_email",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "weekly_coach_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "weekly_coach_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "weekly_noprofile_email",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "weekly_noprofile_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "weekly_noprofile_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "weekly_invite_code",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "weekly_goal_calories",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "weekly_goal_protein",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "weekly_goal_fat",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "weekly_coach_from",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "weekly_today",
+      "value": "",
+      "type": "string",
+      "description": "Día (YYYY-MM-DD, hora de México) en que se guardaron los registros de HU-11."
+    },
+    {
+      "key": "weekly_meal_a_kcal",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "weekly_meal_b_kcal",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "weekly_meal_c_kcal",
       "value": "",
       "type": "string"
     }

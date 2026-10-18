@@ -383,6 +383,42 @@ pub async fn get_goal_at(
     }
 }
 
+/// HU-11 — meta vigente en el instante `at` entre las metas de un mismo usuario, con la regla de
+/// `find_current_goal`: se ignoran las que empiezan después de `at` y la más reciente de un coach tiene prioridad
+/// sobre las calculadas. `None` si ninguna había empezado todavía.
+pub fn pick_goal_at(goals: &[NutritionalGoal], at: DateTime) -> Option<&NutritionalGoal> {
+    goals
+        .iter()
+        .filter(|goal| goal.effective_from <= at)
+        .max_by_key(|goal| current_goal_rank(goal))
+}
+
+/// HU-11 — meta vigente al final de cada día de `ats`, en el mismo orden, con una sola consulta (RF-21: si la meta
+/// cambia a mitad de semana, cada día usa la que regía ese día). Un día anterior a la primera meta usa la vigente
+/// hoy, igual que `get_goal_at`; sin perfil ni metas → `ProfileNotFound`.
+pub async fn get_goals_at(
+    db: &Database,
+    user_id: ObjectId,
+    ats: &[DateTime],
+) -> Result<Vec<NutritionalGoal>, AppError> {
+    let all = list_goals(db, user_id).await?;
+    let picked: Vec<Option<NutritionalGoal>> = ats
+        .iter()
+        .map(|at| pick_goal_at(&all, *at).cloned())
+        .collect();
+    if picked.iter().all(Option::is_some) {
+        return Ok(picked.into_iter().flatten().collect());
+    }
+    let current = match pick_goal_at(&all, DateTime::now()) {
+        Some(goal) => goal.clone(),
+        None => get_current_goal(db, user_id).await?,
+    };
+    Ok(picked
+        .into_iter()
+        .map(|goal| goal.unwrap_or_else(|| current.clone()))
+        .collect())
+}
+
 /// Historial de metas, de la más reciente a la más antigua (`effective_from` DESC).
 /// Sin metas ni perfil → `ProfileNotFound`.
 pub async fn get_goals_history(
@@ -757,6 +793,30 @@ mod tests {
             effective_from: date(effective_from),
             created_at: date(effective_from),
         }
+    }
+
+    #[test]
+    fn meta_a_una_fecha_cambia_a_mitad_de_semana_y_la_del_coach_gana() {
+        let ana = ObjectId::new();
+        let goals = vec![
+            goal(ana, GoalSource::System, 1800, "2026-10-01T00:00:00Z"),
+            goal(ana, GoalSource::Coach, 2300, "2026-10-17T00:00:00Z"),
+        ];
+        let antes = pick_goal_at(&goals, date("2026-10-16T23:59:59Z")).unwrap();
+        assert_eq!((antes.calories, antes.source), (1800, GoalSource::System));
+        let despues = pick_goal_at(&goals, date("2026-10-17T00:00:00Z")).unwrap();
+        assert_eq!(
+            (despues.calories, despues.source),
+            (2300, GoalSource::Coach)
+        );
+    }
+
+    #[test]
+    fn meta_a_una_fecha_anterior_a_la_primera_meta_no_existe() {
+        let ana = ObjectId::new();
+        let goals = vec![goal(ana, GoalSource::System, 1800, "2026-10-10T00:00:00Z")];
+        assert!(pick_goal_at(&goals, date("2026-10-09T23:59:59Z")).is_none());
+        assert!(pick_goal_at(&[], date("2026-10-15T00:00:00Z")).is_none());
     }
 
     #[test]

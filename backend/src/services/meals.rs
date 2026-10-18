@@ -190,6 +190,28 @@ pub async fn find_meals_by_date(
     collect_cursor(cursor).await
 }
 
+/// HU-11 — registros de `user_id` entre `from` y `to` (ambos incluidos) con una sola consulta, del más antiguo al más
+/// reciente. `date` es `YYYY-MM-DD`, así que el rango de texto coincide con el rango de días.
+pub async fn find_meals_between(
+    db: &Database,
+    user_id: ObjectId,
+    from: NaiveDate,
+    to: NaiveDate,
+) -> Result<Vec<Meal>, AppError> {
+    let cursor = meals(db)
+        .find(doc! {
+            "user_id": user_id,
+            "date": {
+                "$gte": from.format(DATE_FORMAT).to_string(),
+                "$lte": to.format(DATE_FORMAT).to_string(),
+            },
+        })
+        .sort(doc! { "eaten_at": 1, "_id": 1 })
+        .await
+        .map_err(AppError::internal)?;
+    collect_cursor(cursor).await
+}
+
 /// HU-24 — agregación que da, por cada usuario de `user_ids`, la fecha y hora de su registro más reciente
 /// (`{ _id: user_id, last_meal_at }`). Un usuario sin registros no aparece.
 pub fn last_meal_pipeline(user_ids: &[ObjectId]) -> Vec<Document> {
