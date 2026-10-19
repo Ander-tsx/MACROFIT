@@ -26,7 +26,7 @@ Un archivo por dominio (`auth.rs`, y después `profile.rs`, `goals.rs`, ...). Aq
 | `goals.rs` | HU-04 y TEC-12: cálculo Mifflin-St Jeor con mínimo de calorías (puro), `get_current_goal`, `get_goals_history`, `recalculate_on_profile_change`. HU-05: `validate_coach_goal` (pura), `set_client_goal`, `get_client_goals`; `find_current_goal` decide la meta vigente. HU-24: `pick_current_goals` (pura, misma regla en lote) y `current_goals_for`. HU-10: `get_goal_at` (meta vigente al final de un día). HU-11: `pick_goal_at` (pura) y `get_goals_at` (meta de cada día de la semana con una consulta) |
 | `photos.rs` | TEC-13: `validate_photo` / `detect_format` (puras), `save_photo`, HU-06: `validate_upload` (pura) y `upload_photo`, `read_photo` (dueño o coach vinculado), HU-07: `read_own_photo` (solo el dueño), `delete_photo` (solo el dueño); almacenamiento en GridFS |
 | `meal_estimates.rs` | HU-07: `validate_estimate_request` (pura), `estimate_meal` (lee la foto propia, la prepara y llama a `FoodService`), `map_recognition_error` (adaptador → `FOOD_NOT_RECOGNIZED` / `FOOD_PROVIDER_ERROR` / `FOOD_PROVIDER_TIMEOUT`) |
-| `meals.rs` | HU-09: `validate_new_meal` / `validate_date` / `local_date` (puras), `create_meal`, `list_meals`, `find_meals_by_date` (reutilizable en HU-10 y HU-25), `delete_meal` (borra también la foto). HU-24: `last_meal_pipeline` / `parse_last_meals` (puras) y `last_meal_at_for` (último registro de varios usuarios en una agregación). HU-11: `find_meals_between` (registros de un rango de días con una consulta) |
+| `meals.rs` | HU-09: `validate_new_meal` / `validate_date` / `local_date` (puras), `create_meal`, `list_meals`, `find_meals_by_date` (reutilizable en HU-10 y HU-25), `delete_meal` (borra también la foto). HU-24: `last_meal_pipeline` / `parse_last_meals` (puras) y `last_meal_at_for` (último registro de varios usuarios en una agregación). HU-11: `find_meals_between` (registros de un rango de días con una consulta). HU-25: `list_client_meals` (vinculación con `coach_links::require_active_link`, después `validate_date` y `find_meals_by_date`) |
 | `profile.rs` | HU-03: `validate_new_profile` / `validate_profile_changes` (puras), `create_profile` (marca `profile_completed`), `get_profile`, `update_profile`; rangos válidos de TEC-12 y `parse_weight_kg` (reutilizable en HU-21) |
 | `coach_invite_codes.rs` | HU-12: `generate_code` (puro), `get_or_create_invite_code`, `regenerate_invite_code` |
 | `summary.rs` | HU-10: `sum_meals`, `remaining`, `build_daily_summary` y `end_of_day` (puras), `get_daily_summary` (valida la fecha, toma la meta con `goals::get_goal_at` y suma los registros con `meals::find_meals_by_date`). HU-11: `goal_met`, `week_dates`, `validate_start` y `build_weekly_summary` (puras, reutilizan el cálculo diario), `get_weekly_summary` (metas con `goals::get_goals_at` y registros con `meals::find_meals_between`, una consulta cada uno) |
@@ -52,8 +52,11 @@ Un archivo por dominio (`auth.rs`, y después `profile.rs`, `goals.rs`, ...). Aq
 - **Eliminar:** busca el registro por `_id` **y** `user_id` (uno ajeno responde igual que uno inexistente,
   `MEAL_NOT_FOUND`), borra la foto con `photos::delete_photo` y después el registro. Si borrar la foto falla, el registro
   sigue y se puede reintentar; una foto que ya no existe no impide eliminarlo.
+- **Coach (HU-25):** `list_client_meals` comprueba primero la vinculación activa (`CLIENT_NOT_LINKED` para no vinculado,
+  desvinculado, inexistente o id mal formado, con cualquier fecha) y después reutiliza `validate_date` y
+  `find_meals_by_date` con el id del cliente. Solo lectura: no hay funciones de coach que escriban registros.
 - **Pruebas:** las puras con `cargo test`; las de MongoDB real (guardar, consultar, orden, foto ajena, foto repetida,
-  eliminación con la foto) con `cargo test -- --ignored`, igual que las de fotos.
+  eliminación con la foto, consulta del coach vinculado / no vinculado) con `cargo test -- --ignored`, igual que las de fotos.
 
 ### Aviso de privacidad en el registro
 
@@ -125,6 +128,8 @@ usa `save_photo` / `read_photo` / `delete_photo` y el id de la foto.
   cuenta, un id inexistente o mal formado reciben lo mismo, `404 PHOTO_NOT_FOUND`, para no revelar que la foto existe.
 - **Eliminación:** solo el dueño; borra el documento de `meal_photos.files` y todos sus trozos. Un coach vinculado no puede.
   HU-09 la usa al eliminar un registro de comida.
+- **Descarga (HU-25):** `read_photo` aplica la regla de lectura; la ruta `GET /meals/photos/{id}` la usa para que el
+  coach vea la foto de cada registro de su cliente (y el dueño la suya).
 - **Subida (HU-06):** `upload_photo` valida con `validate_upload` (sin archivo o vacío → `400 VALIDATION_ERROR` en
   `photo`; después tamaño y tipo) y guarda con `save_photo`. La ruta `POST /meals/photos` sube el límite de cuerpo de
   Axum (2 MB por defecto) a `MAX_PHOTO_BYTES` + 1 MiB y guarda como máximo `MAX_PHOTO_BYTES + 1` bytes del archivo,

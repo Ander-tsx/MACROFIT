@@ -8,6 +8,7 @@
 //! - HU-06 sube la foto con [`upload_photo`] (POST /meals/photos).
 //! - HU-07 la lee con [`read_own_photo`] (solo el dueño) para estimar sus valores (POST /meals/estimate).
 //! - HU-09 comprueba la foto de un registro con [`ensure_own_photo`] y la borra con [`delete_photo`] al eliminarlo.
+//! - HU-25 la sirve con [`read_photo`] (dueño o coach vinculado) en GET /meals/photos/{id}.
 
 use futures_util::io::{AsyncReadExt, AsyncWriteExt};
 use mongodb::{
@@ -179,8 +180,6 @@ fn file_metadata(file: FilesCollectionDocument) -> Result<MealPhotoMetadata, App
 
 /// Lee una foto si `requester_id` es su dueño o un coach con vinculación activa con el dueño.
 /// Un id mal formado, inexistente o sin permiso responde igual: `PHOTO_NOT_FOUND`.
-// TODO(HU-25): quitar el `allow` cuando la ruta que sirve la foto use `read_photo`.
-#[allow(dead_code)]
 pub async fn read_photo(
     db: &Database,
     requester_id: ObjectId,

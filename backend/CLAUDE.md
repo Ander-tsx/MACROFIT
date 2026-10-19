@@ -20,6 +20,7 @@ Instrucciones para Claude Code al trabajar en `backend/`. Las reglas generales d
   HU-10 (resumen diario: `GET /users/me/summary/daily?date=`, `remaining` negativo si se pasa de la meta),
   HU-11 (resumen semanal: `GET /users/me/summary/weekly?start=`, 7 días, promedio entre 7 y meta cumplida con calorías entre 90 % y 110 %),
   HU-24 (lista completa de clientes: `GET /coach/clients` con meta vigente y último registro de comida),
+  HU-25 (comidas de un cliente: `GET /coach/clients/{clientId}/meals?date=`, solo lectura, y `GET /meals/photos/{id}` para dueño o coach vinculado),
   TEC-14 (contrato OpenAPI con utoipa en `/api/v1/docs`; todo endpoint nuevo se documenta ahí, ver
   `src/routes/README.md`).
 - Antes de terminar: `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings`, `cargo test`,

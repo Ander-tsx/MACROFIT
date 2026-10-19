@@ -5,20 +5,21 @@ use axum::{
         multipart::{Multipart, MultipartError, MultipartRejection},
         rejection::QueryRejection,
     },
-    http::StatusCode,
+    http::{StatusCode, header},
+    response::{IntoResponse, Response},
     routing::{delete, get, post},
 };
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-use crate::auth::middleware::UserOnly;
+use crate::auth::middleware::{AuthenticatedUser, CoachOnly, UserOnly};
 use crate::error::{ApiJson, AppError, ErrorResponse};
 use crate::models::meal::Meal;
 use crate::models::meal_photo::PhotoFormat;
 use crate::services::food_recognition::{IdentifiedFood, Nutrients};
 use crate::services::meal_estimates::{self, MealEstimate};
 use crate::services::meals::{self, MealInput};
-use crate::services::photos::{self, MAX_PHOTO_BYTES, UploadedPhoto};
+use crate::services::photos::{self, MAX_PHOTO_BYTES, StoredPhoto, UploadedPhoto};
 use crate::state::AppState;
 
 /// Campo del formulario multipart que lleva la foto.
@@ -385,6 +386,128 @@ pub async fn delete_meal_handler(
     Ok(StatusCode::NO_CONTENT)
 }
 
+// ───────────────────────── HU-25 — comidas de un cliente (coach) ─────────────────────────
+
+/// Ruta (con el prefijo `/api/v1`) desde la que se descarga una foto con `GET /meals/photos/{id}`.
+fn photo_url(photo_id: &str) -> String {
+    format!("{}/meals/photos/{photo_id}", super::API_PREFIX)
+}
+
+#[derive(Debug, Serialize, utoipa::ToSchema)]
+#[schema(
+    description = "Registro de comida de un cliente, visto por su coach (RF-20). Solo lectura."
+)]
+pub struct ClientMealResponse {
+    #[schema(example = "6ad0a1b2c3d4e5f6a7b8c9d0")]
+    pub id: String,
+    /// Foto del registro; null en una captura manual sin foto.
+    #[schema(example = "6acd4140ac968514f27322cd")]
+    pub photo_id: Option<String>,
+    /// Ruta para descargar la foto con `GET /meals/photos/{id}` (sesión del coach); null si no hay foto.
+    #[schema(example = "/api/v1/meals/photos/6acd4140ac968514f27322cd")]
+    pub photo_url: Option<String>,
+    /// Fecha y hora del registro (RFC 3339, UTC).
+    #[schema(format = DateTime, example = "2026-10-17T01:30:00Z")]
+    pub eaten_at: String,
+    /// Día del registro en hora de México (APP_UTC_OFFSET), el mismo que ve el cliente.
+    #[schema(format = Date, example = "2026-10-16")]
+    pub date: String,
+    #[schema(example = 413.0)]
+    pub calories_kcal: f64,
+    #[schema(example = 42.2)]
+    pub protein_g: f64,
+    #[schema(example = 4.9)]
+    pub fat_g: f64,
+}
+
+impl From<Meal> for ClientMealResponse {
+    fn from(meal: Meal) -> Self {
+        let meal = MealResponse::from(meal);
+        Self {
+            photo_url: meal.photo_id.as_deref().map(photo_url),
+            id: meal.id,
+            photo_id: meal.photo_id,
+            eaten_at: meal.eaten_at,
+            date: meal.date,
+            calories_kcal: meal.calories_kcal,
+            protein_g: meal.protein_g,
+            fat_g: meal.fat_g,
+        }
+    }
+}
+
+/// HU-25 — GET /api/v1/coach/clients/{clientId}/meals?date=YYYY-MM-DD. Registros de un día de un cliente vinculado.
+#[utoipa::path(
+    get,
+    path = "/coach/clients/{clientId}/meals",
+    tag = "Coach",
+    summary = "Registro diario de comidas de un cliente (HU-25)",
+    description = "Devuelve, de solo lectura, los registros del cliente en ese día (hora de México, el mismo día que ve el cliente), del más antiguo al más reciente, con sus valores nutricionales y la ruta de su foto. Un día sin registros devuelve una lista vacía. La vinculación se comprueba antes que la fecha.",
+    security(("bearer_auth" = ["coach"])),
+    params(
+        ("clientId" = String, Path, description = "Id del cliente vinculado"),
+        MealsQuery,
+    ),
+    responses(
+        (status = 200, description = "Registros del día", body = [ClientMealResponse]),
+        (status = 400, description = "`VALIDATION_ERROR` en `date` (ausente o con formato distinto de `YYYY-MM-DD`)", body = ErrorResponse),
+        (status = 401, description = "`UNAUTHORIZED` o `TOKEN_REVOKED`", body = ErrorResponse),
+        (status = 403, description = "`FORBIDDEN_ROLE` (cuenta `user`) o `CLIENT_NOT_LINKED` (sin vinculación activa, desvinculado, id inexistente o mal formado)", body = ErrorResponse),
+    )
+)]
+pub async fn list_client_meals_handler(
+    State(state): State<AppState>,
+    CoachOnly(coach): CoachOnly,
+    Path(client_id): Path<String>,
+    query: Result<Query<MealsQuery>, QueryRejection>,
+) -> Result<Json<Vec<ClientMealResponse>>, AppError> {
+    let Query(query) = query.map_err(|rejection| AppError::InvalidBody(rejection.body_text()))?;
+    let list = meals::list_client_meals(&state.db, coach.user_id, &client_id, query.date).await?;
+    Ok(Json(
+        list.into_iter().map(ClientMealResponse::from).collect(),
+    ))
+}
+
+/// Respuesta con el contenido de la foto. `private, no-store`: el acceso del coach termina al desvincularse, así que
+/// ningún caché debe conservarla.
+fn photo_response(photo: StoredPhoto) -> Response {
+    (
+        [
+            (header::CONTENT_TYPE, photo.format.mime_type()),
+            (header::CACHE_CONTROL, "private, no-store"),
+        ],
+        photo.bytes,
+    )
+        .into_response()
+}
+
+/// HU-25 — GET /api/v1/meals/photos/{id}. Descarga una foto (dueño o coach con vinculación activa, TEC-13).
+#[utoipa::path(
+    get,
+    path = "/meals/photos/{id}",
+    tag = "Comidas",
+    summary = "Descarga la foto de una comida (HU-25)",
+    description = "Devuelve la imagen tal como se subió (`image/jpeg` o `image/png`). La pueden ver su dueño y el coach con vinculación activa con el dueño; para cualquier otra cuenta la foto no existe.",
+    security(("bearer_auth" = [])),
+    params(("id" = String, Path, description = "Id de la foto")),
+    responses(
+        (status = 200, description = "Contenido de la foto", content(
+            (Vec<u8> = "image/jpeg"),
+            (Vec<u8> = "image/png"),
+        )),
+        (status = 401, description = "`UNAUTHORIZED` o `TOKEN_REVOKED`", body = ErrorResponse),
+        (status = 404, description = "`PHOTO_NOT_FOUND` (no existe, id mal formado o sin permiso para verla)", body = ErrorResponse),
+    )
+)]
+pub async fn get_photo_handler(
+    State(state): State<AppState>,
+    auth: AuthenticatedUser,
+    Path(id): Path<String>,
+) -> Result<Response, AppError> {
+    let photo = photos::read_photo(&state.db, auth.user_id, &id).await?;
+    Ok(photo_response(photo))
+}
+
 /// Un cuerpo que pasa el límite de la ruta es una foto demasiado grande; cualquier otro error, un multipart mal formado.
 fn multipart_error(err: MultipartError) -> AppError {
     if err.status() == StatusCode::PAYLOAD_TOO_LARGE {
@@ -400,16 +523,84 @@ pub fn router() -> Router<AppState> {
             "/meals/photos",
             post(upload_photo_handler).layer(DefaultBodyLimit::max(PHOTO_UPLOAD_BODY_LIMIT)),
         )
+        .route("/meals/photos/:id", get(get_photo_handler))
         .route("/meals/estimate", post(estimate_meal_handler))
         .route("/meals", get(list_meals_handler).post(create_meal_handler))
         .route("/meals/:id", delete(delete_meal_handler))
+        .route(
+            "/coach/clients/:client_id/meals",
+            get(list_client_meals_handler),
+        )
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use axum::{body::Body, http::Request, response::IntoResponse};
+    use axum::{body::Body, http::Request};
+    use mongodb::bson::{DateTime, oid::ObjectId};
+    use serde_json::json;
     use tower::ServiceExt;
+
+    fn meal(photo_id: Option<ObjectId>) -> Meal {
+        Meal {
+            id: ObjectId::parse_str("6ad0a1b2c3d4e5f6a7b8c9d0").unwrap(),
+            user_id: ObjectId::new(),
+            photo_id,
+            eaten_at: DateTime::parse_rfc3339_str("2026-10-17T01:30:00Z").unwrap(),
+            date: "2026-10-16".into(),
+            calories_kcal: 413.0,
+            protein_g: 42.2,
+            fat_g: 4.9,
+        }
+    }
+
+    #[test]
+    fn registro_del_cliente_con_foto_incluye_la_ruta_de_la_foto() {
+        let photo_id = ObjectId::parse_str("6acd4140ac968514f27322cd").unwrap();
+        let body = serde_json::to_value(ClientMealResponse::from(meal(Some(photo_id)))).unwrap();
+        assert_eq!(
+            body,
+            json!({
+                "id": "6ad0a1b2c3d4e5f6a7b8c9d0",
+                "photo_id": "6acd4140ac968514f27322cd",
+                "photo_url": "/api/v1/meals/photos/6acd4140ac968514f27322cd",
+                "eaten_at": "2026-10-17T01:30:00Z",
+                "date": "2026-10-16",
+                "calories_kcal": 413.0,
+                "protein_g": 42.2,
+                "fat_g": 4.9
+            })
+        );
+    }
+
+    #[test]
+    fn registro_del_cliente_sin_foto_deja_foto_y_ruta_en_null() {
+        let body = serde_json::to_value(ClientMealResponse::from(meal(None))).unwrap();
+        assert_eq!(body["photo_id"], json!(null));
+        assert_eq!(body["photo_url"], json!(null));
+        assert_eq!(body["calories_kcal"], json!(413.0));
+    }
+
+    #[tokio::test]
+    async fn la_foto_se_sirve_con_su_tipo_y_sin_cache() {
+        let bytes = vec![0x89, b'P', b'N', b'G', 0x0D, 0x0A, 0x1A, 0x0A, 1, 2];
+        let response = photo_response(StoredPhoto {
+            id: ObjectId::new(),
+            owner_id: ObjectId::new(),
+            format: PhotoFormat::Png,
+            bytes: bytes.clone(),
+        });
+        assert_eq!(response.status(), StatusCode::OK);
+        assert_eq!(response.headers()[header::CONTENT_TYPE], "image/png");
+        assert_eq!(
+            response.headers()[header::CACHE_CONTROL],
+            "private, no-store"
+        );
+        let body = axum::body::to_bytes(response.into_body(), usize::MAX)
+            .await
+            .unwrap();
+        assert_eq!(body.to_vec(), bytes);
+    }
 
     const BOUNDARY: &str = "macrofit-prueba";
 

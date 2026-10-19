@@ -3,7 +3,7 @@
 API REST de MacroFit: autenticación, persistencia en MongoDB y reglas de acceso por rol (`user` y `coach`).
 Historias cubiertas: **TEC-05** (base), **TEC-07** (aviso de privacidad), **HU-01** (registro con rol), **HU-02** (inicio y cierre de sesión)
 **HU-03** (perfil inicial del usuario), **HU-04** y **HU-05** (metas), **TEC-13** (almacenamiento de fotos de comidas),
-**TEC-14** (contrato de la API en OpenAPI), **HU-06** (carga de la foto de comida), **TEC-02** (comparación de servicios de reconocimiento de alimentos), **HU-07** (estimación nutricional de la foto) y **HU-09** (registros de comida).
+**TEC-14** (contrato de la API en OpenAPI), **HU-06** (carga de la foto de comida), **TEC-02** (comparación de servicios de reconocimiento de alimentos), **HU-07** (estimación nutricional de la foto), **HU-09** (registros de comida) y **HU-25** (registro diario de comidas de un cliente, para el coach).
 
 > **Si eres una persona o una sesión de IA que va a modificar este backend, lee primero
 > la sección [Forma de trabajo](#-forma-de-trabajo) y el README de la carpeta que vas a tocar.**
@@ -177,9 +177,11 @@ El contrato completo (cuerpos, respuestas y códigos de error de cada endpoint) 
 | GET | `/coach/clients` | Bearer (coach) | HU-05, HU-24 | Clientes con vinculación activa, con su meta vigente y su último registro de comida |
 | GET | `/coach/clients/{clientId}/goals` | Bearer (coach) | HU-05 | Historial de metas de un cliente vinculado |
 | POST | `/coach/clients/{clientId}/goals` | Bearer (coach) | HU-05 | Fija una meta para un cliente vinculado |
+| GET | `/coach/clients/{clientId}/meals?date=YYYY-MM-DD` | Bearer (coach) | HU-25 | Registros de comida de un cliente vinculado en ese día (solo lectura) |
 | GET | `/coach/invite-code` | Bearer (coach) | HU-12 | Código de invitación del coach (lo crea si no existe) |
 | POST | `/coach/invite-code/regenerate` | Bearer (coach) | HU-12 | Reemplaza el código de invitación por uno nuevo |
 | POST | `/meals/photos` | Bearer (user) | HU-06 | Sube la foto de una comida (multipart, campo `photo`) |
+| GET | `/meals/photos/{id}` | Bearer (cualquier rol) | HU-25 | Descarga una foto: su dueño o el coach con vinculación activa |
 | POST | `/meals/estimate` | Bearer (user) | HU-07 | Estima calorías, proteína y grasa de una foto propia |
 | POST | `/meals` | Bearer (user) | HU-09 | Guarda un registro de comida (foto opcional y valores finales) |
 | GET | `/meals?date=YYYY-MM-DD` | Bearer (user) | HU-09 | Registros del usuario en ese día, por hora |
@@ -593,6 +595,48 @@ más antiguo al más reciente; `[]` si no hay registros.
 | La foto no existe, el id está mal formado o es de otro usuario | `404 PHOTO_NOT_FOUND` |
 | El registro a eliminar no existe, el id está mal formado o es de otro usuario | `404 MEAL_NOT_FOUND` (no se revela que existe) |
 | La foto ya está en otro registro | `409 PHOTO_ALREADY_USED` con `fields.photo_id` |
+
+### Comidas de un cliente — `GET /coach/clients/{clientId}/meals` (HU-25)
+
+Cabecera `Authorization: Bearer <access_token>`. **Solo rol `coach`** y solo con una vinculación `active` con el cliente
+(RF-20). Query `date=YYYY-MM-DD` (obligatorio), con el mismo criterio de día que `GET /meals?date=` (`APP_UTC_OFFSET`): el
+coach ve exactamente el mismo día que el cliente. **Solo lectura:** no hay rutas de coach para crear, modificar ni eliminar
+registros, y `POST/GET /meals` y `DELETE /meals/{id}` responden `403 FORBIDDEN_ROLE` a un coach (RN-07).
+
+La vinculación se comprueba **antes** que la fecha (igual que en HU-05): un coach sin vinculación recibe
+`CLIENT_NOT_LINKED` aunque la fecha sea inválida.
+
+**200 OK** — registros del cliente en ese día, del más antiguo al más reciente; `[]` si no hay registros:
+
+```json
+[
+  {
+    "id": "6ad0a1b2c3d4e5f6a7b8c9d0",
+    "photo_id": "6acd4140ac968514f27322cd",
+    "photo_url": "/api/v1/meals/photos/6acd4140ac968514f27322cd",
+    "eaten_at": "2026-10-17T01:30:00Z",
+    "date": "2026-10-16",
+    "calories_kcal": 413.0,
+    "protein_g": 42.2,
+    "fat_g": 4.9
+  }
+]
+```
+
+Misma forma que el registro de HU-09 más `photo_url`, la ruta para descargar la foto con la sesión del coach. `photo_id`
+y `photo_url` son `null` en una captura manual.
+
+| Caso | Respuesta |
+|---|---|
+| `date` ausente o con formato distinto de `YYYY-MM-DD` | `400 VALIDATION_ERROR` con `fields.date` |
+| Sin sesión / token inválido | `401 UNAUTHORIZED` |
+| Cuenta de usuario | `403 FORBIDDEN_ROLE` |
+| Cliente no vinculado, desvinculado, inexistente o con id mal formado | `403 CLIENT_NOT_LINKED` (no se distingue) |
+
+**GET `/meals/photos/{id}`** (cualquier sesión) → `200` con la imagen tal como se subió (`Content-Type: image/jpeg` o
+`image/png`, `Cache-Control: private, no-store` porque el acceso del coach termina al desvincularse). La ven su dueño y el
+coach con vinculación activa con el dueño (TEC-13). Para cualquier otra cuenta, un id inexistente o mal formado →
+`404 PHOTO_NOT_FOUND`. Sin sesión → `401 UNAUTHORIZED`.
 
 ### Resumen diario — `GET /users/me/summary/daily` (HU-10)
 
