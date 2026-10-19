@@ -2673,6 +2673,1282 @@
           "response": []
         }
       ]
+    },
+    {
+      "name": "HU-25 Comidas de un cliente",
+      "description": "HU-25 — GET /coach/clients/{clientId}/meals?date= (solo coach vinculado, solo lectura) y GET /meals/photos/{id} (dueño o coach vinculado). Usa el usuario y el coach de meals y los registros que deja HU-09; al final el usuario se desvincula.",
+      "item": [
+        {
+          "name": "00 - Preparación: código de invitación del coach",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 200 OK\", function () {",
+                  "        pm.response.to.have.status(200);",
+                  "    });",
+                  "    pm.collectionVariables.set(\"hu25_invite_code\", pm.response.json().code);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{meals_coach_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/coach/invite-code",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "coach",
+                "invite-code"
+              ]
+            },
+            "description": "Código del coach de meals (HU-12) para vincular al usuario de meals (HU-13)."
+          },
+          "response": []
+        },
+        {
+          "name": "00 - Preparación: el usuario se vincula con el coach",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 201 Created\", function () {",
+                  "        pm.response.to.have.status(201);",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{meals_user_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/me/coach-link",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "me",
+                "coach-link"
+              ]
+            },
+            "description": "El usuario de meals, dueño de {{meal_id}} y {{meal_manual_id}}, queda vinculado con el coach de meals.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"invite_code\": \"{{hu25_invite_code}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "00 - Preparación: registrar a un coach no vinculado (coach2)",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    const email = \"hu25.coach2.\" + Date.now() + \".\" + Math.floor(Math.random() * 1e6) + \"@macrofit.test\";",
+                  "    pm.variables.set(\"email\", email);",
+                  "    pm.collectionVariables.set(\"hu25_coach2_email\", email);",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 201 Created\", function () {",
+                  "        pm.response.to.have.status(201);",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "register"
+              ]
+            },
+            "description": "Segundo coach sin vinculación con el usuario de meals. Guarda su correo en {{hu25_coach2_email}}.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Coach2 HU-25\",\n  \"email\": \"{{email}}\",\n  \"password\": \"{{test_password}}\",\n  \"role\": \"coach\",\n  \"privacy_accepted\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "00 - Preparación: iniciar sesión del coach2",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 200 OK\", function () {",
+                  "        pm.response.to.have.status(200);",
+                  "    });",
+                  "    pm.collectionVariables.set(\"hu25_coach2_token\", pm.response.json().access_token);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ]
+            },
+            "description": "Guarda el token en {{hu25_coach2_token}}.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{hu25_coach2_email}}\",\n  \"password\": \"{{test_password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "01 - Cliente vinculado con registros",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 200 OK\", function () {",
+                  "        pm.response.to.have.status(200);",
+                  "    });",
+                  "    const data = pm.response.json();",
+                  "    pm.test(\"Es una lista con la estructura del registro del cliente\", function () {",
+                  "        pm.expect(data).to.be.an(\"array\");",
+                  "        data.forEach(function (meal) {",
+                  "            pm.expect(meal).to.have.all.keys(\"id\", \"photo_id\", \"photo_url\", \"eaten_at\", \"date\", \"calories_kcal\", \"protein_g\", \"fat_g\");",
+                  "        });",
+                  "    });",
+                  "    const ids = data.map(function (meal) { return meal.id; });",
+                  "    pm.test(\"Incluye los registros guardados del cliente y no el eliminado\", function () {",
+                  "        pm.expect(ids).to.include(pm.collectionVariables.get(\"meal_id\"));",
+                  "        pm.expect(ids).to.include(pm.collectionVariables.get(\"meal_manual_id\"));",
+                  "        pm.expect(ids).to.not.include(pm.collectionVariables.get(\"meal_to_delete_id\"));",
+                  "    });",
+                  "    pm.test(\"No incluye registros de otro usuario\", function () {",
+                  "        pm.expect(ids).to.not.include(pm.collectionVariables.get(\"meals_other_meal_id\"));",
+                  "    });",
+                  "    pm.test(\"Todos son del día consultado\", function () {",
+                  "        data.forEach(function (meal) {",
+                  "            pm.expect(meal.date).to.eql(pm.collectionVariables.get(\"meal_date\"));",
+                  "        });",
+                  "    });",
+                  "    pm.test(\"Ordenados por hora\", function () {",
+                  "        const times = data.map(function (meal) { return Date.parse(meal.eaten_at); });",
+                  "        pm.expect(times).to.eql(times.slice().sort(function (a, b) { return a - b; }));",
+                  "    });",
+                  "    pm.test(\"Valores nutricionales numéricos\", function () {",
+                  "        data.forEach(function (meal) {",
+                  "            [\"calories_kcal\", \"protein_g\", \"fat_g\"].forEach(function (key) {",
+                  "                pm.expect(meal[key]).to.be.a(\"number\");",
+                  "            });",
+                  "        });",
+                  "    });",
+                  "    const withPhoto = data.find(function (meal) { return meal.id === pm.collectionVariables.get(\"meal_id\"); });",
+                  "    const manual = data.find(function (meal) { return meal.id === pm.collectionVariables.get(\"meal_manual_id\"); });",
+                  "    pm.test(\"El registro con foto trae su id y la ruta para descargarla\", function () {",
+                  "        pm.expect(withPhoto.photo_id).to.eql(pm.collectionVariables.get(\"meal_photo_id\"));",
+                  "        pm.expect(withPhoto.photo_url).to.eql(\"/api/v1/meals/photos/\" + withPhoto.photo_id);",
+                  "    });",
+                  "    pm.test(\"La captura manual no tiene foto\", function () {",
+                  "        pm.expect(manual.photo_id).to.eql(null);",
+                  "        pm.expect(manual.photo_url).to.eql(null);",
+                  "    });",
+                  "    const previous = new Date(pm.collectionVariables.get(\"meal_date\") + \"T00:00:00Z\");",
+                  "    previous.setUTCDate(previous.getUTCDate() - 1);",
+                  "    pm.collectionVariables.set(\"hu25_other_date\", previous.toISOString().slice(0, 10));",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{meals_coach_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/coach/clients/{{meals_user_id}}/meals?date={{meal_date}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "coach",
+                "clients",
+                "{{meals_user_id}}",
+                "meals"
+              ],
+              "query": [
+                {
+                  "key": "date",
+                  "value": "{{meal_date}}"
+                }
+              ]
+            },
+            "description": "El coach ve los registros que HU-09 dejó guardados ({{meal_id}} con foto y {{meal_manual_id}} sin foto) con sus valores nutricionales; el registro eliminado en HU-09 ya no aparece."
+          },
+          "response": []
+        },
+        {
+          "name": "02 - El coach ve la foto del registro",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 200 OK\", function () {",
+                  "        pm.response.to.have.status(200);",
+                  "    });",
+                  "    pm.test(\"Es la imagen JPEG que subió el cliente\", function () {",
+                  "        pm.expect(pm.response.headers.get(\"Content-Type\")).to.eql(\"image/jpeg\");",
+                  "        pm.expect(pm.response.responseSize).to.be.above(0);",
+                  "    });",
+                  "    pm.test(\"No se guarda en caché\", function () {",
+                  "        pm.expect(pm.response.headers.get(\"Cache-Control\")).to.include(\"no-store\");",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{meals_coach_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/meals/photos/{{meal_photo_id}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "meals",
+                "photos",
+                "{{meal_photo_id}}"
+              ]
+            },
+            "description": "Descarga la foto de {{meal_id}} en la ruta que dio photo_url en 01: el coach vinculado tiene acceso (TEC-13)."
+          },
+          "response": []
+        },
+        {
+          "name": "03 - Día sin registros",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 200 OK\", function () {",
+                  "        pm.response.to.have.status(200);",
+                  "    });",
+                  "    const data = pm.response.json();",
+                  "    pm.test(\"Es una lista con la estructura del registro del cliente\", function () {",
+                  "        pm.expect(data).to.be.an(\"array\");",
+                  "        data.forEach(function (meal) {",
+                  "            pm.expect(meal).to.have.all.keys(\"id\", \"photo_id\", \"photo_url\", \"eaten_at\", \"date\", \"calories_kcal\", \"protein_g\", \"fat_g\");",
+                  "        });",
+                  "    });",
+                  "    pm.test(\"Lista vacía\", function () {",
+                  "        pm.expect(data).to.eql([]);",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{meals_coach_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/coach/clients/{{meals_user_id}}/meals?date=2000-01-01",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "coach",
+                "clients",
+                "{{meals_user_id}}",
+                "meals"
+              ],
+              "query": [
+                {
+                  "key": "date",
+                  "value": "2000-01-01"
+                }
+              ]
+            },
+            "description": "Un día sin registros devuelve una lista vacía (CU-03, flujo 3a)."
+          },
+          "response": []
+        },
+        {
+          "name": "04 - Otra fecha",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 200 OK\", function () {",
+                  "        pm.response.to.have.status(200);",
+                  "    });",
+                  "    const data = pm.response.json();",
+                  "    pm.test(\"Es una lista con la estructura del registro del cliente\", function () {",
+                  "        pm.expect(data).to.be.an(\"array\");",
+                  "        data.forEach(function (meal) {",
+                  "            pm.expect(meal).to.have.all.keys(\"id\", \"photo_id\", \"photo_url\", \"eaten_at\", \"date\", \"calories_kcal\", \"protein_g\", \"fat_g\");",
+                  "        });",
+                  "    });",
+                  "    pm.test(\"Solo registros del día consultado\", function () {",
+                  "        data.forEach(function (meal) {",
+                  "            pm.expect(meal.date).to.eql(pm.collectionVariables.get(\"hu25_other_date\"));",
+                  "        });",
+                  "        const ids = data.map(function (meal) { return meal.id; });",
+                  "        pm.expect(ids).to.not.include(pm.collectionVariables.get(\"meal_id\"));",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{meals_coach_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/coach/clients/{{meals_user_id}}/meals?date={{hu25_other_date}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "coach",
+                "clients",
+                "{{meals_user_id}}",
+                "meals"
+              ],
+              "query": [
+                {
+                  "key": "date",
+                  "value": "{{hu25_other_date}}"
+                }
+              ]
+            },
+            "description": "El coach consulta el día anterior a {{meal_date}}: responde 200 y solo con registros de ese día; nunca los de {{meal_date}}."
+          },
+          "response": []
+        },
+        {
+          "name": "05 - Coach no vinculado (coach2)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 403 Forbidden\", function () {",
+                  "        pm.response.to.have.status(403);",
+                  "    });",
+                  "    const data = pm.response.json();",
+                  "    pm.test(\"Formato de error de la API\", function () {",
+                  "        pm.expect(data).to.have.all.keys(\"error\");",
+                  "        pm.expect(data.error).to.have.all.keys(\"code\", \"message\", \"fields\");",
+                  "    });",
+                  "    pm.test(\"Código CLIENT_NOT_LINKED\", function () {",
+                  "        pm.expect(data.error.code).to.eql(\"CLIENT_NOT_LINKED\");",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{hu25_coach2_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/coach/clients/{{meals_user_id}}/meals?date={{meal_date}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "coach",
+                "clients",
+                "{{meals_user_id}}",
+                "meals"
+              ],
+              "query": [
+                {
+                  "key": "date",
+                  "value": "{{meal_date}}"
+                }
+              ]
+            },
+            "description": "Un coach sin vinculación con el cliente no ve sus registros (RNF-05)."
+          },
+          "response": []
+        },
+        {
+          "name": "06 - Coach no vinculado no ve la foto",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 404 Not Found\", function () {",
+                  "        pm.response.to.have.status(404);",
+                  "    });",
+                  "    const data = pm.response.json();",
+                  "    pm.test(\"Formato de error de la API\", function () {",
+                  "        pm.expect(data).to.have.all.keys(\"error\");",
+                  "        pm.expect(data.error).to.have.all.keys(\"code\", \"message\", \"fields\");",
+                  "    });",
+                  "    pm.test(\"Código PHOTO_NOT_FOUND\", function () {",
+                  "        pm.expect(data.error.code).to.eql(\"PHOTO_NOT_FOUND\");",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{hu25_coach2_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/meals/photos/{{meal_photo_id}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "meals",
+                "photos",
+                "{{meal_photo_id}}"
+              ]
+            },
+            "description": "Para un coach sin vinculación la foto no existe (TEC-13)."
+          },
+          "response": []
+        },
+        {
+          "name": "07 - Cliente inexistente",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 403 Forbidden\", function () {",
+                  "        pm.response.to.have.status(403);",
+                  "    });",
+                  "    const data = pm.response.json();",
+                  "    pm.test(\"Formato de error de la API\", function () {",
+                  "        pm.expect(data).to.have.all.keys(\"error\");",
+                  "        pm.expect(data.error).to.have.all.keys(\"code\", \"message\", \"fields\");",
+                  "    });",
+                  "    pm.test(\"Código CLIENT_NOT_LINKED\", function () {",
+                  "        pm.expect(data.error.code).to.eql(\"CLIENT_NOT_LINKED\");",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{meals_coach_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/coach/clients/000000000000000000000000/meals?date={{meal_date}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "coach",
+                "clients",
+                "000000000000000000000000",
+                "meals"
+              ],
+              "query": [
+                {
+                  "key": "date",
+                  "value": "{{meal_date}}"
+                }
+              ]
+            },
+            "description": "Un id que no existe responde igual que un cliente no vinculado."
+          },
+          "response": []
+        },
+        {
+          "name": "08 - Id de cliente mal formado",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 403 Forbidden\", function () {",
+                  "        pm.response.to.have.status(403);",
+                  "    });",
+                  "    const data = pm.response.json();",
+                  "    pm.test(\"Formato de error de la API\", function () {",
+                  "        pm.expect(data).to.have.all.keys(\"error\");",
+                  "        pm.expect(data.error).to.have.all.keys(\"code\", \"message\", \"fields\");",
+                  "    });",
+                  "    pm.test(\"Código CLIENT_NOT_LINKED\", function () {",
+                  "        pm.expect(data.error.code).to.eql(\"CLIENT_NOT_LINKED\");",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{meals_coach_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/coach/clients/no-es-un-id/meals?date={{meal_date}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "coach",
+                "clients",
+                "no-es-un-id",
+                "meals"
+              ],
+              "query": [
+                {
+                  "key": "date",
+                  "value": "{{meal_date}}"
+                }
+              ]
+            },
+            "description": "Un id mal formado responde igual que un cliente no vinculado."
+          },
+          "response": []
+        },
+        {
+          "name": "09 - Fecha inválida",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 400 Bad Request\", function () {",
+                  "        pm.response.to.have.status(400);",
+                  "    });",
+                  "    const data = pm.response.json();",
+                  "    pm.test(\"Formato de error de la API\", function () {",
+                  "        pm.expect(data).to.have.all.keys(\"error\");",
+                  "        pm.expect(data.error).to.have.all.keys(\"code\", \"message\", \"fields\");",
+                  "    });",
+                  "    pm.test(\"Código VALIDATION_ERROR\", function () {",
+                  "        pm.expect(data.error.code).to.eql(\"VALIDATION_ERROR\");",
+                  "    });",
+                  "    pm.test(\"Señala el campo date\", function () {",
+                  "        pm.expect(data.error.fields).to.have.property(\"date\");",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{meals_coach_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/coach/clients/{{meals_user_id}}/meals?date=16-10-2026",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "coach",
+                "clients",
+                "{{meals_user_id}}",
+                "meals"
+              ],
+              "query": [
+                {
+                  "key": "date",
+                  "value": "16-10-2026"
+                }
+              ]
+            },
+            "description": "Una fecha con formato distinto de YYYY-MM-DD responde 400 en date."
+          },
+          "response": []
+        },
+        {
+          "name": "10 - Sin fecha",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 400 Bad Request\", function () {",
+                  "        pm.response.to.have.status(400);",
+                  "    });",
+                  "    const data = pm.response.json();",
+                  "    pm.test(\"Formato de error de la API\", function () {",
+                  "        pm.expect(data).to.have.all.keys(\"error\");",
+                  "        pm.expect(data.error).to.have.all.keys(\"code\", \"message\", \"fields\");",
+                  "    });",
+                  "    pm.test(\"Código VALIDATION_ERROR\", function () {",
+                  "        pm.expect(data.error.code).to.eql(\"VALIDATION_ERROR\");",
+                  "    });",
+                  "    pm.test(\"Señala el campo date\", function () {",
+                  "        pm.expect(data.error.fields).to.have.property(\"date\");",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{meals_coach_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/coach/clients/{{meals_user_id}}/meals",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "coach",
+                "clients",
+                "{{meals_user_id}}",
+                "meals"
+              ]
+            },
+            "description": "La fecha es obligatoria."
+          },
+          "response": []
+        },
+        {
+          "name": "11 - Cuenta de usuario",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 403 Forbidden\", function () {",
+                  "        pm.response.to.have.status(403);",
+                  "    });",
+                  "    const data = pm.response.json();",
+                  "    pm.test(\"Formato de error de la API\", function () {",
+                  "        pm.expect(data).to.have.all.keys(\"error\");",
+                  "        pm.expect(data.error).to.have.all.keys(\"code\", \"message\", \"fields\");",
+                  "    });",
+                  "    pm.test(\"Código FORBIDDEN_ROLE\", function () {",
+                  "        pm.expect(data.error.code).to.eql(\"FORBIDDEN_ROLE\");",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{meals_user_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/coach/clients/{{meals_user_id}}/meals?date={{meal_date}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "coach",
+                "clients",
+                "{{meals_user_id}}",
+                "meals"
+              ],
+              "query": [
+                {
+                  "key": "date",
+                  "value": "{{meal_date}}"
+                }
+              ]
+            },
+            "description": "Solo un coach consulta esta ruta, ni siquiera el propio cliente."
+          },
+          "response": []
+        },
+        {
+          "name": "12 - Sin sesión",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 401 Unauthorized\", function () {",
+                  "        pm.response.to.have.status(401);",
+                  "    });",
+                  "    const data = pm.response.json();",
+                  "    pm.test(\"Formato de error de la API\", function () {",
+                  "        pm.expect(data).to.have.all.keys(\"error\");",
+                  "        pm.expect(data.error).to.have.all.keys(\"code\", \"message\", \"fields\");",
+                  "    });",
+                  "    pm.test(\"Código UNAUTHORIZED\", function () {",
+                  "        pm.expect(data.error.code).to.eql(\"UNAUTHORIZED\");",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/coach/clients/{{meals_user_id}}/meals?date={{meal_date}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "coach",
+                "clients",
+                "{{meals_user_id}}",
+                "meals"
+              ],
+              "query": [
+                {
+                  "key": "date",
+                  "value": "{{meal_date}}"
+                }
+              ]
+            },
+            "description": "Sin token responde 401."
+          },
+          "response": []
+        },
+        {
+          "name": "13 - Solo lectura: el coach no crea registros del cliente",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 405 Method Not Allowed\", function () {",
+                  "        pm.response.to.have.status(405);",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{meals_coach_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/coach/clients/{{meals_user_id}}/meals",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "coach",
+                "clients",
+                "{{meals_user_id}}",
+                "meals"
+              ]
+            },
+            "description": "La ruta del coach solo acepta GET: no existe una ruta para crear registros del cliente.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"calories_kcal\": 100,\n  \"protein_g\": 10,\n  \"fat_g\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "13 - Solo lectura: el coach no elimina registros del cliente",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 403 Forbidden\", function () {",
+                  "        pm.response.to.have.status(403);",
+                  "    });",
+                  "    const data = pm.response.json();",
+                  "    pm.test(\"Formato de error de la API\", function () {",
+                  "        pm.expect(data).to.have.all.keys(\"error\");",
+                  "        pm.expect(data.error).to.have.all.keys(\"code\", \"message\", \"fields\");",
+                  "    });",
+                  "    pm.test(\"Código FORBIDDEN_ROLE\", function () {",
+                  "        pm.expect(data.error.code).to.eql(\"FORBIDDEN_ROLE\");",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{meals_coach_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/meals/{{meal_id}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "meals",
+                "{{meal_id}}"
+              ]
+            },
+            "description": "DELETE /meals/{id} es solo para el dueño: el coach vinculado recibe 403 (RN-07) y el registro sigue ahí."
+          },
+          "response": []
+        },
+        {
+          "name": "14 - El cliente sigue teniendo sus registros",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 200 OK\", function () {",
+                  "        pm.response.to.have.status(200);",
+                  "    });",
+                  "    const ids = pm.response.json().map(function (meal) { return meal.id; });",
+                  "    pm.test(\"Los registros no cambiaron\", function () {",
+                  "        pm.expect(ids).to.include(pm.collectionVariables.get(\"meal_id\"));",
+                  "        pm.expect(ids).to.include(pm.collectionVariables.get(\"meal_manual_id\"));",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{meals_user_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/meals?date={{meal_date}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "meals"
+              ],
+              "query": [
+                {
+                  "key": "date",
+                  "value": "{{meal_date}}"
+                }
+              ]
+            },
+            "description": "Tras los intentos del coach, el usuario sigue viendo {{meal_id}} y {{meal_manual_id}}."
+          },
+          "response": []
+        },
+        {
+          "name": "15 - El dueño ve su propia foto",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 200 OK\", function () {",
+                  "        pm.response.to.have.status(200);",
+                  "    });",
+                  "    pm.test(\"Imagen JPEG\", function () {",
+                  "        pm.expect(pm.response.headers.get(\"Content-Type\")).to.eql(\"image/jpeg\");",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{meals_user_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/meals/photos/{{meal_photo_id}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "meals",
+                "photos",
+                "{{meal_photo_id}}"
+              ]
+            },
+            "description": "La misma ruta de foto sirve al dueño."
+          },
+          "response": []
+        },
+        {
+          "name": "16 - Preparación: el cliente se desvincula",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 204 No Content\", function () {",
+                  "        pm.response.to.have.status(204);",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{meals_user_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/me/coach-link",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "me",
+                "coach-link"
+              ]
+            },
+            "description": "HU-14: el usuario de meals deja de compartir sus datos con el coach."
+          },
+          "response": []
+        },
+        {
+          "name": "16 - Cliente desvinculado",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 403 Forbidden\", function () {",
+                  "        pm.response.to.have.status(403);",
+                  "    });",
+                  "    const data = pm.response.json();",
+                  "    pm.test(\"Formato de error de la API\", function () {",
+                  "        pm.expect(data).to.have.all.keys(\"error\");",
+                  "        pm.expect(data.error).to.have.all.keys(\"code\", \"message\", \"fields\");",
+                  "    });",
+                  "    pm.test(\"Código CLIENT_NOT_LINKED\", function () {",
+                  "        pm.expect(data.error.code).to.eql(\"CLIENT_NOT_LINKED\");",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{meals_coach_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/coach/clients/{{meals_user_id}}/meals?date={{meal_date}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "coach",
+                "clients",
+                "{{meals_user_id}}",
+                "meals"
+              ],
+              "query": [
+                {
+                  "key": "date",
+                  "value": "{{meal_date}}"
+                }
+              ]
+            },
+            "description": "Tras la desvinculación el coach ya no ve los registros."
+          },
+          "response": []
+        },
+        {
+          "name": "16 - Cliente desvinculado: la foto ya no es accesible",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 404 Not Found\", function () {",
+                  "        pm.response.to.have.status(404);",
+                  "    });",
+                  "    const data = pm.response.json();",
+                  "    pm.test(\"Formato de error de la API\", function () {",
+                  "        pm.expect(data).to.have.all.keys(\"error\");",
+                  "        pm.expect(data.error).to.have.all.keys(\"code\", \"message\", \"fields\");",
+                  "    });",
+                  "    pm.test(\"Código PHOTO_NOT_FOUND\", function () {",
+                  "        pm.expect(data.error.code).to.eql(\"PHOTO_NOT_FOUND\");",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{meals_coach_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/meals/photos/{{meal_photo_id}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "meals",
+                "photos",
+                "{{meal_photo_id}}"
+              ]
+            },
+            "description": "Tras la desvinculación el coach tampoco ve la foto."
+          },
+          "response": []
+        }
+      ]
     }
   ],
   "variable": [
@@ -2769,6 +4045,30 @@
       "value": "",
       "type": "string",
       "description": "Registro que HU-09 elimina."
+    },
+    {
+      "key": "hu25_invite_code",
+      "value": "",
+      "type": "string",
+      "description": "Código de invitación del coach de meals (HU-25 · Preparación)."
+    },
+    {
+      "key": "hu25_coach2_email",
+      "value": "",
+      "type": "string",
+      "description": "Coach sin vinculación con el usuario de meals (HU-25)."
+    },
+    {
+      "key": "hu25_coach2_token",
+      "value": "",
+      "type": "string",
+      "description": "Token del coach sin vinculación (HU-25)."
+    },
+    {
+      "key": "hu25_other_date",
+      "value": "",
+      "type": "string",
+      "description": "Día anterior a {{meal_date}} (HU-25 · 04)."
     }
   ]
 }

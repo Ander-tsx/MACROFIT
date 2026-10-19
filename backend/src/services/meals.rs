@@ -6,6 +6,8 @@
 //!   (`PHOTO_ALREADY_USED`, garantizado por el índice único parcial `photo_id_unique`).
 //! - Solo el dueño ve y elimina sus registros; para cualquier otra cuenta el registro "no existe" (`MEAL_NOT_FOUND`).
 //!   Eliminar un registro borra también su foto (TEC-13).
+//! - HU-25: el coach consulta los registros de un día de un cliente con vinculación activa (`list_client_meals`),
+//!   solo lectura. Un cliente sin vinculación activa, inexistente o con id mal formado → `CLIENT_NOT_LINKED`.
 
 use std::collections::HashMap;
 
@@ -20,7 +22,7 @@ use crate::db::collect_cursor;
 use crate::error::{AppError, FieldErrors};
 use crate::models::meal::{MEALS_COLLECTION, Meal};
 use crate::services::auth::is_duplicate_key;
-use crate::services::photos;
+use crate::services::{coach_links, photos};
 use crate::validation::{DATE_FORMAT, check, parse_date};
 
 /// Límites superiores razonables de un solo registro (los mismos órdenes que la meta del coach, HU-05).
@@ -257,6 +259,20 @@ pub async fn list_meals(
     find_meals_by_date(db, user_id, date).await
 }
 
+/// HU-25 — `GET /coach/clients/{clientId}/meals?date=`: registros del cliente en ese día, solo si el coach tiene una
+/// vinculación activa con él. La vinculación se comprueba antes que la fecha, igual que en HU-05: un coach sin
+/// vinculación recibe `CLIENT_NOT_LINKED` con cualquier fecha.
+pub async fn list_client_meals(
+    db: &Database,
+    coach_id: ObjectId,
+    client_id: &str,
+    date: Option<String>,
+) -> Result<Vec<Meal>, AppError> {
+    let client_id = coach_links::require_active_link(db, coach_id, client_id).await?;
+    let date = validate_date(date)?;
+    find_meals_by_date(db, client_id, date).await
+}
+
 /// HU-09 — elimina un registro propio y su foto. Un id mal formado, inexistente o de otra cuenta → `MEAL_NOT_FOUND`.
 ///
 /// La foto se borra antes que el registro: si falla, el registro sigue ahí y se puede reintentar
@@ -477,6 +493,7 @@ mod tests {
     /// propia y la borra al terminar.
     mod mongo {
         use super::*;
+        use crate::models::coach_link::{COACH_LINKS_COLLECTION, CoachLink, LinkStatus};
         use crate::models::meal_photo::MEAL_PHOTOS_FILES_COLLECTION;
         use crate::services::photos::{save_photo, validate_photo};
         use mongodb::bson::Document;
@@ -596,6 +613,89 @@ mod tests {
             // Varios registros sin foto sí se permiten (el índice único es parcial).
             create_meal(&db, user, mexico(), body(None)).await.unwrap();
             create_meal(&db, user, mexico(), body(None)).await.unwrap();
+            db.drop().await.unwrap();
+        }
+
+        async fn link(db: &Database, coach_id: ObjectId, user_id: ObjectId, status: LinkStatus) {
+            db.collection::<CoachLink>(COACH_LINKS_COLLECTION)
+                .insert_one(CoachLink {
+                    id: ObjectId::new(),
+                    coach_id,
+                    user_id,
+                    status,
+                    created_at: DateTime::now(),
+                })
+                .await
+                .unwrap();
+        }
+
+        #[tokio::test]
+        #[ignore = "requiere MongoDB"]
+        async fn coach_vinculado_ve_los_registros_del_dia_de_su_cliente() {
+            let db = test_db().await;
+            let (coach, client) = (ObjectId::new(), ObjectId::new());
+            link(&db, coach, client, LinkStatus::Active).await;
+            let photo_id = photo(&db, client).await;
+            let meal = create_meal(&db, client, mexico(), body(Some(photo_id)))
+                .await
+                .unwrap();
+            // Un registro de otro usuario el mismo día no aparece.
+            create_meal(&db, ObjectId::new(), mexico(), body(None))
+                .await
+                .unwrap();
+
+            let list = list_client_meals(&db, coach, &client.to_hex(), Some(meal.date.clone()))
+                .await
+                .unwrap();
+            assert_eq!(list.len(), 1);
+            assert_eq!(list[0].id, meal.id);
+            assert_eq!(list[0].photo_id, Some(photo_id));
+            // Otra fecha sin registros: lista vacía.
+            let empty = list_client_meals(&db, coach, &client.to_hex(), Some("2000-01-01".into()))
+                .await
+                .unwrap();
+            assert!(empty.is_empty());
+            db.drop().await.unwrap();
+        }
+
+        #[tokio::test]
+        #[ignore = "requiere MongoDB"]
+        async fn sin_vinculacion_activa_es_client_not_linked_aunque_la_fecha_sea_invalida() {
+            let db = test_db().await;
+            let (coach, other_coach, client) = (ObjectId::new(), ObjectId::new(), ObjectId::new());
+            link(&db, coach, client, LinkStatus::Unlinked).await;
+            link(&db, other_coach, client, LinkStatus::Active).await;
+            let meal = create_meal(&db, client, mexico(), body(None))
+                .await
+                .unwrap();
+
+            for (client_id, date) in [
+                (client.to_hex(), Some(meal.date.clone())),
+                (client.to_hex(), Some("no-es-fecha".to_string())),
+                (ObjectId::new().to_hex(), Some(meal.date.clone())),
+                ("abc".to_string(), None),
+            ] {
+                let result = list_client_meals(&db, coach, &client_id, date).await;
+                assert!(
+                    matches!(result, Err(AppError::ClientNotLinked)),
+                    "{client_id}"
+                );
+            }
+            db.drop().await.unwrap();
+        }
+
+        #[tokio::test]
+        #[ignore = "requiere MongoDB"]
+        async fn coach_vinculado_con_fecha_invalida_o_ausente_es_validation_error() {
+            let db = test_db().await;
+            let (coach, client) = (ObjectId::new(), ObjectId::new());
+            link(&db, coach, client, LinkStatus::Active).await;
+            for date in [None, Some("16-10-2026".to_string())] {
+                match list_client_meals(&db, coach, &client.to_hex(), date).await {
+                    Err(AppError::Validation(fields)) => assert!(fields.contains_key("date")),
+                    other => panic!("se esperaba VALIDATION_ERROR, llegó {other:?}"),
+                }
+            }
             db.drop().await.unwrap();
         }
 
