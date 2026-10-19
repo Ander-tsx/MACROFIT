@@ -14,7 +14,7 @@ use serde_json::Value;
 
 use crate::auth::middleware::{AuthenticatedUser, CoachOnly, UserOnly};
 use crate::error::{ApiJson, AppError, ErrorResponse};
-use crate::models::meal::Meal;
+use crate::models::meal::{Meal, MealNutrients};
 use crate::models::meal_photo::PhotoFormat;
 use crate::services::food_recognition::{IdentifiedFood, Nutrients};
 use crate::services::meal_estimates::{self, MealEstimate};
@@ -231,11 +231,37 @@ pub async fn estimate_meal_handler(
     Ok(Json(meal.into()))
 }
 
-// ───────────────────────── HU-09 — registros de comida ─────────────────────────
+// ───────────────────────── HU-09 / HU-08 — registros de comida ─────────────────────────
+
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, utoipa::ToSchema)]
+#[schema(
+    description = "HU-08 — valores que estimó la app con la foto (`POST /meals/estimate`, HU-07), guardados aparte de los finales."
+)]
+pub struct EstimatedValues {
+    /// Calorías estimadas (kcal), de 0 a 10 000.
+    #[schema(example = 413.0)]
+    pub calories_kcal: f64,
+    /// Proteína estimada (g), de 0 a 1 000.
+    #[schema(example = 42.2)]
+    pub protein_g: f64,
+    /// Grasa estimada (g), de 0 a 1 000.
+    #[schema(example = 4.9)]
+    pub fat_g: f64,
+}
+
+impl From<MealNutrients> for EstimatedValues {
+    fn from(n: MealNutrients) -> Self {
+        Self {
+            calories_kcal: n.calories_kcal,
+            protein_g: n.protein_g,
+            fat_g: n.fat_g,
+        }
+    }
+}
 
 #[derive(Debug, Deserialize, utoipa::ToSchema)]
 #[schema(
-    description = "Registro a guardar con sus valores finales. La fecha y hora las pone el servidor."
+    description = "Registro a guardar. Los campos planos son los valores finales (los que confirmó el usuario); `estimated`, los que estimó la app (HU-08). La fecha y hora las pone el servidor."
 )]
 pub struct CreateMealRequest {
     /// Id de una foto propia de `POST /meals/photos` que no esté en otro registro. Omítelo (o `null`) en una
@@ -251,6 +277,11 @@ pub struct CreateMealRequest {
     /// Grasa (g), de 0 a 1 000.
     #[schema(value_type = f64, required = true, example = 4.9)]
     pub fat_g: Option<Value>,
+    /// HU-08 — valores de `POST /meals/estimate`. Requiere `photo_id`. Si el usuario no corrigió, van iguales a los
+    /// finales. Omítelo (o `null`) en una captura manual sin estimación. Sus errores se señalan como
+    /// `estimated.<campo>`.
+    #[schema(value_type = Option<EstimatedValues>)]
+    pub estimated: Option<Value>,
 }
 
 impl From<CreateMealRequest> for MealInput {
@@ -260,12 +291,15 @@ impl From<CreateMealRequest> for MealInput {
             calories_kcal: body.calories_kcal,
             protein_g: body.protein_g,
             fat_g: body.fat_g,
+            estimated: body.estimated,
         }
     }
 }
 
 #[derive(Debug, Serialize, utoipa::ToSchema)]
-#[schema(description = "Registro de comida (RF-08).")]
+#[schema(
+    description = "Registro de comida (RF-08). Los campos planos son los valores finales y `estimated`, los estimados (HU-08)."
+)]
 pub struct MealResponse {
     #[schema(example = "6ad0a1b2c3d4e5f6a7b8c9d0")]
     pub id: String,
@@ -284,6 +318,9 @@ pub struct MealResponse {
     pub protein_g: f64,
     #[schema(example = 4.9)]
     pub fat_g: f64,
+    /// HU-08 — valores que estimó la app; null en una captura manual sin estimación.
+    #[schema(required = true)]
+    pub estimated: Option<EstimatedValues>,
 }
 
 impl From<Meal> for MealResponse {
@@ -296,6 +333,7 @@ impl From<Meal> for MealResponse {
             calories_kcal: meal.calories_kcal,
             protein_g: meal.protein_g,
             fat_g: meal.fat_g,
+            estimated: meal.estimated.map(EstimatedValues::from),
         }
     }
 }
@@ -313,13 +351,13 @@ pub struct MealsQuery {
     post,
     path = "/meals",
     tag = "Comidas",
-    summary = "Guarda un registro de comida (HU-09)",
-    description = "Guarda los valores finales de la comida con la fecha y hora del servidor. La foto es opcional (captura manual); si se envía debe ser propia y no estar en otro registro.",
+    summary = "Guarda un registro de comida (HU-09, HU-08)",
+    description = "Guarda los valores finales de la comida con la fecha y hora del servidor y, aparte, los valores estimados por la app (`estimated`, HU-08). Si el usuario no corrigió, la app manda los mismos valores en los dos. La foto es opcional (captura manual, sin `estimated`); si se envía debe ser propia y no estar en otro registro. El 0 se acepta; negativos o no numéricos se señalan por campo (`estimated.<campo>` para los estimados).",
     security(("bearer_auth" = ["user"])),
     request_body = CreateMealRequest,
     responses(
         (status = 201, description = "Registro guardado", body = MealResponse),
-        (status = 400, description = "`VALIDATION_ERROR` (valores ausentes, no numéricos, negativos o fuera de rango; `photo_id` que no es texto) o `INVALID_BODY`", body = ErrorResponse),
+        (status = 400, description = "`VALIDATION_ERROR` (valores finales o `estimated.<campo>` ausentes, no numéricos, negativos o fuera de rango; `estimated` que no es objeto o sin `photo_id`; `photo_id` que no es texto) o `INVALID_BODY`", body = ErrorResponse),
         (status = 401, description = "`UNAUTHORIZED` o `TOKEN_REVOKED`", body = ErrorResponse),
         (status = 403, description = "`FORBIDDEN_ROLE` (cuenta `coach`)", body = ErrorResponse),
         (status = 404, description = "`PHOTO_NOT_FOUND` (la foto no existe, el id está mal formado o es de otro usuario)", body = ErrorResponse),
@@ -341,7 +379,7 @@ pub async fn create_meal_handler(
     path = "/meals",
     tag = "Comidas",
     summary = "Registros de comida de un día (HU-09)",
-    description = "Devuelve solo los registros del usuario de la sesión en ese día, del más antiguo al más reciente. Un día sin registros devuelve una lista vacía.",
+    description = "Devuelve solo los registros del usuario de la sesión en ese día, del más antiguo al más reciente, con sus valores finales y estimados (HU-08). Un día sin registros devuelve una lista vacía.",
     security(("bearer_auth" = ["user"])),
     params(MealsQuery),
     responses(
@@ -551,7 +589,61 @@ mod tests {
             calories_kcal: 413.0,
             protein_g: 42.2,
             fat_g: 4.9,
+            estimated: Some(MealNutrients {
+                calories_kcal: 450.0,
+                protein_g: 45.0,
+                fat_g: 5.5,
+            }),
         }
+    }
+
+    #[test]
+    fn registro_devuelve_finales_y_estimados_por_separado() {
+        let photo_id = ObjectId::parse_str("6acd4140ac968514f27322cd").unwrap();
+        let body = serde_json::to_value(MealResponse::from(meal(Some(photo_id)))).unwrap();
+        assert_eq!(
+            body,
+            json!({
+                "id": "6ad0a1b2c3d4e5f6a7b8c9d0",
+                "photo_id": "6acd4140ac968514f27322cd",
+                "eaten_at": "2026-10-17T01:30:00Z",
+                "date": "2026-10-16",
+                "calories_kcal": 413.0,
+                "protein_g": 42.2,
+                "fat_g": 4.9,
+                "estimated": { "calories_kcal": 450.0, "protein_g": 45.0, "fat_g": 5.5 }
+            })
+        );
+    }
+
+    #[test]
+    fn captura_manual_devuelve_estimated_en_null() {
+        let mut manual = meal(None);
+        manual.estimated = None;
+        let body = serde_json::to_value(MealResponse::from(manual)).unwrap();
+        assert_eq!(body["estimated"], json!(null));
+        assert_eq!(body["calories_kcal"], json!(413.0));
+    }
+
+    #[test]
+    fn cuerpo_con_estimated_llega_al_servicio() {
+        let body: CreateMealRequest = serde_json::from_value(json!({
+            "photo_id": "6acd4140ac968514f27322cd",
+            "calories_kcal": 380,
+            "protein_g": 40,
+            "fat_g": 6.5,
+            "estimated": { "calories_kcal": 413, "protein_g": 42.2, "fat_g": 4.9 }
+        }))
+        .unwrap();
+        let input = MealInput::from(body);
+        assert_eq!(
+            input.estimated,
+            Some(json!({ "calories_kcal": 413, "protein_g": 42.2, "fat_g": 4.9 }))
+        );
+        let manual: CreateMealRequest =
+            serde_json::from_value(json!({ "calories_kcal": 1, "protein_g": 1, "fat_g": 1 }))
+                .unwrap();
+        assert_eq!(MealInput::from(manual).estimated, None);
     }
 
     #[test]

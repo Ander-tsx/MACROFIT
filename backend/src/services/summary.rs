@@ -273,6 +273,7 @@ mod tests {
             calories_kcal,
             protein_g,
             fat_g,
+            estimated: None,
         }
     }
 

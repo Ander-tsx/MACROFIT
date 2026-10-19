@@ -1500,7 +1500,7 @@
                   "    const data = pm.response.json();",
                   "    const sent = {\"calories_kcal\":413,\"protein_g\":42.2,\"fat_g\":4.9};",
                   "    pm.test(\"Estructura del registro (RF-08)\", function () {",
-                  "        pm.expect(data).to.have.all.keys(\"id\", \"photo_id\", \"eaten_at\", \"date\", \"calories_kcal\", \"protein_g\", \"fat_g\");",
+                  "        pm.expect(data).to.have.all.keys(\"id\", \"photo_id\", \"eaten_at\", \"date\", \"calories_kcal\", \"protein_g\", \"fat_g\", \"estimated\");",
                   "        pm.expect(data.id).to.match(/^[0-9a-f]{24}$/);",
                   "    });",
                   "    pm.test(\"Guarda los valores enviados\", function () {",
@@ -1575,7 +1575,7 @@
                   "    const data = pm.response.json();",
                   "    const sent = {\"calories_kcal\":0,\"protein_g\":0,\"fat_g\":12.5};",
                   "    pm.test(\"Estructura del registro (RF-08)\", function () {",
-                  "        pm.expect(data).to.have.all.keys(\"id\", \"photo_id\", \"eaten_at\", \"date\", \"calories_kcal\", \"protein_g\", \"fat_g\");",
+                  "        pm.expect(data).to.have.all.keys(\"id\", \"photo_id\", \"eaten_at\", \"date\", \"calories_kcal\", \"protein_g\", \"fat_g\", \"estimated\");",
                   "        pm.expect(data.id).to.match(/^[0-9a-f]{24}$/);",
                   "    });",
                   "    pm.test(\"Guarda los valores enviados\", function () {",
@@ -1649,7 +1649,7 @@
                   "    const data = pm.response.json();",
                   "    const sent = {\"calories_kcal\":520,\"protein_g\":30,\"fat_g\":18};",
                   "    pm.test(\"Estructura del registro (RF-08)\", function () {",
-                  "        pm.expect(data).to.have.all.keys(\"id\", \"photo_id\", \"eaten_at\", \"date\", \"calories_kcal\", \"protein_g\", \"fat_g\");",
+                  "        pm.expect(data).to.have.all.keys(\"id\", \"photo_id\", \"eaten_at\", \"date\", \"calories_kcal\", \"protein_g\", \"fat_g\", \"estimated\");",
                   "        pm.expect(data.id).to.match(/^[0-9a-f]{24}$/);",
                   "    });",
                   "    pm.test(\"Guarda los valores enviados\", function () {",
@@ -1920,7 +1920,7 @@
                   "    pm.test(\"Es una lista de registros con la estructura del registro\", function () {",
                   "        pm.expect(data).to.be.an(\"array\");",
                   "        data.forEach(function (meal) {",
-                  "            pm.expect(meal).to.have.all.keys(\"id\", \"photo_id\", \"eaten_at\", \"date\", \"calories_kcal\", \"protein_g\", \"fat_g\");",
+                  "            pm.expect(meal).to.have.all.keys(\"id\", \"photo_id\", \"eaten_at\", \"date\", \"calories_kcal\", \"protein_g\", \"fat_g\", \"estimated\");",
                   "        });",
                   "    });",
                   "    pm.test(\"Incluye los registros creados en esta carpeta\", function () {",
@@ -2669,6 +2669,811 @@
               ]
             },
             "description": "Un coach no elimina registros: 403 FORBIDDEN_ROLE; el registro sigue (lo usan HU-10, HU-24 y HU-25)."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "HU-08 Valores corregidos",
+      "description": "HU-08 — POST /meals guarda aparte los valores estimados (estimated, los de POST /meals/estimate) y los finales (campos planos). Si el usuario no corrige, la app manda los mismos valores en los dos; una captura manual no manda estimated. Negativos o no numéricos → 400 VALIDATION_ERROR por campo (estimated.<campo> para los estimados); el 0 se acepta (RF-07). Usa el usuario de meals ({{meals_user_token}}) y fotos propias de la carpeta.",
+      "item": [
+        {
+          "name": "00 - Preparación: subir la foto del registro sin corrección",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 201 Created\", function () {",
+                  "        pm.response.to.have.status(201);",
+                  "    });",
+                  "    pm.collectionVariables.set(\"hu08_photo_same_id\", pm.response.json().id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{meals_user_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/meals/photos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "meals",
+                "photos"
+              ]
+            },
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "photo",
+                  "type": "file",
+                  "src": "postman/meals/files/comida.jpg"
+                }
+              ]
+            },
+            "description": "Foto del usuario de meals para el registro sin corrección; su id queda en {{hu08_photo_same_id}}."
+          },
+          "response": []
+        },
+        {
+          "name": "00 - Preparación: subir la foto del registro corregido",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 201 Created\", function () {",
+                  "        pm.response.to.have.status(201);",
+                  "    });",
+                  "    pm.collectionVariables.set(\"hu08_photo_fixed_id\", pm.response.json().id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{meals_user_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/meals/photos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "meals",
+                "photos"
+              ]
+            },
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "photo",
+                  "type": "file",
+                  "src": "postman/meals/files/comida.jpg"
+                }
+              ]
+            },
+            "description": "Foto del usuario de meals para el registro corregido; su id queda en {{hu08_photo_fixed_id}}."
+          },
+          "response": []
+        },
+        {
+          "name": "00 - Preparación: subir la foto del registro con valores en cero",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 201 Created\", function () {",
+                  "        pm.response.to.have.status(201);",
+                  "    });",
+                  "    pm.collectionVariables.set(\"hu08_photo_zero_id\", pm.response.json().id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{meals_user_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/meals/photos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "meals",
+                "photos"
+              ]
+            },
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "photo",
+                  "type": "file",
+                  "src": "postman/meals/files/comida.jpg"
+                }
+              ]
+            },
+            "description": "Foto del usuario de meals para el registro con valores en cero; su id queda en {{hu08_photo_zero_id}}."
+          },
+          "response": []
+        },
+        {
+          "name": "01 - Guardar sin corrección",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 201 Created\", function () {",
+                  "        pm.response.to.have.status(201);",
+                  "    });",
+                  "    const data = pm.response.json();",
+                  "    const sent = {\"calories_kcal\":413,\"protein_g\":42.2,\"fat_g\":4.9,\"estimated\":{\"calories_kcal\":413,\"protein_g\":42.2,\"fat_g\":4.9}};",
+                  "    pm.test(\"Estructura del registro con estimated (HU-08)\", function () {",
+                  "        pm.expect(data).to.have.all.keys(\"id\", \"photo_id\", \"eaten_at\", \"date\", \"calories_kcal\", \"protein_g\", \"fat_g\", \"estimated\");",
+                  "        pm.expect(data.id).to.match(/^[0-9a-f]{24}$/);",
+                  "    });",
+                  "    pm.test(\"Valores finales guardados iguales a los enviados\", function () {",
+                  "        pm.expect(data.calories_kcal).to.eql(sent.calories_kcal);",
+                  "        pm.expect(data.protein_g).to.eql(sent.protein_g);",
+                  "        pm.expect(data.fat_g).to.eql(sent.fat_g);",
+                  "    });",
+                  "    pm.test(\"Valores estimados guardados iguales a los enviados\", function () {",
+                  "        if (sent.estimated === null) {",
+                  "            pm.expect(data.estimated).to.be.null;",
+                  "        } else {",
+                  "            pm.expect(data.estimated).to.have.all.keys(\"calories_kcal\", \"protein_g\", \"fat_g\");",
+                  "            pm.expect(data.estimated).to.eql(sent.estimated);",
+                  "        }",
+                  "    });",
+                  "    pm.test(\"Sin corrección: los finales son iguales a los estimados\", function () {",
+                  "        pm.expect(data.estimated).to.eql({ calories_kcal: data.calories_kcal, protein_g: data.protein_g, fat_g: data.fat_g });",
+                  "    });",
+                  "    pm.test(\"Guarda la foto\", function () {",
+                  "        pm.expect(data.photo_id).to.eql(pm.collectionVariables.get(\"hu08_photo_same_id\"));",
+                  "    });",
+                  "    pm.collectionVariables.set(\"hu08_same\", JSON.stringify(Object.assign({ id: data.id }, sent)));",
+                  "    pm.collectionVariables.set(\"hu08_date\", data.date);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{meals_user_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/meals",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "meals"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"photo_id\": \"{{hu08_photo_same_id}}\",\n  \"calories_kcal\": 413,\n  \"protein_g\": 42.2,\n  \"fat_g\": 4.9,\n  \"estimated\": {\n    \"calories_kcal\": 413,\n    \"protein_g\": 42.2,\n    \"fat_g\": 4.9\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "El usuario acepta la estimación: la app manda los mismos valores en estimated y en los finales. Se guardan los dos y son iguales."
+          },
+          "response": []
+        },
+        {
+          "name": "02 - Guardar con corrección",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 201 Created\", function () {",
+                  "        pm.response.to.have.status(201);",
+                  "    });",
+                  "    const data = pm.response.json();",
+                  "    const sent = {\"calories_kcal\":380,\"protein_g\":40,\"fat_g\":6.5,\"estimated\":{\"calories_kcal\":413,\"protein_g\":42.2,\"fat_g\":4.9}};",
+                  "    pm.test(\"Estructura del registro con estimated (HU-08)\", function () {",
+                  "        pm.expect(data).to.have.all.keys(\"id\", \"photo_id\", \"eaten_at\", \"date\", \"calories_kcal\", \"protein_g\", \"fat_g\", \"estimated\");",
+                  "        pm.expect(data.id).to.match(/^[0-9a-f]{24}$/);",
+                  "    });",
+                  "    pm.test(\"Valores finales guardados iguales a los enviados\", function () {",
+                  "        pm.expect(data.calories_kcal).to.eql(sent.calories_kcal);",
+                  "        pm.expect(data.protein_g).to.eql(sent.protein_g);",
+                  "        pm.expect(data.fat_g).to.eql(sent.fat_g);",
+                  "    });",
+                  "    pm.test(\"Valores estimados guardados iguales a los enviados\", function () {",
+                  "        if (sent.estimated === null) {",
+                  "            pm.expect(data.estimated).to.be.null;",
+                  "        } else {",
+                  "            pm.expect(data.estimated).to.have.all.keys(\"calories_kcal\", \"protein_g\", \"fat_g\");",
+                  "            pm.expect(data.estimated).to.eql(sent.estimated);",
+                  "        }",
+                  "    });",
+                  "    pm.test(\"Con corrección: estimados y finales se guardan por separado\", function () {",
+                  "        pm.expect(data.estimated.calories_kcal).to.not.eql(data.calories_kcal);",
+                  "        pm.expect(data.estimated.protein_g).to.not.eql(data.protein_g);",
+                  "        pm.expect(data.estimated.fat_g).to.not.eql(data.fat_g);",
+                  "    });",
+                  "    pm.collectionVariables.set(\"hu08_fixed\", JSON.stringify(Object.assign({ id: data.id }, sent)));",
+                  "    pm.collectionVariables.set(\"hu08_date\", data.date);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{meals_user_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/meals",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "meals"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"photo_id\": \"{{hu08_photo_fixed_id}}\",\n  \"calories_kcal\": 380,\n  \"protein_g\": 40,\n  \"fat_g\": 6.5,\n  \"estimated\": {\n    \"calories_kcal\": 413,\n    \"protein_g\": 42.2,\n    \"fat_g\": 4.9\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "El usuario corrige calorías, proteína y grasa antes de guardar: estimated conserva lo que estimó la app y los finales lo corregido."
+          },
+          "response": []
+        },
+        {
+          "name": "03 - Captura manual sin estimación",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 201 Created\", function () {",
+                  "        pm.response.to.have.status(201);",
+                  "    });",
+                  "    const data = pm.response.json();",
+                  "    const sent = {\"calories_kcal\":250,\"protein_g\":10,\"fat_g\":8,\"estimated\":null};",
+                  "    pm.test(\"Estructura del registro con estimated (HU-08)\", function () {",
+                  "        pm.expect(data).to.have.all.keys(\"id\", \"photo_id\", \"eaten_at\", \"date\", \"calories_kcal\", \"protein_g\", \"fat_g\", \"estimated\");",
+                  "        pm.expect(data.id).to.match(/^[0-9a-f]{24}$/);",
+                  "    });",
+                  "    pm.test(\"Valores finales guardados iguales a los enviados\", function () {",
+                  "        pm.expect(data.calories_kcal).to.eql(sent.calories_kcal);",
+                  "        pm.expect(data.protein_g).to.eql(sent.protein_g);",
+                  "        pm.expect(data.fat_g).to.eql(sent.fat_g);",
+                  "    });",
+                  "    pm.test(\"Valores estimados guardados iguales a los enviados\", function () {",
+                  "        if (sent.estimated === null) {",
+                  "            pm.expect(data.estimated).to.be.null;",
+                  "        } else {",
+                  "            pm.expect(data.estimated).to.have.all.keys(\"calories_kcal\", \"protein_g\", \"fat_g\");",
+                  "            pm.expect(data.estimated).to.eql(sent.estimated);",
+                  "        }",
+                  "    });",
+                  "    pm.test(\"Sin foto\", function () {",
+                  "        pm.expect(data.photo_id).to.be.null;",
+                  "    });",
+                  "    pm.collectionVariables.set(\"hu08_manual\", JSON.stringify(Object.assign({ id: data.id }, sent)));",
+                  "    pm.collectionVariables.set(\"hu08_date\", data.date);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{meals_user_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/meals",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "meals"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"calories_kcal\": 250,\n  \"protein_g\": 10,\n  \"fat_g\": 8\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "CU-01 flujos 3a y 4a: sin foto ni estimated. Se acepta y se guarda sin valores estimados (estimated: null)."
+          },
+          "response": []
+        },
+        {
+          "name": "04 - Valor 0 en estimados y finales",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 201 Created\", function () {",
+                  "        pm.response.to.have.status(201);",
+                  "    });",
+                  "    const data = pm.response.json();",
+                  "    const sent = {\"calories_kcal\":0,\"protein_g\":0,\"fat_g\":0,\"estimated\":{\"calories_kcal\":0,\"protein_g\":0,\"fat_g\":0}};",
+                  "    pm.test(\"Estructura del registro con estimated (HU-08)\", function () {",
+                  "        pm.expect(data).to.have.all.keys(\"id\", \"photo_id\", \"eaten_at\", \"date\", \"calories_kcal\", \"protein_g\", \"fat_g\", \"estimated\");",
+                  "        pm.expect(data.id).to.match(/^[0-9a-f]{24}$/);",
+                  "    });",
+                  "    pm.test(\"Valores finales guardados iguales a los enviados\", function () {",
+                  "        pm.expect(data.calories_kcal).to.eql(sent.calories_kcal);",
+                  "        pm.expect(data.protein_g).to.eql(sent.protein_g);",
+                  "        pm.expect(data.fat_g).to.eql(sent.fat_g);",
+                  "    });",
+                  "    pm.test(\"Valores estimados guardados iguales a los enviados\", function () {",
+                  "        if (sent.estimated === null) {",
+                  "            pm.expect(data.estimated).to.be.null;",
+                  "        } else {",
+                  "            pm.expect(data.estimated).to.have.all.keys(\"calories_kcal\", \"protein_g\", \"fat_g\");",
+                  "            pm.expect(data.estimated).to.eql(sent.estimated);",
+                  "        }",
+                  "    });",
+                  "    pm.collectionVariables.set(\"hu08_zero\", JSON.stringify(Object.assign({ id: data.id }, sent)));",
+                  "    pm.collectionVariables.set(\"hu08_date\", data.date);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{meals_user_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/meals",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "meals"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"photo_id\": \"{{hu08_photo_zero_id}}\",\n  \"calories_kcal\": 0,\n  \"protein_g\": 0,\n  \"fat_g\": 0,\n  \"estimated\": {\n    \"calories_kcal\": 0,\n    \"protein_g\": 0,\n    \"fat_g\": 0\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "RF-07: los valores no pueden ser negativos, pero el 0 se acepta en los estimados y en los finales."
+          },
+          "response": []
+        },
+        {
+          "name": "05 - Valor negativo",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 400 Bad Request\", function () {",
+                  "        pm.response.to.have.status(400);",
+                  "    });",
+                  "    const body = pm.response.json();",
+                  "    pm.test(\"Formato de error { error: { code, message, fields } }\", function () {",
+                  "        pm.expect(body).to.have.all.keys(\"error\");",
+                  "        pm.expect(body.error).to.have.all.keys(\"code\", \"message\", \"fields\");",
+                  "        pm.expect(body.error.message).to.be.a(\"string\").and.not.empty;",
+                  "        pm.expect(body.error.fields).to.be.an(\"object\");",
+                  "    });",
+                  "    pm.test(\"Código VALIDATION_ERROR\", function () {",
+                  "        pm.expect(body.error.code).to.eql(\"VALIDATION_ERROR\");",
+                  "    });",
+                  "    pm.test(\"Señala calories_kcal, estimated.protein_g\", function () {",
+                  "        pm.expect(body.error.fields).to.have.all.keys(\"calories_kcal\", \"estimated.protein_g\");",
+                  "    });",
+                  "    pm.test(\"Mensaje de valor negativo\", function () {",
+                  "        pm.expect(body.error.fields.calories_kcal).to.eql(\"No puede ser negativo\");",
+                  "        pm.expect(body.error.fields[\"estimated.protein_g\"]).to.eql(\"No puede ser negativo\");",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{meals_user_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/meals",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "meals"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"photo_id\": \"{{hu08_photo_same_id}}\",\n  \"calories_kcal\": -10,\n  \"protein_g\": 40,\n  \"fat_g\": 6.5,\n  \"estimated\": {\n    \"calories_kcal\": 413,\n    \"protein_g\": -1,\n    \"fat_g\": 4.9\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Caloría final negativa y proteína estimada negativa: 400 VALIDATION_ERROR con cada campo señalado."
+          },
+          "response": []
+        },
+        {
+          "name": "06 - Valor no numérico",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 400 Bad Request\", function () {",
+                  "        pm.response.to.have.status(400);",
+                  "    });",
+                  "    const body = pm.response.json();",
+                  "    pm.test(\"Formato de error { error: { code, message, fields } }\", function () {",
+                  "        pm.expect(body).to.have.all.keys(\"error\");",
+                  "        pm.expect(body.error).to.have.all.keys(\"code\", \"message\", \"fields\");",
+                  "        pm.expect(body.error.message).to.be.a(\"string\").and.not.empty;",
+                  "        pm.expect(body.error.fields).to.be.an(\"object\");",
+                  "    });",
+                  "    pm.test(\"Código VALIDATION_ERROR\", function () {",
+                  "        pm.expect(body.error.code).to.eql(\"VALIDATION_ERROR\");",
+                  "    });",
+                  "    pm.test(\"Señala fat_g, estimated.calories_kcal\", function () {",
+                  "        pm.expect(body.error.fields).to.have.all.keys(\"fat_g\", \"estimated.calories_kcal\");",
+                  "    });",
+                  "    pm.test(\"Mensaje de valor no numérico\", function () {",
+                  "        pm.expect(body.error.fields.fat_g).to.eql(\"Debe ser un número\");",
+                  "        pm.expect(body.error.fields[\"estimated.calories_kcal\"]).to.eql(\"Debe ser un número\");",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{meals_user_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/meals",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "meals"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"photo_id\": \"{{hu08_photo_same_id}}\",\n  \"calories_kcal\": 380,\n  \"protein_g\": 40,\n  \"fat_g\": \"seis\",\n  \"estimated\": {\n    \"calories_kcal\": \"413\",\n    \"protein_g\": 42.2,\n    \"fat_g\": 4.9\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Grasa final y calorías estimadas como texto: 400 VALIDATION_ERROR con cada campo señalado."
+          },
+          "response": []
+        },
+        {
+          "name": "07 - estimated que no es objeto",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 400 Bad Request\", function () {",
+                  "        pm.response.to.have.status(400);",
+                  "    });",
+                  "    const body = pm.response.json();",
+                  "    pm.test(\"Formato de error { error: { code, message, fields } }\", function () {",
+                  "        pm.expect(body).to.have.all.keys(\"error\");",
+                  "        pm.expect(body.error).to.have.all.keys(\"code\", \"message\", \"fields\");",
+                  "        pm.expect(body.error.message).to.be.a(\"string\").and.not.empty;",
+                  "        pm.expect(body.error.fields).to.be.an(\"object\");",
+                  "    });",
+                  "    pm.test(\"Código VALIDATION_ERROR\", function () {",
+                  "        pm.expect(body.error.code).to.eql(\"VALIDATION_ERROR\");",
+                  "    });",
+                  "    pm.test(\"Señala estimated\", function () {",
+                  "        pm.expect(body.error.fields).to.have.all.keys(\"estimated\");",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{meals_user_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/meals",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "meals"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"photo_id\": \"{{hu08_photo_same_id}}\",\n  \"calories_kcal\": 380,\n  \"protein_g\": 40,\n  \"fat_g\": 6.5,\n  \"estimated\": 413\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "estimated debe ser un objeto { calories_kcal, protein_g, fat_g }: 400 VALIDATION_ERROR en estimated."
+          },
+          "response": []
+        },
+        {
+          "name": "08 - Estimados sin foto",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 400 Bad Request\", function () {",
+                  "        pm.response.to.have.status(400);",
+                  "    });",
+                  "    const body = pm.response.json();",
+                  "    pm.test(\"Formato de error { error: { code, message, fields } }\", function () {",
+                  "        pm.expect(body).to.have.all.keys(\"error\");",
+                  "        pm.expect(body.error).to.have.all.keys(\"code\", \"message\", \"fields\");",
+                  "        pm.expect(body.error.message).to.be.a(\"string\").and.not.empty;",
+                  "        pm.expect(body.error.fields).to.be.an(\"object\");",
+                  "    });",
+                  "    pm.test(\"Código VALIDATION_ERROR\", function () {",
+                  "        pm.expect(body.error.code).to.eql(\"VALIDATION_ERROR\");",
+                  "    });",
+                  "    pm.test(\"Señala estimated\", function () {",
+                  "        pm.expect(body.error.fields).to.have.all.keys(\"estimated\");",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{meals_user_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/meals",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "meals"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"calories_kcal\": 380,\n  \"protein_g\": 40,\n  \"fat_g\": 6.5,\n  \"estimated\": {\n    \"calories_kcal\": 413,\n    \"protein_g\": 42.2,\n    \"fat_g\": 4.9\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "La estimación de HU-07 siempre sale de una foto: estimated sin photo_id → 400 VALIDATION_ERROR en estimated."
+          },
+          "response": []
+        },
+        {
+          "name": "09 - Consultar por fecha",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 200 OK\", function () {",
+                  "        pm.response.to.have.status(200);",
+                  "    });",
+                  "    const data = pm.response.json();",
+                  "    pm.test(\"Cada registro trae estimated\", function () {",
+                  "        data.forEach(function (meal) {",
+                  "            pm.expect(meal).to.have.all.keys(\"id\", \"photo_id\", \"eaten_at\", \"date\", \"calories_kcal\", \"protein_g\", \"fat_g\", \"estimated\");",
+                  "        });",
+                  "    });",
+                  "    [\"hu08_same\", \"hu08_fixed\", \"hu08_manual\", \"hu08_zero\"].forEach(function (key) {",
+                  "        const sent = JSON.parse(pm.collectionVariables.get(key));",
+                  "        const meal = data.find(function (m) { return m.id === sent.id; });",
+                  "        pm.test(\"Valores guardados de \" + key + \" iguales a los enviados\", function () {",
+                  "            pm.expect(meal, key).to.be.an(\"object\");",
+                  "            pm.expect([meal.calories_kcal, meal.protein_g, meal.fat_g]).to.eql([sent.calories_kcal, sent.protein_g, sent.fat_g]);",
+                  "            pm.expect(meal.estimated).to.eql(sent.estimated);",
+                  "        });",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{meals_user_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/meals?date={{hu08_date}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "meals"
+              ],
+              "query": [
+                {
+                  "key": "date",
+                  "value": "{{hu08_date}}"
+                }
+              ]
+            },
+            "description": "GET /meals?date= devuelve los registros de la carpeta con los mismos estimados y finales que se enviaron (los inválidos no se guardaron)."
           },
           "response": []
         }
@@ -4069,6 +4874,46 @@
       "value": "",
       "type": "string",
       "description": "Día anterior a {{meal_date}} (HU-25 · 04)."
+    },
+    {
+      "key": "hu08_photo_same_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "hu08_photo_fixed_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "hu08_photo_zero_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "hu08_date",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "hu08_same",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "hu08_fixed",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "hu08_manual",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "hu08_zero",
+      "value": "",
+      "type": "string"
     }
   ]
 }

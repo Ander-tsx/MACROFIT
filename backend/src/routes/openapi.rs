@@ -535,6 +535,60 @@ mod tests {
     }
 
     #[test]
+    fn registro_de_comida_documenta_valores_estimados() {
+        let spec = spec_json(false);
+        let schemas = &spec["components"]["schemas"];
+        let required = |schema: &Value| -> BTreeSet<String> {
+            schema["required"]
+                .as_array()
+                .map(|fields| {
+                    fields
+                        .iter()
+                        .filter_map(Value::as_str)
+                        .map(String::from)
+                        .collect()
+                })
+                .unwrap_or_default()
+        };
+        let refers_to_estimated = |property: &Value| {
+            property["oneOf"].as_array().is_some_and(|variants| {
+                variants.contains(&serde_json::json!({ "type": "null" }))
+                    && variants
+                        .iter()
+                        .any(|v| v["$ref"] == "#/components/schemas/EstimatedValues")
+            })
+        };
+
+        let estimated = &schemas["EstimatedValues"];
+        assert_eq!(
+            required(estimated),
+            BTreeSet::from(["calories_kcal", "protein_g", "fat_g"].map(String::from))
+        );
+
+        // Petición: `estimated` opcional; los finales siguen obligatorios.
+        let request = &schemas["CreateMealRequest"];
+        assert!(!required(request).contains("estimated"));
+        assert!(required(request).contains("calories_kcal"));
+        assert!(
+            refers_to_estimated(&request["properties"]["estimated"]),
+            "{}",
+            request["properties"]["estimated"]
+        );
+
+        // Respuesta: `estimated` siempre presente, null en una captura manual.
+        let response = &schemas["MealResponse"];
+        assert!(required(response).contains("estimated"));
+        assert!(
+            refers_to_estimated(&response["properties"]["estimated"]),
+            "{}",
+            response["properties"]["estimated"]
+        );
+
+        // La vista del coach (HU-25) no cambia.
+        assert!(schemas["ClientMealResponse"]["properties"]["estimated"].is_null());
+    }
+
+    #[test]
     fn lista_de_clientes_documenta_meta_y_ultimo_registro() {
         let spec = spec_json(false);
         let items = &operation(&spec, "get", "/coach/clients")["responses"]["200"]["content"]["application/json"]

@@ -6,6 +6,8 @@
 //!   (`PHOTO_ALREADY_USED`, garantizado por el índice único parcial `photo_id_unique`).
 //! - Solo el dueño ve y elimina sus registros; para cualquier otra cuenta el registro "no existe" (`MEAL_NOT_FOUND`).
 //!   Eliminar un registro borra también su foto (TEC-13).
+//! - HU-08: el registro guarda aparte los valores estimados (`estimated`, los de HU-07) y los finales (campos planos).
+//!   Si el usuario no corrige, la app manda los mismos valores en los dos; una captura manual no manda `estimated`.
 //! - HU-25: el coach consulta los registros de un día de un cliente con vinculación activa (`list_client_meals`),
 //!   solo lectura. Un cliente sin vinculación activa, inexistente o con id mal formado → `CLIENT_NOT_LINKED`.
 
@@ -20,7 +22,7 @@ use serde_json::Value;
 
 use crate::db::collect_cursor;
 use crate::error::{AppError, FieldErrors};
-use crate::models::meal::{MEALS_COLLECTION, Meal};
+use crate::models::meal::{MEALS_COLLECTION, Meal, MealNutrients};
 use crate::services::auth::is_duplicate_key;
 use crate::services::{coach_links, photos};
 use crate::validation::{DATE_FORMAT, check, parse_date};
@@ -28,6 +30,9 @@ use crate::validation::{DATE_FORMAT, check, parse_date};
 /// Límites superiores razonables de un solo registro (los mismos órdenes que la meta del coach, HU-05).
 pub const CALORIES_MAX: f64 = 10_000.0;
 pub const MACRO_MAX_G: f64 = 1_000.0;
+
+/// Campo del cuerpo con los valores estimados (HU-08). Sus errores se señalan como `estimated.<campo>`.
+pub const ESTIMATED_FIELD: &str = "estimated";
 
 // ───────────────────────── Validación (funciones puras) ─────────────────────────
 
@@ -38,6 +43,9 @@ pub struct MealInput {
     pub calories_kcal: Option<Value>,
     pub protein_g: Option<Value>,
     pub fat_g: Option<Value>,
+    /// HU-08 — objeto `{ calories_kcal, protein_g, fat_g }` con la estimación de HU-07; ausente o `null` en una captura
+    /// manual.
+    pub estimated: Option<Value>,
 }
 
 /// Registro que ya pasó la validación.
@@ -48,6 +56,8 @@ pub struct ValidMeal {
     pub calories_kcal: f64,
     pub protein_g: f64,
     pub fat_g: f64,
+    /// HU-08 — valores estimados; `None` en una captura manual.
+    pub estimated: Option<MealNutrients>,
 }
 
 /// Número `>= 0` y `<= max`; el 0 se acepta (RF-07: no negativos).
@@ -64,10 +74,76 @@ fn parse_amount(value: Value, max: f64) -> Result<f64, String> {
     Ok(amount)
 }
 
-/// HU-09 — valida el cuerpo de `POST /meals` y señala todos los campos inválidos a la vez.
+/// Un valor dentro de `estimated`: obligatorio y con las mismas reglas que el final; su error va en `estimated.<campo>`.
+fn check_estimated_amount(
+    errors: &mut FieldErrors,
+    values: &mut serde_json::Map<String, Value>,
+    field: &str,
+    missing: &str,
+    max: f64,
+) -> Option<f64> {
+    check(
+        errors,
+        &format!("{ESTIMATED_FIELD}.{field}"),
+        values.remove(field).filter(|v| !v.is_null()),
+        true,
+        missing,
+        |value| parse_amount(value, max),
+    )
+}
+
+/// HU-08 — valida el objeto `estimated` (ya sin `null`) y acumula sus errores.
+fn check_estimated(errors: &mut FieldErrors, value: Value) -> Option<MealNutrients> {
+    let Value::Object(mut values) = value else {
+        errors.insert(
+            ESTIMATED_FIELD.into(),
+            "Debe ser un objeto con calories_kcal, protein_g y fat_g".into(),
+        );
+        return None;
+    };
+    let calories_kcal = check_estimated_amount(
+        errors,
+        &mut values,
+        "calories_kcal",
+        "Las calorías estimadas son obligatorias",
+        CALORIES_MAX,
+    );
+    let protein_g = check_estimated_amount(
+        errors,
+        &mut values,
+        "protein_g",
+        "La proteína estimada es obligatoria",
+        MACRO_MAX_G,
+    );
+    let fat_g = check_estimated_amount(
+        errors,
+        &mut values,
+        "fat_g",
+        "La grasa estimada es obligatoria",
+        MACRO_MAX_G,
+    );
+    Some(MealNutrients {
+        calories_kcal: calories_kcal?,
+        protein_g: protein_g?,
+        fat_g: fat_g?,
+    })
+}
+
+/// HU-09 / HU-08 — valida el cuerpo de `POST /meals` y señala todos los campos inválidos a la vez.
+///
+/// Los campos planos son los valores finales. `estimated` es opcional (captura manual sin estimación) y, si viene,
+/// requiere `photo_id`: la estimación de HU-07 siempre sale de una foto.
 pub fn validate_new_meal(input: MealInput) -> Result<ValidMeal, AppError> {
     let mut errors = FieldErrors::new();
     let present = |value: Option<Value>| value.filter(|v| !v.is_null());
+    let estimated_raw = present(input.estimated);
+    if estimated_raw.is_some() && present(input.photo_id.clone()).is_none() {
+        errors.insert(
+            ESTIMATED_FIELD.into(),
+            "Los valores estimados requieren la foto (photo_id); en una captura manual no envíes estimated"
+                .into(),
+        );
+    }
 
     let photo_id = check(
         &mut errors,
@@ -106,12 +182,20 @@ pub fn validate_new_meal(input: MealInput) -> Result<ValidMeal, AppError> {
         |value| parse_amount(value, MACRO_MAX_G),
     );
 
+    let estimated = match estimated_raw {
+        // Sin foto ya está señalado: no se revisan sus valores para no mezclar mensajes en el mismo campo.
+        Some(_) if errors.contains_key(ESTIMATED_FIELD) => None,
+        Some(value) => check_estimated(&mut errors, value),
+        None => None,
+    };
+
     match (calories_kcal, protein_g, fat_g) {
         (Some(calories_kcal), Some(protein_g), Some(fat_g)) if errors.is_empty() => Ok(ValidMeal {
             photo_id,
             calories_kcal,
             protein_g,
             fat_g,
+            estimated,
         }),
         _ => Err(AppError::Validation(errors)),
     }
@@ -170,6 +254,7 @@ pub async fn create_meal(
         calories_kcal: valid.calories_kcal,
         protein_g: valid.protein_g,
         fat_g: valid.fat_g,
+        estimated: valid.estimated,
     };
     match meals(db).insert_one(&meal).await {
         Ok(_) => Ok(meal),
@@ -316,6 +401,7 @@ mod tests {
             calories_kcal: Some(calories),
             protein_g: Some(protein),
             fat_g: Some(fat),
+            estimated: None,
         }
     }
 
@@ -346,6 +432,7 @@ mod tests {
                 calories_kcal: 413.0,
                 protein_g: 42.2,
                 fat_g: 4.9,
+                estimated: None,
             }
         );
     }
@@ -446,6 +533,202 @@ mod tests {
             json!(1),
         )));
         assert_eq!(errors.keys().collect::<Vec<_>>(), ["photo_id"]);
+    }
+
+    // ───────────── HU-08 — valores estimados y corregidos ─────────────
+
+    const PHOTO: &str = "6acd4140ac968514f27322cd";
+
+    /// Registro con foto, finales (`calories`, `protein`, `fat`) y el objeto `estimated` tal como llega.
+    fn with_estimate(calories: Value, protein: Value, fat: Value, estimated: Value) -> MealInput {
+        MealInput {
+            estimated: Some(estimated),
+            ..input(Some(json!(PHOTO)), calories, protein, fat)
+        }
+    }
+
+    fn nutrients(calories_kcal: f64, protein_g: f64, fat_g: f64) -> MealNutrients {
+        MealNutrients {
+            calories_kcal,
+            protein_g,
+            fat_g,
+        }
+    }
+
+    #[test]
+    fn sin_correccion_finales_y_estimados_son_iguales() {
+        let estimated = json!({ "calories_kcal": 413, "protein_g": 42.2, "fat_g": 4.9 });
+        let valid = validate_new_meal(with_estimate(
+            json!(413),
+            json!(42.2),
+            json!(4.9),
+            estimated,
+        ))
+        .unwrap();
+        assert_eq!(valid.estimated, Some(nutrients(413.0, 42.2, 4.9)));
+        assert_eq!(
+            (valid.calories_kcal, valid.protein_g, valid.fat_g),
+            (413.0, 42.2, 4.9)
+        );
+    }
+
+    #[test]
+    fn con_correccion_se_guardan_por_separado() {
+        let valid = validate_new_meal(with_estimate(
+            json!(380),
+            json!(40),
+            json!(6.5),
+            json!({ "calories_kcal": 413, "protein_g": 42.2, "fat_g": 4.9 }),
+        ))
+        .unwrap();
+        assert_eq!(valid.estimated, Some(nutrients(413.0, 42.2, 4.9)));
+        assert_eq!(
+            (valid.calories_kcal, valid.protein_g, valid.fat_g),
+            (380.0, 40.0, 6.5)
+        );
+        assert_eq!(valid.photo_id.as_deref(), Some(PHOTO));
+    }
+
+    #[test]
+    fn captura_manual_sin_estimacion_se_guarda_sin_estimados() {
+        // Sin foto (CU-01 3a) o con una foto que no se reconoció (4a); `estimated` omitido o null.
+        for photo_id in [None, Some(json!(PHOTO))] {
+            for estimated in [None, Some(Value::Null)] {
+                let valid = validate_new_meal(MealInput {
+                    estimated,
+                    ..input(photo_id.clone(), json!(250), json!(10), json!(8))
+                })
+                .unwrap();
+                assert_eq!(valid.estimated, None);
+                assert_eq!(valid.calories_kcal, 250.0);
+            }
+        }
+    }
+
+    #[test]
+    fn el_cero_se_acepta_en_los_estimados() {
+        let valid = validate_new_meal(with_estimate(
+            json!(0),
+            json!(0),
+            json!(0),
+            json!({ "calories_kcal": 0, "protein_g": 0.0, "fat_g": 0 }),
+        ))
+        .unwrap();
+        assert_eq!(valid.estimated, Some(nutrients(0.0, 0.0, 0.0)));
+    }
+
+    #[test]
+    fn estimados_negativos_se_senalan_con_su_campo() {
+        let errors = fields(validate_new_meal(with_estimate(
+            json!(1),
+            json!(1),
+            json!(1),
+            json!({ "calories_kcal": -1, "protein_g": -0.1, "fat_g": -5 }),
+        )));
+        assert_eq!(
+            errors.keys().collect::<Vec<_>>(),
+            [
+                "estimated.calories_kcal",
+                "estimated.fat_g",
+                "estimated.protein_g"
+            ]
+        );
+        assert!(errors.values().all(|m| m == "No puede ser negativo"));
+    }
+
+    #[test]
+    fn estimados_no_numericos_se_senalan_con_su_campo() {
+        for value in [json!("413"), json!(true), json!([1]), json!({})] {
+            let errors = fields(validate_new_meal(with_estimate(
+                json!(1),
+                json!(1),
+                json!(1),
+                json!({ "calories_kcal": value.clone(), "protein_g": 1, "fat_g": 1 }),
+            )));
+            assert_eq!(
+                errors,
+                FieldErrors::from([(
+                    "estimated.calories_kcal".to_string(),
+                    "Debe ser un número".to_string()
+                )]),
+                "valor {value}"
+            );
+        }
+    }
+
+    #[test]
+    fn estimados_ausentes_o_fuera_de_rango_se_senalan() {
+        let errors = fields(validate_new_meal(with_estimate(
+            json!(1),
+            json!(1),
+            json!(1),
+            json!({ "calories_kcal": CALORIES_MAX + 1.0, "protein_g": null }),
+        )));
+        assert_eq!(
+            errors.keys().collect::<Vec<_>>(),
+            [
+                "estimated.calories_kcal",
+                "estimated.fat_g",
+                "estimated.protein_g"
+            ]
+        );
+        assert_eq!(
+            errors["estimated.fat_g"],
+            "La grasa estimada es obligatoria"
+        );
+    }
+
+    #[test]
+    fn estimated_que_no_es_objeto_se_senala() {
+        for value in [
+            json!(413),
+            json!("413"),
+            json!([413, 42.2, 4.9]),
+            json!(true),
+        ] {
+            let errors = fields(validate_new_meal(with_estimate(
+                json!(1),
+                json!(1),
+                json!(1),
+                value.clone(),
+            )));
+            assert_eq!(
+                errors.keys().collect::<Vec<_>>(),
+                [ESTIMATED_FIELD],
+                "{value}"
+            );
+        }
+    }
+
+    #[test]
+    fn estimados_sin_foto_se_rechazan() {
+        let errors = fields(validate_new_meal(MealInput {
+            estimated: Some(json!({ "calories_kcal": -1, "protein_g": 1, "fat_g": 1 })),
+            ..input(None, json!(1), json!(1), json!(1))
+        }));
+        // Un solo mensaje en `estimated`; sus valores no se revisan mientras falte la foto.
+        assert_eq!(errors.keys().collect::<Vec<_>>(), [ESTIMATED_FIELD]);
+    }
+
+    #[test]
+    fn finales_y_estimados_invalidos_se_senalan_juntos() {
+        let errors = fields(validate_new_meal(with_estimate(
+            json!(-5),
+            json!("veinte"),
+            json!(1),
+            json!({ "calories_kcal": 413, "protein_g": -1, "fat_g": "cinco" }),
+        )));
+        assert_eq!(
+            errors.keys().collect::<Vec<_>>(),
+            [
+                "calories_kcal",
+                "estimated.fat_g",
+                "estimated.protein_g",
+                "protein_g"
+            ]
+        );
+        assert_eq!(errors["calories_kcal"], "No puede ser negativo");
+        assert_eq!(errors["protein_g"], "Debe ser un número");
     }
 
     #[test]
@@ -560,6 +843,68 @@ mod tests {
                     .is_empty()
             );
             assert!(!photo_exists(&db, photo_id).await, "la foto debía borrarse");
+            db.drop().await.unwrap();
+        }
+
+        #[tokio::test]
+        #[ignore = "requiere MongoDB"]
+        async fn guarda_estimados_y_finales_por_separado() {
+            let db = test_db().await;
+            let user = ObjectId::new();
+            let photo_id = photo(&db, user).await;
+            let corrected = create_meal(
+                &db,
+                user,
+                mexico(),
+                MealInput {
+                    estimated: Some(
+                        json!({ "calories_kcal": 413, "protein_g": 42.2, "fat_g": 4.9 }),
+                    ),
+                    ..input(
+                        Some(json!(photo_id.to_hex())),
+                        json!(380),
+                        json!(40),
+                        json!(6.5),
+                    )
+                },
+            )
+            .await
+            .unwrap();
+            let manual = create_meal(&db, user, mexico(), body(None)).await.unwrap();
+
+            // En Mongo: subdocumento `estimated` en el corregido y sin el campo en la captura manual.
+            let raw = db.collection::<Document>(MEALS_COLLECTION);
+            let doc = raw
+                .find_one(doc! { "_id": corrected.id })
+                .await
+                .unwrap()
+                .unwrap();
+            assert_eq!(
+                doc.get_document("estimated").unwrap(),
+                &doc! { "calories_kcal": 413.0, "protein_g": 42.2, "fat_g": 4.9 }
+            );
+            assert_eq!(doc.get_f64("calories_kcal").unwrap(), 380.0);
+            let doc = raw
+                .find_one(doc! { "_id": manual.id })
+                .await
+                .unwrap()
+                .unwrap();
+            assert!(!doc.contains_key("estimated"));
+
+            let list = find_meals_by_date(&db, user, parse_date(&corrected.date).unwrap())
+                .await
+                .unwrap();
+            assert_eq!(list.len(), 2);
+            assert_eq!(
+                list[0].estimated,
+                Some(MealNutrients {
+                    calories_kcal: 413.0,
+                    protein_g: 42.2,
+                    fat_g: 4.9
+                })
+            );
+            assert_eq!(list[0].protein_g, 40.0);
+            assert_eq!(list[1].estimated, None);
             db.drop().await.unwrap();
         }
 

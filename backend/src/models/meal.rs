@@ -16,8 +16,19 @@ pub struct Meal {
     pub eaten_at: DateTime,
     /// Día del registro `YYYY-MM-DD` en la zona horaria de la app (`APP_UTC_OFFSET`). Es el que filtra `?date=`.
     pub date: String,
-    /// Valores finales del registro.
-    // TODO(HU-08): agregar los valores estimados (`estimated`) junto a estos finales.
+    /// Valores finales del registro (los que confirmó el usuario).
+    pub calories_kcal: f64,
+    pub protein_g: f64,
+    pub fat_g: f64,
+    /// HU-08 — valores que estimó la app con la foto (HU-07), guardados aparte de los finales. Ausente en una captura
+    /// manual sin estimación y en los registros anteriores a HU-08.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub estimated: Option<MealNutrients>,
+}
+
+/// Calorías (kcal), proteína (g) y grasa (g) de un registro.
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+pub struct MealNutrients {
     pub calories_kcal: f64,
     pub protein_g: f64,
     pub fat_g: f64,
