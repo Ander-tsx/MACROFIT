@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use mongodb::{
     Database,
     bson::{DateTime, Document, doc, oid::ObjectId, to_bson},
@@ -62,8 +64,19 @@ fn protein_per_kg(objective: Objective) -> f64 {
     }
 }
 
-/// Calcula calorías, proteína y grasa con Mifflin-St Jeor.
-/// Grasa = 25 % de las calorías totales entre 9 kcal/g.
+/// Parte de las calorías que va a grasa; TEC-12 la fija igual para los tres objetivos.
+const FAT_SHARE: f64 = 0.25;
+
+/// Mínimo de calorías diarias (TEC-12): ninguna meta calculada queda por debajo.
+fn calories_floor(gender: Gender) -> f64 {
+    match gender {
+        Gender::Male => 1500.0,
+        Gender::Female => 1200.0,
+    }
+}
+
+/// Calcula calorías, proteína y grasa con Mifflin-St Jeor (reglas de TEC-12).
+/// Las calorías no bajan de `calories_floor`; la grasa es `FAT_SHARE` de ellas entre 9 kcal/g.
 pub fn calculate_macros(input: &GoalInput) -> Macros {
     let base = 10.0 * input.weight_kg + 6.25 * input.height_cm - 5.0 * f64::from(input.age_years);
     let bmr = match input.gender {
@@ -72,9 +85,10 @@ pub fn calculate_macros(input: &GoalInput) -> Macros {
     };
 
     let calories =
-        bmr * activity_factor(input.training_days) * objective_adjustment(input.objective);
+        (bmr * activity_factor(input.training_days) * objective_adjustment(input.objective))
+            .max(calories_floor(input.gender));
     let protein = input.weight_kg * protein_per_kg(input.objective);
-    let fat = calories * 0.25 / 9.0;
+    let fat = calories * FAT_SHARE / 9.0;
 
     Macros {
         calories: calories.round() as i32,
@@ -272,6 +286,53 @@ async fn find_current_goal(
     }
 }
 
+/// HU-24 — meta vigente de cada usuario entre `goals`, con la misma regla que `find_current_goal`:
+/// se ignoran las que empiezan después de `now` y la más reciente de un coach tiene prioridad sobre
+/// las calculadas. Un usuario sin metas vigentes no aparece en el mapa.
+pub fn pick_current_goals(
+    goals: Vec<NutritionalGoal>,
+    now: DateTime,
+) -> HashMap<ObjectId, NutritionalGoal> {
+    let mut current: HashMap<ObjectId, NutritionalGoal> = HashMap::new();
+    for goal in goals.into_iter().filter(|goal| goal.effective_from <= now) {
+        let wins = current
+            .get(&goal.user_id)
+            .is_none_or(|best| current_goal_rank(&goal) > current_goal_rank(best));
+        if wins {
+            current.insert(goal.user_id, goal);
+        }
+    }
+    current
+}
+
+/// Orden de preferencia de `pick_current_goals`: primero las del coach, luego la más reciente.
+fn current_goal_rank(goal: &NutritionalGoal) -> (bool, DateTime, ObjectId) {
+    (
+        goal.source == GoalSource::Coach,
+        goal.effective_from,
+        goal.id,
+    )
+}
+
+/// HU-24 — meta vigente de varios usuarios con una sola consulta (sin una por usuario).
+pub async fn current_goals_for(
+    db: &Database,
+    user_ids: &[ObjectId],
+    now: DateTime,
+) -> Result<HashMap<ObjectId, NutritionalGoal>, AppError> {
+    if user_ids.is_empty() {
+        return Ok(HashMap::new());
+    }
+    let cursor = goals(db)
+        .find(doc! {
+            "user_id": { "$in": user_ids.to_vec() },
+            "effective_from": { "$lte": now },
+        })
+        .await
+        .map_err(AppError::internal)?;
+    Ok(pick_current_goals(collect_cursor(cursor).await?, now))
+}
+
 async fn list_goals(db: &Database, user_id: ObjectId) -> Result<Vec<NutritionalGoal>, AppError> {
     let cursor = goals(db)
         .find(doc! { "user_id": user_id })
@@ -306,6 +367,56 @@ pub async fn get_current_goal(
     let goal = build_system_goal(&profile, now);
     insert_goal(db, &goal).await?;
     Ok(goal)
+}
+
+/// HU-10 — meta vigente en el instante `at` (el final del día que se consulta), con la misma regla que
+/// `get_current_goal` (RN-06). Si ninguna había empezado todavía (día anterior a la primera meta), se usa la
+/// meta vigente hoy; sin perfil ni metas → `ProfileNotFound`, igual que `GET /users/me/goals/current`.
+pub async fn get_goal_at(
+    db: &Database,
+    user_id: ObjectId,
+    at: DateTime,
+) -> Result<NutritionalGoal, AppError> {
+    match find_current_goal(db, user_id, at).await? {
+        Some(goal) => Ok(goal),
+        None => get_current_goal(db, user_id).await,
+    }
+}
+
+/// HU-11 — meta vigente en el instante `at` entre las metas de un mismo usuario, con la regla de
+/// `find_current_goal`: se ignoran las que empiezan después de `at` y la más reciente de un coach tiene prioridad
+/// sobre las calculadas. `None` si ninguna había empezado todavía.
+pub fn pick_goal_at(goals: &[NutritionalGoal], at: DateTime) -> Option<&NutritionalGoal> {
+    goals
+        .iter()
+        .filter(|goal| goal.effective_from <= at)
+        .max_by_key(|goal| current_goal_rank(goal))
+}
+
+/// HU-11 — meta vigente al final de cada día de `ats`, en el mismo orden, con una sola consulta (RF-21: si la meta
+/// cambia a mitad de semana, cada día usa la que regía ese día). Un día anterior a la primera meta usa la vigente
+/// hoy, igual que `get_goal_at`; sin perfil ni metas → `ProfileNotFound`.
+pub async fn get_goals_at(
+    db: &Database,
+    user_id: ObjectId,
+    ats: &[DateTime],
+) -> Result<Vec<NutritionalGoal>, AppError> {
+    let all = list_goals(db, user_id).await?;
+    let picked: Vec<Option<NutritionalGoal>> = ats
+        .iter()
+        .map(|at| pick_goal_at(&all, *at).cloned())
+        .collect();
+    if picked.iter().all(Option::is_some) {
+        return Ok(picked.into_iter().flatten().collect());
+    }
+    let current = match pick_goal_at(&all, DateTime::now()) {
+        Some(goal) => goal.clone(),
+        None => get_current_goal(db, user_id).await?,
+    };
+    Ok(picked
+        .into_iter()
+        .map(|goal| goal.unwrap_or_else(|| current.clone()))
+        .collect())
 }
 
 /// Historial de metas, de la más reciente a la más antigua (`effective_from` DESC).
@@ -464,6 +575,106 @@ mod tests {
     }
 
     #[test]
+    fn proteina_y_grasa_siguen_la_regla_de_cada_objetivo() {
+        // Mismo perfil: TMB = 1805; × 1.55 = 2797.75. Proteína = 80 kg × g/kg; grasa = 25 % / 9.
+        for (objective, calories, protein_g, fat_g) in [
+            (Objective::LoseFat, 2238, 160, 62),    // × 0.80; 2.0 g/kg
+            (Objective::Maintain, 2798, 128, 78),   // × 1.00; 1.6 g/kg
+            (Objective::GainMuscle, 3078, 144, 85), // × 1.10; 1.8 g/kg
+        ] {
+            let m = calculate_macros(&input(80.0, 180.0, 25, Gender::Male, 4, objective));
+            assert_eq!(
+                m,
+                Macros {
+                    calories,
+                    protein_g,
+                    fat_g
+                },
+                "objetivo {objective:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn mujer_bajo_el_minimo_recibe_1200_kcal() {
+        // TMB = 450 + 937.5 - 350 - 161 = 876.5; × 1.2 × 0.8 = 841.44 → mínimo 1200
+        let m = calculate_macros(&input(
+            45.0,
+            150.0,
+            70,
+            Gender::Female,
+            1,
+            Objective::LoseFat,
+        ));
+        assert_eq!(
+            m,
+            Macros {
+                calories: 1200,
+                protein_g: 90,
+                fat_g: 33
+            }
+        );
+    }
+
+    #[test]
+    fn hombre_bajo_el_minimo_recibe_1500_kcal() {
+        // TMB = 550 + 1000 - 375 + 5 = 1180; × 1.2 × 0.8 = 1132.8 → mínimo 1500
+        let m = calculate_macros(&input(55.0, 160.0, 75, Gender::Male, 1, Objective::LoseFat));
+        assert_eq!(
+            m,
+            Macros {
+                calories: 1500,
+                protein_g: 110,
+                fat_g: 42
+            }
+        );
+    }
+
+    #[test]
+    fn esquinas_del_perfil_dan_metas_validas() {
+        use crate::services::profile::{
+            AGE_MAX_YEARS, AGE_MIN_YEARS, HEIGHT_MAX_CM, HEIGHT_MIN_CM, WEIGHT_MAX_KG,
+            WEIGHT_MIN_KG,
+        };
+        let ages = [AGE_MIN_YEARS as i32, AGE_MAX_YEARS as i32];
+        for weight in [WEIGHT_MIN_KG, WEIGHT_MAX_KG] {
+            for height in [HEIGHT_MIN_CM, HEIGHT_MAX_CM] {
+                for age in ages {
+                    for gender in [Gender::Male, Gender::Female] {
+                        for days in [1, 7] {
+                            for objective in [
+                                Objective::LoseFat,
+                                Objective::Maintain,
+                                Objective::GainMuscle,
+                            ] {
+                                let m = calculate_macros(&input(
+                                    weight, height, age, gender, days, objective,
+                                ));
+                                let floor = match gender {
+                                    Gender::Male => 1500,
+                                    Gender::Female => 1200,
+                                };
+                                let case = format!(
+                                    "{weight} kg, {height} cm, {age} años, {gender:?}, {days} días, {objective:?}"
+                                );
+                                assert!(
+                                    (floor..=CALORIES_MAX).contains(&m.calories),
+                                    "calorías {case}"
+                                );
+                                assert!(
+                                    (1..=MACRO_MAX_G).contains(&m.protein_g),
+                                    "proteína {case}"
+                                );
+                                assert!((1..=MACRO_MAX_G).contains(&m.fat_g), "grasa {case}");
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
     fn factor_de_actividad_respeta_los_limites_de_cada_rango() {
         assert_eq!(activity_factor(1), 1.2);
         assert_eq!(activity_factor(2), 1.375);
@@ -563,5 +774,87 @@ mod tests {
             };
             assert_eq!(invalid_fields(input), ["effective_from"], "{value}");
         }
+    }
+
+    fn goal(
+        user_id: ObjectId,
+        source: GoalSource,
+        calories: i32,
+        effective_from: &str,
+    ) -> NutritionalGoal {
+        NutritionalGoal {
+            id: ObjectId::new(),
+            user_id,
+            calories,
+            protein_g: 150,
+            fat_g: 60,
+            source,
+            set_by: None,
+            effective_from: date(effective_from),
+            created_at: date(effective_from),
+        }
+    }
+
+    #[test]
+    fn meta_a_una_fecha_cambia_a_mitad_de_semana_y_la_del_coach_gana() {
+        let ana = ObjectId::new();
+        let goals = vec![
+            goal(ana, GoalSource::System, 1800, "2026-10-01T00:00:00Z"),
+            goal(ana, GoalSource::Coach, 2300, "2026-10-17T00:00:00Z"),
+        ];
+        let antes = pick_goal_at(&goals, date("2026-10-16T23:59:59Z")).unwrap();
+        assert_eq!((antes.calories, antes.source), (1800, GoalSource::System));
+        let despues = pick_goal_at(&goals, date("2026-10-17T00:00:00Z")).unwrap();
+        assert_eq!(
+            (despues.calories, despues.source),
+            (2300, GoalSource::Coach)
+        );
+    }
+
+    #[test]
+    fn meta_a_una_fecha_anterior_a_la_primera_meta_no_existe() {
+        let ana = ObjectId::new();
+        let goals = vec![goal(ana, GoalSource::System, 1800, "2026-10-10T00:00:00Z")];
+        assert!(pick_goal_at(&goals, date("2026-10-09T23:59:59Z")).is_none());
+        assert!(pick_goal_at(&[], date("2026-10-15T00:00:00Z")).is_none());
+    }
+
+    #[test]
+    fn meta_vigente_en_lote_prioriza_la_del_coach_mas_reciente() {
+        let ana = ObjectId::new();
+        let goals = vec![
+            goal(ana, GoalSource::System, 1800, "2026-10-14T00:00:00Z"),
+            goal(ana, GoalSource::Coach, 2000, "2026-10-01T00:00:00Z"),
+            goal(ana, GoalSource::Coach, 2100, "2026-10-05T00:00:00Z"),
+        ];
+        let current = pick_current_goals(goals, date("2026-10-15T00:00:00Z"));
+        assert_eq!(current.len(), 1);
+        assert_eq!(current[&ana].calories, 2100);
+        assert_eq!(current[&ana].source, GoalSource::Coach);
+    }
+
+    #[test]
+    fn meta_vigente_en_lote_ignora_las_futuras_y_toma_la_calculada_mas_reciente() {
+        let ana = ObjectId::new();
+        let bruno = ObjectId::new();
+        let goals = vec![
+            goal(ana, GoalSource::System, 1800, "2026-10-01T00:00:00Z"),
+            goal(ana, GoalSource::System, 1900, "2026-10-10T00:00:00Z"),
+            goal(ana, GoalSource::Coach, 2500, "2026-11-01T00:00:00Z"),
+            goal(bruno, GoalSource::Coach, 2400, "2026-10-15T00:00:00Z"),
+        ];
+        let current = pick_current_goals(goals, date("2026-10-15T00:00:00Z"));
+        assert_eq!(current[&ana].calories, 1900);
+        assert_eq!(current[&ana].source, GoalSource::System);
+        // Una meta que empieza justo ahora ya está vigente.
+        assert_eq!(current[&bruno].calories, 2400);
+    }
+
+    #[test]
+    fn meta_vigente_en_lote_omite_usuarios_sin_metas_vigentes() {
+        let ana = ObjectId::new();
+        let goals = vec![goal(ana, GoalSource::Coach, 2000, "2026-12-01T00:00:00Z")];
+        assert!(pick_current_goals(goals, date("2026-10-15T00:00:00Z")).is_empty());
+        assert!(pick_current_goals(Vec::new(), date("2026-10-15T00:00:00Z")).is_empty());
     }
 }

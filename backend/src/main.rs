@@ -2,18 +2,12 @@ use std::net::SocketAddr;
 
 use tower_http::cors::CorsLayer;
 
-mod auth;
-mod config;
-mod db;
-mod error;
-mod models;
-mod routes;
-mod services;
-mod state;
-mod validation;
-
-use config::Config;
-use state::AppState;
+use backend::config::Config;
+use backend::db;
+use backend::routes;
+use backend::services;
+use backend::services::food_recognition::FoodService;
+use backend::state::AppState;
 
 #[tokio::main]
 async fn main() {
@@ -25,10 +19,19 @@ async fn main() {
         *services::legal::PRIVACY_VERSION
     );
 
+    let food = FoodService::from_config(&config.food);
+    println!(
+        "Reconocimiento de alimentos: {} (tiempo de espera {} s)",
+        food.provider_name(),
+        config.food.timeout.as_secs()
+    );
+
     let db = db::connect(&config.mongo_uri, &config.db_name).await;
     let state = AppState {
         db,
         tokens: config.tokens,
+        food,
+        utc_offset: config.utc_offset,
     };
 
     let app = routes::api_router(config.dev_mode)

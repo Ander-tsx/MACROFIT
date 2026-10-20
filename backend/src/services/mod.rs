@@ -1,6 +1,14 @@
 pub mod auth;
+pub mod coach_invite_codes;
 pub mod coach_links;
+pub mod exercises;
+pub mod food_recognition;
 pub mod goals;
 pub mod legal;
+pub mod meal_estimates;
+pub mod meals;
+pub mod photos;
 pub mod profile;
 pub mod session;
+pub mod summary;
+pub mod weights;

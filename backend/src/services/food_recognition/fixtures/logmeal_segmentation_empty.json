@@ -1,0 +1,14 @@
+{
+  "imageId": 7654321,
+  "processed_image_size": {
+    "width": 544,
+    "height": 544
+  },
+  "foodType": {
+    "id": 0,
+    "name": "non_food"
+  },
+  "foodFamily": [],
+  "model_versions": {},
+  "segmentation_results": []
+}

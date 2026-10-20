@@ -14,9 +14,9 @@ main.rs ─▶ routes/ ─▶ services/ ─▶ models/
 | `config.rs` | Leer variables de entorno; `panic` si falta una obligatoria | Leer variables en otros módulos (`std::env::var` solo aquí) |
 | `state.rs` | `AppState` que reciben los handlers | Guardar estado mutable sin sincronización |
 | `db.rs` | Conexión y **todos los índices** (`ensure_indexes`) | Crear índices en otro lugar |
-| `error.rs` | `AppError`, su conversión al formato `{ error: { code, message, fields } }` y el extractor `ApiJson` | — |
+| `error.rs` | `AppError`, su conversión al formato `{ error: { code, message, fields } }` (struct `ErrorResponse`, también usado en OpenAPI) y el extractor `ApiJson` | — |
 | `validation.rs` | Reglas puras reutilizables (correo, longitudes) | Acceder a la base de datos |
-| `routes/` | HTTP: rutas, DTOs de entrada/salida, handlers delgados | Acceder a Mongo directamente |
+| `routes/` | HTTP: rutas, DTOs de entrada/salida, handlers delgados y su contrato OpenAPI (`openapi.rs`, TEC-14) | Acceder a Mongo directamente |
 | `services/` | Reglas de negocio, validación del caso de uso, consultas a Mongo | Conocer tipos HTTP (`StatusCode`, `Json`) |
 | `models/` | Structs que se guardan en Mongo y constantes de colección | Serializarse hacia el cliente |
 | `auth/` | JWT, hash de contraseñas, extractores `AuthenticatedUser` / `CoachOnly` | Lógica de un dominio concreto |

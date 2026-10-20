@@ -3,8 +3,20 @@ name = "backend"
 version = "0.1.0"
 edition = "2024"
 
+[lib]
+name = "backend"
+path = "src/lib.rs"
+
+[[bin]]
+name = "backend"
+path = "src/main.rs"
+
+[[bin]]
+name = "seed_exercises"
+path = "src/bin/seed_exercises.rs"
+
 [dependencies]
-axum = { version = "0.7", features = ["macros"] }
+axum = { version = "0.7", features = ["macros", "multipart"] } # multipart: subida de fotos (HU-06)
 tokio = { version = "1.0", features = ["full"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
@@ -16,3 +28,14 @@ rand = "0.8" # Generación de refresh tokens aleatorios
 dotenvy = "0.15" # Manejo de archivo .env
 tower-http = { version = "0.5", features = ["cors", "trace"] } # CORS
 chrono = { version = "0.4", features = ["serde"] }
+futures-util = { version = "0.3", features = ["io"] } # Escribir y leer los streams de GridFS (fotos)
+utoipa = { version = "5", features = ["preserve_order"] }
+utoipa-swagger-ui = { version = "8", features = ["axum", "vendored"] }
+# HU-07 / TEC-02 — adaptadores de reconocimiento de alimentos
+reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "json", "multipart"] } # Cliente HTTP de los proveedores
+async-trait = "0.1" # Trait `FoodRecognizer` usable como `dyn`
+base64 = "0.22" # Imagen en línea para Gemini
+image = { version = "0.25", default-features = false, features = ["jpeg", "png"] } # Reducir la foto antes de enviarla
+
+[dev-dependencies]
+tower = { version = "0.5", features = ["util"] } # `oneshot` para probar rutas sin levantar el servidor

@@ -1,14 +1,23 @@
-use mongodb::{Client, Cursor, Database, IndexModel, bson::doc, options::IndexOptions};
+use mongodb::{
+    Client, Cursor, Database, IndexModel,
+    bson::{Document, doc},
+    options::IndexOptions,
+};
 use serde::de::DeserializeOwned;
 
 use std::time::Duration;
 
 use crate::error::AppError;
+use crate::models::coach_invite_code::{COACH_INVITE_CODES_COLLECTION, CoachInviteCode};
 use crate::models::coach_link::{COACH_LINKS_COLLECTION, CoachLink};
+use crate::models::exercise::{EXERCISES_COLLECTION, Exercise};
 use crate::models::goal::{GOALS_COLLECTION, NutritionalGoal};
+use crate::models::meal::{MEALS_COLLECTION, Meal};
+use crate::models::meal_photo::{MEAL_PHOTOS_CHUNKS_COLLECTION, MEAL_PHOTOS_FILES_COLLECTION};
 use crate::models::profile::{PROFILES_COLLECTION, UserProfile};
 use crate::models::refresh_token::{REFRESH_TOKENS_COLLECTION, RefreshToken};
 use crate::models::user::{USERS_COLLECTION, User};
+use crate::models::weight_entry::{WEIGHTS_COLLECTION, WeightEntry};
 
 /// Conecta con MongoDB, verifica la conexión con un `ping` y crea los índices.
 pub async fn connect(mongo_uri: &str, db_name: &str) -> Database {
@@ -135,4 +144,127 @@ async fn ensure_indexes(db: &Database) {
         .create_index(link_pair_unique)
         .await
         .expect("No se pudo crear el índice único de coach_links");
+
+    // TEC-13: bucket de GridFS de las fotos de comidas. Los dos primeros son los índices estándar de GridFS
+    // (mismas claves y nombre automático que crearía el driver en la primera subida, así que no chocan);
+    // el de `chunks` es único como pide la especificación de GridFS.
+    let photo_files = db.collection::<Document>(MEAL_PHOTOS_FILES_COLLECTION);
+    let photo_files_indexes = [
+        IndexModel::builder()
+            .keys(doc! { "filename": 1, "uploadDate": 1 })
+            .build(),
+        // Fotos de un usuario (p. ej. para borrar todas las de una cuenta).
+        IndexModel::builder()
+            .keys(doc! { "metadata.owner_id": 1 })
+            .options(
+                IndexOptions::builder()
+                    .name("metadata_owner_id".to_string())
+                    .build(),
+            )
+            .build(),
+    ];
+    photo_files
+        .create_indexes(photo_files_indexes)
+        .await
+        .expect("No se pudieron crear los índices de meal_photos.files");
+
+    let photo_chunks_unique = IndexModel::builder()
+        .keys(doc! { "files_id": 1, "n": 1 })
+        .options(IndexOptions::builder().unique(true).build())
+        .build();
+    db.collection::<Document>(MEAL_PHOTOS_CHUNKS_COLLECTION)
+        .create_index(photo_chunks_unique)
+        .await
+        .expect("No se pudo crear el índice único de meal_photos.chunks");
+
+    let invite_codes = db.collection::<CoachInviteCode>(COACH_INVITE_CODES_COLLECTION);
+    let invite_code_indexes = [
+        IndexModel::builder()
+            .keys(doc! { "coach_id": 1 })
+            .options(
+                IndexOptions::builder()
+                    .unique(true)
+                    .name("coach_id_unique".to_string())
+                    .build(),
+            )
+            .build(),
+        IndexModel::builder()
+            .keys(doc! { "code": 1 })
+            .options(
+                IndexOptions::builder()
+                    .unique(true)
+                    .name("code_unique".to_string())
+                    .build(),
+            )
+            .build(),
+    ];
+    invite_codes
+        .create_indexes(invite_code_indexes)
+        .await
+        .expect("No se pudieron crear los índices de coach_invite_codes");
+
+    // TEC-09: Catálogo de ejercicios (índice único sobre name para reproducibilidad y compuesto para filtros)
+    let exercise_indexes = [
+        IndexModel::builder()
+            .keys(doc! { "name": 1 })
+            .options(
+                IndexOptions::builder()
+                    .unique(true)
+                    .name("exercise_name_unique".to_string())
+                    .build(),
+            )
+            .build(),
+        IndexModel::builder()
+            .keys(doc! { "muscle_group": 1, "level": 1 })
+            .options(
+                IndexOptions::builder()
+                    .name("exercise_muscle_group_level".to_string())
+                    .build(),
+            )
+            .build(),
+    ];
+    db.collection::<Exercise>(EXERCISES_COLLECTION)
+        .create_indexes(exercise_indexes)
+        .await
+        .expect("No se pudieron crear los índices de exercises");
+
+    // HU-21: historial de peso por usuario, el más reciente primero.
+    let weights_by_user = IndexModel::builder()
+        .keys(doc! { "user_id": 1, "recorded_at": -1 })
+        .options(
+            IndexOptions::builder()
+                .name("user_id_recorded_at".to_string())
+                .build(),
+        )
+        .build();
+    db.collection::<WeightEntry>(WEIGHTS_COLLECTION)
+        .create_index(weights_by_user)
+        .await
+        .expect("No se pudo crear el índice de weights");
+
+    // HU-09: registros de comida de un usuario por día, ordenados por hora; y una foto en un solo registro.
+    let meal_indexes = [
+        IndexModel::builder()
+            .keys(doc! { "user_id": 1, "date": 1, "eaten_at": 1 })
+            .options(
+                IndexOptions::builder()
+                    .name("user_id_date_eaten_at".to_string())
+                    .build(),
+            )
+            .build(),
+        IndexModel::builder()
+            .keys(doc! { "photo_id": 1 })
+            .options(
+                IndexOptions::builder()
+                    .unique(true)
+                    .partial_filter_expression(doc! { "photo_id": { "$type": "objectId" } })
+                    .name("photo_id_unique".to_string())
+                    .build(),
+            )
+            .build(),
+    ];
+    db.collection::<Meal>(MEALS_COLLECTION)
+        .create_indexes(meal_indexes)
+        .await
+        .expect("No se pudieron crear los índices de meals (¿hay una foto en dos registros?)");
 }

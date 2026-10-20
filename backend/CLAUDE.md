@@ -12,7 +12,18 @@ Instrucciones para Claude Code al trabajar en `backend/`. Las reglas generales d
 - API REST en **Rust 2024 + Axum 0.7 + MongoDB**, rutas bajo `/api/v1`, capas `routes → services → models` con `auth/` transversal.
 - Errores siempre con `AppError` → `{ "error": { code, message, fields } }`; cuerpos con `ApiJson<T>`.
 - Historias implementadas: TEC-05 (base), TEC-07 (aviso de privacidad), HU-01 (registro con rol), HU-02 (sesión con access/refresh token),
-  HU-03 (perfil inicial), HU-04 (meta calculada), HU-05 (metas por coach).
+  HU-03 (perfil inicial), HU-04 (meta calculada), HU-05 (metas por coach), TEC-13 (fotos de comidas en GridFS),
+  HU-06 (subida de la foto, `POST /meals/photos`), TEC-02 (adaptador de reconocimiento de alimentos en
+  `services/food_recognition/`, banco de pruebas `food_bench`), HU-07 (estimación nutricional, `POST /meals/estimate`),
+  TEC-12 (fórmula de la meta con mínimo de calorías y rangos válidos del perfil), HU-21 (registro de peso),
+  HU-09 (registros de comida: `POST/GET /meals`, `DELETE /meals/{id}`, día en la zona `APP_UTC_OFFSET`),
+  HU-08 (valores estimados y corregidos: objeto opcional `estimated` en `POST/GET /meals`; los campos planos son los finales),
+  HU-10 (resumen diario: `GET /users/me/summary/daily?date=`, `remaining` negativo si se pasa de la meta),
+  HU-11 (resumen semanal: `GET /users/me/summary/weekly?start=`, 7 días, promedio entre 7 y meta cumplida con calorías entre 90 % y 110 %),
+  HU-24 (lista completa de clientes: `GET /coach/clients` con meta vigente y último registro de comida),
+  HU-25 (comidas de un cliente: `GET /coach/clients/{clientId}/meals?date=`, solo lectura, y `GET /meals/photos/{id}` para dueño o coach vinculado),
+  TEC-14 (contrato OpenAPI con utoipa en `/api/v1/docs`; todo endpoint nuevo se documenta ahí, ver
+  `src/routes/README.md`).
 - Antes de terminar: `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings`, `cargo test`,
   `node postman/build.js --check` y newman contra una base temporal (AGENTS.md §7).
 

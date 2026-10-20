@@ -1,0 +1,198 @@
+{
+  "imageId": 1234567,
+  "processed_image_size": {
+    "width": 544,
+    "height": 544
+  },
+  "foodType": {
+    "id": 1,
+    "name": "food"
+  },
+  "foodFamily": [
+    {
+      "id": 5,
+      "name": "dish",
+      "prob": 0.92
+    }
+  ],
+  "model_versions": {
+    "segmentation": "v1.0",
+    "dishes": "v1.0"
+  },
+  "segmentation_results": [
+    {
+      "food_item_position": 1,
+      "center": {
+        "x": 200,
+        "y": 180
+      },
+      "contained_bbox": {
+        "x": 50,
+        "y": 40,
+        "w": 300,
+        "h": 260
+      },
+      "polygon": [
+        50,
+        40,
+        350,
+        40,
+        350,
+        300,
+        50,
+        300
+      ],
+      "serving_size": 280,
+      "recognition_results": [
+        {
+          "id": 1001,
+          "name": "chilaquiles verdes",
+          "prob": 0.83,
+          "foodType": {
+            "id": 1,
+            "name": "food"
+          },
+          "foodFamily": [
+            {
+              "id": 5,
+              "name": "dish"
+            }
+          ],
+          "subclasses": []
+        },
+        {
+          "id": 2001,
+          "name": "enchiladas verdes",
+          "prob": 0.277,
+          "foodType": {
+            "id": 1,
+            "name": "food"
+          },
+          "foodFamily": [
+            {
+              "id": 5,
+              "name": "dish"
+            }
+          ],
+          "subclasses": []
+        }
+      ]
+    },
+    {
+      "food_item_position": 2,
+      "center": {
+        "x": 200,
+        "y": 180
+      },
+      "contained_bbox": {
+        "x": 50,
+        "y": 40,
+        "w": 300,
+        "h": 260
+      },
+      "polygon": [
+        50,
+        40,
+        350,
+        40,
+        350,
+        300,
+        50,
+        300
+      ],
+      "serving_size": 120,
+      "recognition_results": [
+        {
+          "id": 1002,
+          "name": "frijoles refritos",
+          "prob": 0.77,
+          "foodType": {
+            "id": 1,
+            "name": "food"
+          },
+          "foodFamily": [
+            {
+              "id": 5,
+              "name": "dish"
+            }
+          ],
+          "subclasses": []
+        },
+        {
+          "id": 2002,
+          "name": "frijoles de la olla",
+          "prob": 0.257,
+          "foodType": {
+            "id": 1,
+            "name": "food"
+          },
+          "foodFamily": [
+            {
+              "id": 5,
+              "name": "dish"
+            }
+          ],
+          "subclasses": []
+        }
+      ]
+    },
+    {
+      "food_item_position": 3,
+      "center": {
+        "x": 200,
+        "y": 180
+      },
+      "contained_bbox": {
+        "x": 50,
+        "y": 40,
+        "w": 300,
+        "h": 260
+      },
+      "polygon": [
+        50,
+        40,
+        350,
+        40,
+        350,
+        300,
+        50,
+        300
+      ],
+      "serving_size": 15,
+      "recognition_results": [
+        {
+          "id": 1003,
+          "name": "crema",
+          "prob": 0.4,
+          "foodType": {
+            "id": 1,
+            "name": "food"
+          },
+          "foodFamily": [
+            {
+              "id": 5,
+              "name": "dish"
+            }
+          ],
+          "subclasses": []
+        },
+        {
+          "id": 2003,
+          "name": "queso",
+          "prob": 0.133,
+          "foodType": {
+            "id": 1,
+            "name": "food"
+          },
+          "foodFamily": [
+            {
+              "id": 5,
+              "name": "dish"
+            }
+          ],
+          "subclasses": []
+        }
+      ]
+    }
+  ]
+}

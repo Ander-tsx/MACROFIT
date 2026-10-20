@@ -1,0 +1,123 @@
+{
+  "info": {
+    "name": "MacroFit · Exercises",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "TEC-09 Catálogo de ejercicios",
+      "item": [
+        {
+          "name": "01 - Sembrar catálogo de ejercicios",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/dev/seed/exercises",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "dev", "seed", "exercises"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "  pm.test('Status 201 Created', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "  });",
+                  "  const data = pm.response.json();",
+                  "  pm.test('Responde mensaje de éxito y contador', function () {",
+                  "    pm.expect(data).to.have.property('count');",
+                  "    pm.expect(data.count).to.be.at.least(18);",
+                  "  });",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "02 - Consultar catálogo de ejercicios",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{user_access_token}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/exercises",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "exercises"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "  pm.test('Status 200 OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "  });",
+                  "  const items = pm.response.json();",
+                  "  pm.test('Responde un arreglo de ejercicios', function () {",
+                  "    pm.expect(items).to.be.an('array');",
+                  "    pm.expect(items.length).to.be.at.least(18);",
+                  "  });",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "03 - Filtrar por grupo muscular y nivel",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{user_access_token}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/exercises?muscle_group=chest&level=beginner",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "exercises"],
+              "query": [
+                { "key": "muscle_group", "value": "chest" },
+                { "key": "level", "value": "beginner" }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "  pm.test('Status 200 OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "  });",
+                  "  const items = pm.response.json();",
+                  "  pm.test('Filtra correctamente por chest y beginner', function () {",
+                  "    pm.expect(items).to.be.an('array');",
+                  "    pm.expect(items.length).to.be.at.least(1);",
+                  "    items.forEach(function (item) {",
+                  "      pm.expect(item.muscle_group).to.eql('chest');",
+                  "      pm.expect(item.level).to.eql('beginner');",
+                  "    });",
+                  "  });",
+                  "}"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

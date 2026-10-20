@@ -14,14 +14,14 @@ use crate::services::auth::is_duplicate_key;
 use crate::services::goals;
 use crate::validation::{check, date_to_bson, parse_date};
 
-// TODO(TEC-12): rangos provisionales; ajustarlos cuando TEC-12 defina los definitivos
-// (y también en `macrofit_app/lib/features/profile/domain/validators/profile_validators.dart`).
-pub const WEIGHT_MIN_KG: f64 = 30.0;
-pub const WEIGHT_MAX_KG: f64 = 300.0;
-pub const HEIGHT_MIN_CM: f64 = 100.0;
-pub const HEIGHT_MAX_CM: f64 = 250.0;
+// Rangos válidos del perfil definidos en TEC-12 (justificación en `services/README.md`).
+// La app los replica en `profile_validators.dart`; ese cambio queda para el Sprint 3.
+pub const WEIGHT_MIN_KG: f64 = 35.0;
+pub const WEIGHT_MAX_KG: f64 = 250.0;
+pub const HEIGHT_MIN_CM: f64 = 130.0;
+pub const HEIGHT_MAX_CM: f64 = 230.0;
 pub const AGE_MIN_YEARS: u32 = 18;
-pub const AGE_MAX_YEARS: u32 = 100;
+pub const AGE_MAX_YEARS: u32 = 80;
 pub const TRAINING_DAYS_MIN: i32 = 1;
 pub const TRAINING_DAYS_MAX: i32 = 7;
 
@@ -104,6 +104,17 @@ fn parse_in_range(value: f64, min: f64, max: f64, message: String) -> Result<f64
     }
 }
 
+/// Valida un peso contra `WEIGHT_MIN_KG..=WEIGHT_MAX_KG`. Pública para que el registro de
+/// peso (HU-21) use el mismo rango y el mismo mensaje que el perfil.
+pub fn parse_weight_kg(value: f64) -> Result<f64, String> {
+    parse_in_range(
+        value,
+        WEIGHT_MIN_KG,
+        WEIGHT_MAX_KG,
+        format!("El peso debe estar entre {WEIGHT_MIN_KG} y {WEIGHT_MAX_KG} kg"),
+    )
+}
+
 /// Edad en años cumplidos a la fecha `today` (`None` si la fecha es futura).
 pub fn age_on(birth_date: NaiveDate, today: NaiveDate) -> Option<u32> {
     today.years_since(birth_date)
@@ -177,14 +188,7 @@ fn validate_fields(
         input.weight_kg,
         required,
         "El peso es obligatorio",
-        |v| {
-            parse_in_range(
-                v,
-                WEIGHT_MIN_KG,
-                WEIGHT_MAX_KG,
-                format!("El peso debe estar entre {WEIGHT_MIN_KG} y {WEIGHT_MAX_KG} kg"),
-            )
-        },
+        parse_weight_kg,
     );
     let height_cm = check(
         &mut errors,
@@ -489,8 +493,8 @@ mod tests {
         let fields = field_errors(validate_new_profile(
             ProfileInput {
                 training_days: Some(8.0),
-                weight_kg: Some(29.9),
-                height_cm: Some(250.1),
+                weight_kg: Some(34.9),
+                height_cm: Some(230.1),
                 birth_date: Some("2010-01-01".into()),
                 ..valid_input()
             },
@@ -543,7 +547,7 @@ mod tests {
 
     #[test]
     fn limites_de_peso_estatura_y_dias_son_inclusivos() {
-        for (weight, height, days) in [(30.0, 100.0, 1.0), (300.0, 250.0, 7.0)] {
+        for (weight, height, days) in [(35.0, 130.0, 1.0), (250.0, 230.0, 7.0)] {
             let input = ProfileInput {
                 weight_kg: Some(weight),
                 height_cm: Some(height),
@@ -555,13 +559,44 @@ mod tests {
     }
 
     #[test]
-    fn edad_de_18_y_100_anios_es_valida_y_fuera_no() {
+    fn valores_justo_fuera_de_los_limites_se_rechazan() {
+        for (field, weight, height) in [
+            ("weight_kg", 34.9, 170.0),
+            ("weight_kg", 250.1, 170.0),
+            ("height_cm", 72.5, 129.9),
+            ("height_cm", 72.5, 230.1),
+        ] {
+            let input = ProfileInput {
+                weight_kg: Some(weight),
+                height_cm: Some(height),
+                ..valid_input()
+            };
+            let fields = field_errors(validate_new_profile(input, today()));
+            assert_eq!(fields, [field], "peso {weight}, estatura {height}");
+        }
+    }
+
+    #[test]
+    fn peso_reutilizable_aplica_el_mismo_rango() {
+        assert_eq!(parse_weight_kg(35.0), Ok(35.0));
+        assert_eq!(parse_weight_kg(250.0), Ok(250.0));
+        for weight in [34.9, 250.1, f64::NAN, f64::INFINITY] {
+            assert_eq!(
+                parse_weight_kg(weight),
+                Err("El peso debe estar entre 35 y 250 kg".to_string()),
+                "peso {weight}"
+            );
+        }
+    }
+
+    #[test]
+    fn edad_de_18_y_80_anios_es_valida_y_fuera_no() {
         for (date, ok) in [
             ("2008-10-08", true),  // cumple 18 hoy
             ("2008-10-09", false), // cumple 18 mañana
-            ("1926-10-09", true),  // tiene 99
-            ("1925-10-09", true),  // tiene 100
-            ("1925-10-08", false), // cumple 101 hoy
+            ("1946-10-09", true),  // tiene 79
+            ("1945-10-09", true),  // tiene 80
+            ("1945-10-08", false), // cumple 81 hoy
             ("2030-01-01", false), // futura
         ] {
             let input = ProfileInput {

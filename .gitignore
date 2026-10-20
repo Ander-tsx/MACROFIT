@@ -32,5 +32,9 @@ key.properties
 # Rust Backend
 **/target/
 **/uploads/
+
+# TEC-02: fotos de prueba y resultados crudos del banco de pruebas (el resumen va en docs/spikes/)
+backend/bench/photos/
+backend/bench/results/
 **/*.rs.bk
 *.pdb

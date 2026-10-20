@@ -1,0 +1,3 @@
+# Archivos de prueba de HU-06: se suben byte a byte, sin convertir finales de línea.
+* binary
+.gitattributes text eol=lf
