@@ -110,6 +110,7 @@ Registros de comida (HU-09, RF-08). Se insertan con `POST /meals` y se borran co
 | `date` | string | Día `YYYY-MM-DD` de `eaten_at` en la zona `APP_UTC_OFFSET` (México por defecto). Es el que filtra `GET /meals?date=` |
 | `calories_kcal` | double | Valor final, 0 a 10 000 |
 | `protein_g`, `fat_g` | double | Valores finales, 0 a 1 000 |
+| `estimated` | object \| ausente | HU-08: `{ calories_kcal, protein_g, fat_g }` (double) que estimó la app (HU-07), aparte de los finales. Ausente en una captura manual y en registros anteriores a HU-08 (se leen como `null`, sin migración) |
 
 **Índices:** `user_id_date_eaten_at` → `{ user_id: 1, date: 1, eaten_at: 1 }` (registros de un usuario en un día, por hora;
 también sirve para buscar por `user_id`) y `photo_id_unique` → `{ photo_id: 1 }`, único y parcial

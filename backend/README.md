@@ -3,7 +3,7 @@
 API REST de MacroFit: autenticación, persistencia en MongoDB y reglas de acceso por rol (`user` y `coach`).
 Historias cubiertas: **TEC-05** (base), **TEC-07** (aviso de privacidad), **HU-01** (registro con rol), **HU-02** (inicio y cierre de sesión)
 **HU-03** (perfil inicial del usuario), **HU-04** y **HU-05** (metas), **TEC-13** (almacenamiento de fotos de comidas),
-**TEC-14** (contrato de la API en OpenAPI), **HU-06** (carga de la foto de comida), **TEC-02** (comparación de servicios de reconocimiento de alimentos), **HU-07** (estimación nutricional de la foto), **HU-09** (registros de comida) y **HU-25** (registro diario de comidas de un cliente, para el coach).
+**TEC-14** (contrato de la API en OpenAPI), **HU-06** (carga de la foto de comida), **TEC-02** (comparación de servicios de reconocimiento de alimentos), **HU-07** (estimación nutricional de la foto), **HU-09** (registros de comida), **HU-08** (valores estimados y corregidos) y **HU-25** (registro diario de comidas de un cliente, para el coach).
 
 > **Si eres una persona o una sesión de IA que va a modificar este backend, lee primero
 > la sección [Forma de trabajo](#-forma-de-trabajo) y el README de la carpeta que vas a tocar.**
@@ -183,7 +183,7 @@ El contrato completo (cuerpos, respuestas y códigos de error de cada endpoint) 
 | POST | `/meals/photos` | Bearer (user) | HU-06 | Sube la foto de una comida (multipart, campo `photo`) |
 | GET | `/meals/photos/{id}` | Bearer (cualquier rol) | HU-25 | Descarga una foto: su dueño o el coach con vinculación activa |
 | POST | `/meals/estimate` | Bearer (user) | HU-07 | Estima calorías, proteína y grasa de una foto propia |
-| POST | `/meals` | Bearer (user) | HU-09 | Guarda un registro de comida (foto opcional y valores finales) |
+| POST | `/meals` | Bearer (user) | HU-09, HU-08 | Guarda un registro de comida (foto opcional, valores finales y estimados) |
 | GET | `/meals?date=YYYY-MM-DD` | Bearer (user) | HU-09 | Registros del usuario en ese día, por hora |
 | DELETE | `/meals/{id}` | Bearer (user) | HU-09 | Elimina un registro propio y su foto |
 | GET | `/users/me/summary/daily?date=YYYY-MM-DD` | Bearer (user) | HU-10 | Consumo del día, meta vigente y lo que falta |
@@ -552,17 +552,27 @@ una cuenta de coach `403 FORBIDDEN_ROLE` (RN-07; el coach consulta las comidas d
 cena a las 19:30 del 16 queda en `2026-10-16` aunque en UTC ya sea el 17, y el usuario y su coach ven el mismo día.
 `?date=` filtra por ese campo.
 
-**POST `/meals`** — guarda los valores **finales** (los que el usuario confirmó tras revisar la estimación):
+**POST `/meals`** — guarda los valores **finales** (campos planos: los que el usuario confirmó tras revisar la
+estimación) y, aparte, los **estimados** (`estimated`, los que devolvió `POST /meals/estimate`; HU-08):
 
 ```json
-{ "photo_id": "6acd4140ac968514f27322cd", "calories_kcal": 413, "protein_g": 42.2, "fat_g": 4.9 }
+{
+  "photo_id": "6acd4140ac968514f27322cd",
+  "calories_kcal": 380, "protein_g": 40, "fat_g": 6.5,
+  "estimated": { "calories_kcal": 413, "protein_g": 42.2, "fat_g": 4.9 }
+}
 ```
+
+- **Sin corrección:** la app manda los mismos valores en `estimated` y en los finales.
+- **Con corrección:** `estimated` conserva lo que estimó la app y los finales llevan lo corregido.
+- **Captura manual** (sin foto, o con una foto que no se reconoció; CU-01 flujos 3a y 4a): sin `estimated` (omitido o `null`).
 
 | Campo | Regla |
 |---|---|
 | `photo_id` | Opcional (captura manual sin foto: omítelo o `null`). Si viene: texto, id de una foto **propia** de `POST /meals/photos` que no esté en otro registro |
 | `calories_kcal` | Obligatorio. Número de 0 a 10 000 |
 | `protein_g`, `fat_g` | Obligatorios. Número de 0 a 1 000 |
+| `estimated` | Opcional (HU-08). Objeto `{ calories_kcal, protein_g, fat_g }` con las mismas reglas que los finales (los tres obligatorios dentro del objeto; el 0 se acepta). Requiere `photo_id`. Sus errores se señalan como `estimated.<campo>` |
 
 **201 Created**
 
@@ -574,11 +584,13 @@ cena a las 19:30 del 16 queda en `2026-10-16` aunque en UTC ya sea el 17, y el u
   "date": "2026-10-16",
   "calories_kcal": 413.0,
   "protein_g": 42.2,
-  "fat_g": 4.9
+  "fat_g": 4.9,
+  "estimated": { "calories_kcal": 413.0, "protein_g": 42.2, "fat_g": 4.9 }
 }
 ```
 
-`photo_id` es `null` en una captura manual. HU-08 agregará los valores estimados junto a estos finales.
+`photo_id` y `estimated` son `null` en una captura manual (y `estimated` también en los registros anteriores a HU-08).
+Los resúmenes (HU-10, HU-11) y la vista del coach (HU-25) usan solo los valores finales.
 
 **GET `/meals?date=2026-10-16`** → `200` con la lista de registros (misma forma) del usuario de la sesión en ese día, del
 más antiguo al más reciente; `[]` si no hay registros.
@@ -587,7 +599,7 @@ más antiguo al más reciente; `[]` si no hay registros.
 
 | Caso | Respuesta |
 |---|---|
-| Valores ausentes, no numéricos, negativos o fuera de rango; `photo_id` que no es texto | `400 VALIDATION_ERROR` con cada campo en `fields` |
+| Valores ausentes, no numéricos, negativos o fuera de rango (finales o `estimated.<campo>`); `estimated` que no es objeto o sin `photo_id`; `photo_id` que no es texto | `400 VALIDATION_ERROR` con cada campo en `fields` |
 | `date` ausente o con formato distinto de `YYYY-MM-DD` | `400 VALIDATION_ERROR` con `fields.date` |
 | El cuerpo no es JSON válido | `400 INVALID_BODY` |
 | Sin sesión / token inválido | `401 UNAUTHORIZED` |

@@ -17,7 +17,7 @@ postman/
 ├── goals/goals.postman_collection.json # src/routes/goals.rs → HU-04 y HU-05 metas
 ├── weights/weights.postman_collection.json # src/routes/weights.rs → HU-21 registro de peso
 ├── summary/summary.postman_collection.json # src/routes/summary.rs → HU-10 resumen diario y HU-11 resumen semanal (cuentas y registros propios)
-└── meals/meals.postman_collection.json # src/routes/meals.rs → HU-06 carga de foto, HU-07 estimación, HU-09 registros de comida, HU-25 comidas de un cliente (archivos de prueba en meals/files/)
+└── meals/meals.postman_collection.json # src/routes/meals.rs → HU-06 carga de foto, HU-07 estimación, HU-09 registros de comida, HU-08 valores corregidos, HU-25 comidas de un cliente (archivos de prueba en meals/files/)
 ```
 
 Regla: **una carpeta `postman/<modulo>/` por cada archivo de `src/routes/<modulo>.rs`**, con el mismo nombre.
@@ -91,6 +91,7 @@ ponlos en la carpeta o en el request).
 | `meals` | `HU-06 Carga de foto` | Foto JPEG válida, Foto PNG válida, Tipo no permitido (GIF), Texto con extensión .jpg, Archivo demasiado grande, Sin archivo, Sin sesión, Cuenta de coach |
 | `meals` | `HU-07 Estimación nutricional` | Estimación válida, Sin photo_id, Foto inexistente, Id de foto mal formado, Foto de otro usuario, Sin sesión, Cuenta de coach. Contra el **simulador** (`FOOD_PROVIDER=simulator`) |
 | `meals` | `HU-09 Registros de comida` | Crear registro con foto, Captura manual sin foto, Crear registro que se eliminará, Foto ya usada en otro registro, Foto de otro usuario, Valores inválidos, Consultar por fecha, Día sin registros, Fecha inválida, Sin fecha, Eliminar un registro ajeno, Eliminar un registro inexistente, Eliminar, Consultar tras eliminar, La foto del registro eliminado ya no existe, Eliminar de nuevo, Sin sesión, Cuenta de coach (guardar / consultar / eliminar) |
+| `meals` | `HU-08 Valores corregidos` | Guardar sin corrección (finales = estimados), Guardar con corrección, Captura manual sin estimación (`estimated: null`), Valor 0 en estimados y finales, Valor negativo, Valor no numérico, `estimated` que no es objeto, Estimados sin foto, Consultar por fecha (compara lo guardado con lo enviado). Sube sus propias fotos con el usuario de `meals` |
 | `meals` | `HU-25 Comidas de un cliente` | Cliente vinculado con registros, El coach ve la foto del registro, Día sin registros, Otra fecha, Coach no vinculado (coach2), Coach no vinculado no ve la foto, Cliente inexistente, Id de cliente mal formado, Fecha inválida, Sin fecha, Cuenta de usuario, Sin sesión, Solo lectura (el coach no crea ni elimina registros), El cliente sigue teniendo sus registros, El dueño ve su propia foto, Cliente desvinculado (registros y foto). Vincula al usuario de `meals` con el coach de `meals` (HU-13) y al final lo desvincula (HU-14) |
 | `auth` | `HU-02 Sesión · Cierre` *(al final)* | Cierre de sesión, Renovación con token revocado, /auth/me tras cerrar sesión |
 
