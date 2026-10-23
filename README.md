@@ -4,6 +4,9 @@ App móvil para **registrar la alimentación con una foto** —el sistema estima
 proteína y grasa— y **seguir rutinas de entrenamiento**, con dos roles: usuario y coach.
 El coach vincula clientes, ajusta sus metas y les asigna rutinas.
 
+> [!WARNING]
+> Uso de "provider" para la gestion de estados entre pantallas, obligatorio (cuando sea necesario)
+
 ## Documentación
 
 | Documento | Contenido |
