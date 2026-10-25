@@ -130,6 +130,28 @@ void main() {
     });
   });
 
+  group('comidas de un cliente (HU-25)', () {
+    test('un coach abre las comidas de un cliente', () {
+      expect(
+        resolveRedirect(
+          const Authenticated(testCoach),
+          AppRoutes.coachClientMeals('abc'),
+        ),
+        isNull,
+      );
+    });
+
+    test('un usuario no accede a las comidas de un cliente', () {
+      expect(
+        resolveRedirect(
+          const Authenticated(testUser),
+          AppRoutes.coachClientMeals('abc'),
+        ),
+        AppRoutes.userHome,
+      );
+    });
+  });
+
   group('perfil inicial (HU-03)', () {
     test('un usuario sin perfil solo puede abrir el formulario de perfil', () {
       const state = Authenticated(testNewUser);

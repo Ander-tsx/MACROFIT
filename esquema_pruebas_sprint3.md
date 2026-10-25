@@ -7,8 +7,14 @@
 | HU-24 | Búsqueda de clientes por nombre. | Unitaria | La búsqueda no distingue mayúsculas ni acentos (`jose` encuentra a *José*), ignora los espacios al inicio y al final, conserva el orden y no hace otra petición a la API. | [**7**](#caso-03) (mobile 7 · backend 0) |
 | HU-24 | Lista vacía. | Interfaz | Un coach sin clientes vinculados ve un mensaje que lo invita a compartir su código de invitación, sin buscador ni error. | [**3**](#caso-04) (mobile 3 · backend 0) |
 | HU-24 | Errores al cargar la lista. | Unitaria | Un error sin lista muestra el mensaje y **Reintentar**; un error al recargar conserva la lista y la búsqueda. | [**3**](#caso-05) (mobile 3 · backend 0) |
-| HU-24 | Detalle del cliente con acceso a sus metas (HU-05) y a sus comidas (HU-25). | Interfaz | Al elegir un cliente se abre su detalle (solo para el rol `coach`); **Metas** abre el formulario de HU-05 y al regresar el resumen se actualiza; si el cliente ya no está vinculado lo indica; **Comidas** queda deshabilitado hasta HU-25-APP. | [**7**](#caso-06) (mobile 7 · backend 0) |
+| HU-24 | Detalle del cliente con acceso a sus metas (HU-05) y a sus comidas (HU-25). | Interfaz | Al elegir un cliente se abre su detalle (solo para el rol `coach`); **Metas** abre el formulario de HU-05 y al regresar el resumen se actualiza; si el cliente ya no está vinculado lo indica; **Comidas** abre el registro diario de HU-25. | [**7**](#caso-06) (mobile 7 · backend 0) |
 | HU-24 | La lista reemplaza la pantalla mínima de clientes de HU-05 sin romper sus flujos. | Interfaz | El coach llega al formulario de metas desde el detalle del cliente; guardar una meta y validar el formulario vacío siguen funcionando. | [**3**](#caso-07) (mobile 3 · backend 0) |
+| HU-25 | La app interpreta `GET /coach/clients/{clientId}/meals` para el día pedido. | Unitaria | Pide `?date=AAAA-MM-DD` sin la hora; cada registro trae hora, valores finales y `photo_url`, que es `null` en una captura manual; un día sin registros es una lista vacía; `CLIENT_NOT_LINKED` sale como `ApiException`. | [**4**](#caso-08) (mobile 4 · backend 0) |
+| HU-25 | Las fotos se descargan de `photo_url` con la sesión del coach. | Unitaria | `photo_url` se resuelve contra el host de la API y se pide con el mismo cliente HTTP con sesión (cabecera `Authorization`); cada foto se descarga una sola vez; una captura manual no pide foto; un error de descarga sale como `ApiException`. | [**4**](#caso-09) (mobile 4 · backend 0) |
+| HU-25 | Desde el detalle se abren las comidas del día con hora, foto y valores, a 3 pantallas o menos de la principal (RF-20). | Interfaz | Lista → detalle → comidas; cada registro muestra la hora local, la foto o *Captura manual* y `413 kcal · P 42.2 g · G 4.9 g`, con el total del día; solo el rol `coach` abre la ruta. | [**8**](#caso-10) (mobile 8 · backend 0) |
+| HU-25 | Cambio de día y día sin registros (CU-03 3a). | Unitaria | El coach cambia al día anterior o siguiente sin pasar de hoy, o elige una fecha (se ignora la hora y una fecha futura se lleva a hoy); un día sin registros lo indica y abre el calendario para elegir otra fecha. | [**7**](#caso-11) (mobile 7 · backend 0) |
+| HU-25 | La pantalla es de solo lectura (RN-07). | Interfaz | No hay botón flotante ni opciones para agregar, editar o eliminar registros. | [**1**](#caso-12) (mobile 1 · backend 0) |
+| HU-25 | Cliente desvinculado (RN-04) y sin conexión. | Unitaria | `403 CLIENT_NOT_LINKED` muestra que el cliente ya no está vinculado, sin tratarlo como error, y **Volver a mis clientes** regresa a la lista; sin conexión muestra el error y **Reintentar** vuelve a cargar el día. | [**5**](#caso-13) (mobile 5 · backend 0) |
 
 ## Cómo se cuentan las pruebas
 
@@ -18,6 +24,8 @@
 - No se cuentan las pruebas manuales de punta a punta ni las capturas de evidencia.
 
 Inventario al cerrar HU-24-APP: **146** pruebas mobile (`flutter test`). Al cerrar el Sprint 2 eran 119; HU-24-APP agrega 30 y retira 3 que probaban la pantalla mínima de clientes de HU-05, que se eliminó (las 2 del `CoachClientsViewModel` y *lista los clientes vinculados* de `CoachGoalsRepositoryImpl`; ahora las cubren los casos 01, 02 y 05). Sin cambios en el backend.
+
+Inventario al cerrar HU-25-APP: **173** pruebas mobile (`flutter test`). HU-25-APP agrega 27 (6 de datos, 4 de textos, 9 del ViewModel, 2 de rutas y 6 de widgets) y cambia *el detalle da acceso a las metas y a las comidas* (caso 06) para comprobar que **Comidas** está habilitado. Sin cambios en el backend.
 
 ## Detalle de las pruebas por caso
 
@@ -84,7 +92,7 @@ Mobile: 3 · Backend: 0
 
 Mobile: 7 · Backend: 0
 
-El acceso a las comidas queda deshabilitado hasta HU-25-APP; la prueba comprueba que se muestra y no se puede abrir.
+Con HU-25-APP, *el detalle da acceso a las metas y a las comidas* comprueba que **Comidas** está habilitado; antes comprobaba que estaba deshabilitado. La pantalla de comidas se prueba en los casos 08 a 13.
 
 **Mobile**
 
@@ -107,3 +115,74 @@ Las pruebas de HU-05 ahora pasan por el detalle del cliente antes de abrir el fo
 - `macrofit_app/test/app/app_test.dart` › metas por coach (HU-05) › el coach llega al formulario de un cliente desde su detalle
 - `macrofit_app/test/app/app_test.dart` › metas por coach (HU-05) › guarda la meta y la muestra en el historial
 - `macrofit_app/test/app/app_test.dart` › metas por coach (HU-05) › un formulario vacío no se envía y señala los campos
+
+### <a id="caso-08"></a>Caso 08 · HU-25 — Comidas del cliente desde la API
+
+Mobile: 4 · Backend: 0
+
+**Mobile**
+
+- `macrofit_app/test/features/clients/data/client_meals_repository_test.dart` › pide las comidas del cliente para el día en formato AAAA-MM-DD
+- `macrofit_app/test/features/clients/data/client_meals_repository_test.dart` › una captura manual llega sin foto
+- `macrofit_app/test/features/clients/data/client_meals_repository_test.dart` › un día sin registros devuelve una lista vacía
+- `macrofit_app/test/features/clients/data/client_meals_repository_test.dart` › un cliente desvinculado responde CLIENT_NOT_LINKED
+
+### <a id="caso-09"></a>Caso 09 · HU-25 — Fotos con la sesión del coach
+
+Mobile: 4 · Backend: 0
+
+**Mobile**
+
+- `macrofit_app/test/features/clients/data/client_meals_repository_test.dart` › descarga la foto de photo_url con el cliente HTTP con sesión
+- `macrofit_app/test/features/clients/data/client_meals_repository_test.dart` › una foto que no se puede descargar lanza ApiException
+- `macrofit_app/test/features/clients/presentation/client_meals_view_model_test.dart` › cada foto se descarga una sola vez
+- `macrofit_app/test/app/app_test.dart` › comidas de un cliente (HU-25) › desde el detalle se abren las comidas del día con hora, foto y valores
+
+### <a id="caso-10"></a>Caso 10 · HU-25 — Comidas del día con hora, foto y valores (RF-20)
+
+Mobile: 8 · Backend: 0
+
+**Mobile**
+
+- `macrofit_app/test/features/clients/presentation/client_meal_texts_test.dart` › las cantidades llevan a lo más un decimal
+- `macrofit_app/test/features/clients/presentation/client_meal_texts_test.dart` › resume calorías, proteína y grasa del registro
+- `macrofit_app/test/features/clients/presentation/client_meal_texts_test.dart` › la hora del registro se muestra en hora local
+- `macrofit_app/test/features/clients/presentation/client_meals_view_model_test.dart` › empieza en el día de hoy y trae sus registros
+- `macrofit_app/test/features/clients/presentation/client_meals_view_model_test.dart` › suma los valores del día
+- `macrofit_app/test/app/router_test.dart` › comidas de un cliente (HU-25) › un coach abre las comidas de un cliente
+- `macrofit_app/test/app/router_test.dart` › comidas de un cliente (HU-25) › un usuario no accede a las comidas de un cliente
+- `macrofit_app/test/app/app_test.dart` › comidas de un cliente (HU-25) › desde el detalle se abren las comidas del día con hora, foto y valores
+
+### <a id="caso-11"></a>Caso 11 · HU-25 — Cambio de día y día sin registros (CU-03 3a)
+
+Mobile: 7 · Backend: 0
+
+**Mobile**
+
+- `macrofit_app/test/features/clients/presentation/client_meal_texts_test.dart` › el día elegido se nombra hoy, ayer o con su fecha
+- `macrofit_app/test/features/clients/presentation/client_meals_view_model_test.dart` › un día sin registros lo indica
+- `macrofit_app/test/features/clients/presentation/client_meals_view_model_test.dart` › antes de cargar no se considera un día vacío
+- `macrofit_app/test/features/clients/presentation/client_meals_view_model_test.dart` › cambia al día anterior y vuelve, sin pasar de hoy
+- `macrofit_app/test/features/clients/presentation/client_meals_view_model_test.dart` › elegir una fecha carga ese día e ignora la hora y el futuro
+- `macrofit_app/test/app/app_test.dart` › comidas de un cliente (HU-25) › un día sin registros lo indica y permite elegir otra fecha
+- `macrofit_app/test/app/app_test.dart` › comidas de un cliente (HU-25) › el coach cambia al día anterior
+
+### <a id="caso-12"></a>Caso 12 · HU-25 — Solo lectura (RN-07)
+
+Mobile: 1 · Backend: 0
+
+**Mobile**
+
+- `macrofit_app/test/app/app_test.dart` › comidas de un cliente (HU-25) › es de solo lectura
+
+### <a id="caso-13"></a>Caso 13 · HU-25 — Cliente desvinculado (RN-04) y sin conexión
+
+Mobile: 5 · Backend: 0
+
+**Mobile**
+
+- `macrofit_app/test/features/clients/data/client_meals_repository_test.dart` › un cliente desvinculado responde CLIENT_NOT_LINKED
+- `macrofit_app/test/features/clients/presentation/client_meals_view_model_test.dart` › un cliente desvinculado se indica y no queda como error
+- `macrofit_app/test/features/clients/presentation/client_meals_view_model_test.dart` › sin conexión muestra el error y permite reintentar
+- `macrofit_app/test/app/app_test.dart` › comidas de un cliente (HU-25) › un cliente desvinculado lo indica y regresa a la lista
+- `macrofit_app/test/app/app_test.dart` › comidas de un cliente (HU-25) › sin conexión muestra el error y permite reintentar

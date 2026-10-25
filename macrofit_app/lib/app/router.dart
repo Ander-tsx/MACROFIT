@@ -13,6 +13,8 @@ import '../features/clients/domain/entities/client_summary.dart';
 import '../features/clients/domain/repositories/clients_repository.dart';
 import '../features/clients/presentation/client_detail/client_detail_view.dart';
 import '../features/clients/presentation/client_detail/client_detail_view_model.dart';
+import '../features/clients/presentation/client_meals/client_meals_view.dart';
+import '../features/clients/presentation/client_meals/client_meals_view_model.dart';
 import '../features/clients/presentation/clients_list/clients_list_view.dart';
 import '../features/clients/presentation/clients_list/clients_list_view_model.dart';
 import '../features/goals/domain/entities/coach_client.dart';
@@ -118,6 +120,19 @@ GoRouter createRouter(AuthRepository auth) {
             client: state.extra! as CoachClient,
           )..load(),
           child: const CoachGoalFormView(),
+        ),
+      ),
+      GoRoute(
+        path: AppRoutes.coachClientMealsPattern,
+        // Sin el cliente (p. ej. al restaurar la ruta) se vuelve a la lista.
+        redirect: (_, state) =>
+            state.extra is CoachClient ? null : AppRoutes.coachClients,
+        builder: (context, state) => ChangeNotifierProvider(
+          create: (context) => ClientMealsViewModel(
+            repository: context.read<ClientsRepository>(),
+            client: state.extra! as CoachClient,
+          )..load(),
+          child: const ClientMealsView(),
         ),
       ),
       GoRoute(
