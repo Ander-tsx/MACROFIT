@@ -12,6 +12,8 @@ import 'package:macrofit_app/features/auth/domain/entities/registration.dart';
 import 'package:macrofit_app/features/auth/domain/entities/role.dart';
 import 'package:macrofit_app/features/auth/domain/entities/user.dart';
 import 'package:macrofit_app/features/auth/domain/repositories/auth_repository.dart';
+import 'package:macrofit_app/features/clients/domain/entities/client_summary.dart';
+import 'package:macrofit_app/features/clients/domain/repositories/clients_repository.dart';
 import 'package:macrofit_app/features/goals/domain/entities/coach_client.dart';
 import 'package:macrofit_app/features/goals/domain/entities/nutritional_goal.dart';
 import 'package:macrofit_app/features/goals/domain/repositories/coach_goals_repository.dart';
@@ -224,22 +226,16 @@ NutritionalGoal testGoal({
 
 /// Repositorio de metas del coach en memoria (simula al backend de HU-05).
 class FakeCoachGoalsRepository implements CoachGoalsRepository {
-  FakeCoachGoalsRepository({
-    this.clients = const [testClient],
-    List<NutritionalGoal> history = const [],
-  }) : history = [...history];
-
-  List<CoachClient> clients;
+  FakeCoachGoalsRepository({List<NutritionalGoal> history = const []})
+    : history = [...history];
 
   /// Historial del cliente, de la más reciente a la más antigua.
   final List<NutritionalGoal> history;
 
   /// Si se asigna, la siguiente llamada del tipo correspondiente lanza este error.
-  ApiException? clientsError;
   ApiException? historyError;
   ApiException? setError;
 
-  int clientsCalls = 0;
   final saved =
       <
         ({
@@ -250,13 +246,6 @@ class FakeCoachGoalsRepository implements CoachGoalsRepository {
           DateTime effectiveFrom,
         })
       >[];
-
-  @override
-  Future<List<CoachClient>> getClients() async {
-    clientsCalls++;
-    if (clientsError case final error?) throw error;
-    return clients;
-  }
 
   @override
   Future<List<NutritionalGoal>> getClientGoals(String clientId) async {
@@ -288,6 +277,47 @@ class FakeCoachGoalsRepository implements CoachGoalsRepository {
     );
     history.insert(0, goal);
     return goal;
+  }
+}
+
+/// Cliente con meta del coach y un registro de comida (HU-24). Mismo id que [testClient].
+final testClientSummary = ClientSummary(
+  id: testClient.id,
+  name: 'Ana',
+  email: 'ana@macrofit.test',
+  goal: const ClientGoalSummary(
+    calories: 2200,
+    proteinG: 160,
+    fatG: 70,
+    source: GoalSource.coach,
+  ),
+  lastMealAt: DateTime.utc(2026, 10, 17, 1, 30),
+);
+
+/// Cliente sin metas ni registros (`goal` y `last_meal_at` nulos, HU-24).
+const testClientWithoutData = ClientSummary(
+  id: '6ac67c747314ad6c7164900f',
+  name: 'José Pérez',
+  email: 'jose@macrofit.test',
+);
+
+/// Repositorio de clientes del coach en memoria (simula `GET /coach/clients`, HU-24).
+class FakeClientsRepository implements ClientsRepository {
+  FakeClientsRepository({List<ClientSummary>? clients})
+    : clients = clients ?? [testClientSummary, testClientWithoutData];
+
+  List<ClientSummary> clients;
+
+  /// Si se asigna, la siguiente llamada lanza este error.
+  ApiException? error;
+
+  int calls = 0;
+
+  @override
+  Future<List<ClientSummary>> getClients() async {
+    calls++;
+    if (error case final error?) throw error;
+    return [...clients];
   }
 }
 

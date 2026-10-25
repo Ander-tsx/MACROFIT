@@ -15,13 +15,15 @@ publicDio ── AuthRemoteDataSource (register, login, refresh)
           └─ LegalRemoteDataSource (aviso de privacidad)
 sessionDio + AuthInterceptor ── SessionRemoteDataSource (me, logout)
                              ├─ ProfileRemoteDataSource (perfil, HU-03)
-                             └─ GoalsRemoteDataSource (metas, HU-05)
+                             ├─ GoalsRemoteDataSource (metas, HU-05)
+                             └─ ClientsRemoteDataSource (lista de clientes, HU-24)
 SessionLocalDataSource (flutter_secure_storage)
         ↓
 AuthRepositoryImpl  ←── interceptor.onSessionExpired
 LegalRepositoryImpl
 ProfileRepositoryImpl
 CoachGoalsRepositoryImpl
+ClientsRepositoryImpl
 ```
 
 - Hay **dos clientes Dio**: uno público y otro con `AuthInterceptor`. Las rutas públicas y la renovación de tokens van

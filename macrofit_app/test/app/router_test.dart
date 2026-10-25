@@ -108,6 +108,28 @@ void main() {
     });
   });
 
+  group('clientes del coach (HU-24)', () {
+    test('un coach abre el detalle de un cliente', () {
+      expect(
+        resolveRedirect(
+          const Authenticated(testCoach),
+          AppRoutes.coachClientDetail('abc'),
+        ),
+        isNull,
+      );
+    });
+
+    test('un usuario no accede al detalle de un cliente', () {
+      expect(
+        resolveRedirect(
+          const Authenticated(testUser),
+          AppRoutes.coachClientDetail('abc'),
+        ),
+        AppRoutes.userHome,
+      );
+    });
+  });
+
   group('perfil inicial (HU-03)', () {
     test('un usuario sin perfil solo puede abrir el formulario de perfil', () {
       const state = Authenticated(testNewUser);

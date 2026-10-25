@@ -7,8 +7,10 @@ test/
 ├── helpers/fakes.dart        # Fakes compartidos (repositorios, almacenamiento, adaptador HTTP)
 ├── app/
 │   ├── router_test.dart      # resolveRedirect: guard de sesión y redirección por rol
-│   └── app_test.dart         # Flujos de widgets: carga inicial, login por rol, registro, aviso, logout + atrás, perfil (HU-03), metas por coach (HU-05)
+│   └── app_test.dart         # Flujos de widgets: carga inicial, login por rol, registro, aviso, logout + atrás, perfil (HU-03), metas por coach (HU-05), lista de clientes (HU-24)
 ├── features/profile/         # Validadores, ProfileRepositoryImpl (Dio simulado) y ProfileFormViewModel
+├── features/goals/           # Cálculo de la meta, validadores, CoachGoalsRepositoryImpl y CoachGoalFormViewModel
+├── features/clients/         # Búsqueda por nombre, ClientsRepositoryImpl (JSON con nulos), textos del resumen y ViewModels de lista y detalle (HU-24)
 └── features/auth/
     ├── domain/               # Validadores
     ├── data/                 # AuthRepositoryImpl (restaurar, login, logout) y AuthInterceptor (renovación)
@@ -22,8 +24,10 @@ flutter test
 ## Convenciones
 
 - **Sin red ni plugins reales.** Se usan *fakes* escritos a mano (no hay librería de mocks):
-  - `FakeAuthRepository`, `FakeLegalRepository`, `FakeProfileRepository`, `FakeCoachGoalsRepository` para ViewModels y widgets.
+  - `FakeAuthRepository`, `FakeLegalRepository`, `FakeProfileRepository`, `FakeCoachGoalsRepository`, `FakeClientsRepository` para ViewModels y widgets.
   - Cuentas: `testUser` (con perfil), `testNewUser` (sin perfil, va al formulario de HU-03) y `testCoach`.
+  - Clientes del coach (HU-24): `testClientSummary` (meta del coach y un registro, mismo id que `testClient`) y
+    `testClientWithoutData` (`goal` y `last_meal_at` nulos).
   - `FakeSessionLocalDataSource` en lugar de `flutter_secure_storage`.
   - `FakeHttpAdapter` + `jsonResponse` / `errorResponse` para simular el backend en Dio.
 - Nombres de pruebas en español que describan el comportamiento (`'sin red conserva la sesión guardada'`).

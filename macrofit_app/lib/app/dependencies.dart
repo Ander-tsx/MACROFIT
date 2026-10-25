@@ -8,6 +8,9 @@ import '../features/auth/data/datasources/session_remote_data_source.dart';
 import '../features/auth/data/network/auth_interceptor.dart';
 import '../features/auth/data/repositories/auth_repository_impl.dart';
 import '../features/auth/domain/repositories/auth_repository.dart';
+import '../features/clients/data/datasources/clients_remote_data_source.dart';
+import '../features/clients/data/repositories/clients_repository_impl.dart';
+import '../features/clients/domain/repositories/clients_repository.dart';
 import '../features/goals/data/datasources/goals_remote_datasource.dart';
 import '../features/goals/data/repositories/goals_repository_impl.dart';
 import '../features/goals/domain/repositories/coach_goals_repository.dart';
@@ -27,6 +30,7 @@ class AppDependencies {
     required this.legalRepository,
     required this.profileRepository,
     required this.coachGoalsRepository,
+    required this.clientsRepository,
   });
 
   factory AppDependencies.create(AppConfig config) {
@@ -60,6 +64,9 @@ class AppDependencies {
       coachGoalsRepository: CoachGoalsRepositoryImpl(
         GoalsRemoteDataSource(sessionDio),
       ),
+      clientsRepository: ClientsRepositoryImpl(
+        ClientsRemoteDataSource(sessionDio),
+      ),
     );
   }
 
@@ -67,4 +74,5 @@ class AppDependencies {
   final LegalRepository legalRepository;
   final ProfileRepository profileRepository;
   final CoachGoalsRepository coachGoalsRepository;
+  final ClientsRepository clientsRepository;
 }
