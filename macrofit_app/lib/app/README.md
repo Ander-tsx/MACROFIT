@@ -16,7 +16,7 @@ publicDio ── AuthRemoteDataSource (register, login, refresh)
 sessionDio + AuthInterceptor ── SessionRemoteDataSource (me, logout)
                              ├─ ProfileRemoteDataSource (perfil, HU-03)
                              ├─ GoalsRemoteDataSource (metas, HU-05)
-                             └─ ClientsRemoteDataSource (lista de clientes, HU-24)
+                             └─ ClientsRemoteDataSource (lista de clientes HU-24, comidas y fotos HU-25)
 SessionLocalDataSource (flutter_secure_storage)
         ↓
 AuthRepositoryImpl  ←── interceptor.onSessionExpired

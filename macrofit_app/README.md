@@ -5,7 +5,8 @@ App de MacroFit para los roles **usuario** y **coach**. Consume la API del backe
 
 Historias implementadas: **HU-01** (registro con rol y aviso de privacidad), **HU-02** (inicio, persistencia y
 cierre de sesión), **HU-03** (perfil inicial del usuario y su edición), **HU-05** (el coach fija las metas de sus clientes)
-y **HU-24** (lista de clientes del coach con búsqueda y detalle de cada uno).
+**HU-24** (lista de clientes del coach con búsqueda y detalle de cada uno) y **HU-25** (registro diario de comidas
+de un cliente, de solo lectura para el coach).
 
 > **Si eres una persona o una sesión de IA que va a modificar la app, lee este archivo y el `README.md` de cada
 > carpeta que vayas a tocar** (`lib/app`, `lib/core`, `lib/features`, `lib/features/<feature>`, `test`).
@@ -98,7 +99,7 @@ lib/
     ├── legal/             # TEC-07 aviso de privacidad
     ├── profile/           # HU-03 perfil inicial y edición
     ├── goals/             # HU-04 dominio de la meta, HU-05 metas por coach
-    ├── clients/           # HU-24 lista de clientes del coach y detalle
+    ├── clients/           # HU-24 lista de clientes del coach y detalle, HU-25 comidas del cliente
     └── home/              # Pantallas principales por rol (solo presentación por ahora)
 ```
 

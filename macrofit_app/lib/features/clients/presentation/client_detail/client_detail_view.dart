@@ -77,13 +77,25 @@ class ClientDetailView extends StatelessWidget {
                 await viewModel.refresh();
               },
             ),
-            // TODO(HU-25): abrir el registro diario de comidas del cliente.
-            const ListTile(
-              key: Key('client_detail_meals'),
-              leading: Icon(Icons.restaurant_outlined),
-              title: Text('Comidas'),
-              subtitle: Text('Disponible próximamente'),
-              enabled: false,
+            ListTile(
+              key: const Key('client_detail_meals'),
+              leading: const Icon(Icons.restaurant_outlined),
+              title: const Text('Comidas'),
+              subtitle: const Text('Su registro diario de comidas'),
+              trailing: const Icon(Icons.chevron_right),
+              enabled: !viewModel.isUnlinked,
+              onTap: () async {
+                final unlinked = await context.push<bool>(
+                  AppRoutes.coachClientMeals(client.id),
+                  extra: client,
+                );
+                if (unlinked == true) {
+                  // Ya no está vinculado (HU-25): se regresa a la lista, que se recarga.
+                  if (context.mounted) context.pop();
+                } else {
+                  await viewModel.refresh();
+                }
+              },
             ),
           ],
         ),
