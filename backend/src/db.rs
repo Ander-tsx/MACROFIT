@@ -16,6 +16,7 @@ use crate::models::meal::{MEALS_COLLECTION, Meal};
 use crate::models::meal_photo::{MEAL_PHOTOS_CHUNKS_COLLECTION, MEAL_PHOTOS_FILES_COLLECTION};
 use crate::models::profile::{PROFILES_COLLECTION, UserProfile};
 use crate::models::refresh_token::{REFRESH_TOKENS_COLLECTION, RefreshToken};
+use crate::models::routine::{ROUTINES_COLLECTION, Routine};
 use crate::models::user::{USERS_COLLECTION, User};
 use crate::models::weight_entry::{WEIGHTS_COLLECTION, WeightEntry};
 
@@ -267,4 +268,18 @@ async fn ensure_indexes(db: &Database) {
         .create_indexes(meal_indexes)
         .await
         .expect("No se pudieron crear los índices de meals (¿hay una foto en dos registros?)");
+
+    // HU-18: rutinas de un coach, la editada más recientemente primero.
+    let routines_by_coach = IndexModel::builder()
+        .keys(doc! { "coach_id": 1, "updated_at": -1 })
+        .options(
+            IndexOptions::builder()
+                .name("coach_id_updated_at".to_string())
+                .build(),
+        )
+        .build();
+    db.collection::<Routine>(ROUTINES_COLLECTION)
+        .create_index(routines_by_coach)
+        .await
+        .expect("No se pudo crear el índice de routines");
 }
