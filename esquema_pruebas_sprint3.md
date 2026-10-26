@@ -28,6 +28,10 @@
 | HU-06 | Subida a `POST /meals/photos` y el id para HU-07. | Unitaria | La foto va en el campo `photo` de un `multipart/form-data`; la respuesta `{ id, format, size_bytes }` se convierte a la entidad y el ViewModel conserva el `id`; sin foto no se llama a la API y una foto subida no se vuelve a subir ni se cambia. | [**5**](#caso-24) (mobile 5 · backend 0) |
 | HU-06 | Errores de la subida (RNF-11). | Unitaria | `413 PHOTO_TOO_LARGE`, `415 UNSUPPORTED_PHOTO_TYPE` y la falta de conexión salen como `ApiException` y muestran un mensaje en español; la foto se conserva y **Usar esta foto** vuelve a intentarlo. | [**6**](#caso-25) (mobile 6 · backend 0) |
 | HU-06 | Foto recuperada si Android cierra la app con la cámara abierta. | Unitaria | Al arrancar se recupera una sola vez la foto pendiente (`retrieveLostData`); sin foto, en iOS o si la captura terminó en error no hay foto; con foto, el inicio abre **Registrar comida** con la vista previa y **atrás** regresa al inicio. | [**8**](#caso-26) (mobile 8 · backend 0) |
+| HU-26 | Meta vigente en la pantalla principal con su origen (RF-04, RF-21, RN-06). | Interfaz | Al entrar al inicio se consulta `GET /users/me/goals/current` y se muestran calorías, proteína y grasa (`1831 kcal`, `145 g`, `51 g`) con *Calculada* para `source: system` o *Definida por tu coach* para `source: coach`. | [**4**](#caso-27) (mobile 4 · backend 0) |
+| HU-26 | Usuario sin meta (`404 PROFILE_NOT_FOUND`). | Unitaria | Sin perfil ni meta del coach se muestra un mensaje que invita a completar el perfil o pedir una meta al coach, sin tratarlo como error ni ofrecer **Reintentar**; antes de la primera consulta no se considera que falte la meta. | [**3**](#caso-28) (mobile 3 · backend 0) |
+| HU-26 | Sin conexión al consultar la meta (RNF-11). | Unitaria | La falta de conexión muestra el mensaje en español con **Reintentar**, que vuelve a consultar; si falla una recarga se conserva la última meta; no se lanza una segunda consulta mientras otra está en curso. | [**4**](#caso-29) (mobile 4 · backend 0) |
+| HU-26 | La meta se actualiza al regresar de editar el perfil (recálculo de HU-04). | Interfaz | Al volver de **Mi perfil** (y al deslizar para actualizar) se consulta de nuevo y se ve la meta recalculada. | [**2**](#caso-30) (mobile 2 · backend 0) |
 
 ## Cómo se cuentan las pruebas
 
@@ -40,6 +44,7 @@ Inventario al cerrar HU-24-APP: **146** pruebas mobile (`flutter test`). Al cerr
 Inventario al cerrar HU-25-APP: **173** pruebas mobile (`flutter test`). HU-25-APP agrega 27 (6 de datos, 4 de textos, 9 del ViewModel, 2 de rutas y 6 de widgets) y cambia *el detalle da acceso a las metas y a las comidas* (caso 06) para comprobar que **Comidas** está habilitado. Sin cambios en el backend.
 Inventario al cerrar TEC-10: **235** pruebas de Rust (`cargo test`: 217 se ejecutan y 18 requieren MongoDB y se ejecutan con `--ignored`). TEC-10 agrega 15 pruebas de Rust en `backend/src/services/routine_engine.rs`. No tiene endpoint (lo expone HU-15-API), así que la colección de Postman y la app no cambian.
 Inventario al cerrar HU-06-APP: **243** pruebas mobile (`flutter test`; 198 en `develop` con HU-12-APP). HU-06-APP agrega 45 (5 del validador, 15 de datos, 17 del ViewModel, 2 de rutas y 5 de widgets). Sin cambios en el backend. Además se probó a mano en un teléfono Android contra la API desplegada (no se cuenta).
+Inventario al cerrar HU-26-APP: **256** pruebas mobile (`flutter test`; 243 en `develop` con HU-06-APP). HU-26-APP agrega 13 (8 del ViewModel y 5 de widgets). Sin cambios en el backend. Además se probó de punta a punta en el simulador de iPhone 16 contra el backend local con base temporal (no se cuenta).
 
 ## Detalle de las pruebas por caso
 
@@ -352,3 +357,44 @@ Mobile: 8 · Backend: 0
 - `macrofit_app/test/features/meals/presentation/meal_photo_view_model_test.dart` › foto recuperada › sin foto recuperada la pantalla empieza vacía
 - `macrofit_app/test/features/meals/presentation/meal_photo_view_model_test.dart` › foto recuperada › una foto recuperada que no cumple TEC-13 muestra el motivo
 - `macrofit_app/test/app/app_test.dart` › foto de la comida (HU-06) › si Android cerró la app con la cámara abierta vuelve a la vista previa
+
+### <a id="caso-27"></a>Caso 27 · HU-26 — Meta vigente con su origen
+
+Mobile: 4 · Backend: 0
+
+**Mobile**
+
+- `macrofit_app/test/features/home/presentation/user_home_view_model_test.dart` › loadGoal trae la meta calculada por el sistema
+- `macrofit_app/test/features/home/presentation/user_home_view_model_test.dart` › loadGoal trae la meta definida por el coach
+- `macrofit_app/test/app/app_test.dart` › meta vigente en la pantalla principal (HU-26) › muestra la meta calculada con su origen
+- `macrofit_app/test/app/app_test.dart` › meta vigente en la pantalla principal (HU-26) › indica cuando la meta la definió el coach
+
+### <a id="caso-28"></a>Caso 28 · HU-26 — Usuario sin meta
+
+Mobile: 3 · Backend: 0
+
+**Mobile**
+
+- `macrofit_app/test/features/home/presentation/user_home_view_model_test.dart` › sin meta (404 PROFILE_NOT_FOUND) no se considera un error
+- `macrofit_app/test/features/home/presentation/user_home_view_model_test.dart` › antes de cargar no se considera que no haya meta
+- `macrofit_app/test/app/app_test.dart` › meta vigente en la pantalla principal (HU-26) › sin meta muestra un mensaje y no un error
+
+### <a id="caso-29"></a>Caso 29 · HU-26 — Sin conexión y reintento
+
+Mobile: 4 · Backend: 0
+
+**Mobile**
+
+- `macrofit_app/test/features/home/presentation/user_home_view_model_test.dart` › sin conexión muestra el error y permite reintentar
+- `macrofit_app/test/features/home/presentation/user_home_view_model_test.dart` › un error al recargar conserva la última meta
+- `macrofit_app/test/features/home/presentation/user_home_view_model_test.dart` › no lanza una segunda consulta mientras otra está en curso
+- `macrofit_app/test/app/app_test.dart` › meta vigente en la pantalla principal (HU-26) › sin conexión muestra el error y reintenta
+
+### <a id="caso-30"></a>Caso 30 · HU-26 — Meta recalculada al regresar del perfil
+
+Mobile: 2 · Backend: 0
+
+**Mobile**
+
+- `macrofit_app/test/features/home/presentation/user_home_view_model_test.dart` › al recargar refleja la meta recalculada (HU-04)
+- `macrofit_app/test/app/app_test.dart` › meta vigente en la pantalla principal (HU-26) › al regresar de Mi perfil se vuelve a consultar la meta

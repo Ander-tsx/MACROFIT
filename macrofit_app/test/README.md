@@ -26,7 +26,7 @@ flutter test
 ## Convenciones
 
 - **Sin red ni plugins reales.** Se usan *fakes* escritos a mano (no hay librería de mocks):
-  - `FakeAuthRepository`, `FakeLegalRepository`, `FakeProfileRepository`, `FakeCoachGoalsRepository`, `FakeMealPhotoRepository`, `FakeClientsRepository` para ViewModels y widgets.
+  - `FakeAuthRepository`, `FakeLegalRepository`, `FakeProfileRepository`, `FakeGoalsRepository` (meta vigente, HU-26; `withoutGoal()` responde `404 PROFILE_NOT_FOUND`), `FakeCoachGoalsRepository`, `FakeMealPhotoRepository`, `FakeClientsRepository` para ViewModels y widgets.
   - Fotos (HU-06): `testPhoto` (PNG real de 1×1, se puede dibujar), `jpegBytes(n)` (firma JPEG de `n` bytes) y `testUploadedPhoto`.
   - Cuentas: `testUser` (con perfil), `testNewUser` (sin perfil, va al formulario de HU-03) y `testCoach`.
   - Clientes del coach (HU-24): `testClientSummary` (meta del coach y un registro, mismo id que `testClient`) y

@@ -20,11 +20,13 @@ import '../features/clients/presentation/clients_list/clients_list_view.dart';
 import '../features/clients/presentation/clients_list/clients_list_view_model.dart';
 import '../features/goals/domain/entities/coach_client.dart';
 import '../features/goals/domain/repositories/coach_goals_repository.dart';
+import '../features/goals/domain/repositories/goals_repository.dart';
 import '../features/goals/presentation/coach_goal_form/coach_goal_form_view.dart';
 import '../features/goals/presentation/coach_goal_form/coach_goal_form_view_model.dart';
 import '../features/home/presentation/coach_home_view.dart';
 import '../features/home/presentation/home_view_model.dart';
 import '../features/home/presentation/user_home_view.dart';
+import '../features/home/presentation/user_home_view_model.dart';
 import '../features/invite_code/domain/repositories/invite_code_repository.dart';
 import '../features/invite_code/presentation/invite_code/invite_code_view.dart';
 import '../features/invite_code/presentation/invite_code/invite_code_view_model.dart';
@@ -86,7 +88,10 @@ GoRouter createRouter(
             ? AppRoutes.mealPhoto
             : null,
         builder: (context, _) => ChangeNotifierProvider(
-          create: (context) => HomeViewModel(context.read<AuthRepository>()),
+          create: (context) => UserHomeViewModel(
+            auth: context.read<AuthRepository>(),
+            goals: context.read<GoalsRepository>(),
+          )..loadGoal(),
           child: const UserHomeView(),
         ),
         routes: [
