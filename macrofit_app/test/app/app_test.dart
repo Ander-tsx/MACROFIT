@@ -23,6 +23,7 @@ import 'package:macrofit_app/features/meals/domain/entities/meal_photo.dart';
 import 'package:macrofit_app/features/meals/domain/entities/photo_pick_exception.dart';
 import 'package:macrofit_app/features/meals/presentation/meal_estimate/meal_estimate_view.dart';
 import 'package:macrofit_app/features/meals/presentation/meal_estimate/meal_estimate_view_model.dart';
+import 'package:macrofit_app/features/meals/presentation/meal_form/meal_form_view.dart';
 import 'package:macrofit_app/features/meals/presentation/meal_photo/meal_photo_view.dart';
 import 'package:macrofit_app/features/meals/presentation/meal_photo/meal_photo_view_model.dart';
 import 'package:macrofit_app/features/profile/domain/entities/profile.dart';
@@ -549,6 +550,143 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.byType(UserHomeView), findsOneWidget);
+    });
+  });
+
+  group('formulario de valores (HU-08)', () {
+    /// Inicio → Registrar comida → galería → Usar esta foto → estimación.
+    Future<void> openEstimate(
+      WidgetTester tester, {
+      ApiException? estimateError,
+    }) async {
+      await pumpApp(tester, state: const Authenticated(testUser));
+      meals.estimateError = estimateError;
+      await tester.tap(find.byKey(const Key('register_meal_button')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('meal_photo_gallery')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('meal_photo_upload')));
+      await tester.pumpAndSettle();
+    }
+
+    Future<void> tapVisible(WidgetTester tester, Key key) async {
+      // Los campos de texto también tienen un Scrollable: se usa el de la lista.
+      await tester.scrollUntilVisible(
+        find.byKey(key),
+        200,
+        scrollable: find.byType(Scrollable).first,
+      );
+      await tester.tap(find.byKey(key));
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets(
+      'Continuar abre el formulario precargado y Guardar registra lo corregido',
+      (tester) async {
+        await openEstimate(tester);
+        await tapVisible(tester, const Key('meal_estimate_continue'));
+
+        expect(find.byType(MealFormView), findsOneWidget);
+        expect(find.text('Revisar valores'), findsOneWidget);
+        expect(find.text('413'), findsOneWidget);
+        expect(find.text('42.2'), findsOneWidget);
+        expect(find.text('4.9'), findsOneWidget);
+
+        await tester.enterText(
+          find.byKey(const Key('meal_form_calories_kcal')),
+          '380',
+        );
+        await tapVisible(tester, const Key('meal_form_submit'));
+
+        final meal = meals.created.single;
+        expect(meal.photoId, testUploadedPhoto.id);
+        expect(meal.values.caloriesKcal, 380);
+        expect(meal.values.proteinG, 42.2);
+        expect(meal.estimated, testEstimate.totals);
+        // TODO(HU-09-APP): el guardado irá al historial del día.
+        expect(find.byType(UserHomeView), findsOneWidget);
+        expect(find.text('Comida registrada'), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'comida no reconocida: Capturar a mano abre el formulario vacío y guarda sin estimated',
+      (tester) async {
+        await openEstimate(
+          tester,
+          estimateError: apiError(ApiErrorCode.foodNotRecognized, status: 422),
+        );
+        await tapVisible(tester, const Key('meal_estimate_manual'));
+
+        expect(find.text('Captura manual'), findsOneWidget);
+        expect(find.byKey(const Key('meal_form_photo')), findsOneWidget);
+
+        await tester.enterText(
+          find.byKey(const Key('meal_form_calories_kcal')),
+          '520',
+        );
+        await tester.enterText(
+          find.byKey(const Key('meal_form_protein_g')),
+          '30',
+        );
+        await tester.enterText(find.byKey(const Key('meal_form_fat_g')), '18');
+        await tapVisible(tester, const Key('meal_form_submit'));
+
+        final meal = meals.created.single;
+        expect(meal.photoId, testUploadedPhoto.id);
+        expect(meal.estimated, isNull);
+        expect(find.byType(UserHomeView), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'Capturar sin foto abre el formulario vacío y guarda sin foto',
+      (tester) async {
+        await pumpApp(tester, state: const Authenticated(testUser));
+        await tester.tap(find.byKey(const Key('register_meal_button')));
+        await tester.pumpAndSettle();
+        await tapVisible(tester, const Key('meal_photo_manual'));
+
+        expect(find.byType(MealFormView), findsOneWidget);
+        expect(find.text('Captura manual'), findsOneWidget);
+        expect(find.byKey(const Key('meal_form_photo')), findsNothing);
+
+        await tester.enterText(
+          find.byKey(const Key('meal_form_calories_kcal')),
+          '250',
+        );
+        await tester.enterText(
+          find.byKey(const Key('meal_form_protein_g')),
+          '10',
+        );
+        await tester.enterText(find.byKey(const Key('meal_form_fat_g')), '8');
+        await tapVisible(tester, const Key('meal_form_submit'));
+
+        final meal = meals.created.single;
+        expect(meal.photoId, isNull);
+        expect(meal.estimated, isNull);
+        expect(mealPhotos.uploads, isEmpty);
+      },
+    );
+
+    testWidgets('la validación local muestra el error junto a cada campo', (
+      tester,
+    ) async {
+      await pumpApp(tester, state: const Authenticated(testUser));
+      await tester.tap(find.byKey(const Key('register_meal_button')));
+      await tester.pumpAndSettle();
+      await tapVisible(tester, const Key('meal_photo_manual'));
+
+      await tester.enterText(
+        find.byKey(const Key('meal_form_calories_kcal')),
+        '-1',
+      );
+      await tapVisible(tester, const Key('meal_form_submit'));
+
+      expect(find.text('No puede ser negativo'), findsOneWidget);
+      expect(find.text('La proteína es obligatoria'), findsOneWidget);
+      expect(meals.created, isEmpty);
+      expect(find.byType(MealFormView), findsOneWidget);
     });
   });
 

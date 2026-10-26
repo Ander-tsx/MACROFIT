@@ -23,6 +23,7 @@ import 'package:macrofit_app/features/goals/domain/repositories/coach_goals_repo
 import 'package:macrofit_app/features/invite_code/domain/repositories/invite_code_repository.dart';
 import 'package:macrofit_app/features/legal/domain/entities/privacy_notice.dart';
 import 'package:macrofit_app/features/legal/domain/repositories/legal_repository.dart';
+import 'package:macrofit_app/features/meals/domain/entities/meal.dart';
 import 'package:macrofit_app/features/meals/domain/entities/meal_estimate.dart';
 import 'package:macrofit_app/features/meals/domain/entities/meal_photo.dart';
 import 'package:macrofit_app/features/meals/domain/repositories/meal_photo_repository.dart';
@@ -373,7 +374,7 @@ final testEstimate = MealEstimate(
   totals: const NutritionValues(caloriesKcal: 413, proteinG: 42.2, fatG: 4.9),
 );
 
-/// Registros de comida en memoria (HU-07: estimación).
+/// Registros de comida en memoria (HU-07: estimación; HU-08: guardar).
 class FakeMealsRepository implements MealsRepository {
   /// Si se asigna, la siguiente estimación lanza este error.
   ApiException? estimateError;
@@ -381,7 +382,13 @@ class FakeMealsRepository implements MealsRepository {
   /// Si se asigna, la estimación espera a que se complete (para ver la carga).
   Completer<void>? estimateGate;
 
+  /// Si se asigna, el siguiente guardado lanza este error.
+  ApiException? createError;
+
   final estimates = <String>[];
+
+  /// Registros enviados a `POST /meals`, en orden.
+  final created = <NewMeal>[];
 
   @override
   Future<MealEstimate> estimate(String photoId) async {
@@ -389,6 +396,20 @@ class FakeMealsRepository implements MealsRepository {
     await estimateGate?.future;
     if (estimateError case final error?) throw error;
     return testEstimate;
+  }
+
+  @override
+  Future<Meal> createMeal(NewMeal meal) async {
+    created.add(meal);
+    if (createError case final error?) throw error;
+    return Meal(
+      id: '6ad0a1b2c3d4e5f6a7b8c9d0',
+      photoId: meal.photoId,
+      eatenAt: DateTime.utc(2026, 10, 17, 1, 30),
+      date: DateTime(2026, 10, 16),
+      values: meal.values,
+      estimated: meal.estimated,
+    );
   }
 }
 

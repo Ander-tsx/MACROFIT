@@ -25,6 +25,11 @@ abstract final class AppRoutes {
   static const mealEstimateChild = 'meals/estimate';
   static const mealEstimate = '$userHome/$mealEstimateChild';
 
+  /// HU-08: revisar y corregir los valores (o capturarlos a mano) y guardar.
+  /// Recibe un `MealDraft` en `extra`; sin él vuelve al inicio.
+  static const mealFormChild = 'meals/form';
+  static const mealForm = '$userHome/$mealFormChild';
+
   /// Pantalla principal del rol `coach`.
   static const coachHome = '/coach';
 
@@ -57,5 +62,11 @@ abstract final class AppRoutes {
   static const public = {login, register, privacyNotice};
 
   /// Rutas de un usuario con perfil completo (además del aviso de privacidad).
-  static const userRoutes = {userHome, profileEdit, mealPhoto, mealEstimate};
+  static const userRoutes = {
+    userHome,
+    profileEdit,
+    mealPhoto,
+    mealEstimate,
+    mealForm,
+  };
 }

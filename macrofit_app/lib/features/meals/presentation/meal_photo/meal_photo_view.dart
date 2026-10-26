@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 
 import '../../../../app/routes.dart';
 import '../../../../core/presentation/widgets/error_banner.dart';
+import '../../domain/entities/meal.dart';
 import '../../domain/entities/meal_photo.dart';
 import 'meal_photo_view_model.dart';
 
@@ -68,6 +69,19 @@ class MealPhotoView extends StatelessWidget {
                 const SizedBox(height: 8),
               ],
               _SourceButtons(viewModel: viewModel),
+              const SizedBox(height: 12),
+              // HU-08: captura manual sin foto (formulario vacío, sin photo_id).
+              TextButton.icon(
+                key: const Key('meal_photo_manual'),
+                onPressed: viewModel.isBusy
+                    ? null
+                    : () => context.push(
+                        AppRoutes.mealForm,
+                        extra: const MealDraft(),
+                      ),
+                icon: const Icon(Icons.edit),
+                label: const Text('Capturar sin foto'),
+              ),
             ],
           ],
         ),
