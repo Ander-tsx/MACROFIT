@@ -3,9 +3,11 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
+import '../core/platform/share_service.dart';
 import '../features/auth/domain/repositories/auth_repository.dart';
 import '../features/clients/domain/repositories/clients_repository.dart';
 import '../features/goals/domain/repositories/coach_goals_repository.dart';
+import '../features/invite_code/domain/repositories/invite_code_repository.dart';
 import '../features/legal/domain/repositories/legal_repository.dart';
 import '../features/meals/domain/repositories/meal_photo_repository.dart';
 import '../features/profile/domain/repositories/profile_repository.dart';
@@ -56,6 +58,10 @@ class _MacroFitAppState extends State<MacroFitApp> {
         Provider<ClientsRepository>.value(
           value: dependencies.clientsRepository,
         ),
+        Provider<InviteCodeRepository>.value(
+          value: dependencies.inviteCodeRepository,
+        ),
+        Provider<ShareService>.value(value: dependencies.shareService),
       ],
       child: MaterialApp.router(
         title: 'MacroFit',

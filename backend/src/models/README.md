@@ -167,6 +167,25 @@ es el único que las usa. El contenido no se guarda nunca en otra colección: lo
 **Índices:** `filename_1_uploadDate_1` en `files` y `files_id_1_n_1` (único) en `chunks`, los estándar de GridFS con su
 nombre automático; y `metadata_owner_id` → `{ "metadata.owner_id": 1 }` en `files`, para las fotos de un usuario.
 
+## Colección `routines` (`routine.rs`)
+
+Rutinas personalizadas del coach (HU-18, RF-22). Se crean con `POST /coach/routines`, se reemplazan con `PUT` y se borran
+con `DELETE /coach/routines/{id}`.
+
+| Campo | Tipo | Notas |
+|---|---|---|
+| `_id` | ObjectId | Se expone como `id` (hex) |
+| `coach_id` | ObjectId | Dueño (`users._id`, rol `coach`). Todas las consultas filtran por él; no se expone |
+| `name` | string | 1 a 80 caracteres, sin espacios alrededor |
+| `exercises` | array | 1 a 20 elementos, en orden: `{ exercise_id, name, muscle_group, sets, reps, rest_seconds }` |
+| `exercises.exercise_id` | ObjectId | Referencia a `exercises._id` (TEC-09); se comprueba que exista al guardar |
+| `exercises.name`, `exercises.muscle_group` | string | Copia del catálogo al guardar |
+| `exercises.sets` / `reps` / `rest_seconds` | int | 1–10 / 1–100 / 0–600 s |
+| `created_at` | ISODate | |
+| `updated_at` | ISODate | Cambia en cada edición |
+
+**Índices:** `coach_id_updated_at` → `{ coach_id: 1, updated_at: -1 }` (rutinas de un coach, la editada más recientemente primero).
+
 ## Colección `exercises` (`exercise.rs`)
 
 Catálogo base de ejercicios precargados (TEC-09) para las rutinas recomendadas del motor de reglas (TEC-10 / RF-14)

@@ -39,7 +39,7 @@
 Inventario al cerrar HU-24-APP: **146** pruebas mobile (`flutter test`). Al cerrar el Sprint 2 eran 119; HU-24-APP agrega 30 y retira 3 que probaban la pantalla mínima de clientes de HU-05, que se eliminó (las 2 del `CoachClientsViewModel` y *lista los clientes vinculados* de `CoachGoalsRepositoryImpl`; ahora las cubren los casos 01, 02 y 05). Sin cambios en el backend.
 Inventario al cerrar HU-25-APP: **173** pruebas mobile (`flutter test`). HU-25-APP agrega 27 (6 de datos, 4 de textos, 9 del ViewModel, 2 de rutas y 6 de widgets) y cambia *el detalle da acceso a las metas y a las comidas* (caso 06) para comprobar que **Comidas** está habilitado. Sin cambios en el backend.
 Inventario al cerrar TEC-10: **235** pruebas de Rust (`cargo test`: 217 se ejecutan y 18 requieren MongoDB y se ejecutan con `--ignored`). TEC-10 agrega 15 pruebas de Rust en `backend/src/services/routine_engine.rs`. No tiene endpoint (lo expone HU-15-API), así que la colección de Postman y la app no cambian.
-Inventario al cerrar HU-06-APP: **218** pruebas mobile (`flutter test`). HU-06-APP agrega 45 (5 del validador, 15 de datos, 17 del ViewModel, 2 de rutas y 5 de widgets). Sin cambios en el backend. Además se probó a mano en un teléfono Android contra la API desplegada (no se cuenta).
+Inventario al cerrar HU-06-APP: **243** pruebas mobile (`flutter test`; 198 en `develop` con HU-12-APP). HU-06-APP agrega 45 (5 del validador, 15 de datos, 17 del ViewModel, 2 de rutas y 5 de widgets). Sin cambios en el backend. Además se probó a mano en un teléfono Android contra la API desplegada (no se cuenta).
 
 ## Detalle de las pruebas por caso
 
@@ -85,6 +85,8 @@ Mobile: 7 · Backend: 0
 ### <a id="caso-04"></a>Caso 04 · HU-24 — Lista vacía
 
 Mobile: 3 · Backend: 0
+
+Con HU-12-INT, *sin clientes invita a compartir el código de invitación* además toca **Ver mi código de invitación**, comprueba que se abre la pantalla del código (HU-12) con el código del coach y que atrás regresa a la lista vacía sin volver a pedirla.
 
 **Mobile**
 

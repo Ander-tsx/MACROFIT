@@ -15,6 +15,7 @@ import 'package:macrofit_app/features/clients/presentation/clients_list/clients_
 import 'package:macrofit_app/features/goals/presentation/coach_goal_form/coach_goal_form_view.dart';
 import 'package:macrofit_app/features/home/presentation/coach_home_view.dart';
 import 'package:macrofit_app/features/home/presentation/user_home_view.dart';
+import 'package:macrofit_app/features/invite_code/presentation/invite_code/invite_code_view.dart';
 import 'package:macrofit_app/features/legal/presentation/privacy_notice/privacy_notice_view.dart';
 import 'package:macrofit_app/features/meals/domain/entities/meal_photo.dart';
 import 'package:macrofit_app/features/meals/domain/entities/photo_pick_exception.dart';
@@ -32,6 +33,8 @@ void main() {
   late FakeCoachGoalsRepository coachGoals;
   late FakeMealPhotoRepository mealPhotos;
   late FakeClientsRepository clients;
+  late FakeInviteCodeRepository inviteCodes;
+  late FakeShareService share;
 
   Future<void> pumpApp(
     WidgetTester tester, {
@@ -43,6 +46,7 @@ void main() {
     ApiException? clientsError,
     Map<DateTime, List<ClientMeal>>? clientMeals,
     ApiException? mealsError,
+    ApiException? inviteCodeError,
   }) async {
     auth = FakeAuthRepository(initialState: state);
     legal = FakeLegalRepository();
@@ -52,6 +56,8 @@ void main() {
     clients = FakeClientsRepository(clients: clientList, meals: clientMeals)
       ..error = clientsError
       ..mealsError = mealsError;
+    inviteCodes = FakeInviteCodeRepository()..error = inviteCodeError;
+    share = FakeShareService();
     await tester.pumpWidget(
       MacroFitApp(
         dependencies: AppDependencies(
@@ -61,6 +67,8 @@ void main() {
           coachGoalsRepository: coachGoals,
           mealPhotoRepository: mealPhotos,
           clientsRepository: clients,
+          inviteCodeRepository: inviteCodes,
+          shareService: share,
         ),
       ),
     );
@@ -482,8 +490,22 @@ void main() {
     ) async {
       await openClients(tester, clientList: []);
 
-      expect(find.textContaining('código de invitación'), findsOneWidget);
+      expect(find.byKey(const Key('clients_empty')), findsOneWidget);
       expect(find.byKey(const Key('clients_search')), findsNothing);
+
+      // HU-12: desde la lista vacía se llega al código para compartirlo.
+      final callsBefore = clients.calls;
+      await tester.tap(find.byKey(const Key('clients_invite_code')));
+      await tester.pumpAndSettle();
+      expect(find.byType(InviteCodeView), findsOneWidget);
+      expect(find.text(testInviteCode), findsOneWidget);
+
+      // Atrás regresa a la lista vacía, que no se recarga sola.
+      await tester.tap(find.byType(BackButton));
+      await tester.pumpAndSettle();
+      expect(find.byType(InviteCodeView), findsNothing);
+      expect(find.byKey(const Key('clients_empty')), findsOneWidget);
+      expect(clients.calls, callsBefore);
     });
 
     testWidgets('un error al cargar permite reintentar', (tester) async {
@@ -643,6 +665,108 @@ void main() {
       await tester.tap(find.byKey(const Key('client_meals_retry')));
       await tester.pumpAndSettle();
       expect(find.text('19:30'), findsOneWidget);
+    });
+  });
+
+  group('código de invitación (HU-12)', () {
+    Future<void> openInviteCode(
+      WidgetTester tester, {
+      ApiException? inviteCodeError,
+    }) async {
+      await pumpApp(
+        tester,
+        state: const Authenticated(testCoach),
+        inviteCodeError: inviteCodeError,
+      );
+      await tester.tap(find.byKey(const Key('invite_code_home_button')));
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('el coach ve su código desde su pantalla principal', (
+      tester,
+    ) async {
+      await openInviteCode(tester);
+
+      expect(find.byType(InviteCodeView), findsOneWidget);
+      expect(find.text(testInviteCode), findsOneWidget);
+      expect(inviteCodes.getCalls, 1);
+    });
+
+    testWidgets('también se abre desde la barra del panel', (tester) async {
+      await pumpApp(tester, state: const Authenticated(testCoach));
+      await tester.tap(find.byKey(const Key('invite_code_button')));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(InviteCodeView), findsOneWidget);
+    });
+
+    testWidgets('copiar pone el código en el portapapeles y lo avisa', (
+      tester,
+    ) async {
+      await openInviteCode(tester);
+
+      await tester.tap(find.byKey(const Key('invite_code_copy')));
+      await tester.pumpAndSettle();
+
+      expect(share.copied, [testInviteCode]);
+      expect(find.text('Código copiado al portapapeles'), findsOneWidget);
+    });
+
+    testWidgets('compartir abre la hoja con un mensaje que incluye el código', (
+      tester,
+    ) async {
+      await openInviteCode(tester);
+
+      await tester.tap(find.byKey(const Key('invite_code_share')));
+      await tester.pumpAndSettle();
+
+      final sent = share.shared.single;
+      expect(sent.text, contains(testInviteCode));
+      expect(sent.origin, isNotNull);
+    });
+
+    testWidgets('regenerar pide confirmación y muestra el código nuevo', (
+      tester,
+    ) async {
+      await openInviteCode(tester);
+
+      await tester.tap(find.byKey(const Key('invite_code_regenerate')));
+      await tester.pumpAndSettle();
+      expect(find.textContaining('dejará de funcionar'), findsOneWidget);
+      expect(inviteCodes.regenerateCalls, 0);
+
+      await tester.tap(find.byKey(const Key('invite_code_regenerate_confirm')));
+      await tester.pumpAndSettle();
+
+      expect(inviteCodes.regenerateCalls, 1);
+      expect(find.text('N3W8CD'), findsOneWidget);
+      expect(find.text(testInviteCode), findsNothing);
+      expect(find.textContaining('El anterior ya no funciona'), findsOneWidget);
+    });
+
+    testWidgets('cancelar la regeneración conserva el código', (tester) async {
+      await openInviteCode(tester);
+
+      await tester.tap(find.byKey(const Key('invite_code_regenerate')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('invite_code_regenerate_cancel')));
+      await tester.pumpAndSettle();
+
+      expect(inviteCodes.regenerateCalls, 0);
+      expect(find.text(testInviteCode), findsOneWidget);
+    });
+
+    testWidgets('sin conexión muestra el error y permite reintentar', (
+      tester,
+    ) async {
+      await openInviteCode(tester, inviteCodeError: networkError);
+      expect(find.text(networkError.message), findsOneWidget);
+      expect(find.byKey(const Key('invite_code_copy')), findsNothing);
+
+      inviteCodes.error = null;
+      await tester.tap(find.byKey(const Key('invite_code_retry')));
+      await tester.pumpAndSettle();
+      expect(find.text(testInviteCode), findsOneWidget);
     });
   });
 }

@@ -41,7 +41,6 @@ class ClientsListView extends StatelessWidget {
         );
       }
       if (viewModel.hasNoClients) {
-        // TODO(HU-12): enlazar a la pantalla del código de invitación cuando exista.
         return _CenteredMessage(
           children: [
             Icon(
@@ -58,6 +57,13 @@ class ClientsListView extends StatelessWidget {
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 16),
+            FilledButton.icon(
+              key: const Key('clients_invite_code'),
+              onPressed: () => context.push(AppRoutes.coachInviteCode),
+              icon: const Icon(Icons.person_add_alt_1),
+              label: const Text('Ver mi código de invitación'),
+            ),
+            const SizedBox(height: 8),
             OutlinedButton(
               key: const Key('clients_reload'),
               onPressed: viewModel.load,

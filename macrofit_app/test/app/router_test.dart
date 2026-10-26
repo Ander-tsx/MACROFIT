@@ -132,6 +132,28 @@ void main() {
     });
   });
 
+  group('código de invitación (HU-12)', () {
+    test('un coach abre su código de invitación', () {
+      expect(
+        resolveRedirect(
+          const Authenticated(testCoach),
+          AppRoutes.coachInviteCode,
+        ),
+        isNull,
+      );
+    });
+
+    test('un usuario no accede al código de invitación del coach', () {
+      expect(
+        resolveRedirect(
+          const Authenticated(testUser),
+          AppRoutes.coachInviteCode,
+        ),
+        AppRoutes.userHome,
+      );
+    });
+  });
+
   group('clientes del coach (HU-24)', () {
     test('un coach abre el detalle de un cliente', () {
       expect(
