@@ -1,9 +1,11 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
+import 'dart:ui' show Rect;
 
 import 'package:dio/dio.dart';
 import 'package:macrofit_app/core/errors/api_exception.dart';
+import 'package:macrofit_app/core/platform/share_service.dart';
 import 'package:macrofit_app/features/auth/data/datasources/session_local_data_source.dart';
 import 'package:macrofit_app/features/auth/data/models/session_model.dart';
 import 'package:macrofit_app/features/auth/data/models/user_model.dart';
@@ -18,6 +20,7 @@ import 'package:macrofit_app/features/clients/domain/repositories/clients_reposi
 import 'package:macrofit_app/features/goals/domain/entities/coach_client.dart';
 import 'package:macrofit_app/features/goals/domain/entities/nutritional_goal.dart';
 import 'package:macrofit_app/features/goals/domain/repositories/coach_goals_repository.dart';
+import 'package:macrofit_app/features/invite_code/domain/repositories/invite_code_repository.dart';
 import 'package:macrofit_app/features/legal/domain/entities/privacy_notice.dart';
 import 'package:macrofit_app/features/legal/domain/repositories/legal_repository.dart';
 import 'package:macrofit_app/features/profile/domain/entities/profile.dart';
@@ -375,6 +378,60 @@ class FakeClientsRepository implements ClientsRepository {
     if (photoError case final error?) throw error;
     return testPhotoBytes;
   }
+}
+
+/// Código de invitación inicial del coach de prueba (HU-12).
+const testInviteCode = 'K7P2QX';
+
+/// Repositorio del código de invitación en memoria (simula `GET /coach/invite-code` y
+/// `POST /coach/invite-code/regenerate`, HU-12). Cada regeneración entrega el siguiente
+/// de [nextCodes].
+class FakeInviteCodeRepository implements InviteCodeRepository {
+  FakeInviteCodeRepository({
+    this.code = testInviteCode,
+    List<String>? nextCodes,
+  }) : nextCodes = nextCodes ?? ['N3W8CD', 'Z9Y8X7'];
+
+  String code;
+  final List<String> nextCodes;
+
+  /// Si se asigna, la siguiente llamada del tipo correspondiente lanza este error.
+  ApiException? error;
+  ApiException? regenerateError;
+
+  int getCalls = 0;
+  int regenerateCalls = 0;
+
+  /// Si se asigna, la regeneración espera a que se complete (para ver el estado intermedio).
+  Completer<void>? regenerateGate;
+
+  @override
+  Future<String> getInviteCode() async {
+    getCalls++;
+    if (error case final error?) throw error;
+    return code;
+  }
+
+  @override
+  Future<String> regenerateInviteCode() async {
+    regenerateCalls++;
+    await regenerateGate?.future;
+    if (regenerateError case final error?) throw error;
+    return code = nextCodes.removeAt(0);
+  }
+}
+
+/// Portapapeles y hoja de compartir simulados: registran lo que se copió y compartió.
+class FakeShareService implements ShareService {
+  final copied = <String>[];
+  final shared = <({String text, String? subject, Rect? origin})>[];
+
+  @override
+  Future<void> copyText(String text) async => copied.add(text);
+
+  @override
+  Future<void> shareText(String text, {String? subject, Rect? origin}) async =>
+      shared.add((text: text, subject: subject, origin: origin));
 }
 
 class FakeLegalRepository implements LegalRepository {

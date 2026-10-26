@@ -2,6 +2,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import '../core/config/app_config.dart';
 import '../core/network/dio_factory.dart';
+import '../core/platform/share_service.dart';
 import '../features/auth/data/datasources/auth_remote_data_source.dart';
 import '../features/auth/data/datasources/session_local_data_source.dart';
 import '../features/auth/data/datasources/session_remote_data_source.dart';
@@ -14,6 +15,9 @@ import '../features/clients/domain/repositories/clients_repository.dart';
 import '../features/goals/data/datasources/goals_remote_datasource.dart';
 import '../features/goals/data/repositories/goals_repository_impl.dart';
 import '../features/goals/domain/repositories/coach_goals_repository.dart';
+import '../features/invite_code/data/datasources/invite_code_remote_data_source.dart';
+import '../features/invite_code/data/repositories/invite_code_repository_impl.dart';
+import '../features/invite_code/domain/repositories/invite_code_repository.dart';
 import '../features/legal/data/datasources/legal_remote_data_source.dart';
 import '../features/legal/data/repositories/legal_repository_impl.dart';
 import '../features/legal/domain/repositories/legal_repository.dart';
@@ -31,6 +35,8 @@ class AppDependencies {
     required this.profileRepository,
     required this.coachGoalsRepository,
     required this.clientsRepository,
+    required this.inviteCodeRepository,
+    required this.shareService,
   });
 
   factory AppDependencies.create(AppConfig config) {
@@ -67,6 +73,10 @@ class AppDependencies {
       clientsRepository: ClientsRepositoryImpl(
         ClientsRemoteDataSource(sessionDio),
       ),
+      inviteCodeRepository: InviteCodeRepositoryImpl(
+        InviteCodeRemoteDataSource(sessionDio),
+      ),
+      shareService: const SystemShareService(),
     );
   }
 
@@ -75,4 +85,8 @@ class AppDependencies {
   final ProfileRepository profileRepository;
   final CoachGoalsRepository coachGoalsRepository;
   final ClientsRepository clientsRepository;
+  final InviteCodeRepository inviteCodeRepository;
+
+  /// Portapapeles y hoja de compartir del sistema (HU-12).
+  final ShareService shareService;
 }

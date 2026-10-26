@@ -1,6 +1,7 @@
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
+import '../core/platform/share_service.dart';
 import '../features/auth/domain/entities/auth_state.dart';
 import '../features/auth/domain/entities/role.dart';
 import '../features/auth/domain/repositories/auth_repository.dart';
@@ -24,6 +25,9 @@ import '../features/goals/presentation/coach_goal_form/coach_goal_form_view_mode
 import '../features/home/presentation/coach_home_view.dart';
 import '../features/home/presentation/home_view_model.dart';
 import '../features/home/presentation/user_home_view.dart';
+import '../features/invite_code/domain/repositories/invite_code_repository.dart';
+import '../features/invite_code/presentation/invite_code/invite_code_view.dart';
+import '../features/invite_code/presentation/invite_code/invite_code_view_model.dart';
 import '../features/legal/domain/repositories/legal_repository.dart';
 import '../features/legal/presentation/privacy_notice/privacy_notice_view.dart';
 import '../features/legal/presentation/privacy_notice/privacy_notice_view_model.dart';
@@ -99,6 +103,16 @@ GoRouter createRouter(AuthRepository auth) {
         builder: (context, _) => ChangeNotifierProvider(
           create: (context) => HomeViewModel(context.read<AuthRepository>()),
           child: const CoachHomeView(),
+        ),
+      ),
+      GoRoute(
+        path: AppRoutes.coachInviteCode,
+        builder: (context, _) => ChangeNotifierProvider(
+          create: (context) => InviteCodeViewModel(
+            repository: context.read<InviteCodeRepository>(),
+            shareService: context.read<ShareService>(),
+          )..load(),
+          child: const InviteCodeView(),
         ),
       ),
       GoRoute(

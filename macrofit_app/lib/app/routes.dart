@@ -18,6 +18,9 @@ abstract final class AppRoutes {
   /// Pantalla principal del rol `coach`.
   static const coachHome = '/coach';
 
+  /// HU-12: código de invitación del coach (ver, copiar, compartir y regenerar).
+  static const coachInviteCode = '/coach/invite-code';
+
   /// HU-24: clientes vinculados del coach con búsqueda.
   static const coachClients = '/coach/clients';
 
