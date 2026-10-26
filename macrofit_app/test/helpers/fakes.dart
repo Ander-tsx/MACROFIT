@@ -629,4 +629,3 @@ class FakeWeightsRepository implements WeightsRepository {
     return entry;
   }
 }
-

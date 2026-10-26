@@ -58,5 +58,11 @@ abstract final class AppRoutes {
   static const public = {login, register, privacyNotice};
 
   /// Rutas de un usuario con perfil completo (además del aviso de privacidad).
-  static const userRoutes = {userHome, profileEdit, coachLink, weights, mealPhoto};
+  static const userRoutes = {
+    userHome,
+    profileEdit,
+    coachLink,
+    weights,
+    mealPhoto,
+  };
 }

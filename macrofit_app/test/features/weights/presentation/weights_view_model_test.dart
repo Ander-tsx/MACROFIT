@@ -3,6 +3,7 @@ import 'package:macrofit_app/core/errors/api_exception.dart';
 import 'package:macrofit_app/features/weights/data/models/weight_model.dart';
 import 'package:macrofit_app/features/weights/domain/validators/weight_validators.dart';
 import 'package:macrofit_app/features/weights/presentation/weights/weights_view_model.dart';
+
 import '../../../helpers/fakes.dart';
 
 void main() {
@@ -38,19 +39,22 @@ void main() {
       expect(vm.loadError, null);
     });
 
-    test('registra un peso válido y lo añade al inicio del historial', () async {
-      final repo = FakeWeightsRepository();
-      final vm = WeightsViewModel(repository: repo);
+    test(
+      'registra un peso válido y lo añade al inicio del historial',
+      () async {
+        final repo = FakeWeightsRepository();
+        final vm = WeightsViewModel(repository: repo);
 
-      vm.setWeightInput('80.0');
-      final success = await vm.registerWeight();
+        vm.setWeightInput('80.0');
+        final success = await vm.registerWeight();
 
-      expect(success, true);
-      expect(vm.weights.length, 1);
-      expect(vm.weights.first.weightKg, 80.0);
-      expect(vm.weightInput, '');
-      expect(vm.fieldErrors, isEmpty);
-    });
+        expect(success, true);
+        expect(vm.weights.length, 1);
+        expect(vm.weights.first.weightKg, 80.0);
+        expect(vm.weightInput, '');
+        expect(vm.fieldErrors, isEmpty);
+      },
+    );
 
     test('valida localmente peso inválido antes de llamar a la API', () async {
       final repo = FakeWeightsRepository();

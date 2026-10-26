@@ -146,9 +146,9 @@ GoRouter createRouter(
       GoRoute(
         path: AppRoutes.weights,
         builder: (context, _) => ChangeNotifierProvider(
-          create: (context) => WeightsViewModel(
-            repository: context.read<WeightsRepository>(),
-          )..load(),
+          create: (context) =>
+              WeightsViewModel(repository: context.read<WeightsRepository>())
+                ..load(),
           child: const WeightsView(),
         ),
       ),

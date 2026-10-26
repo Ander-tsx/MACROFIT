@@ -21,7 +21,5 @@ class WeightModel {
   final double weightKg;
   final DateTime recordedAt;
 
-  Map<String, dynamic> toJson() => {
-        'weight_kg': weightKg,
-      };
+  Map<String, dynamic> toJson() => {'weight_kg': weightKg};
 }
