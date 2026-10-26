@@ -16,6 +16,9 @@ abstract final class ApiErrorCode {
   static const profileNotFound = 'PROFILE_NOT_FOUND';
   static const profileAlreadyExists = 'PROFILE_ALREADY_EXISTS';
   static const photoNotFound = 'PHOTO_NOT_FOUND';
+  static const inviteCodeNotFound = 'INVITE_CODE_NOT_FOUND';
+  static const userAlreadyLinked = 'USER_ALREADY_LINKED';
+  static const userNotLinked = 'USER_NOT_LINKED';
 
   /// No se pudo contactar al servidor (sin red, servidor apagado, timeout).
   static const network = 'NETWORK_ERROR';
