@@ -12,7 +12,7 @@ feature; si necesitan algo de otra, usan su **dominio** (p. ej. `home` usa `auth
 | `meals/` | HU-06 tomar o elegir la foto de la comida y subirla | [meals/README.md](meals/README.md) |
 | `clients/` | HU-24 lista de clientes del coach con búsqueda y detalle, HU-25 registro diario de comidas del cliente | [clients/README.md](clients/README.md) |
 | `invite_code/` | HU-12 código de invitación del coach: ver, copiar, compartir y regenerar | [invite_code/README.md](invite_code/README.md) |
-| `home/` | Pantallas principales de usuario y coach | [home/README.md](home/README.md) |
+| `home/` | Pantallas principales de usuario y coach; HU-26 meta vigente del usuario | [home/README.md](home/README.md) |
 
 ## Plantilla
 

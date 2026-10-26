@@ -7,6 +7,7 @@ import '../core/platform/share_service.dart';
 import '../features/auth/domain/repositories/auth_repository.dart';
 import '../features/clients/domain/repositories/clients_repository.dart';
 import '../features/goals/domain/repositories/coach_goals_repository.dart';
+import '../features/goals/domain/repositories/goals_repository.dart';
 import '../features/invite_code/domain/repositories/invite_code_repository.dart';
 import '../features/legal/domain/repositories/legal_repository.dart';
 import '../features/meals/domain/repositories/meal_photo_repository.dart';
@@ -49,6 +50,7 @@ class _MacroFitAppState extends State<MacroFitApp> {
         Provider<ProfileRepository>.value(
           value: dependencies.profileRepository,
         ),
+        Provider<GoalsRepository>.value(value: dependencies.goalsRepository),
         Provider<CoachGoalsRepository>.value(
           value: dependencies.coachGoalsRepository,
         ),
