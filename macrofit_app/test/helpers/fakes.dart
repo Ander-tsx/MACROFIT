@@ -27,6 +27,8 @@ import 'package:macrofit_app/features/meals/domain/entities/meal_photo.dart';
 import 'package:macrofit_app/features/meals/domain/repositories/meal_photo_repository.dart';
 import 'package:macrofit_app/features/profile/domain/entities/profile.dart';
 import 'package:macrofit_app/features/profile/domain/repositories/profile_repository.dart';
+import 'package:macrofit_app/features/weights/data/models/weight_model.dart';
+import 'package:macrofit_app/features/weights/domain/repositories/weights_repository.dart';
 
 /// Usuario que ya capturó su perfil (HU-03): entra a la pantalla principal.
 const testUser = User(
@@ -601,3 +603,30 @@ Map<String, Object> sessionJson(
   'expires_in': 900,
   'user': userModelOf(user).toJson(),
 };
+
+class FakeWeightsRepository implements WeightsRepository {
+  FakeWeightsRepository({this.weights = const [], this.error});
+
+  List<WeightModel> weights;
+  ApiException? error;
+
+  @override
+  Future<List<WeightModel>> getWeights() async {
+    if (error != null) throw error!;
+    return weights;
+  }
+
+  @override
+  Future<WeightModel> createWeight(double weightKg) async {
+    if (error != null) throw error!;
+    final entry = WeightModel(
+      id: 'w${weights.length + 1}',
+      userId: 'user1',
+      weightKg: weightKg,
+      recordedAt: DateTime.now(),
+    );
+    weights = [entry, ...weights];
+    return entry;
+  }
+}
+

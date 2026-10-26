@@ -37,6 +37,9 @@ import '../features/meals/presentation/meal_photo/meal_photo_view_model.dart';
 import '../features/profile/domain/repositories/profile_repository.dart';
 import '../features/profile/presentation/profile_form/profile_form_view.dart';
 import '../features/profile/presentation/profile_form/profile_form_view_model.dart';
+import '../features/weights/domain/repositories/weights_repository.dart';
+import '../features/weights/presentation/weights/weights_view.dart';
+import '../features/weights/presentation/weights/weights_view_model.dart';
 import 'routes.dart';
 
 /// Crea el router. Escucha al [AuthRepository]: cada cambio de sesión vuelve a
@@ -138,6 +141,15 @@ GoRouter createRouter(
             shareService: context.read<ShareService>(),
           )..load(),
           child: const InviteCodeView(),
+        ),
+      ),
+      GoRoute(
+        path: AppRoutes.weights,
+        builder: (context, _) => ChangeNotifierProvider(
+          create: (context) => WeightsViewModel(
+            repository: context.read<WeightsRepository>(),
+          )..load(),
+          child: const WeightsView(),
         ),
       ),
       GoRoute(
