@@ -57,8 +57,8 @@
 ## Decisiones
 
 - La búsqueda trata `ñ` como `n` y `ç` como `c`, además de quitar acentos y diéresis.
-- Sin clientes vinculados, la pantalla invita a compartir el código de invitación.
-  `TODO(HU-12)`: enlazar a la pantalla del código cuando exista (HU-12-APP).
+- Sin clientes vinculados, la pantalla invita a compartir el código de invitación y enlaza a su pantalla
+  (`/coach/invite-code`, HU-12).
 - El orden de la lista es el de la API (por nombre). La app no lo reordena.
 - El día de las comidas usa la fecha local del teléfono. El backend calcula el día con `APP_UTC_OFFSET` (UTC−6), así
   que coinciden si el teléfono está en esa zona.
