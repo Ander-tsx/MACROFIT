@@ -5,7 +5,7 @@ App de MacroFit para los roles **usuario** y **coach**. Consume la API del backe
 
 Historias implementadas: **HU-01** (registro con rol y aviso de privacidad), **HU-02** (inicio, persistencia y
 cierre de sesión), **HU-03** (perfil inicial del usuario y su edición), **HU-05** (el coach fija las metas de sus clientes),
-**HU-06** (tomar o elegir la foto de la comida y subirla), **HU-12** (código de invitación del coach: ver, copiar,
+**HU-06** (tomar o elegir la foto de la comida y subirla), **HU-07** (estimación nutricional de la foto), **HU-12** (código de invitación del coach: ver, copiar,
 compartir y regenerar), **HU-24** (lista de clientes del coach con búsqueda y detalle de cada uno), **HU-25** (registro
 diario de comidas de un cliente, de solo lectura para el coach) y **HU-26** (meta vigente en la pantalla principal del
 usuario).
@@ -101,7 +101,7 @@ lib/
     ├── legal/             # TEC-07 aviso de privacidad
     ├── profile/           # HU-03 perfil inicial y edición
     ├── goals/             # HU-04 dominio de la meta, HU-05 metas por coach
-    ├── meals/             # HU-06 foto de la comida
+    ├── meals/             # HU-06 foto de la comida, HU-07 estimación
     ├── clients/           # HU-24 lista de clientes del coach y detalle, HU-25 comidas del cliente
     ├── invite_code/       # HU-12 código de invitación del coach
     └── home/              # Pantallas principales por rol (solo presentación por ahora)

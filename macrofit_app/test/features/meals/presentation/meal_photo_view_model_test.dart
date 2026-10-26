@@ -171,6 +171,16 @@ void main() {
       expect(viewModel.error, isNull);
     });
 
+    test('el resultado une la foto y su id para la estimación', () async {
+      await viewModel.pick(PhotoSource.camera);
+      expect(viewModel.result, isNull);
+
+      await viewModel.upload();
+
+      expect(viewModel.result!.photo, testPhoto);
+      expect(viewModel.result!.photoId, testUploadedPhoto.id);
+    });
+
     test('después de subirla no se vuelve a subir ni se cambia', () async {
       await viewModel.pick(PhotoSource.camera);
       await viewModel.upload();

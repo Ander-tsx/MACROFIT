@@ -71,6 +71,33 @@ void main() {
     });
   });
 
+  group('estimación nutricional (HU-07)', () {
+    test('un usuario con perfil abre la estimación', () {
+      expect(
+        resolveRedirect(const Authenticated(testUser), AppRoutes.mealEstimate),
+        isNull,
+      );
+    });
+
+    test('un coach, un usuario sin perfil o sin sesión no la abren', () {
+      expect(
+        resolveRedirect(const Authenticated(testCoach), AppRoutes.mealEstimate),
+        AppRoutes.coachHome,
+      );
+      expect(
+        resolveRedirect(
+          const Authenticated(testNewUser),
+          AppRoutes.mealEstimate,
+        ),
+        AppRoutes.profileSetup,
+      );
+      expect(
+        resolveRedirect(const Unauthenticated(), AppRoutes.mealEstimate),
+        AppRoutes.login,
+      );
+    });
+  });
+
   group('foto de la comida (HU-06)', () {
     test('un usuario con perfil abre "Registrar comida"', () {
       expect(

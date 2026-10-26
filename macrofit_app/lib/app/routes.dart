@@ -20,6 +20,11 @@ abstract final class AppRoutes {
   static const mealPhotoChild = 'meals/photo';
   static const mealPhoto = '$userHome/$mealPhotoChild';
 
+  /// HU-07: estimación nutricional de la foto subida. Recibe la foto en
+  /// `extra` (`MealPhotoUpload`); sin ella vuelve al inicio.
+  static const mealEstimateChild = 'meals/estimate';
+  static const mealEstimate = '$userHome/$mealEstimateChild';
+
   /// Pantalla principal del rol `coach`.
   static const coachHome = '/coach';
 
@@ -52,5 +57,5 @@ abstract final class AppRoutes {
   static const public = {login, register, privacyNotice};
 
   /// Rutas de un usuario con perfil completo (además del aviso de privacidad).
-  static const userRoutes = {userHome, profileEdit, mealPhoto};
+  static const userRoutes = {userHome, profileEdit, mealPhoto, mealEstimate};
 }
