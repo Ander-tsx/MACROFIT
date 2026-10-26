@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:macrofit_app/app/app.dart';
@@ -19,6 +21,8 @@ import 'package:macrofit_app/features/invite_code/presentation/invite_code/invit
 import 'package:macrofit_app/features/legal/presentation/privacy_notice/privacy_notice_view.dart';
 import 'package:macrofit_app/features/meals/domain/entities/meal_photo.dart';
 import 'package:macrofit_app/features/meals/domain/entities/photo_pick_exception.dart';
+import 'package:macrofit_app/features/meals/presentation/meal_estimate/meal_estimate_view.dart';
+import 'package:macrofit_app/features/meals/presentation/meal_estimate/meal_estimate_view_model.dart';
 import 'package:macrofit_app/features/meals/presentation/meal_photo/meal_photo_view.dart';
 import 'package:macrofit_app/features/meals/presentation/meal_photo/meal_photo_view_model.dart';
 import 'package:macrofit_app/features/profile/domain/entities/profile.dart';
@@ -32,6 +36,7 @@ void main() {
   late FakeProfileRepository profiles;
   late FakeCoachGoalsRepository coachGoals;
   late FakeMealPhotoRepository mealPhotos;
+  late FakeMealsRepository meals;
   late FakeClientsRepository clients;
   late FakeInviteCodeRepository inviteCodes;
   late FakeShareService share;
@@ -53,6 +58,7 @@ void main() {
     profiles = FakeProfileRepository(stored: storedProfile);
     coachGoals = FakeCoachGoalsRepository();
     mealPhotos = FakeMealPhotoRepository(recovered: recoveredPhoto);
+    meals = FakeMealsRepository();
     clients = FakeClientsRepository(clients: clientList, meals: clientMeals)
       ..error = clientsError
       ..mealsError = mealsError;
@@ -66,6 +72,7 @@ void main() {
           profileRepository: profiles,
           coachGoalsRepository: coachGoals,
           mealPhotoRepository: mealPhotos,
+          mealsRepository: meals,
           clientsRepository: clients,
           inviteCodeRepository: inviteCodes,
           shareService: share,
@@ -389,8 +396,9 @@ void main() {
       await tester.tap(find.byKey(const Key('meal_photo_upload')));
       await tester.pumpAndSettle();
       expect(mealPhotos.uploads.single, testPhoto);
-      expect(find.byKey(const Key('meal_photo_uploaded')), findsOneWidget);
-      expect(find.byKey(const Key('meal_photo_camera')), findsNothing);
+      // HU-07: la foto subida pasa directo a la estimación.
+      expect(find.byType(MealPhotoView), findsNothing);
+      expect(find.byType(MealEstimateView), findsOneWidget);
     });
 
     testWidgets('con el permiso de cámara negado explica y ofrece la galería', (
@@ -432,6 +440,115 @@ void main() {
     testWidgets('un coach no ve el acceso a registrar comida', (tester) async {
       await pumpApp(tester, state: const Authenticated(testCoach));
       expect(find.byKey(const Key('register_meal_button')), findsNothing);
+    });
+  });
+
+  group('estimación nutricional (HU-07)', () {
+    /// Inicio → Registrar comida → galería → Usar esta foto.
+    Future<void> uploadPhoto(
+      WidgetTester tester, {
+      ApiException? estimateError,
+      Completer<void>? estimateGate,
+      bool settle = true,
+    }) async {
+      await pumpApp(tester, state: const Authenticated(testUser));
+      meals
+        ..estimateError = estimateError
+        ..estimateGate = estimateGate;
+      await tester.tap(find.byKey(const Key('register_meal_button')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('meal_photo_gallery')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('meal_photo_upload')));
+      settle ? await tester.pumpAndSettle() : await tester.pump();
+    }
+
+    testWidgets(
+      'al usar la foto estima con su id, muestra la carga y después el resultado',
+      (tester) async {
+        await uploadPhoto(
+          tester,
+          estimateGate: Completer<void>(),
+          settle: false,
+        );
+        await tester.pump();
+
+        expect(meals.estimates, [testUploadedPhoto.id]);
+        expect(find.byKey(const Key('meal_estimate_loading')), findsOneWidget);
+        expect(find.byKey(const Key('meal_estimate_photo')), findsOneWidget);
+
+        meals.estimateGate!.complete();
+        await tester.pumpAndSettle();
+
+        expect(find.byKey(const Key('meal_estimate_loading')), findsNothing);
+        expect(find.text('Arroz blanco cocido'), findsOneWidget);
+        expect(find.text('150 g'), findsOneWidget);
+        expect(find.text('Pechuga de pollo a la plancha'), findsOneWidget);
+        expect(
+          find.text('195\u00a0kcal · P\u00a04\u00a0g · G\u00a00.4\u00a0g'),
+          findsOneWidget,
+        );
+        expect(find.text('413 kcal'), findsOneWidget);
+        expect(find.text('42.2 g'), findsOneWidget);
+        expect(find.text('4.9 g'), findsOneWidget);
+        await tester.scrollUntilVisible(
+          find.byKey(const Key('meal_estimate_continue')),
+          200,
+        );
+        expect(find.byKey(const Key('meal_estimate_continue')), findsOneWidget);
+      },
+    );
+
+    testWidgets('el resultado muestra la leyenda de estimación (RNF-07)', (
+      tester,
+    ) async {
+      await uploadPhoto(tester);
+
+      expect(find.text(MealEstimateViewModel.disclaimer), findsOneWidget);
+    });
+
+    testWidgets('comida no reconocida ofrece solo capturar a mano', (
+      tester,
+    ) async {
+      await uploadPhoto(
+        tester,
+        estimateError: apiError(ApiErrorCode.foodNotRecognized, status: 422),
+      );
+
+      expect(
+        find.text(MealEstimateViewModel.notRecognizedMessage),
+        findsOneWidget,
+      );
+      expect(find.byKey(const Key('meal_estimate_manual')), findsOneWidget);
+      expect(find.byKey(const Key('meal_estimate_retry')), findsNothing);
+    });
+
+    testWidgets('sin conexión ofrece reintentar sin cerrar la pantalla', (
+      tester,
+    ) async {
+      await uploadPhoto(tester, estimateError: networkError);
+
+      expect(find.text(networkError.message), findsOneWidget);
+      expect(find.byKey(const Key('meal_estimate_manual')), findsOneWidget);
+
+      meals.estimateError = null;
+      await tester.tap(find.byKey(const Key('meal_estimate_retry')));
+      await tester.pumpAndSettle();
+
+      expect(meals.estimates, hasLength(2));
+      expect(find.byType(MealEstimateView), findsOneWidget);
+      expect(find.text('Arroz blanco cocido'), findsOneWidget);
+    });
+
+    testWidgets('atrás regresa al inicio, no a la foto ya subida', (
+      tester,
+    ) async {
+      await uploadPhoto(tester);
+
+      await tester.tap(find.byType(BackButton));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(UserHomeView), findsOneWidget);
     });
   });
 

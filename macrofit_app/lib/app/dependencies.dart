@@ -22,9 +22,12 @@ import '../features/legal/data/datasources/legal_remote_data_source.dart';
 import '../features/legal/data/repositories/legal_repository_impl.dart';
 import '../features/legal/domain/repositories/legal_repository.dart';
 import '../features/meals/data/datasources/meal_photos_remote_data_source.dart';
+import '../features/meals/data/datasources/meals_remote_data_source.dart';
 import '../features/meals/data/datasources/photo_picker_data_source.dart';
 import '../features/meals/data/repositories/meal_photo_repository_impl.dart';
+import '../features/meals/data/repositories/meals_repository_impl.dart';
 import '../features/meals/domain/repositories/meal_photo_repository.dart';
+import '../features/meals/domain/repositories/meals_repository.dart';
 import '../features/profile/data/datasources/profile_remote_data_source.dart';
 import '../features/profile/data/repositories/profile_repository_impl.dart';
 import '../features/profile/domain/repositories/profile_repository.dart';
@@ -39,6 +42,7 @@ class AppDependencies {
     required this.profileRepository,
     required this.coachGoalsRepository,
     required this.mealPhotoRepository,
+    required this.mealsRepository,
     required this.clientsRepository,
     required this.inviteCodeRepository,
     required this.shareService,
@@ -79,6 +83,7 @@ class AppDependencies {
         picker: PhotoPickerDataSource(),
         remote: MealPhotosRemoteDataSource(sessionDio),
       ),
+      mealsRepository: MealsRepositoryImpl(MealsRemoteDataSource(sessionDio)),
       clientsRepository: ClientsRepositoryImpl(
         ClientsRemoteDataSource(sessionDio),
       ),
@@ -94,6 +99,7 @@ class AppDependencies {
   final ProfileRepository profileRepository;
   final CoachGoalsRepository coachGoalsRepository;
   final MealPhotoRepository mealPhotoRepository;
+  final MealsRepository mealsRepository;
   final ClientsRepository clientsRepository;
   final InviteCodeRepository inviteCodeRepository;
 

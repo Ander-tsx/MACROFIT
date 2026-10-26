@@ -23,8 +23,10 @@ import 'package:macrofit_app/features/goals/domain/repositories/coach_goals_repo
 import 'package:macrofit_app/features/invite_code/domain/repositories/invite_code_repository.dart';
 import 'package:macrofit_app/features/legal/domain/entities/privacy_notice.dart';
 import 'package:macrofit_app/features/legal/domain/repositories/legal_repository.dart';
+import 'package:macrofit_app/features/meals/domain/entities/meal_estimate.dart';
 import 'package:macrofit_app/features/meals/domain/entities/meal_photo.dart';
 import 'package:macrofit_app/features/meals/domain/repositories/meal_photo_repository.dart';
+import 'package:macrofit_app/features/meals/domain/repositories/meals_repository.dart';
 import 'package:macrofit_app/features/profile/domain/entities/profile.dart';
 import 'package:macrofit_app/features/profile/domain/repositories/profile_repository.dart';
 
@@ -345,6 +347,48 @@ class FakeMealPhotoRepository implements MealPhotoRepository {
     uploads.add(photo);
     if (uploadError case final error?) throw error;
     return testUploadedPhoto;
+  }
+}
+
+/// Foto subida con sus bytes, lista para la estimación (HU-07).
+final testPhotoUpload = MealPhotoUpload(
+  photo: testPhoto,
+  uploaded: testUploadedPhoto,
+);
+
+/// Estimación de `POST /meals/estimate` (HU-07): un alimento con porción y otro sin ella.
+final testEstimate = MealEstimate(
+  photoId: testUploadedPhoto.id,
+  foods: const [
+    EstimatedFood(
+      name: 'Arroz blanco cocido',
+      grams: 150,
+      values: NutritionValues(caloriesKcal: 195, proteinG: 4, fatG: 0.4),
+    ),
+    EstimatedFood(
+      name: 'Pechuga de pollo a la plancha',
+      values: NutritionValues(caloriesKcal: 218, proteinG: 38.2, fatG: 4.5),
+    ),
+  ],
+  totals: const NutritionValues(caloriesKcal: 413, proteinG: 42.2, fatG: 4.9),
+);
+
+/// Registros de comida en memoria (HU-07: estimación).
+class FakeMealsRepository implements MealsRepository {
+  /// Si se asigna, la siguiente estimación lanza este error.
+  ApiException? estimateError;
+
+  /// Si se asigna, la estimación espera a que se complete (para ver la carga).
+  Completer<void>? estimateGate;
+
+  final estimates = <String>[];
+
+  @override
+  Future<MealEstimate> estimate(String photoId) async {
+    estimates.add(photoId);
+    await estimateGate?.future;
+    if (estimateError case final error?) throw error;
+    return testEstimate;
   }
 }
 

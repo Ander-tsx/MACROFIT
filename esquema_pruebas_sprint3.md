@@ -28,6 +28,12 @@
 | HU-06 | Subida a `POST /meals/photos` y el id para HU-07. | Unitaria | La foto va en el campo `photo` de un `multipart/form-data`; la respuesta `{ id, format, size_bytes }` se convierte a la entidad y el ViewModel conserva el `id`; sin foto no se llama a la API y una foto subida no se vuelve a subir ni se cambia. | [**5**](#caso-24) (mobile 5 · backend 0) |
 | HU-06 | Errores de la subida (RNF-11). | Unitaria | `413 PHOTO_TOO_LARGE`, `415 UNSUPPORTED_PHOTO_TYPE` y la falta de conexión salen como `ApiException` y muestran un mensaje en español; la foto se conserva y **Usar esta foto** vuelve a intentarlo. | [**6**](#caso-25) (mobile 6 · backend 0) |
 | HU-06 | Foto recuperada si Android cierra la app con la cámara abierta. | Unitaria | Al arrancar se recupera una sola vez la foto pendiente (`retrieveLostData`); sin foto, en iOS o si la captura terminó en error no hay foto; con foto, el inicio abre **Registrar comida** con la vista previa y **atrás** regresa al inicio. | [**8**](#caso-26) (mobile 8 · backend 0) |
+| HU-07 | La app llama a `POST /meals/estimate` con el `photo_id` e interpreta la respuesta. | Unitaria | Se manda `{ photo_id }` de la foto subida en HU-06; `foods` (nombre, `grams` que puede ser `null` y valores) y `totals` se convierten a la entidad; el modelo lee y escribe los nombres de la API. | [**4**](#caso-27) (mobile 4 · backend 0) |
+| HU-07 | Estado de carga y resultado de la estimación (RF-06, CU-01 pasos 3 y 4). | Interfaz | **Usar esta foto** abre la estimación, que muestra la carga hasta recibir respuesta y después cada alimento (nombre, gramos si vienen, valores) y los totales `413 kcal`, `42.2 g`, `4.9 g`; con la estimación lista no se vuelve a pedir. | [**4**](#caso-28) (mobile 4 · backend 0) |
+| HU-07 | Leyenda de estimación (RNF-07, RN-09). | Interfaz | El resultado muestra *Estos valores son una estimación a partir de la foto y no una recomendación médica*. | [**1**](#caso-29) (mobile 1 · backend 0) |
+| HU-07 | Comida no reconocida (CU-01 flujo 4a). | Unitaria | `422 FOOD_NOT_RECOGNIZED` muestra el mensaje y ofrece solo **Capturar a mano** (sin **Reintentar**). | [**2**](#caso-30) (mobile 2 · backend 0) |
+| HU-07 | Fallo del proveedor o sin conexión (CU-01 flujo 3a, RNF-11). | Unitaria | `502`, `504`, `404` y la falta de conexión salen como `ApiException`; `502`, `504`, sin conexión y otros errores muestran un mensaje en español y ofrecen **Reintentar** o **Capturar a mano** sin cerrar la pantalla; **Reintentar** vuelve a estimar la misma foto. | [**10**](#caso-31) (mobile 10 · backend 0) |
+| HU-07 | Ruta de la estimación. | Unitaria | Solo un usuario con perfil abre `/user/meals/estimate` (un coach, un usuario sin perfil o sin sesión son redirigidos); atrás regresa al inicio y no a la foto ya subida. | [**3**](#caso-32) (mobile 3 · backend 0) |
 
 ## Cómo se cuentan las pruebas
 
@@ -40,6 +46,7 @@ Inventario al cerrar HU-24-APP: **146** pruebas mobile (`flutter test`). Al cerr
 Inventario al cerrar HU-25-APP: **173** pruebas mobile (`flutter test`). HU-25-APP agrega 27 (6 de datos, 4 de textos, 9 del ViewModel, 2 de rutas y 6 de widgets) y cambia *el detalle da acceso a las metas y a las comidas* (caso 06) para comprobar que **Comidas** está habilitado. Sin cambios en el backend.
 Inventario al cerrar TEC-10: **235** pruebas de Rust (`cargo test`: 217 se ejecutan y 18 requieren MongoDB y se ejecutan con `--ignored`). TEC-10 agrega 15 pruebas de Rust en `backend/src/services/routine_engine.rs`. No tiene endpoint (lo expone HU-15-API), así que la colección de Postman y la app no cambian.
 Inventario al cerrar HU-06-APP: **243** pruebas mobile (`flutter test`; 198 en `develop` con HU-12-APP). HU-06-APP agrega 45 (5 del validador, 15 de datos, 17 del ViewModel, 2 de rutas y 5 de widgets). Sin cambios en el backend. Además se probó a mano en un teléfono Android contra la API desplegada (no se cuenta).
+Inventario al cerrar HU-07-APP: **266** pruebas mobile (`flutter test`). HU-07-APP agrega 23 (8 de datos, 8 de ViewModels, 2 de rutas y 5 de widgets) y cambia *elige de la galería, muestra la vista previa y la sube* (HU-06) para comprobar que la foto subida abre la estimación. Sin cambios en el backend. Además se probó a mano en un teléfono Android (moto g60) contra el backend de `develop` en local con `FOOD_SIMULATOR_MODE` `ok`, `not_recognized`, `error` y `timeout`, y sin conexión (no se cuenta); la API desplegada aún no tiene `POST /meals/estimate`.
 
 ## Detalle de las pruebas por caso
 
@@ -352,3 +359,69 @@ Mobile: 8 · Backend: 0
 - `macrofit_app/test/features/meals/presentation/meal_photo_view_model_test.dart` › foto recuperada › sin foto recuperada la pantalla empieza vacía
 - `macrofit_app/test/features/meals/presentation/meal_photo_view_model_test.dart` › foto recuperada › una foto recuperada que no cumple TEC-13 muestra el motivo
 - `macrofit_app/test/app/app_test.dart` › foto de la comida (HU-06) › si Android cerró la app con la cámara abierta vuelve a la vista previa
+
+### <a id="caso-27"></a>Caso 27 · HU-07 — Llamada a `POST /meals/estimate` y modelo de la estimación
+
+Mobile: 4 · Backend: 0
+
+**Mobile**
+
+- `macrofit_app/test/features/meals/data/meals_repository_impl_test.dart` › estimación (POST /meals/estimate) › manda el photo_id y convierte alimentos y totales a la entidad
+- `macrofit_app/test/features/meals/data/meals_repository_impl_test.dart` › estimación (POST /meals/estimate) › grams nulo llega como porción desconocida
+- `macrofit_app/test/features/meals/data/meals_repository_impl_test.dart` › el modelo lee y escribe los nombres de la API
+- `macrofit_app/test/features/meals/presentation/meal_photo_view_model_test.dart` › subir la foto › el resultado une la foto y su id para la estimación
+
+### <a id="caso-28"></a>Caso 28 · HU-07 — Estado de carga y resultado de la estimación
+
+Mobile: 4 · Backend: 0
+
+**Mobile**
+
+- `macrofit_app/test/features/meals/presentation/meal_estimate_view_model_test.dart` › muestra la carga mientras estima y después los alimentos y totales
+- `macrofit_app/test/features/meals/presentation/meal_estimate_view_model_test.dart` › con la estimación lista no vuelve a pedirla
+- `macrofit_app/test/app/app_test.dart` › estimación nutricional (HU-07) › al usar la foto estima con su id, muestra la carga y después el resultado
+- `macrofit_app/test/app/app_test.dart` › foto de la comida (HU-06) › elige de la galería, muestra la vista previa y la sube
+
+### <a id="caso-29"></a>Caso 29 · HU-07 — Leyenda de estimación
+
+Mobile: 1 · Backend: 0
+
+**Mobile**
+
+- `macrofit_app/test/app/app_test.dart` › estimación nutricional (HU-07) › el resultado muestra la leyenda de estimación (RNF-07)
+
+### <a id="caso-30"></a>Caso 30 · HU-07 — Comida no reconocida
+
+Mobile: 2 · Backend: 0
+
+**Mobile**
+
+- `macrofit_app/test/features/meals/presentation/meal_estimate_view_model_test.dart` › 422 FOOD_NOT_RECOGNIZED ofrece solo la captura manual
+- `macrofit_app/test/app/app_test.dart` › estimación nutricional (HU-07) › comida no reconocida ofrece solo capturar a mano
+
+### <a id="caso-31"></a>Caso 31 · HU-07 — Fallo del proveedor o sin conexión
+
+Mobile: 10 · Backend: 0
+
+**Mobile**
+
+- `macrofit_app/test/features/meals/data/meals_repository_impl_test.dart` › estimación (POST /meals/estimate) › 422 se traduce a ApiException FOOD_NOT_RECOGNIZED
+- `macrofit_app/test/features/meals/data/meals_repository_impl_test.dart` › estimación (POST /meals/estimate) › 502 se traduce a ApiException FOOD_PROVIDER_ERROR
+- `macrofit_app/test/features/meals/data/meals_repository_impl_test.dart` › estimación (POST /meals/estimate) › 504 se traduce a ApiException FOOD_PROVIDER_TIMEOUT
+- `macrofit_app/test/features/meals/data/meals_repository_impl_test.dart` › estimación (POST /meals/estimate) › 404 se traduce a ApiException PHOTO_NOT_FOUND
+- `macrofit_app/test/features/meals/data/meals_repository_impl_test.dart` › estimación (POST /meals/estimate) › sin conexión lanza NETWORK_ERROR
+- `macrofit_app/test/features/meals/presentation/meal_estimate_view_model_test.dart` › 502 FOOD_PROVIDER_ERROR ofrece reintentar o capturar a mano
+- `macrofit_app/test/features/meals/presentation/meal_estimate_view_model_test.dart` › 504 FOOD_PROVIDER_TIMEOUT ofrece reintentar o capturar a mano
+- `macrofit_app/test/features/meals/presentation/meal_estimate_view_model_test.dart` › sin conexión ofrece reintentar y el reintento estima
+- `macrofit_app/test/features/meals/presentation/meal_estimate_view_model_test.dart` › otro error muestra el mensaje del servidor y permite reintentar
+- `macrofit_app/test/app/app_test.dart` › estimación nutricional (HU-07) › sin conexión ofrece reintentar sin cerrar la pantalla
+
+### <a id="caso-32"></a>Caso 32 · HU-07 — Ruta de la estimación
+
+Mobile: 3 · Backend: 0
+
+**Mobile**
+
+- `macrofit_app/test/app/router_test.dart` › estimación nutricional (HU-07) › un usuario con perfil abre la estimación
+- `macrofit_app/test/app/router_test.dart` › estimación nutricional (HU-07) › un coach, un usuario sin perfil o sin sesión no la abren
+- `macrofit_app/test/app/app_test.dart` › estimación nutricional (HU-07) › atrás regresa al inicio, no a la foto ya subida
