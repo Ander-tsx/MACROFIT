@@ -24,7 +24,10 @@ import 'package:macrofit_app/features/meals/domain/entities/meal_photo.dart';
 import 'package:macrofit_app/features/meals/domain/entities/photo_pick_exception.dart';
 import 'package:macrofit_app/features/meals/presentation/meal_estimate/meal_estimate_view.dart';
 import 'package:macrofit_app/features/meals/presentation/meal_estimate/meal_estimate_view_model.dart';
+<<<<<<< HEAD
 import 'package:macrofit_app/features/meals/presentation/meal_form/meal_form_view.dart';
+=======
+>>>>>>> origin/develop
 import 'package:macrofit_app/features/meals/presentation/meal_photo/meal_photo_view.dart';
 import 'package:macrofit_app/features/meals/presentation/meal_photo/meal_photo_view_model.dart';
 import 'package:macrofit_app/features/profile/domain/entities/profile.dart';
@@ -558,6 +561,7 @@ void main() {
     });
   });
 
+<<<<<<< HEAD
   group('formulario de valores (HU-08)', () {
     /// Inicio → Registrar comida → galería → Usar esta foto → estimación.
     Future<void> openEstimate(
@@ -695,6 +699,8 @@ void main() {
     });
   });
 
+=======
+>>>>>>> origin/develop
   group('lista de clientes (HU-24)', () {
     Future<void> openClients(
       WidgetTester tester, {

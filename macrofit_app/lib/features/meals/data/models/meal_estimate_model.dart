@@ -15,6 +15,7 @@ class NutritionValuesModel {
         fatG: (json['fat_g'] as num).toDouble(),
       );
 
+<<<<<<< HEAD
   factory NutritionValuesModel.fromEntity(NutritionValues values) =>
       NutritionValuesModel(
         caloriesKcal: values.caloriesKcal,
@@ -22,6 +23,8 @@ class NutritionValuesModel {
         fatG: values.fatG,
       );
 
+=======
+>>>>>>> origin/develop
   final double caloriesKcal;
   final double proteinG;
   final double fatG;

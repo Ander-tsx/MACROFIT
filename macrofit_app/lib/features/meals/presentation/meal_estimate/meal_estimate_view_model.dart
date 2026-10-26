@@ -1,6 +1,9 @@
 import '../../../../core/errors/api_exception.dart';
 import '../../../../core/presentation/view_model.dart';
+<<<<<<< HEAD
 import '../../domain/entities/meal.dart';
+=======
+>>>>>>> origin/develop
 import '../../domain/entities/meal_estimate.dart';
 import '../../domain/entities/meal_photo.dart';
 import '../../domain/repositories/meals_repository.dart';
@@ -47,11 +50,14 @@ class MealEstimateViewModel extends ViewModel {
 
   bool get canRetry => _failure == EstimateFailure.retryable;
 
+<<<<<<< HEAD
   /// Lo que recibe el formulario de HU-08: con la estimación, sus totales
   /// precargados; sin ella (captura manual), solo la foto.
   MealDraft get formDraft =>
       MealDraft(photo: upload, estimated: _estimate?.totals);
 
+=======
+>>>>>>> origin/develop
   /// Pide la estimación. Se llama al abrir la pantalla y con **Reintentar**.
   Future<void> load() async {
     if (_isLoading || _estimate != null) return;

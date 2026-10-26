@@ -38,12 +38,15 @@
 | HU-07 | Comida no reconocida (CU-01 flujo 4a). | Unitaria | `422 FOOD_NOT_RECOGNIZED` muestra el mensaje y ofrece solo **Capturar a mano** (sin **Reintentar**). | [**2**](#caso-34) (mobile 2 · backend 0) |
 | HU-07 | Fallo del proveedor o sin conexión (CU-01 flujo 3a, RNF-11). | Unitaria | `502`, `504`, `404` y la falta de conexión salen como `ApiException`; `502`, `504`, sin conexión y otros errores muestran un mensaje en español y ofrecen **Reintentar** o **Capturar a mano** sin cerrar la pantalla; **Reintentar** vuelve a estimar la misma foto. | [**10**](#caso-35) (mobile 10 · backend 0) |
 | HU-07 | Ruta de la estimación. | Unitaria | Solo un usuario con perfil abre `/user/meals/estimate` (un coach, un usuario sin perfil o sin sesión son redirigidos); atrás regresa al inicio y no a la foto ya subida. | [**3**](#caso-36) (mobile 3 · backend 0) |
+<<<<<<< HEAD
 | HU-08 | Formulario precargado y editable (RF-07, CU-01 paso 5). | Interfaz | **Continuar** abre *Revisar valores* con `413`, `42.2` y `4.9` en calorías, proteína y grasa, los tres editables. | [**2**](#caso-37) (mobile 2 · backend 0) |
 | HU-08 | Validación local con los rangos de la API. | Unitaria | Solo números no negativos (con punto o coma decimal); calorías de 0 a 10 000 y proteína y grasa de 0 a 1 000 g, con el 0 y los límites aceptados; vacío, texto, negativos o fuera de rango marcan su campo, no llaman a la API, y editar el campo limpia su error. | [**9**](#caso-38) (mobile 9 · backend 0) |
 | HU-08 | Valores finales y estimados (`estimated`). | Unitaria | Sin corrección se mandan los mismos valores como finales y en `estimated` (el estimado exacto, aunque el campo lo muestre redondeado); con corrección `estimated` conserva lo estimado y los finales llevan lo corregido. | [**4**](#caso-39) (mobile 4 · backend 0) |
 | HU-08 | Captura manual (CU-01 flujos 3a y 4a). | Unitaria | **Capturar a mano** (tras un fallo de la estimación) y **Capturar sin foto** abren el mismo formulario vacío; se guarda sin `estimated`, con `photo_id` solo si hay foto. | [**5**](#caso-40) (mobile 5 · backend 0) |
 | HU-08 | Errores del guardado. | Unitaria | `400 VALIDATION_ERROR` marca cada campo con `applyApiError`, incluidos `estimated.<campo>` (*Valor estimado: …*); `409`, `404` y la falta de conexión muestran el mensaje sin perder los valores; un registro guardado no se vuelve a enviar. | [**6**](#caso-41) (mobile 6 · backend 0) |
 | HU-08 | Ruta del formulario. | Unitaria | Solo un usuario con perfil abre `/user/meals/form` (un coach, un usuario sin perfil o sin sesión son redirigidos). | [**2**](#caso-42) (mobile 2 · backend 0) |
+=======
+>>>>>>> origin/develop
 
 ## Cómo se cuentan las pruebas
 
@@ -58,7 +61,10 @@ Inventario al cerrar TEC-10: **235** pruebas de Rust (`cargo test`: 217 se ejecu
 Inventario al cerrar HU-06-APP: **243** pruebas mobile (`flutter test`; 198 en `develop` con HU-12-APP). HU-06-APP agrega 45 (5 del validador, 15 de datos, 17 del ViewModel, 2 de rutas y 5 de widgets). Sin cambios en el backend. Además se probó a mano en un teléfono Android contra la API desplegada (no se cuenta).
 Inventario al cerrar HU-26-APP: **256** pruebas mobile (`flutter test`; 243 en `develop` con HU-06-APP). HU-26-APP agrega 13 (8 del ViewModel y 5 de widgets). Sin cambios en el backend. Además se probó de punta a punta en el simulador de iPhone 16 contra el backend local con base temporal (no se cuenta).
 Inventario al cerrar HU-07-APP: **279** pruebas mobile (`flutter test`; 256 en `develop` con HU-26-APP). HU-07-APP agrega 23 (8 de datos, 8 de ViewModels, 2 de rutas y 5 de widgets) y cambia *elige de la galería, muestra la vista previa y la sube* (HU-06) para comprobar que la foto subida abre la estimación. Sin cambios en el backend. Además se probó a mano en un teléfono Android (moto g60) contra el backend de `develop` en local con `FOOD_SIMULATOR_MODE` `ok`, `not_recognized`, `error` y `timeout`, y sin conexión (no se cuenta); la API desplegada aún no tiene `POST /meals/estimate`.
+<<<<<<< HEAD
 Inventario al cerrar HU-08-APP: **307** pruebas mobile (`flutter test`; 279 en `develop` con HU-07-APP). HU-08-APP agrega 28 (6 del validador, 3 de datos, 13 del ViewModel, 2 de rutas y 4 de widgets). Sin cambios en el backend. Además se probó a mano en un teléfono Android (moto g60) contra el backend de `develop` en local: guardado sin y con corrección, captura manual con foto (tras `422`) y sin foto, revisando en MongoDB los finales y `estimated` (no se cuenta).
+=======
+>>>>>>> origin/develop
 
 ## Detalle de las pruebas por caso
 
@@ -478,6 +484,7 @@ Mobile: 3 · Backend: 0
 - `macrofit_app/test/app/router_test.dart` › estimación nutricional (HU-07) › un usuario con perfil abre la estimación
 - `macrofit_app/test/app/router_test.dart` › estimación nutricional (HU-07) › un coach, un usuario sin perfil o sin sesión no la abren
 - `macrofit_app/test/app/app_test.dart` › estimación nutricional (HU-07) › atrás regresa al inicio, no a la foto ya subida
+<<<<<<< HEAD
 
 ### <a id="caso-37"></a>Caso 37 · HU-08 — Formulario precargado y editable
 
@@ -548,3 +555,5 @@ Mobile: 2 · Backend: 0
 
 - `macrofit_app/test/app/router_test.dart` › formulario de valores (HU-08) › un usuario con perfil abre el formulario
 - `macrofit_app/test/app/router_test.dart` › formulario de valores (HU-08) › un coach, un usuario sin perfil o sin sesión no lo abren
+=======
+>>>>>>> origin/develop

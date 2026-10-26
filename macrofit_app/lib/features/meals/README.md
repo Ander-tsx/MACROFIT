@@ -4,7 +4,10 @@
 |---|---|
 | **HU-06** | Tomar la foto con la cámara o elegirla de la galería, comprimirla, verla y subirla (`POST /meals/photos`, RF-05, CU-01 pasos 1 y 2) |
 | **HU-07** | Estimar calorías, proteína y grasa de la foto subida (`POST /meals/estimate`, RF-06, CU-01 pasos 3 y 4, flujos 3a y 4a) |
+<<<<<<< HEAD
 | **HU-08** | Revisar y corregir los valores (o capturarlos a mano) y guardar el registro con los finales y los estimados (`POST /meals`, RF-07, CU-01 paso 5) |
+=======
+>>>>>>> origin/develop
 
 Sigue la secuencia HU-06-APP → HU-07-APP (estimación) → HU-08-APP (corrección) → HU-09-APP (guardar).
 
@@ -13,16 +16,24 @@ Sigue la secuencia HU-06-APP → HU-07-APP (estimación) → HU-08-APP (correcci
 | Archivo | Contenido |
 |---|---|
 | `domain/entities/meal_photo.dart` | `PhotoSource` (cámara/galería), `PickedPhoto` (bytes ya comprimidos), `UploadedPhoto` (`id`, `format`, `size_bytes`) y `MealPhotoUpload` (foto + su id, lo que recibe la estimación) |
+<<<<<<< HEAD
 | `domain/entities/meal.dart` | `MealDraft` (lo que recibe el formulario: foto y estimados opcionales), `NewMeal` (cuerpo de `POST /meals`) y `Meal` (registro guardado) |
 | `domain/entities/meal_estimate.dart` | `NutritionValues` (calorías, proteína y grasa), `EstimatedFood` (nombre, gramos opcionales y valores) y `MealEstimate` (alimentos y totales) |
 | `domain/entities/photo_pick_exception.dart` | `PhotoPickException` con `PhotoPickError`: permiso de cámara o de fotos negado, cámara no disponible |
 | `domain/repositories/meal_photo_repository.dart` | Contrato: `pickPhoto(source)` y `uploadPhoto(photo)` |
 | `domain/repositories/meals_repository.dart` | Contrato de los registros de comida: `estimate(photoId)` (HU-07) y `createMeal(meal)` (HU-08) |
+=======
+| `domain/entities/meal_estimate.dart` | `NutritionValues` (calorías, proteína y grasa), `EstimatedFood` (nombre, gramos opcionales y valores) y `MealEstimate` (alimentos y totales) |
+| `domain/entities/photo_pick_exception.dart` | `PhotoPickException` con `PhotoPickError`: permiso de cámara o de fotos negado, cámara no disponible |
+| `domain/repositories/meal_photo_repository.dart` | Contrato: `pickPhoto(source)` y `uploadPhoto(photo)` |
+| `domain/repositories/meals_repository.dart` | Contrato de los registros de comida: `estimate(photoId)` (HU-07) |
+>>>>>>> origin/develop
 | `domain/validators/meal_photo_validator.dart` | Reglas de TEC-13: JPEG o PNG por sus primeros bytes y máximo 5 MiB (igual que `backend/src/services/photos.rs`) |
 | `domain/validators/meal_values_validator.dart` | Reglas de HU-08: números no negativos, calorías hasta 10 000 y proteína y grasa hasta 1 000 g; acepta coma decimal (igual que `backend/src/services/meals.rs`) |
 | `data/datasources/photo_picker_data_source.dart` | `image_picker`: abre cámara o galería, comprime y traduce los `PlatformException` de permisos |
 | `data/datasources/meal_photos_remote_data_source.dart` | `POST /meals/photos` multipart, campo `photo`, dentro de `guardApiCall` |
 | `data/models/uploaded_photo_model.dart` | JSON de la respuesta `201` |
+<<<<<<< HEAD
 | `data/datasources/meals_remote_data_source.dart` | `POST /meals/estimate` con `{ photo_id }` y `POST /meals`, dentro de `guardApiCall` |
 | `data/models/meal_estimate_model.dart` | JSON de la estimación (`photo_id`, `foods` con `grams` nulo, `totals`) y `NutritionValuesModel` |
 | `data/models/meal_model.dart` | `NewMealModel` (cuerpo de `POST /meals`: `photo_id` y `estimated` solo si los hay) y `MealModel` (registro guardado) |
@@ -32,6 +43,14 @@ Sigue la secuencia HU-06-APP → HU-07-APP (estimación) → HU-08-APP (correcci
 | `presentation/meal_estimate/` | `/user/meals/estimate` — "Estimación": carga, alimentos y totales con la leyenda, **Continuar**; ante un error **Reintentar** y **Capturar a mano** |
 | `presentation/meal_form/` | `/user/meals/form` — "Revisar valores" (precargado) o "Captura manual" (vacío): calorías, proteína y grasa y **Guardar** |
 | `presentation/widgets/meal_texts.dart` | `formatAmount` (a lo más un decimal) y `mealValuesText` (`413 kcal · P 42.2 g · G 4.9 g`) |
+=======
+| `data/datasources/meals_remote_data_source.dart` | `POST /meals/estimate` con `{ photo_id }`, dentro de `guardApiCall` |
+| `data/models/meal_estimate_model.dart` | JSON de la estimación (`photo_id`, `foods` con `grams` nulo, `totals`) |
+| `data/repositories/meals_repository_impl.dart` | Convierte el modelo a la entidad |
+| `data/repositories/meal_photo_repository_impl.dart` | Une ambas fuentes |
+| `presentation/meal_photo/` | `/user/meals/photo` — "Registrar comida": vista previa, **Tomar foto**, **Elegir de la galería**, **Usar esta foto** |
+| `presentation/meal_estimate/` | `/user/meals/estimate` — "Estimación": carga, alimentos y totales con la leyenda, **Continuar**; ante un error **Reintentar** y **Capturar a mano** |
+>>>>>>> origin/develop
 
 ## Flujo (HU-06)
 
@@ -64,7 +83,11 @@ app de cámara está al frente; al volver, la app arranca de cero y la foto no l
 2. Con la respuesta muestra cada alimento identificado (nombre, gramos si vienen y sus valores) y los totales de
    calorías, proteína y grasa, con la leyenda *Estos valores son una estimación a partir de la foto y no una
    recomendación médica* (RNF-07, RN-09). Los valores se muestran con a lo más un decimal.
+<<<<<<< HEAD
 3. **Continuar** abre el formulario de valores precargado con los totales (HU-08).
+=======
+3. **Continuar** lleva a la corrección de valores (HU-08-APP).
+>>>>>>> origin/develop
 
 ### Errores de la estimación
 
@@ -80,6 +103,7 @@ Ningún error cierra la pantalla ni la app (RNF-11).
 **Reintentar** vuelve a estimar la misma foto (no se sube otra vez). Para probar cada caso contra un backend local, levántalo
 con `FOOD_SIMULATOR_MODE=not_recognized`, `error` o `timeout` (ver `backend/README.md`).
 
+<<<<<<< HEAD
 ## Flujo (HU-08)
 
 El formulario `/user/meals/form` recibe un `MealDraft` (se abre con `push`: atrás regresa a la pantalla anterior):
@@ -107,6 +131,8 @@ El formulario `/user/meals/form` recibe un `MealDraft` (se abre con `push`: atr�
 
 Un registro guardado no se vuelve a enviar aunque se toque **Guardar** otra vez.
 
+=======
+>>>>>>> origin/develop
 ## Permisos
 
 | Plataforma | Cámara | Galería |
@@ -132,5 +158,10 @@ La subida usa un tiempo de espera de 60 s (envío y respuesta), mayor que el gen
 
 ## Pendientes
 
+<<<<<<< HEAD
 - `// TODO(HU-09-APP)`: después de guardar, ir al historial del día en lugar del inicio.
+=======
+- `// TODO(HU-08-APP)`: **Continuar** y **Capturar a mano** abrirán el formulario de corrección; por ahora avisan que
+  llega en el siguiente paso.
+>>>>>>> origin/develop
 - No probado en iOS (no hay dispositivo); ahí no aplica la recuperación de la foto perdida.

@@ -6,7 +6,10 @@ import 'package:macrofit_app/core/errors/api_exception.dart';
 import 'package:macrofit_app/features/meals/data/datasources/meals_remote_data_source.dart';
 import 'package:macrofit_app/features/meals/data/models/meal_estimate_model.dart';
 import 'package:macrofit_app/features/meals/data/repositories/meals_repository_impl.dart';
+<<<<<<< HEAD
 import 'package:macrofit_app/features/meals/domain/entities/meal.dart';
+=======
+>>>>>>> origin/develop
 import 'package:macrofit_app/features/meals/domain/entities/meal_estimate.dart';
 
 import '../../../helpers/fakes.dart';
@@ -105,6 +108,7 @@ void main() {
     });
   });
 
+<<<<<<< HEAD
   group('registro (POST /meals)', () {
     Map<String, Object?> mealJson({Object? photoId, Object? estimated}) => {
       'id': '6ad0a1b2c3d4e5f6a7b8c9d0',
@@ -219,6 +223,8 @@ void main() {
     });
   });
 
+=======
+>>>>>>> origin/develop
   test('el modelo lee y escribe los nombres de la API', () {
     final model = MealEstimateModel.fromJson(_estimateJson);
 
