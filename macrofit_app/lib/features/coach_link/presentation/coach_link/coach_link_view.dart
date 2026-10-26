@@ -30,12 +30,25 @@ class CoachLinkView extends StatelessWidget {
                   padding: const EdgeInsets.all(20),
                   child: Column(
                     children: [
-                      const Icon(Icons.check_circle, color: Colors.green, size: 48),
+                      const Icon(
+                        Icons.check_circle,
+                        color: Colors.green,
+                        size: 48,
+                      ),
                       const SizedBox(height: 12),
-                      Text('¡Vinculado con éxito!', style: theme.textTheme.titleMedium),
+                      Text(
+                        '¡Vinculado con éxito!',
+                        style: theme.textTheme.titleMedium,
+                      ),
                       const SizedBox(height: 8),
-                      Text('Coach: ${coach.coachName}', style: theme.textTheme.bodyLarge),
-                      Text('Correo: ${coach.coachEmail}', style: theme.textTheme.bodyMedium),
+                      Text(
+                        'Coach: ${coach.coachName}',
+                        style: theme.textTheme.bodyLarge,
+                      ),
+                      Text(
+                        'Correo: ${coach.coachEmail}',
+                        style: theme.textTheme.bodyMedium,
+                      ),
                       const SizedBox(height: 16),
                       OutlinedButton.icon(
                         key: const Key('unlink_coach_button'),
@@ -68,7 +81,9 @@ class CoachLinkView extends StatelessWidget {
               ],
               FilledButton(
                 key: const Key('submit_coach_link'),
-                onPressed: viewModel.isLoading ? null : () => _submit(context, viewModel),
+                onPressed: viewModel.isLoading
+                    ? null
+                    : () => _submit(context, viewModel),
                 child: viewModel.isLoading
                     ? const SizedBox(
                         height: 20,
@@ -84,7 +99,10 @@ class CoachLinkView extends StatelessWidget {
     );
   }
 
-  Future<void> _submit(BuildContext context, CoachLinkViewModel viewModel) async {
+  Future<void> _submit(
+    BuildContext context,
+    CoachLinkViewModel viewModel,
+  ) async {
     final messenger = ScaffoldMessenger.of(context);
     final success = await viewModel.linkCoach();
     if (success) {
@@ -94,12 +112,17 @@ class CoachLinkView extends StatelessWidget {
     }
   }
 
-  Future<void> _confirmUnlink(BuildContext context, CoachLinkViewModel viewModel) async {
+  Future<void> _confirmUnlink(
+    BuildContext context,
+    CoachLinkViewModel viewModel,
+  ) async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Desvincular coach'),
-        content: const Text('¿Estás seguro de que deseas desvincularte de tu coach? Dejarás de compartir tus datos.'),
+        content: const Text(
+          '¿Estás seguro de que deseas desvincularte de tu coach? Dejarás de compartir tus datos.',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
