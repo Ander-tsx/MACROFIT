@@ -409,10 +409,18 @@ void main() {
       expect(find.byKey(const Key('clients_search')), findsNothing);
 
       // HU-12: desde la lista vacía se llega al código para compartirlo.
+      final callsBefore = clients.calls;
       await tester.tap(find.byKey(const Key('clients_invite_code')));
       await tester.pumpAndSettle();
       expect(find.byType(InviteCodeView), findsOneWidget);
       expect(find.text(testInviteCode), findsOneWidget);
+
+      // Atrás regresa a la lista vacía, que no se recarga sola.
+      await tester.tap(find.byType(BackButton));
+      await tester.pumpAndSettle();
+      expect(find.byType(InviteCodeView), findsNothing);
+      expect(find.byKey(const Key('clients_empty')), findsOneWidget);
+      expect(clients.calls, callsBefore);
     });
 
     testWidgets('un error al cargar permite reintentar', (tester) async {

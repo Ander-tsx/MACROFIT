@@ -78,6 +78,8 @@ Mobile: 7 · Backend: 0
 
 Mobile: 3 · Backend: 0
 
+Con HU-12-INT, *sin clientes invita a compartir el código de invitación* además toca **Ver mi código de invitación**, comprueba que se abre la pantalla del código (HU-12) con el código del coach y que atrás regresa a la lista vacía sin volver a pedirla.
+
 **Mobile**
 
 - `macrofit_app/test/features/clients/presentation/clients_list_view_model_test.dart` › un coach sin clientes ve la lista vacía y no un error
