@@ -98,6 +98,30 @@ void main() {
     });
   });
 
+  group('formulario de valores (HU-08)', () {
+    test('un usuario con perfil abre el formulario', () {
+      expect(
+        resolveRedirect(const Authenticated(testUser), AppRoutes.mealForm),
+        isNull,
+      );
+    });
+
+    test('un coach, un usuario sin perfil o sin sesión no lo abren', () {
+      expect(
+        resolveRedirect(const Authenticated(testCoach), AppRoutes.mealForm),
+        AppRoutes.coachHome,
+      );
+      expect(
+        resolveRedirect(const Authenticated(testNewUser), AppRoutes.mealForm),
+        AppRoutes.profileSetup,
+      );
+      expect(
+        resolveRedirect(const Unauthenticated(), AppRoutes.mealForm),
+        AppRoutes.login,
+      );
+    });
+  });
+
   group('foto de la comida (HU-06)', () {
     test('un usuario con perfil abre "Registrar comida"', () {
       expect(

@@ -33,11 +33,14 @@ import '../features/invite_code/presentation/invite_code/invite_code_view_model.
 import '../features/legal/domain/repositories/legal_repository.dart';
 import '../features/legal/presentation/privacy_notice/privacy_notice_view.dart';
 import '../features/legal/presentation/privacy_notice/privacy_notice_view_model.dart';
+import '../features/meals/domain/entities/meal.dart';
 import '../features/meals/domain/entities/meal_photo.dart';
 import '../features/meals/domain/repositories/meal_photo_repository.dart';
 import '../features/meals/domain/repositories/meals_repository.dart';
 import '../features/meals/presentation/meal_estimate/meal_estimate_view.dart';
 import '../features/meals/presentation/meal_estimate/meal_estimate_view_model.dart';
+import '../features/meals/presentation/meal_form/meal_form_view.dart';
+import '../features/meals/presentation/meal_form/meal_form_view_model.dart';
 import '../features/meals/presentation/meal_photo/meal_photo_view.dart';
 import '../features/meals/presentation/meal_photo/meal_photo_view_model.dart';
 import '../features/profile/domain/repositories/profile_repository.dart';
@@ -119,6 +122,19 @@ GoRouter createRouter(
                 upload: state.extra! as MealPhotoUpload,
               )..load(),
               child: const MealEstimateView(),
+            ),
+          ),
+          GoRoute(
+            path: AppRoutes.mealFormChild,
+            // Sin el borrador (p. ej. al restaurar la ruta) se vuelve al inicio.
+            redirect: (_, state) =>
+                state.extra is MealDraft ? null : AppRoutes.userHome,
+            builder: (context, state) => ChangeNotifierProvider(
+              create: (context) => MealFormViewModel(
+                repository: context.read<MealsRepository>(),
+                draft: state.extra! as MealDraft,
+              ),
+              child: const MealFormView(),
             ),
           ),
         ],
@@ -228,7 +244,8 @@ String homeFor(Role role) => switch (role) {
 ///   login/registro. El aviso de privacidad sigue disponible.
 /// - Usuario sin perfil (HU-03) → solo el formulario de perfil inicial hasta
 ///   completarlo. Con perfil: su pantalla principal, "Mi perfil",
-///   "Registrar comida" (HU-06) y su estimación (HU-07).
+///   "Registrar comida" (HU-06), su estimación (HU-07) y el formulario de
+///   valores (HU-08).
 ///   Un coach nunca ve el formulario.
 String? resolveRedirect(AuthState state, String location) {
   switch (state) {
