@@ -21,6 +21,13 @@
 | TEC-10 | Solo ejercicios del nivel del usuario o inferiores. | Unitaria | Ningún ejercicio supera el nivel del perfil y, a igual grupo, se eligen primero los del nivel del usuario. | [**2**](#caso-17) (mobile 0 · backend 2) |
 | TEC-10 | Series, repeticiones y descanso por nivel y objetivo. | Unitaria | Series 2 / 3 / 4 (principiante / intermedio / avanzado); 10 reps y 90 s (`gain_muscle`), 12 reps y 60 s (`maintain`), 15 reps y 45 s (`lose_fat`); series y repeticiones mayores a cero (mismas reglas que HU-18-API). | [**1**](#caso-18) (mobile 0 · backend 1) |
 | TEC-10 | Resultado determinista y catálogo incompleto. | Unitaria | El mismo perfil y catálogo dan la misma rutina aunque el catálogo llegue en otro orden; un grupo sin ejercicios elegibles (falta el grupo o solo hay ejercicios de nivel superior) responde `MissingExercises` con el grupo y el nivel, sin fallar. | [**4**](#caso-19) (mobile 0 · backend 4) |
+| HU-06 | Acceso «Registrar comida» desde la pantalla principal (RF-05). | Interfaz | El botón flotante **Registrar comida** del inicio abre la pantalla de la foto con **Tomar foto** y **Elegir de la galería**; solo la abre un usuario con perfil (un coach, un usuario sin perfil o sin sesión son redirigidos) y el coach no ve el botón. | [**4**](#caso-20) (mobile 4 · backend 0) |
+| HU-06 | Tomar o elegir la foto, comprimirla y verla (RF-05, CU-01 pasos 1 y 2). | Unitaria | Se pide la foto al origen elegido con lado mayor de 1600 px y calidad menor a 100; queda en la vista previa; cancelar el selector conserva la foto anterior y elegir otra la reemplaza. | [**6**](#caso-21) (mobile 6 · backend 0) |
+| HU-06 | Permisos de cámara y galería negados (CU-01 flujo 2a). | Unitaria | `camera_access_denied`/`restricted`, `photo_access_denied` y `no_available_camera` se traducen a su error; el permiso de cámara negado explica cómo habilitarlo en Ajustes y ofrece la galería, el de fotos muestra un mensaje explicativo y sin cámara se ofrece la galería. | [**9**](#caso-22) (mobile 9 · backend 0) |
+| HU-06 | Reglas de TEC-13 antes de subir: JPEG o PNG y máximo 5 MiB. | Unitaria | Se aceptan JPEG y PNG por sus primeros bytes y una foto de exactamente 5 MiB; se rechaza una de más de 5 MiB (antes de revisar el tipo), otro formato (GIF, HEIC) o una vacía; una foto rechazada no se sube ni reemplaza a la anterior. | [**7**](#caso-23) (mobile 7 · backend 0) |
+| HU-06 | Subida a `POST /meals/photos` y el id para HU-07. | Unitaria | La foto va en el campo `photo` de un `multipart/form-data`; la respuesta `{ id, format, size_bytes }` se convierte a la entidad y el ViewModel conserva el `id`; sin foto no se llama a la API y una foto subida no se vuelve a subir ni se cambia. | [**5**](#caso-24) (mobile 5 · backend 0) |
+| HU-06 | Errores de la subida (RNF-11). | Unitaria | `413 PHOTO_TOO_LARGE`, `415 UNSUPPORTED_PHOTO_TYPE` y la falta de conexión salen como `ApiException` y muestran un mensaje en español; la foto se conserva y **Usar esta foto** vuelve a intentarlo. | [**6**](#caso-25) (mobile 6 · backend 0) |
+| HU-06 | Foto recuperada si Android cierra la app con la cámara abierta. | Unitaria | Al arrancar se recupera una sola vez la foto pendiente (`retrieveLostData`); sin foto, en iOS o si la captura terminó en error no hay foto; con foto, el inicio abre **Registrar comida** con la vista previa y **atrás** regresa al inicio. | [**8**](#caso-26) (mobile 8 · backend 0) |
 
 ## Cómo se cuentan las pruebas
 
@@ -32,6 +39,7 @@
 Inventario al cerrar HU-24-APP: **146** pruebas mobile (`flutter test`). Al cerrar el Sprint 2 eran 119; HU-24-APP agrega 30 y retira 3 que probaban la pantalla mínima de clientes de HU-05, que se eliminó (las 2 del `CoachClientsViewModel` y *lista los clientes vinculados* de `CoachGoalsRepositoryImpl`; ahora las cubren los casos 01, 02 y 05). Sin cambios en el backend.
 Inventario al cerrar HU-25-APP: **173** pruebas mobile (`flutter test`). HU-25-APP agrega 27 (6 de datos, 4 de textos, 9 del ViewModel, 2 de rutas y 6 de widgets) y cambia *el detalle da acceso a las metas y a las comidas* (caso 06) para comprobar que **Comidas** está habilitado. Sin cambios en el backend.
 Inventario al cerrar TEC-10: **235** pruebas de Rust (`cargo test`: 217 se ejecutan y 18 requieren MongoDB y se ejecutan con `--ignored`). TEC-10 agrega 15 pruebas de Rust en `backend/src/services/routine_engine.rs`. No tiene endpoint (lo expone HU-15-API), así que la colección de Postman y la app no cambian.
+Inventario al cerrar HU-06-APP: **243** pruebas mobile (`flutter test`; 198 en `develop` con HU-12-APP). HU-06-APP agrega 45 (5 del validador, 15 de datos, 17 del ViewModel, 2 de rutas y 5 de widgets). Sin cambios en el backend. Además se probó a mano en un teléfono Android contra la API desplegada (no se cuenta).
 
 ## Detalle de las pruebas por caso
 
@@ -251,3 +259,96 @@ Mobile: 0 · Backend: 4
 - `backend/src/services/routine_engine.rs` › `el_orden_del_catalogo_no_cambia_la_rutina`
 - `backend/src/services/routine_engine.rs` › `catalogo_sin_un_grupo_responde_error_propio`
 - `backend/src/services/routine_engine.rs` › `catalogo_sin_ejercicios_del_nivel_responde_error_propio`
+### <a id="caso-20"></a>Caso 20 · HU-06 — Acceso «Registrar comida»
+
+Mobile: 4 · Backend: 0
+
+**Mobile**
+
+- `macrofit_app/test/app/router_test.dart` › foto de la comida (HU-06) › un usuario con perfil abre "Registrar comida"
+- `macrofit_app/test/app/router_test.dart` › foto de la comida (HU-06) › un coach, un usuario sin perfil o sin sesión no la abren
+- `macrofit_app/test/app/app_test.dart` › foto de la comida (HU-06) › "Registrar comida" abre la pantalla de la foto
+- `macrofit_app/test/app/app_test.dart` › foto de la comida (HU-06) › un coach no ve el acceso a registrar comida
+
+### <a id="caso-21"></a>Caso 21 · HU-06 — Tomar o elegir la foto, comprimirla y verla
+
+Mobile: 6 · Backend: 0
+
+**Mobile**
+
+- `macrofit_app/test/features/meals/data/meal_photo_repository_impl_test.dart` › cámara y galería › pide la foto comprimida al origen elegido
+- `macrofit_app/test/features/meals/data/meal_photo_repository_impl_test.dart` › cámara y galería › cancelar devuelve null
+- `macrofit_app/test/features/meals/presentation/meal_photo_view_model_test.dart` › elegir la foto › con permiso, la foto de la cámara queda en la vista previa
+- `macrofit_app/test/features/meals/presentation/meal_photo_view_model_test.dart` › elegir la foto › cancelar conserva la foto anterior
+- `macrofit_app/test/features/meals/presentation/meal_photo_view_model_test.dart` › elegir la foto › cambiar la foto reemplaza la vista previa
+- `macrofit_app/test/app/app_test.dart` › foto de la comida (HU-06) › elige de la galería, muestra la vista previa y la sube
+
+### <a id="caso-22"></a>Caso 22 · HU-06 — Permisos de cámara y galería negados
+
+Mobile: 9 · Backend: 0
+
+**Mobile**
+
+- `macrofit_app/test/features/meals/data/meal_photo_repository_impl_test.dart` › cámara y galería › el error camera_access_denied se traduce a PhotoPickError.cameraDenied
+- `macrofit_app/test/features/meals/data/meal_photo_repository_impl_test.dart` › cámara y galería › el error camera_access_restricted se traduce a PhotoPickError.cameraDenied
+- `macrofit_app/test/features/meals/data/meal_photo_repository_impl_test.dart` › cámara y galería › el error photo_access_denied se traduce a PhotoPickError.galleryDenied
+- `macrofit_app/test/features/meals/data/meal_photo_repository_impl_test.dart` › cámara y galería › el error no_available_camera se traduce a PhotoPickError.cameraUnavailable
+- `macrofit_app/test/features/meals/data/meal_photo_repository_impl_test.dart` › cámara y galería › un fallo desconocido de la galería se trata como sin acceso
+- `macrofit_app/test/features/meals/presentation/meal_photo_view_model_test.dart` › elegir la foto › permiso de cámara negado: explica cómo habilitarlo y ofrece la galería
+- `macrofit_app/test/features/meals/presentation/meal_photo_view_model_test.dart` › elegir la foto › permiso de galería negado muestra un mensaje explicativo
+- `macrofit_app/test/features/meals/presentation/meal_photo_view_model_test.dart` › elegir la foto › sin cámara disponible ofrece la galería
+- `macrofit_app/test/app/app_test.dart` › foto de la comida (HU-06) › con el permiso de cámara negado explica y ofrece la galería
+
+### <a id="caso-23"></a>Caso 23 · HU-06 — Reglas de TEC-13 antes de subir
+
+Mobile: 7 · Backend: 0
+
+**Mobile**
+
+- `macrofit_app/test/features/meals/domain/meal_photo_validator_test.dart` › acepta JPEG y PNG por su contenido
+- `macrofit_app/test/features/meals/domain/meal_photo_validator_test.dart` › acepta una foto de exactamente 5 MiB
+- `macrofit_app/test/features/meals/domain/meal_photo_validator_test.dart` › rechaza una foto de más de 5 MiB antes de revisar el tipo
+- `macrofit_app/test/features/meals/domain/meal_photo_validator_test.dart` › rechaza lo que no es JPEG ni PNG (p. ej. GIF o HEIC)
+- `macrofit_app/test/features/meals/domain/meal_photo_validator_test.dart` › rechaza una foto vacía
+- `macrofit_app/test/features/meals/presentation/meal_photo_view_model_test.dart` › elegir la foto › una foto de más de 5 MiB no se acepta ni se sube
+- `macrofit_app/test/features/meals/presentation/meal_photo_view_model_test.dart` › elegir la foto › una foto que no es JPEG ni PNG no reemplaza a la anterior
+
+### <a id="caso-24"></a>Caso 24 · HU-06 — Subida a `POST /meals/photos` y el id para HU-07
+
+Mobile: 5 · Backend: 0
+
+**Mobile**
+
+- `macrofit_app/test/features/meals/data/meal_photo_repository_impl_test.dart` › subida (POST /meals/photos) › manda la foto en el campo photo como multipart
+- `macrofit_app/test/features/meals/data/meal_photo_repository_impl_test.dart` › el modelo lee y escribe los nombres de la API
+- `macrofit_app/test/features/meals/presentation/meal_photo_view_model_test.dart` › subir la foto › sin foto no hace nada
+- `macrofit_app/test/features/meals/presentation/meal_photo_view_model_test.dart` › subir la foto › subida correcta conserva el id para HU-07
+- `macrofit_app/test/features/meals/presentation/meal_photo_view_model_test.dart` › subir la foto › después de subirla no se vuelve a subir ni se cambia
+
+### <a id="caso-25"></a>Caso 25 · HU-06 — Errores de la subida
+
+Mobile: 6 · Backend: 0
+
+**Mobile**
+
+- `macrofit_app/test/features/meals/data/meal_photo_repository_impl_test.dart` › subida (POST /meals/photos) › 413 se traduce a ApiException PHOTO_TOO_LARGE
+- `macrofit_app/test/features/meals/data/meal_photo_repository_impl_test.dart` › subida (POST /meals/photos) › 415 se traduce a ApiException UNSUPPORTED_PHOTO_TYPE
+- `macrofit_app/test/features/meals/data/meal_photo_repository_impl_test.dart` › subida (POST /meals/photos) › sin conexión lanza NETWORK_ERROR
+- `macrofit_app/test/features/meals/presentation/meal_photo_view_model_test.dart` › subir la foto › 413 PHOTO_TOO_LARGE muestra un mensaje en español
+- `macrofit_app/test/features/meals/presentation/meal_photo_view_model_test.dart` › subir la foto › 415 UNSUPPORTED_PHOTO_TYPE muestra un mensaje en español
+- `macrofit_app/test/features/meals/presentation/meal_photo_view_model_test.dart` › subir la foto › sin conexión muestra el error y permite reintentar
+
+### <a id="caso-26"></a>Caso 26 · HU-06 — Foto recuperada si Android cierra la app con la cámara abierta
+
+Mobile: 8 · Backend: 0
+
+**Mobile**
+
+- `macrofit_app/test/features/meals/data/meal_photo_repository_impl_test.dart` › foto perdida (Android cerró la app con la cámara abierta) › se recupera una vez y después ya no está
+- `macrofit_app/test/features/meals/data/meal_photo_repository_impl_test.dart` › foto perdida (Android cerró la app con la cámara abierta) › sin foto pendiente no hay nada que recuperar
+- `macrofit_app/test/features/meals/data/meal_photo_repository_impl_test.dart` › foto perdida (Android cerró la app con la cámara abierta) › en plataformas sin soporte (iOS) no falla
+- `macrofit_app/test/features/meals/data/meal_photo_repository_impl_test.dart` › foto perdida (Android cerró la app con la cámara abierta) › si la captura perdida terminó en error no hay foto
+- `macrofit_app/test/features/meals/presentation/meal_photo_view_model_test.dart` › foto recuperada › se muestra en la vista previa y se puede subir
+- `macrofit_app/test/features/meals/presentation/meal_photo_view_model_test.dart` › foto recuperada › sin foto recuperada la pantalla empieza vacía
+- `macrofit_app/test/features/meals/presentation/meal_photo_view_model_test.dart` › foto recuperada › una foto recuperada que no cumple TEC-13 muestra el motivo
+- `macrofit_app/test/app/app_test.dart` › foto de la comida (HU-06) › si Android cerró la app con la cámara abierta vuelve a la vista previa

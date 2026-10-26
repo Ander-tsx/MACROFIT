@@ -71,6 +71,30 @@ void main() {
     });
   });
 
+  group('foto de la comida (HU-06)', () {
+    test('un usuario con perfil abre "Registrar comida"', () {
+      expect(
+        resolveRedirect(const Authenticated(testUser), AppRoutes.mealPhoto),
+        isNull,
+      );
+    });
+
+    test('un coach, un usuario sin perfil o sin sesión no la abren', () {
+      expect(
+        resolveRedirect(const Authenticated(testCoach), AppRoutes.mealPhoto),
+        AppRoutes.coachHome,
+      );
+      expect(
+        resolveRedirect(const Authenticated(testNewUser), AppRoutes.mealPhoto),
+        AppRoutes.profileSetup,
+      );
+      expect(
+        resolveRedirect(const Unauthenticated(), AppRoutes.mealPhoto),
+        AppRoutes.login,
+      );
+    });
+  });
+
   group('metas por coach (HU-05)', () {
     test('un coach abre sus pantallas de clientes y metas', () {
       const state = Authenticated(testCoach);

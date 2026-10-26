@@ -23,6 +23,8 @@ import 'package:macrofit_app/features/goals/domain/repositories/coach_goals_repo
 import 'package:macrofit_app/features/invite_code/domain/repositories/invite_code_repository.dart';
 import 'package:macrofit_app/features/legal/domain/entities/privacy_notice.dart';
 import 'package:macrofit_app/features/legal/domain/repositories/legal_repository.dart';
+import 'package:macrofit_app/features/meals/domain/entities/meal_photo.dart';
+import 'package:macrofit_app/features/meals/domain/repositories/meal_photo_repository.dart';
 import 'package:macrofit_app/features/profile/domain/entities/profile.dart';
 import 'package:macrofit_app/features/profile/domain/repositories/profile_repository.dart';
 
@@ -281,6 +283,68 @@ class FakeCoachGoalsRepository implements CoachGoalsRepository {
     );
     history.insert(0, goal);
     return goal;
+  }
+}
+
+/// Bytes con la firma de un JPEG (lo que revisan la app y el backend).
+Uint8List jpegBytes([int size = 32]) =>
+    Uint8List(size)..setAll(0, [0xFF, 0xD8, 0xFF, 0xE0]);
+
+/// PNG real de 1×1 para que la vista previa se pueda dibujar en las pruebas de widgets.
+final pngBytes = base64Decode(
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=',
+);
+
+final testPhoto = PickedPhoto(bytes: pngBytes, fileName: 'comida.png');
+
+const testUploadedPhoto = UploadedPhoto(
+  id: '6acd4140ac968514f27322cd',
+  format: 'jpeg',
+  sizeBytes: 32,
+);
+
+/// Cámara, galería y subida de fotos en memoria (HU-06).
+class FakeMealPhotoRepository implements MealPhotoRepository {
+  FakeMealPhotoRepository({this.recovered});
+
+  /// Lo que devuelve la siguiente `pickPhoto`; `null` = la persona canceló.
+  PickedPhoto? nextPick = testPhoto;
+
+  /// Foto recuperada tras un cierre de la app con la cámara abierta.
+  PickedPhoto? recovered;
+
+  @override
+  Future<void> recoverLostPhoto() async {}
+
+  @override
+  bool get hasRecoveredPhoto => recovered != null;
+
+  @override
+  PickedPhoto? takeRecoveredPhoto() {
+    final photo = recovered;
+    recovered = null;
+    return photo;
+  }
+
+  /// Si se asigna, la siguiente llamada del tipo correspondiente lanza este error.
+  Exception? pickError;
+  ApiException? uploadError;
+
+  final picks = <PhotoSource>[];
+  final uploads = <PickedPhoto>[];
+
+  @override
+  Future<PickedPhoto?> pickPhoto(PhotoSource source) async {
+    picks.add(source);
+    if (pickError case final error?) throw error;
+    return nextPick;
+  }
+
+  @override
+  Future<UploadedPhoto> uploadPhoto(PickedPhoto photo) async {
+    uploads.add(photo);
+    if (uploadError case final error?) throw error;
+    return testUploadedPhoto;
   }
 }
 

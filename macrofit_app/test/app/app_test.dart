@@ -17,6 +17,10 @@ import 'package:macrofit_app/features/home/presentation/coach_home_view.dart';
 import 'package:macrofit_app/features/home/presentation/user_home_view.dart';
 import 'package:macrofit_app/features/invite_code/presentation/invite_code/invite_code_view.dart';
 import 'package:macrofit_app/features/legal/presentation/privacy_notice/privacy_notice_view.dart';
+import 'package:macrofit_app/features/meals/domain/entities/meal_photo.dart';
+import 'package:macrofit_app/features/meals/domain/entities/photo_pick_exception.dart';
+import 'package:macrofit_app/features/meals/presentation/meal_photo/meal_photo_view.dart';
+import 'package:macrofit_app/features/meals/presentation/meal_photo/meal_photo_view_model.dart';
 import 'package:macrofit_app/features/profile/domain/entities/profile.dart';
 import 'package:macrofit_app/features/profile/presentation/profile_form/profile_form_view.dart';
 
@@ -27,6 +31,7 @@ void main() {
   late FakeLegalRepository legal;
   late FakeProfileRepository profiles;
   late FakeCoachGoalsRepository coachGoals;
+  late FakeMealPhotoRepository mealPhotos;
   late FakeClientsRepository clients;
   late FakeInviteCodeRepository inviteCodes;
   late FakeShareService share;
@@ -36,6 +41,7 @@ void main() {
     AuthState state = const Unauthenticated(),
     bool settle = true,
     Profile? storedProfile,
+    PickedPhoto? recoveredPhoto,
     List<ClientSummary>? clientList,
     ApiException? clientsError,
     Map<DateTime, List<ClientMeal>>? clientMeals,
@@ -46,6 +52,7 @@ void main() {
     legal = FakeLegalRepository();
     profiles = FakeProfileRepository(stored: storedProfile);
     coachGoals = FakeCoachGoalsRepository();
+    mealPhotos = FakeMealPhotoRepository(recovered: recoveredPhoto);
     clients = FakeClientsRepository(clients: clientList, meals: clientMeals)
       ..error = clientsError
       ..mealsError = mealsError;
@@ -58,6 +65,7 @@ void main() {
           legalRepository: legal,
           profileRepository: profiles,
           coachGoalsRepository: coachGoals,
+          mealPhotoRepository: mealPhotos,
           clientsRepository: clients,
           inviteCodeRepository: inviteCodes,
           shareService: share,
@@ -347,6 +355,83 @@ void main() {
     testWidgets('un usuario no ve el acceso a clientes', (tester) async {
       await pumpApp(tester, state: const Authenticated(testUser));
       expect(find.byKey(const Key('clients_button')), findsNothing);
+    });
+  });
+
+  group('foto de la comida (HU-06)', () {
+    Future<void> openMealPhoto(WidgetTester tester) async {
+      await pumpApp(tester, state: const Authenticated(testUser));
+      await tester.tap(find.byKey(const Key('register_meal_button')));
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('"Registrar comida" abre la pantalla de la foto', (
+      tester,
+    ) async {
+      await openMealPhoto(tester);
+
+      expect(find.byType(MealPhotoView), findsOneWidget);
+      expect(find.byKey(const Key('meal_photo_camera')), findsOneWidget);
+      expect(find.byKey(const Key('meal_photo_gallery')), findsOneWidget);
+      expect(find.byKey(const Key('meal_photo_upload')), findsNothing);
+    });
+
+    testWidgets('elige de la galería, muestra la vista previa y la sube', (
+      tester,
+    ) async {
+      await openMealPhoto(tester);
+
+      await tester.tap(find.byKey(const Key('meal_photo_gallery')));
+      await tester.pumpAndSettle();
+      expect(mealPhotos.picks, [PhotoSource.gallery]);
+      expect(find.byKey(const Key('meal_photo_preview')), findsOneWidget);
+
+      await tester.tap(find.byKey(const Key('meal_photo_upload')));
+      await tester.pumpAndSettle();
+      expect(mealPhotos.uploads.single, testPhoto);
+      expect(find.byKey(const Key('meal_photo_uploaded')), findsOneWidget);
+      expect(find.byKey(const Key('meal_photo_camera')), findsNothing);
+    });
+
+    testWidgets('con el permiso de cámara negado explica y ofrece la galería', (
+      tester,
+    ) async {
+      await openMealPhoto(tester);
+      mealPhotos.pickError = const PhotoPickException(
+        PhotoPickError.cameraDenied,
+      );
+
+      await tester.tap(find.byKey(const Key('meal_photo_camera')));
+      await tester.pumpAndSettle();
+
+      expect(find.text(MealPhotoViewModel.cameraDeniedMessage), findsOneWidget);
+      expect(find.byKey(const Key('meal_photo_gallery')), findsOneWidget);
+    });
+
+    testWidgets(
+      'si Android cerró la app con la cámara abierta vuelve a la vista previa',
+      (tester) async {
+        await pumpApp(
+          tester,
+          state: const Authenticated(testUser),
+          recoveredPhoto: testPhoto,
+        );
+
+        expect(find.byType(MealPhotoView), findsOneWidget);
+        expect(find.byKey(const Key('meal_photo_preview')), findsOneWidget);
+        expect(find.byKey(const Key('meal_photo_upload')), findsOneWidget);
+        expect(mealPhotos.hasRecoveredPhoto, isFalse);
+
+        // El inicio queda debajo: atrás regresa a él y no vuelve a redirigir.
+        await tester.tap(find.byType(BackButton));
+        await tester.pumpAndSettle();
+        expect(find.byType(UserHomeView), findsOneWidget);
+      },
+    );
+
+    testWidgets('un coach no ve el acceso a registrar comida', (tester) async {
+      await pumpApp(tester, state: const Authenticated(testCoach));
+      expect(find.byKey(const Key('register_meal_button')), findsNothing);
     });
   });
 

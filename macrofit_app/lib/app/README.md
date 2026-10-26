@@ -16,13 +16,16 @@ publicDio ── AuthRemoteDataSource (register, login, refresh)
 sessionDio + AuthInterceptor ── SessionRemoteDataSource (me, logout)
                              ├─ ProfileRemoteDataSource (perfil, HU-03)
                              ├─ GoalsRemoteDataSource (metas, HU-05)
+                             ├─ MealPhotosRemoteDataSource (foto de comida, HU-06)
                              └─ ClientsRemoteDataSource (lista de clientes HU-24, comidas y fotos HU-25)
 SessionLocalDataSource (flutter_secure_storage)
+PhotoPickerDataSource (image_picker: cámara y galería, HU-06)
         ↓
 AuthRepositoryImpl  ←── interceptor.onSessionExpired
 LegalRepositoryImpl
 ProfileRepositoryImpl
 CoachGoalsRepositoryImpl
+MealPhotoRepositoryImpl
 ClientsRepositoryImpl
 ```
 
@@ -39,7 +42,7 @@ ClientsRepositoryImpl
 | `AuthUnknown` (leyendo sesión) | `/` (carga) | → `/` |
 | `Unauthenticated` | `/login`, `/register`, `/privacy` | → `/login` |
 | `Authenticated(user)`, rol `user` **sin perfil** | `/profile/setup` y `/privacy` | → `/profile/setup` |
-| `Authenticated(user)`, rol `user` con perfil | `/user`, `/user/profile` y `/privacy` | → `/user` |
+| `Authenticated(user)`, rol `user` con perfil | `/user`, `/user/profile`, `/user/meals/photo` y `/privacy` | → `/user` |
 | `Authenticated(user)`, rol `coach` | `/coach` y `/privacy` | → `/coach` |
 
 Consecuencias:
@@ -50,6 +53,8 @@ Consecuencias:
 - Un rol nunca puede abrir la pantalla del otro. Las pantallas del coach cuelgan de `/coach` (`AppRoutes.isCoachRoute`).
 - HU-03: un usuario sin perfil no llega a `/user` hasta guardar el formulario; al guardarlo,
   `AuthRepository.markProfileCompleted()` cambia la sesión y el router lo lleva a `/user`. Un coach nunca ve el formulario.
+- HU-06: `/user/meals/photo` es subruta de `/user`. Si al arrancar hay una foto recuperada (Android cerró la app con la
+  cámara abierta), la ruta `/user` redirige a ella; por eso `createRouter` recibe el `MealPhotoRepository`.
 
 ### Agregar una ruta
 

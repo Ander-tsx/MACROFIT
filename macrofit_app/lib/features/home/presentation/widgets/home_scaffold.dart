@@ -9,6 +9,7 @@ class HomeScaffold extends StatelessWidget {
     required this.title,
     required this.body,
     this.actions = const [],
+    this.floatingActionButton,
     super.key,
   });
 
@@ -17,6 +18,9 @@ class HomeScaffold extends StatelessWidget {
 
   /// Acciones de la barra antes del botón de cerrar sesión.
   final List<Widget> actions;
+
+  /// Acción principal de la pantalla (p. ej. "Registrar comida", HU-06).
+  final Widget? floatingActionButton;
 
   Future<void> _confirmLogout(BuildContext context) async {
     final viewModel = context.read<HomeViewModel>();
@@ -66,6 +70,7 @@ class HomeScaffold extends StatelessWidget {
         ],
       ),
       body: SafeArea(child: body),
+      floatingActionButton: floatingActionButton,
     );
   }
 }

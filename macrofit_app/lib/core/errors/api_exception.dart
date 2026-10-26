@@ -15,6 +15,8 @@ abstract final class ApiErrorCode {
   static const clientNotLinked = 'CLIENT_NOT_LINKED';
   static const profileNotFound = 'PROFILE_NOT_FOUND';
   static const profileAlreadyExists = 'PROFILE_ALREADY_EXISTS';
+  static const photoTooLarge = 'PHOTO_TOO_LARGE';
+  static const unsupportedPhotoType = 'UNSUPPORTED_PHOTO_TYPE';
   static const photoNotFound = 'PHOTO_NOT_FOUND';
 
   /// No se pudo contactar al servidor (sin red, servidor apagado, timeout).

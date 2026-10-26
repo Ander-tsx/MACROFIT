@@ -4,9 +4,10 @@ App de MacroFit para los roles **usuario** y **coach**. Consume la API del backe
 [backend/README.md](../backend/README.md)). Ramas, commits y PR en [CONTRIBUTING.md](../CONTRIBUTING.md).
 
 Historias implementadas: **HU-01** (registro con rol y aviso de privacidad), **HU-02** (inicio, persistencia y
-cierre de sesión), **HU-03** (perfil inicial del usuario y su edición), **HU-05** (el coach fija las metas de sus clientes)
-**HU-12** (código de invitación del coach: ver, copiar, compartir y regenerar), **HU-24** (lista de clientes del coach con búsqueda y detalle de cada uno) y **HU-25** (registro diario de comidas
-de un cliente, de solo lectura para el coach).
+cierre de sesión), **HU-03** (perfil inicial del usuario y su edición), **HU-05** (el coach fija las metas de sus clientes),
+**HU-06** (tomar o elegir la foto de la comida y subirla), **HU-12** (código de invitación del coach: ver, copiar,
+compartir y regenerar), **HU-24** (lista de clientes del coach con búsqueda y detalle de cada uno) y **HU-25** (registro
+diario de comidas de un cliente, de solo lectura para el coach).
 
 > **Si eres una persona o una sesión de IA que va a modificar la app, lee este archivo y el `README.md` de cada
 > carpeta que vayas a tocar** (`lib/app`, `lib/core`, `lib/features`, `lib/features/<feature>`, `test`).
@@ -99,6 +100,7 @@ lib/
     ├── legal/             # TEC-07 aviso de privacidad
     ├── profile/           # HU-03 perfil inicial y edición
     ├── goals/             # HU-04 dominio de la meta, HU-05 metas por coach
+    ├── meals/             # HU-06 foto de la comida
     ├── clients/           # HU-24 lista de clientes del coach y detalle, HU-25 comidas del cliente
     ├── invite_code/       # HU-12 código de invitación del coach
     └── home/              # Pantallas principales por rol (solo presentación por ahora)
@@ -121,6 +123,7 @@ Flujo: `View → ViewModel → Repository (contrato del dominio) → RepositoryI
 | `dio` | HTTP; interceptor de sesión con renovación automática |
 | `flutter_secure_storage` | Tokens y usuario de la sesión (Keychain / Keystore) |
 | `flutter_markdown_plus` | Renderizar el aviso de privacidad (sustituye a `flutter_markdown`, descontinuado) |
+| `image_picker` | HU-06: cámara y galería; pide los permisos y comprime la foto (lado mayor 1600 px, JPEG calidad 85) |
 | `share_plus` | Hoja de compartir del sistema para el código de invitación (HU-12), detrás de `ShareService` |
 
 ## Reglas generales

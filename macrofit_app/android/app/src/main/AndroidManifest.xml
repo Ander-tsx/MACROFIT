@@ -1,6 +1,10 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <!-- La app consume la API de MacroFit. -->
     <uses-permission android:name="android.permission.INTERNET"/>
+    <!-- HU-06: foto de la comida con la cámara. image_picker pide el permiso al abrirla.
+         La galería usa el selector de fotos del sistema y no necesita permiso. -->
+    <uses-permission android:name="android.permission.CAMERA"/>
+    <uses-feature android:name="android.hardware.camera" android:required="false"/>
     <application
         android:label="MacroFit"
         android:name="${applicationName}"
