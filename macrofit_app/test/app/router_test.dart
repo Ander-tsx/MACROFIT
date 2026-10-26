@@ -98,7 +98,6 @@ void main() {
     });
   });
 
-<<<<<<< HEAD
   group('formulario de valores (HU-08)', () {
     test('un usuario con perfil abre el formulario', () {
       expect(
@@ -123,8 +122,6 @@ void main() {
     });
   });
 
-=======
->>>>>>> origin/develop
   group('foto de la comida (HU-06)', () {
     test('un usuario con perfil abre "Registrar comida"', () {
       expect(

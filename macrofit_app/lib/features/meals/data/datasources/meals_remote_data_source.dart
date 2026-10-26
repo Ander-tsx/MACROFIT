@@ -2,10 +2,7 @@ import 'package:dio/dio.dart';
 
 import '../../../../core/network/dio_factory.dart';
 import '../models/meal_estimate_model.dart';
-<<<<<<< HEAD
 import '../models/meal_model.dart';
-=======
->>>>>>> origin/develop
 
 /// Endpoints de registros de comida (rol `user`).
 class MealsRemoteDataSource {
@@ -22,7 +19,6 @@ class MealsRemoteDataSource {
     );
     return MealEstimateModel.fromJson(response.data!);
   });
-<<<<<<< HEAD
 
   /// HU-08 — `POST /meals` con los valores finales y, si los hay, los estimados.
   Future<MealModel> create(NewMealModel meal) => guardApiCall(() async {
@@ -32,6 +28,4 @@ class MealsRemoteDataSource {
     );
     return MealModel.fromJson(response.data!);
   });
-=======
->>>>>>> origin/develop
 }

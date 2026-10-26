@@ -7,13 +7,8 @@ test/
 ├── helpers/fakes.dart        # Fakes compartidos (repositorios, almacenamiento, adaptador HTTP)
 ├── app/
 │   ├── router_test.dart      # resolveRedirect: guard de sesión y redirección por rol
-<<<<<<< HEAD
 │   └── app_test.dart         # Flujos de widgets: carga inicial, login por rol, registro, aviso, logout + atrás, perfil (HU-03), metas por coach (HU-05), foto de la comida (HU-06), estimación nutricional (HU-07), formulario de valores (HU-08), lista de clientes (HU-24), comidas de un cliente (HU-25), código de invitación (HU-12)
 ├── features/meals/           # MealPhotoValidator, MealPhotoRepositoryImpl (Dio e image_picker simulados) y MealPhotoViewModel; MealsRepositoryImpl (Dio simulado) y MealEstimateViewModel (HU-07); MealValuesValidator y MealFormViewModel (HU-08)
-=======
-│   └── app_test.dart         # Flujos de widgets: carga inicial, login por rol, registro, aviso, logout + atrás, perfil (HU-03), metas por coach (HU-05), foto de la comida (HU-06), estimación nutricional (HU-07), lista de clientes (HU-24), comidas de un cliente (HU-25), código de invitación (HU-12)
-├── features/meals/           # MealPhotoValidator, MealPhotoRepositoryImpl (Dio e image_picker simulados) y MealPhotoViewModel; MealsRepositoryImpl (Dio simulado) y MealEstimateViewModel (HU-07)
->>>>>>> origin/develop
 ├── features/profile/         # Validadores, ProfileRepositoryImpl (Dio simulado) y ProfileFormViewModel
 ├── features/goals/           # Cálculo de la meta, validadores, CoachGoalsRepositoryImpl y CoachGoalFormViewModel
 ├── features/invite_code/     # InviteCodeRepositoryImpl (Dio simulado) e InviteCodeViewModel (HU-12)
@@ -35,10 +30,7 @@ flutter test
   - Fotos (HU-06): `testPhoto` (PNG real de 1×1, se puede dibujar), `jpegBytes(n)` (firma JPEG de `n` bytes) y `testUploadedPhoto`.
   - Estimación (HU-07): `testPhotoUpload` (foto + id), `testEstimate` (un alimento con porción y otro sin ella) y
     `FakeMealsRepository` (`estimateError`, `estimateGate` para ver la carga, registra `estimates`).
-<<<<<<< HEAD
   - Guardado (HU-08): `FakeMealsRepository` registra cada `NewMeal` en `created`; `createError` simula un error de la API.
-=======
->>>>>>> origin/develop
   - Cuentas: `testUser` (con perfil), `testNewUser` (sin perfil, va al formulario de HU-03) y `testCoach`.
   - Clientes del coach (HU-24): `testClientSummary` (meta del coach y un registro, mismo id que `testClient`) y
     `testClientWithoutData` (`goal` y `last_meal_at` nulos).

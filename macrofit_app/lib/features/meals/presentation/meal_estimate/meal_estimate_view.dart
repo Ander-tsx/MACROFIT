@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -9,13 +8,6 @@ import '../../../../app/routes.dart';
 import '../../../../core/presentation/widgets/error_banner.dart';
 import '../../domain/entities/meal_estimate.dart';
 import '../widgets/meal_texts.dart';
-=======
-import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-
-import '../../../../core/presentation/widgets/error_banner.dart';
-import '../../domain/entities/meal_estimate.dart';
->>>>>>> origin/develop
 import 'meal_estimate_view_model.dart';
 
 /// HU-07 — "Estimación": carga, alimentos identificados y totales, o las
@@ -23,21 +15,10 @@ import 'meal_estimate_view_model.dart';
 class MealEstimateView extends StatelessWidget {
   const MealEstimateView({super.key});
 
-<<<<<<< HEAD
   /// HU-08: "Continuar" abre el formulario precargado con la estimación y
   /// "Capturar a mano" lo abre vacío (con la foto ya subida).
   void _openForm(BuildContext context, MealEstimateViewModel viewModel) {
     unawaited(context.push(AppRoutes.mealForm, extra: viewModel.formDraft));
-=======
-  // TODO(HU-08-APP): abrir el formulario de corrección con la estimación
-  // ("Continuar") o vacío para la captura manual ("Capturar a mano").
-  void _openForm(BuildContext context) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('La captura de valores llega en el siguiente paso.'),
-      ),
-    );
->>>>>>> origin/develop
   }
 
   @override
@@ -70,11 +51,7 @@ class MealEstimateView extends StatelessWidget {
               const SizedBox(height: 24),
               FilledButton.icon(
                 key: const Key('meal_estimate_continue'),
-<<<<<<< HEAD
                 onPressed: () => _openForm(context, viewModel),
-=======
-                onPressed: () => _openForm(context),
->>>>>>> origin/develop
                 icon: const Icon(Icons.arrow_forward),
                 label: const Text('Continuar'),
               ),
@@ -95,11 +72,7 @@ class MealEstimateView extends StatelessWidget {
               ],
               OutlinedButton.icon(
                 key: const Key('meal_estimate_manual'),
-<<<<<<< HEAD
                 onPressed: () => _openForm(context, viewModel),
-=======
-                onPressed: () => _openForm(context),
->>>>>>> origin/develop
                 icon: const Icon(Icons.edit),
                 label: const Text('Capturar a mano'),
               ),
@@ -154,17 +127,10 @@ class _Result extends StatelessWidget {
             contentPadding: EdgeInsets.zero,
             leading: const Icon(Icons.restaurant),
             title: Text(food.name),
-<<<<<<< HEAD
             subtitle: Text(mealValuesText(food.values)),
             trailing: food.grams == null
                 ? null
                 : Text('${formatAmount(food.grams!)} g'),
-=======
-            subtitle: Text(_valuesText(food.values)),
-            trailing: food.grams == null
-                ? null
-                : Text('${_amount(food.grams!)} g'),
->>>>>>> origin/develop
           ),
         const SizedBox(height: 16),
         Card(
@@ -176,7 +142,6 @@ class _Result extends StatelessWidget {
               children: [
                 _Total(
                   label: 'Calorías',
-<<<<<<< HEAD
                   value: '${formatAmount(totals.caloriesKcal)} kcal',
                 ),
                 _Total(
@@ -184,15 +149,6 @@ class _Result extends StatelessWidget {
                   value: '${formatAmount(totals.proteinG)} g',
                 ),
                 _Total(label: 'Grasa', value: '${formatAmount(totals.fatG)} g'),
-=======
-                  value: '${_amount(totals.caloriesKcal)} kcal',
-                ),
-                _Total(
-                  label: 'Proteína',
-                  value: '${_amount(totals.proteinG)} g',
-                ),
-                _Total(label: 'Grasa', value: '${_amount(totals.fatG)} g'),
->>>>>>> origin/develop
               ],
             ),
           ),
@@ -246,19 +202,3 @@ class _Total extends StatelessWidget {
     );
   }
 }
-<<<<<<< HEAD
-=======
-
-/// Cantidad con a lo más un decimal: `413`, `42.2`.
-String _amount(double value) {
-  final text = value.toStringAsFixed(1);
-  return text.endsWith('.0') ? text.substring(0, text.length - 2) : text;
-}
-
-/// `413 kcal · P 42.2 g · G 4.9 g`. Usa espacios sin corte (` `) para
-/// que una línea nunca termine en `G` y deje `4.9 g` en la siguiente.
-String _valuesText(NutritionValues values) =>
-    '${_amount(values.caloriesKcal)} kcal · '
-    'P ${_amount(values.proteinG)} g · '
-    'G ${_amount(values.fatG)} g';
->>>>>>> origin/develop
