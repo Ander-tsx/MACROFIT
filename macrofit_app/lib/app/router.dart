@@ -21,6 +21,9 @@ import '../features/home/presentation/user_home_view.dart';
 import '../features/legal/domain/repositories/legal_repository.dart';
 import '../features/legal/presentation/privacy_notice/privacy_notice_view.dart';
 import '../features/legal/presentation/privacy_notice/privacy_notice_view_model.dart';
+import '../features/meals/domain/repositories/meal_photo_repository.dart';
+import '../features/meals/presentation/meal_photo/meal_photo_view.dart';
+import '../features/meals/presentation/meal_photo/meal_photo_view_model.dart';
 import '../features/profile/domain/repositories/profile_repository.dart';
 import '../features/profile/presentation/profile_form/profile_form_view.dart';
 import '../features/profile/presentation/profile_form/profile_form_view_model.dart';
@@ -28,7 +31,13 @@ import 'routes.dart';
 
 /// Crea el router. Escucha al [AuthRepository]: cada cambio de sesión vuelve a
 /// evaluar [resolveRedirect], así que login, logout y sesión expirada navegan solos.
-GoRouter createRouter(AuthRepository auth) {
+///
+/// [mealPhotos] decide si el inicio del usuario abre directo "Registrar comida"
+/// con una foto recuperada (HU-06, Android cerró la app con la cámara abierta).
+GoRouter createRouter(
+  AuthRepository auth, {
+  required MealPhotoRepository mealPhotos,
+}) {
   return GoRouter(
     initialLocation: AppRoutes.splash,
     refreshListenable: auth,
@@ -61,10 +70,26 @@ GoRouter createRouter(AuthRepository auth) {
       ),
       GoRoute(
         path: AppRoutes.userHome,
+        // HU-06: con una foto recuperada se vuelve a su vista previa.
+        redirect: (_, state) =>
+            state.uri.path == AppRoutes.userHome && mealPhotos.hasRecoveredPhoto
+            ? AppRoutes.mealPhoto
+            : null,
         builder: (context, _) => ChangeNotifierProvider(
           create: (context) => HomeViewModel(context.read<AuthRepository>()),
           child: const UserHomeView(),
         ),
+        routes: [
+          GoRoute(
+            path: AppRoutes.mealPhotoChild,
+            builder: (context, _) => ChangeNotifierProvider(
+              create: (context) =>
+                  MealPhotoViewModel(context.read<MealPhotoRepository>())
+                    ..restoreRecoveredPhoto(),
+              child: const MealPhotoView(),
+            ),
+          ),
+        ],
       ),
       GoRoute(
         path: AppRoutes.profileSetup,
@@ -135,7 +160,8 @@ String homeFor(Role role) => switch (role) {
 /// - Con sesión → la pantalla principal de su rol; nunca la del otro rol ni
 ///   login/registro. El aviso de privacidad sigue disponible.
 /// - Usuario sin perfil (HU-03) → solo el formulario de perfil inicial hasta
-///   completarlo. Con perfil: su pantalla principal y "Mi perfil".
+///   completarlo. Con perfil: su pantalla principal, "Mi perfil" y
+///   "Registrar comida" (HU-06).
 ///   Un coach nunca ve el formulario.
 String? resolveRedirect(AuthState state, String location) {
   switch (state) {

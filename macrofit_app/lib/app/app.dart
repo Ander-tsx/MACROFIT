@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import '../features/auth/domain/repositories/auth_repository.dart';
 import '../features/goals/domain/repositories/coach_goals_repository.dart';
 import '../features/legal/domain/repositories/legal_repository.dart';
+import '../features/meals/domain/repositories/meal_photo_repository.dart';
 import '../features/profile/domain/repositories/profile_repository.dart';
 import 'dependencies.dart';
 import 'router.dart';
@@ -24,6 +25,7 @@ class MacroFitApp extends StatefulWidget {
 class _MacroFitAppState extends State<MacroFitApp> {
   late final GoRouter _router = createRouter(
     widget.dependencies.authRepository,
+    mealPhotos: widget.dependencies.mealPhotoRepository,
   );
 
   @override
@@ -46,6 +48,9 @@ class _MacroFitAppState extends State<MacroFitApp> {
         ),
         Provider<CoachGoalsRepository>.value(
           value: dependencies.coachGoalsRepository,
+        ),
+        Provider<MealPhotoRepository>.value(
+          value: dependencies.mealPhotoRepository,
         ),
       ],
       child: MaterialApp.router(

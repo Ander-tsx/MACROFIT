@@ -8,7 +8,7 @@ import 'widgets/home_scaffold.dart';
 import 'widgets/welcome_message.dart';
 
 /// Pantalla principal del rol `user`. Su contenido llega con HU-04 en adelante.
-/// Desde aquí se abre "Mi perfil" (HU-03).
+/// Desde aquí se abren "Mi perfil" (HU-03) y "Registrar comida" (HU-06).
 class UserHomeView extends StatelessWidget {
   const UserHomeView({super.key});
 
@@ -26,6 +26,12 @@ class UserHomeView extends StatelessWidget {
           onPressed: () => context.push(AppRoutes.profileEdit),
         ),
       ],
+      floatingActionButton: FloatingActionButton.extended(
+        key: const Key('register_meal_button'),
+        onPressed: () => context.push(AppRoutes.mealPhoto),
+        icon: const Icon(Icons.add_a_photo),
+        label: const Text('Registrar comida'),
+      ),
       body: WelcomeMessage(
         name: user?.name ?? '',
         roleLabel: 'Usuario',

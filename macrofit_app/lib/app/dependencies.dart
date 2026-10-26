@@ -14,6 +14,10 @@ import '../features/goals/domain/repositories/coach_goals_repository.dart';
 import '../features/legal/data/datasources/legal_remote_data_source.dart';
 import '../features/legal/data/repositories/legal_repository_impl.dart';
 import '../features/legal/domain/repositories/legal_repository.dart';
+import '../features/meals/data/datasources/meal_photos_remote_data_source.dart';
+import '../features/meals/data/datasources/photo_picker_data_source.dart';
+import '../features/meals/data/repositories/meal_photo_repository_impl.dart';
+import '../features/meals/domain/repositories/meal_photo_repository.dart';
 import '../features/profile/data/datasources/profile_remote_data_source.dart';
 import '../features/profile/data/repositories/profile_repository_impl.dart';
 import '../features/profile/domain/repositories/profile_repository.dart';
@@ -27,6 +31,7 @@ class AppDependencies {
     required this.legalRepository,
     required this.profileRepository,
     required this.coachGoalsRepository,
+    required this.mealPhotoRepository,
   });
 
   factory AppDependencies.create(AppConfig config) {
@@ -60,6 +65,10 @@ class AppDependencies {
       coachGoalsRepository: CoachGoalsRepositoryImpl(
         GoalsRemoteDataSource(sessionDio),
       ),
+      mealPhotoRepository: MealPhotoRepositoryImpl(
+        picker: PhotoPickerDataSource(),
+        remote: MealPhotosRemoteDataSource(sessionDio),
+      ),
     );
   }
 
@@ -67,4 +76,5 @@ class AppDependencies {
   final LegalRepository legalRepository;
   final ProfileRepository profileRepository;
   final CoachGoalsRepository coachGoalsRepository;
+  final MealPhotoRepository mealPhotoRepository;
 }

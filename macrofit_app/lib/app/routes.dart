@@ -15,6 +15,11 @@ abstract final class AppRoutes {
   /// HU-03: edición del perfil ("Mi perfil") del rol `user`.
   static const profileEdit = '/user/profile';
 
+  /// HU-06: tomar o elegir la foto de la comida y subirla ("Registrar comida").
+  /// Es subruta del inicio: al abrirla con `go` el inicio queda debajo.
+  static const mealPhotoChild = 'meals/photo';
+  static const mealPhoto = '$userHome/$mealPhotoChild';
+
   /// Pantalla principal del rol `coach`.
   static const coachHome = '/coach';
 
@@ -34,5 +39,5 @@ abstract final class AppRoutes {
   static const public = {login, register, privacyNotice};
 
   /// Rutas de un usuario con perfil completo (además del aviso de privacidad).
-  static const userRoutes = {userHome, profileEdit};
+  static const userRoutes = {userHome, profileEdit, mealPhoto};
 }

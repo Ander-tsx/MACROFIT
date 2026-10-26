@@ -7,7 +7,8 @@ test/
 ├── helpers/fakes.dart        # Fakes compartidos (repositorios, almacenamiento, adaptador HTTP)
 ├── app/
 │   ├── router_test.dart      # resolveRedirect: guard de sesión y redirección por rol
-│   └── app_test.dart         # Flujos de widgets: carga inicial, login por rol, registro, aviso, logout + atrás, perfil (HU-03), metas por coach (HU-05)
+│   └── app_test.dart         # Flujos de widgets: carga inicial, login por rol, registro, aviso, logout + atrás, perfil (HU-03), metas por coach (HU-05), foto de la comida (HU-06)
+├── features/meals/           # MealPhotoValidator, MealPhotoRepositoryImpl (Dio e image_picker simulados) y MealPhotoViewModel
 ├── features/profile/         # Validadores, ProfileRepositoryImpl (Dio simulado) y ProfileFormViewModel
 └── features/auth/
     ├── domain/               # Validadores
@@ -22,7 +23,8 @@ flutter test
 ## Convenciones
 
 - **Sin red ni plugins reales.** Se usan *fakes* escritos a mano (no hay librería de mocks):
-  - `FakeAuthRepository`, `FakeLegalRepository`, `FakeProfileRepository`, `FakeCoachGoalsRepository` para ViewModels y widgets.
+  - `FakeAuthRepository`, `FakeLegalRepository`, `FakeProfileRepository`, `FakeCoachGoalsRepository`, `FakeMealPhotoRepository` para ViewModels y widgets.
+  - Fotos: `testPhoto` (PNG real de 1×1, se puede dibujar), `jpegBytes(n)` (firma JPEG de `n` bytes) y `testUploadedPhoto`.
   - Cuentas: `testUser` (con perfil), `testNewUser` (sin perfil, va al formulario de HU-03) y `testCoach`.
   - `FakeSessionLocalDataSource` en lugar de `flutter_secure_storage`.
   - `FakeHttpAdapter` + `jsonResponse` / `errorResponse` para simular el backend en Dio.
