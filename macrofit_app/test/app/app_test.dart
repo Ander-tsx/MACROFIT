@@ -6,7 +6,10 @@ import 'package:macrofit_app/features/auth/domain/entities/auth_state.dart';
 import 'package:macrofit_app/features/auth/presentation/login/login_view.dart';
 import 'package:macrofit_app/features/auth/presentation/register/register_view.dart';
 import 'package:macrofit_app/features/auth/presentation/splash/splash_view.dart';
-import 'package:macrofit_app/features/goals/presentation/coach_clients/coach_clients_view.dart';
+import 'package:macrofit_app/core/errors/api_exception.dart';
+import 'package:macrofit_app/features/clients/domain/entities/client_summary.dart';
+import 'package:macrofit_app/features/clients/presentation/client_detail/client_detail_view.dart';
+import 'package:macrofit_app/features/clients/presentation/clients_list/clients_list_view.dart';
 import 'package:macrofit_app/features/goals/presentation/coach_goal_form/coach_goal_form_view.dart';
 import 'package:macrofit_app/features/home/presentation/coach_home_view.dart';
 import 'package:macrofit_app/features/home/presentation/user_home_view.dart';
@@ -21,17 +24,21 @@ void main() {
   late FakeLegalRepository legal;
   late FakeProfileRepository profiles;
   late FakeCoachGoalsRepository coachGoals;
+  late FakeClientsRepository clients;
 
   Future<void> pumpApp(
     WidgetTester tester, {
     AuthState state = const Unauthenticated(),
     bool settle = true,
     Profile? storedProfile,
+    List<ClientSummary>? clientList,
+    ApiException? clientsError,
   }) async {
     auth = FakeAuthRepository(initialState: state);
     legal = FakeLegalRepository();
     profiles = FakeProfileRepository(stored: storedProfile);
     coachGoals = FakeCoachGoalsRepository();
+    clients = FakeClientsRepository(clients: clientList)..error = clientsError;
     await tester.pumpWidget(
       MacroFitApp(
         dependencies: AppDependencies(
@@ -39,6 +46,7 @@ void main() {
           legalRepository: legal,
           profileRepository: profiles,
           coachGoalsRepository: coachGoals,
+          clientsRepository: clients,
         ),
       ),
     );
@@ -270,19 +278,25 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(find.byKey(Key('client_${testClient.id}')));
       await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('client_detail_goals')));
+      await tester.pumpAndSettle();
     }
 
-    testWidgets('el coach llega al formulario de un cliente en dos pantallas', (
+    testWidgets('el coach llega al formulario de un cliente desde su detalle', (
       tester,
     ) async {
       await pumpApp(tester, state: const Authenticated(testCoach));
 
       await tester.tap(find.byKey(const Key('clients_button')));
       await tester.pumpAndSettle();
-      expect(find.byType(CoachClientsView), findsOneWidget);
+      expect(find.byType(ClientsListView), findsOneWidget);
       expect(find.text(testClient.name), findsOneWidget);
 
       await tester.tap(find.byKey(Key('client_${testClient.id}')));
+      await tester.pumpAndSettle();
+      expect(find.byType(ClientDetailView), findsOneWidget);
+
+      await tester.tap(find.byKey(const Key('client_detail_goals')));
       await tester.pumpAndSettle();
       expect(find.byType(CoachGoalFormView), findsOneWidget);
     });
@@ -319,6 +333,95 @@ void main() {
     testWidgets('un usuario no ve el acceso a clientes', (tester) async {
       await pumpApp(tester, state: const Authenticated(testUser));
       expect(find.byKey(const Key('clients_button')), findsNothing);
+    });
+  });
+
+  group('lista de clientes (HU-24)', () {
+    Future<void> openClients(
+      WidgetTester tester, {
+      List<ClientSummary>? clientList,
+      ApiException? clientsError,
+    }) async {
+      await pumpApp(
+        tester,
+        state: const Authenticated(testCoach),
+        clientList: clientList,
+        clientsError: clientsError,
+      );
+      await tester.tap(find.byKey(const Key('clients_button')));
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('muestra nombre, meta y último registro de cada cliente', (
+      tester,
+    ) async {
+      await openClients(tester);
+
+      expect(find.byType(ClientsListView), findsOneWidget);
+      expect(find.text('Ana'), findsOneWidget);
+      expect(find.text('2200 kcal · P 160 g · G 70 g'), findsOneWidget);
+      expect(find.textContaining('Meta del coach'), findsOneWidget);
+      expect(find.textContaining('Último registro:'), findsOneWidget);
+      expect(find.text('José Pérez'), findsOneWidget);
+      expect(find.text('Sin meta'), findsOneWidget);
+      expect(find.textContaining('Sin registros'), findsOneWidget);
+    });
+
+    testWidgets('la búsqueda filtra por nombre sin otra petición', (
+      tester,
+    ) async {
+      await openClients(tester);
+
+      await tester.enterText(find.byKey(const Key('clients_search')), 'JOSE');
+      await tester.pumpAndSettle();
+      expect(find.text('José Pérez'), findsOneWidget);
+      expect(find.text('Ana'), findsNothing);
+
+      await tester.enterText(find.byKey(const Key('clients_search')), 'zzz');
+      await tester.pumpAndSettle();
+      expect(
+        find.text('Ningún cliente coincide con la búsqueda.'),
+        findsOneWidget,
+      );
+      expect(clients.calls, 1);
+    });
+
+    testWidgets('sin clientes invita a compartir el código de invitación', (
+      tester,
+    ) async {
+      await openClients(tester, clientList: []);
+
+      expect(find.textContaining('código de invitación'), findsOneWidget);
+      expect(find.byKey(const Key('clients_search')), findsNothing);
+    });
+
+    testWidgets('un error al cargar permite reintentar', (tester) async {
+      await openClients(tester, clientsError: networkError);
+      expect(find.text(networkError.message), findsOneWidget);
+
+      clients.error = null;
+      await tester.tap(find.byKey(const Key('clients_retry')));
+      await tester.pumpAndSettle();
+      expect(find.text('Ana'), findsOneWidget);
+    });
+
+    testWidgets('el detalle da acceso a las metas y a las comidas', (
+      tester,
+    ) async {
+      await openClients(tester);
+
+      await tester.tap(find.byKey(Key('client_${testClientSummary.id}')));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(ClientDetailView), findsOneWidget);
+      expect(find.text('ana@macrofit.test'), findsOneWidget);
+      expect(find.text('2200 kcal · P 160 g · G 70 g'), findsOneWidget);
+      expect(find.byKey(const Key('client_detail_goals')), findsOneWidget);
+      // Las comidas del cliente se habilitan con HU-25-APP.
+      final meals = tester.widget<ListTile>(
+        find.byKey(const Key('client_detail_meals')),
+      );
+      expect(meals.enabled, isFalse);
     });
   });
 }

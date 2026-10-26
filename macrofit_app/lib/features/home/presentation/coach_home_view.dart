@@ -7,8 +7,8 @@ import 'home_view_model.dart';
 import 'widgets/home_scaffold.dart';
 import 'widgets/welcome_message.dart';
 
-/// Pantalla principal del rol `coach`. Desde aquí se llega a las metas de sus clientes (HU-05);
-/// el resto de su contenido llega con HU-12, HU-24 y siguientes.
+/// Pantalla principal del rol `coach`. Desde aquí se llega a sus clientes (HU-24) y, desde el
+/// detalle de cada uno, a sus metas (HU-05); el resto de su contenido llega con HU-12 y siguientes.
 class CoachHomeView extends StatelessWidget {
   const CoachHomeView({super.key});
 
