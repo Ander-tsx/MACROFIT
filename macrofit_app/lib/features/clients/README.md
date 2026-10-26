@@ -37,6 +37,8 @@
    `/coach/clients/:clientId/meals` (HU-25): ambas quedan a 3 pantallas de la principal (RF-20).
 5. Al regresar de metas o comidas, el detalle vuelve a pedir la lista para actualizar el resumen; si el cliente ya no
    aparece (se desvinculó, HU-14) lo indica y deshabilita sus accesos. Al regresar a la lista, esta también se recarga.
+6. Sin clientes vinculados, la lista vacía invita a compartir el código y el botón **Ver mi código de invitación** abre
+   `/coach/invite-code` (HU-12, CU-02 paso 1) con `AppRoutes.coachInviteCode`. Atrás regresa a la lista vacía.
 
 ## Comidas de un cliente (HU-25)
 
@@ -58,7 +60,9 @@
 
 - La búsqueda trata `ñ` como `n` y `ç` como `c`, además de quitar acentos y diéresis.
 - Sin clientes vinculados, la pantalla invita a compartir el código de invitación y enlaza a su pantalla
-  (`/coach/invite-code`, HU-12).
+  (`/coach/invite-code`, HU-12). La feature solo usa la constante de `AppRoutes`; no importa nada de `invite_code`.
+- Al regresar de la pantalla del código la lista **no** se recarga sola: el cliente se vincula desde su propio teléfono
+  y puede tardar; el coach usa **Actualizar** o desliza para recargar.
 - El orden de la lista es el de la API (por nombre). La app no lo reordena.
 - El día de las comidas usa la fecha local del teléfono. El backend calcula el día con `APP_UTC_OFFSET` (UTC−6), así
   que coinciden si el teléfono está en esa zona.
