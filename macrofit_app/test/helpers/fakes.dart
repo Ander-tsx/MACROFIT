@@ -20,6 +20,7 @@ import 'package:macrofit_app/features/clients/domain/repositories/clients_reposi
 import 'package:macrofit_app/features/goals/domain/entities/coach_client.dart';
 import 'package:macrofit_app/features/goals/domain/entities/nutritional_goal.dart';
 import 'package:macrofit_app/features/goals/domain/repositories/coach_goals_repository.dart';
+import 'package:macrofit_app/features/goals/domain/repositories/goals_repository.dart';
 import 'package:macrofit_app/features/invite_code/domain/repositories/invite_code_repository.dart';
 import 'package:macrofit_app/features/legal/domain/entities/privacy_notice.dart';
 import 'package:macrofit_app/features/legal/domain/repositories/legal_repository.dart';
@@ -390,6 +391,39 @@ class FakeMealsRepository implements MealsRepository {
     if (estimateError case final error?) throw error;
     return testEstimate;
   }
+}
+
+/// Metas del usuario en memoria (simula `GET /users/me/goals/current`, HU-26).
+/// Con [current] en `null` responde `404 PROFILE_NOT_FOUND`, como el backend.
+class FakeGoalsRepository implements GoalsRepository {
+  FakeGoalsRepository({NutritionalGoal? current, this.history = const []})
+    : current = current ?? testGoal(source: GoalSource.system);
+
+  /// Crea el repositorio de un usuario sin perfil ni meta del coach.
+  FakeGoalsRepository.withoutGoal() : history = const [];
+
+  NutritionalGoal? current;
+  final List<NutritionalGoal> history;
+
+  /// Si se asigna, la siguiente consulta lanza este error.
+  ApiException? error;
+
+  int currentCalls = 0;
+
+  /// Si se asigna, la consulta espera a que se complete (para ver el estado intermedio).
+  Completer<void>? gate;
+
+  @override
+  Future<NutritionalGoal> getCurrentGoal() async {
+    currentCalls++;
+    await gate?.future;
+    if (error case final error?) throw error;
+    return current ??
+        (throw apiError(ApiErrorCode.profileNotFound, status: 404));
+  }
+
+  @override
+  Future<List<NutritionalGoal>> getGoalsHistory() async => [...history];
 }
 
 /// Cliente con meta del coach y un registro de comida (HU-24). Mismo id que [testClient].

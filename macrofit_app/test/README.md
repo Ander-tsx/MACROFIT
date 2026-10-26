@@ -26,7 +26,7 @@ flutter test
 ## Convenciones
 
 - **Sin red ni plugins reales.** Se usan *fakes* escritos a mano (no hay librería de mocks):
-  - `FakeAuthRepository`, `FakeLegalRepository`, `FakeProfileRepository`, `FakeCoachGoalsRepository`, `FakeMealPhotoRepository`, `FakeMealsRepository`, `FakeClientsRepository` para ViewModels y widgets.
+  - `FakeAuthRepository`, `FakeLegalRepository`, `FakeProfileRepository`, `FakeGoalsRepository` (meta vigente, HU-26; `withoutGoal()` responde `404 PROFILE_NOT_FOUND`), `FakeCoachGoalsRepository`, `FakeMealPhotoRepository`, `FakeMealsRepository`, `FakeClientsRepository` para ViewModels y widgets.
   - Fotos (HU-06): `testPhoto` (PNG real de 1×1, se puede dibujar), `jpegBytes(n)` (firma JPEG de `n` bytes) y `testUploadedPhoto`.
   - Estimación (HU-07): `testPhotoUpload` (foto + id), `testEstimate` (un alimento con porción y otro sin ella) y
     `FakeMealsRepository` (`estimateError`, `estimateGate` para ver la carga, registra `estimates`).

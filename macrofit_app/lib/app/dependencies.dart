@@ -15,6 +15,7 @@ import '../features/clients/domain/repositories/clients_repository.dart';
 import '../features/goals/data/datasources/goals_remote_datasource.dart';
 import '../features/goals/data/repositories/goals_repository_impl.dart';
 import '../features/goals/domain/repositories/coach_goals_repository.dart';
+import '../features/goals/domain/repositories/goals_repository.dart';
 import '../features/invite_code/data/datasources/invite_code_remote_data_source.dart';
 import '../features/invite_code/data/repositories/invite_code_repository_impl.dart';
 import '../features/invite_code/domain/repositories/invite_code_repository.dart';
@@ -40,6 +41,7 @@ class AppDependencies {
     required this.authRepository,
     required this.legalRepository,
     required this.profileRepository,
+    required this.goalsRepository,
     required this.coachGoalsRepository,
     required this.mealPhotoRepository,
     required this.mealsRepository,
@@ -62,6 +64,7 @@ class AppDependencies {
       retryClient: publicDio,
     );
     sessionDio.interceptors.add(interceptor);
+    final goalsRemote = GoalsRemoteDataSource(sessionDio);
 
     final authRepository = AuthRepositoryImpl(
       authRemote: authRemote,
@@ -76,9 +79,8 @@ class AppDependencies {
       profileRepository: ProfileRepositoryImpl(
         ProfileRemoteDataSource(sessionDio),
       ),
-      coachGoalsRepository: CoachGoalsRepositoryImpl(
-        GoalsRemoteDataSource(sessionDio),
-      ),
+      goalsRepository: GoalsRepositoryImpl(goalsRemote),
+      coachGoalsRepository: CoachGoalsRepositoryImpl(goalsRemote),
       mealPhotoRepository: MealPhotoRepositoryImpl(
         picker: PhotoPickerDataSource(),
         remote: MealPhotosRemoteDataSource(sessionDio),
@@ -97,6 +99,7 @@ class AppDependencies {
   final AuthRepository authRepository;
   final LegalRepository legalRepository;
   final ProfileRepository profileRepository;
+  final GoalsRepository goalsRepository;
   final CoachGoalsRepository coachGoalsRepository;
   final MealPhotoRepository mealPhotoRepository;
   final MealsRepository mealsRepository;
