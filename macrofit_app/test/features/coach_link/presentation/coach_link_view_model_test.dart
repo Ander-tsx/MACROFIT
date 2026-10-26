@@ -71,25 +71,28 @@ void main() {
       expect(vm.errorMessage, 'El código de invitación es obligatorio.');
     });
 
-    test('vinculación exitosa normaliza a mayúsculas y asigna coach_name', () async {
-      final repo = FakeCoachLinkRepository(
-        linkResult: const CoachLinkModel(
-          id: '1',
-          coachId: 'c1',
-          coachName: 'Laura',
-          coachEmail: 'laura@test.com',
-          status: 'active',
-        ),
-      );
-      final vm = CoachLinkViewModel(repository: repo);
+    test(
+      'vinculación exitosa normaliza a mayúsculas y asigna coach_name',
+      () async {
+        final repo = FakeCoachLinkRepository(
+          linkResult: const CoachLinkModel(
+            id: '1',
+            coachId: 'c1',
+            coachName: 'Laura',
+            coachEmail: 'laura@test.com',
+            status: 'active',
+          ),
+        );
+        final vm = CoachLinkViewModel(repository: repo);
 
-      vm.updateInviteCode('  k7p2qx ');
-      final success = await vm.linkCoach();
+        vm.updateInviteCode('  k7p2qx ');
+        final success = await vm.linkCoach();
 
-      expect(success, true);
-      expect(vm.linkedCoach?.coachName, 'Laura');
-      expect(vm.errorMessage, null);
-    });
+        expect(success, true);
+        expect(vm.linkedCoach?.coachName, 'Laura');
+        expect(vm.errorMessage, null);
+      },
+    );
 
     test('maneja INVITE_CODE_NOT_FOUND (Código inválido)', () async {
       final repo = FakeCoachLinkRepository(

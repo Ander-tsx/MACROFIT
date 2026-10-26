@@ -630,4 +630,3 @@ class FakeCoachLinkRepository implements CoachLinkRepository {
     if (error != null) throw error!;
   }
 }
-

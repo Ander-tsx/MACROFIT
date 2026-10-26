@@ -12,15 +12,15 @@ class CoachLinkRemoteDataSource {
 
   /// `POST /users/me/coach-link`.
   Future<CoachLinkModel> linkCoach(String inviteCode) => guardApiCall(() async {
-        final response = await _dio.post<Map<String, dynamic>>(
-          '/users/me/coach-link',
-          data: {'invite_code': inviteCode},
-        );
-        return CoachLinkModel.fromJson(response.data!);
-      });
+    final response = await _dio.post<Map<String, dynamic>>(
+      '/users/me/coach-link',
+      data: {'invite_code': inviteCode},
+    );
+    return CoachLinkModel.fromJson(response.data!);
+  });
 
   /// `DELETE /users/me/coach-link`.
   Future<void> unlinkCoach() => guardApiCall(() async {
-        await _dio.delete<void>('/users/me/coach-link');
-      });
+    await _dio.delete<void>('/users/me/coach-link');
+  });
 }
