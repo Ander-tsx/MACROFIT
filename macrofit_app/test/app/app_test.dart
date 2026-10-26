@@ -14,6 +14,7 @@ import 'package:macrofit_app/features/clients/domain/entities/client_summary.dar
 import 'package:macrofit_app/features/clients/presentation/client_detail/client_detail_view.dart';
 import 'package:macrofit_app/features/clients/presentation/client_meals/client_meals_view.dart';
 import 'package:macrofit_app/features/clients/presentation/clients_list/clients_list_view.dart';
+import 'package:macrofit_app/features/goals/domain/entities/nutritional_goal.dart';
 import 'package:macrofit_app/features/goals/presentation/coach_goal_form/coach_goal_form_view.dart';
 import 'package:macrofit_app/features/home/presentation/coach_home_view.dart';
 import 'package:macrofit_app/features/home/presentation/user_home_view.dart';
@@ -35,6 +36,7 @@ void main() {
   late FakeAuthRepository auth;
   late FakeLegalRepository legal;
   late FakeProfileRepository profiles;
+  late FakeGoalsRepository goals;
   late FakeCoachGoalsRepository coachGoals;
   late FakeMealPhotoRepository mealPhotos;
   late FakeMealsRepository meals;
@@ -48,6 +50,7 @@ void main() {
     bool settle = true,
     Profile? storedProfile,
     PickedPhoto? recoveredPhoto,
+    FakeGoalsRepository? goalsRepository,
     List<ClientSummary>? clientList,
     ApiException? clientsError,
     Map<DateTime, List<ClientMeal>>? clientMeals,
@@ -57,6 +60,7 @@ void main() {
     auth = FakeAuthRepository(initialState: state);
     legal = FakeLegalRepository();
     profiles = FakeProfileRepository(stored: storedProfile);
+    goals = goalsRepository ?? FakeGoalsRepository();
     coachGoals = FakeCoachGoalsRepository();
     mealPhotos = FakeMealPhotoRepository(recovered: recoveredPhoto);
     meals = FakeMealsRepository();
@@ -71,6 +75,7 @@ void main() {
           authRepository: auth,
           legalRepository: legal,
           profileRepository: profiles,
+          goalsRepository: goals,
           coachGoalsRepository: coachGoals,
           mealPhotoRepository: mealPhotos,
           mealsRepository: meals,
@@ -1022,6 +1027,96 @@ void main() {
       await tester.tap(find.byKey(const Key('invite_code_retry')));
       await tester.pumpAndSettle();
       expect(find.text(testInviteCode), findsOneWidget);
+    });
+  });
+
+  group('meta vigente en la pantalla principal (HU-26)', () {
+    testWidgets('muestra la meta calculada con su origen', (tester) async {
+      await pumpApp(
+        tester,
+        state: const Authenticated(testUser),
+        goalsRepository: FakeGoalsRepository(
+          current: testGoal(
+            calories: 1900,
+            proteinG: 130,
+            fatG: 60,
+            source: GoalSource.system,
+          ),
+        ),
+      );
+
+      expect(find.byType(UserHomeView), findsOneWidget);
+      expect(find.text('1900 kcal'), findsOneWidget);
+      expect(find.text('130 g'), findsOneWidget);
+      expect(find.text('60 g'), findsOneWidget);
+      expect(find.text('Calculada'), findsOneWidget);
+      expect(goals.currentCalls, 1);
+    });
+
+    testWidgets('indica cuando la meta la definió el coach', (tester) async {
+      await pumpApp(
+        tester,
+        state: const Authenticated(testUser),
+        goalsRepository: FakeGoalsRepository(
+          current: testGoal(source: GoalSource.coach),
+        ),
+      );
+
+      expect(find.text('2200 kcal'), findsOneWidget);
+      expect(find.text('Definida por tu coach'), findsOneWidget);
+    });
+
+    testWidgets('sin meta muestra un mensaje y no un error', (tester) async {
+      await pumpApp(
+        tester,
+        state: const Authenticated(testUser),
+        goalsRepository: FakeGoalsRepository.withoutGoal(),
+      );
+
+      expect(find.byKey(const Key('home_goal_empty')), findsOneWidget);
+      expect(find.byKey(const Key('home_goal_retry')), findsNothing);
+    });
+
+    testWidgets('sin conexión muestra el error y reintenta', (tester) async {
+      await pumpApp(
+        tester,
+        state: const Authenticated(testUser),
+        goalsRepository: FakeGoalsRepository()..error = networkError,
+      );
+
+      expect(find.text(networkError.message), findsOneWidget);
+      goals.error = null;
+      await tester.tap(find.byKey(const Key('home_goal_retry')));
+      await tester.pumpAndSettle();
+
+      expect(find.text(networkError.message), findsNothing);
+      expect(find.text('2200 kcal'), findsOneWidget);
+      expect(goals.currentCalls, 2);
+    });
+
+    testWidgets('al regresar de Mi perfil se vuelve a consultar la meta', (
+      tester,
+    ) async {
+      await pumpApp(
+        tester,
+        state: const Authenticated(testUser),
+        storedProfile: testProfile,
+      );
+      expect(find.text('2200 kcal'), findsOneWidget);
+
+      await tester.tap(find.byKey(const Key('profile_button')));
+      await tester.pumpAndSettle();
+      // El backend recalcula la meta al cambiar el peso (HU-04).
+      goals.current = testGoal(calories: 2050, source: GoalSource.system);
+      await tester.enterText(find.byKey(const Key('profile_weight')), '70');
+      await tester.ensureVisible(find.byKey(const Key('profile_submit')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('profile_submit')));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(UserHomeView), findsOneWidget);
+      expect(find.text('2050 kcal'), findsOneWidget);
+      expect(goals.currentCalls, 2);
     });
   });
 }

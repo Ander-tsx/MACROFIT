@@ -34,6 +34,6 @@
 
 - Nombres de campos del formulario = nombres de la API (`calories`, `protein_g`, `fat_g`, `effective_from`).
 - HU-24 reemplazó la lista mínima de clientes de HU-05 (`coach_clients/` y `getClients`) por la feature `clients`.
-- `TODO(HU-26)`: las pantallas del usuario (meta vigente e historial) usarán `GoalsRepository`, que todavía no se registra
-  en `dependencies.dart`.
+- HU-26: `GoalsRepository` se registra en `dependencies.dart`; la meta vigente se muestra en la pantalla principal
+  (feature `home`).
 - `carbsG` no existe en la API (siempre llega como 0); queda pendiente decidir en HU-10 si se calcula o se elimina.
