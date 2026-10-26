@@ -12,6 +12,9 @@ import 'package:macrofit_app/features/auth/domain/entities/registration.dart';
 import 'package:macrofit_app/features/auth/domain/entities/role.dart';
 import 'package:macrofit_app/features/auth/domain/entities/user.dart';
 import 'package:macrofit_app/features/auth/domain/repositories/auth_repository.dart';
+import 'package:macrofit_app/features/clients/domain/entities/client_meal.dart';
+import 'package:macrofit_app/features/clients/domain/entities/client_summary.dart';
+import 'package:macrofit_app/features/clients/domain/repositories/clients_repository.dart';
 import 'package:macrofit_app/features/goals/domain/entities/coach_client.dart';
 import 'package:macrofit_app/features/goals/domain/entities/nutritional_goal.dart';
 import 'package:macrofit_app/features/goals/domain/repositories/coach_goals_repository.dart';
@@ -226,22 +229,16 @@ NutritionalGoal testGoal({
 
 /// Repositorio de metas del coach en memoria (simula al backend de HU-05).
 class FakeCoachGoalsRepository implements CoachGoalsRepository {
-  FakeCoachGoalsRepository({
-    this.clients = const [testClient],
-    List<NutritionalGoal> history = const [],
-  }) : history = [...history];
-
-  List<CoachClient> clients;
+  FakeCoachGoalsRepository({List<NutritionalGoal> history = const []})
+    : history = [...history];
 
   /// Historial del cliente, de la más reciente a la más antigua.
   final List<NutritionalGoal> history;
 
   /// Si se asigna, la siguiente llamada del tipo correspondiente lanza este error.
-  ApiException? clientsError;
   ApiException? historyError;
   ApiException? setError;
 
-  int clientsCalls = 0;
   final saved =
       <
         ({
@@ -252,13 +249,6 @@ class FakeCoachGoalsRepository implements CoachGoalsRepository {
           DateTime effectiveFrom,
         })
       >[];
-
-  @override
-  Future<List<CoachClient>> getClients() async {
-    clientsCalls++;
-    if (clientsError case final error?) throw error;
-    return clients;
-  }
 
   @override
   Future<List<NutritionalGoal>> getClientGoals(String clientId) async {
@@ -352,6 +342,102 @@ class FakeMealPhotoRepository implements MealPhotoRepository {
     uploads.add(photo);
     if (uploadError case final error?) throw error;
     return testUploadedPhoto;
+  }
+}
+
+/// Cliente con meta del coach y un registro de comida (HU-24). Mismo id que [testClient].
+final testClientSummary = ClientSummary(
+  id: testClient.id,
+  name: 'Ana',
+  email: 'ana@macrofit.test',
+  goal: const ClientGoalSummary(
+    calories: 2200,
+    proteinG: 160,
+    fatG: 70,
+    source: GoalSource.coach,
+  ),
+  lastMealAt: DateTime.utc(2026, 10, 17, 1, 30),
+);
+
+/// Cliente sin metas ni registros (`goal` y `last_meal_at` nulos, HU-24).
+const testClientWithoutData = ClientSummary(
+  id: '6ac67c747314ad6c7164900f',
+  name: 'José Pérez',
+  email: 'jose@macrofit.test',
+);
+
+/// PNG de 1×1 píxeles para simular la foto de un registro (HU-25).
+final testPhotoBytes = base64Decode(
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==',
+);
+
+/// Registro con foto del cliente (HU-25).
+ClientMeal testMealWithPhoto({DateTime? eatenAt}) => ClientMeal(
+  id: '6ad0a1b2c3d4e5f6a7b8c9d0',
+  photoUrl: '/api/v1/meals/photos/6acd4140ac968514f27322cd',
+  eatenAt: eatenAt ?? DateTime(2026, 10, 16, 14, 5),
+  caloriesKcal: 413,
+  proteinG: 42.2,
+  fatG: 4.9,
+);
+
+/// Captura manual (sin foto) del cliente (HU-25).
+ClientMeal testManualMeal({DateTime? eatenAt}) => ClientMeal(
+  id: '6ad0a1b2c3d4e5f6a7b8c9d1',
+  eatenAt: eatenAt ?? DateTime(2026, 10, 16, 19, 30),
+  caloriesKcal: 380,
+  proteinG: 40,
+  fatG: 6.5,
+);
+
+/// Día (sin hora) de una fecha.
+DateTime dayOf(DateTime date) => DateTime(date.year, date.month, date.day);
+
+/// Repositorio de clientes del coach en memoria (simula `GET /coach/clients`, HU-24,
+/// y las comidas de un cliente con sus fotos, HU-25).
+class FakeClientsRepository implements ClientsRepository {
+  FakeClientsRepository({
+    List<ClientSummary>? clients,
+    Map<DateTime, List<ClientMeal>>? meals,
+  }) : clients = clients ?? [testClientSummary, testClientWithoutData],
+       meals = meals ?? {};
+
+  List<ClientSummary> clients;
+
+  /// Registros por día (clave sin hora); un día que no está no tiene registros.
+  Map<DateTime, List<ClientMeal>> meals;
+
+  /// Si se asigna, la siguiente llamada del tipo correspondiente lanza este error.
+  ApiException? error;
+  ApiException? mealsError;
+  ApiException? photoError;
+
+  int calls = 0;
+  final mealRequests = <({String clientId, DateTime date})>[];
+  final photoRequests = <String>[];
+
+  @override
+  Future<List<ClientSummary>> getClients() async {
+    calls++;
+    if (error case final error?) throw error;
+    return [...clients];
+  }
+
+  @override
+  Future<List<ClientMeal>> getClientMeals(
+    String clientId,
+    DateTime date,
+  ) async {
+    mealRequests.add((clientId: clientId, date: date));
+    if (mealsError case final error?) throw error;
+    return [...?meals[dayOf(date)]];
+  }
+
+  @override
+  Future<Uint8List> getMealPhoto(String photoUrl) async {
+    photoRequests.add(photoUrl);
+    if (photoError case final error?) throw error;
+    return testPhotoBytes;
   }
 }
 

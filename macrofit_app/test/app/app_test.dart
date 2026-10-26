@@ -6,7 +6,12 @@ import 'package:macrofit_app/features/auth/domain/entities/auth_state.dart';
 import 'package:macrofit_app/features/auth/presentation/login/login_view.dart';
 import 'package:macrofit_app/features/auth/presentation/register/register_view.dart';
 import 'package:macrofit_app/features/auth/presentation/splash/splash_view.dart';
-import 'package:macrofit_app/features/goals/presentation/coach_clients/coach_clients_view.dart';
+import 'package:macrofit_app/core/errors/api_exception.dart';
+import 'package:macrofit_app/features/clients/domain/entities/client_meal.dart';
+import 'package:macrofit_app/features/clients/domain/entities/client_summary.dart';
+import 'package:macrofit_app/features/clients/presentation/client_detail/client_detail_view.dart';
+import 'package:macrofit_app/features/clients/presentation/client_meals/client_meals_view.dart';
+import 'package:macrofit_app/features/clients/presentation/clients_list/clients_list_view.dart';
 import 'package:macrofit_app/features/goals/presentation/coach_goal_form/coach_goal_form_view.dart';
 import 'package:macrofit_app/features/home/presentation/coach_home_view.dart';
 import 'package:macrofit_app/features/home/presentation/user_home_view.dart';
@@ -26,6 +31,7 @@ void main() {
   late FakeProfileRepository profiles;
   late FakeCoachGoalsRepository coachGoals;
   late FakeMealPhotoRepository mealPhotos;
+  late FakeClientsRepository clients;
 
   Future<void> pumpApp(
     WidgetTester tester, {
@@ -33,12 +39,19 @@ void main() {
     bool settle = true,
     Profile? storedProfile,
     PickedPhoto? recoveredPhoto,
+    List<ClientSummary>? clientList,
+    ApiException? clientsError,
+    Map<DateTime, List<ClientMeal>>? clientMeals,
+    ApiException? mealsError,
   }) async {
     auth = FakeAuthRepository(initialState: state);
     legal = FakeLegalRepository();
     profiles = FakeProfileRepository(stored: storedProfile);
     coachGoals = FakeCoachGoalsRepository();
     mealPhotos = FakeMealPhotoRepository(recovered: recoveredPhoto);
+    clients = FakeClientsRepository(clients: clientList, meals: clientMeals)
+      ..error = clientsError
+      ..mealsError = mealsError;
     await tester.pumpWidget(
       MacroFitApp(
         dependencies: AppDependencies(
@@ -47,6 +60,7 @@ void main() {
           profileRepository: profiles,
           coachGoalsRepository: coachGoals,
           mealPhotoRepository: mealPhotos,
+          clientsRepository: clients,
         ),
       ),
     );
@@ -278,19 +292,25 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(find.byKey(Key('client_${testClient.id}')));
       await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('client_detail_goals')));
+      await tester.pumpAndSettle();
     }
 
-    testWidgets('el coach llega al formulario de un cliente en dos pantallas', (
+    testWidgets('el coach llega al formulario de un cliente desde su detalle', (
       tester,
     ) async {
       await pumpApp(tester, state: const Authenticated(testCoach));
 
       await tester.tap(find.byKey(const Key('clients_button')));
       await tester.pumpAndSettle();
-      expect(find.byType(CoachClientsView), findsOneWidget);
+      expect(find.byType(ClientsListView), findsOneWidget);
       expect(find.text(testClient.name), findsOneWidget);
 
       await tester.tap(find.byKey(Key('client_${testClient.id}')));
+      await tester.pumpAndSettle();
+      expect(find.byType(ClientDetailView), findsOneWidget);
+
+      await tester.tap(find.byKey(const Key('client_detail_goals')));
       await tester.pumpAndSettle();
       expect(find.byType(CoachGoalFormView), findsOneWidget);
     });
@@ -404,6 +424,225 @@ void main() {
     testWidgets('un coach no ve el acceso a registrar comida', (tester) async {
       await pumpApp(tester, state: const Authenticated(testCoach));
       expect(find.byKey(const Key('register_meal_button')), findsNothing);
+    });
+  });
+
+  group('lista de clientes (HU-24)', () {
+    Future<void> openClients(
+      WidgetTester tester, {
+      List<ClientSummary>? clientList,
+      ApiException? clientsError,
+    }) async {
+      await pumpApp(
+        tester,
+        state: const Authenticated(testCoach),
+        clientList: clientList,
+        clientsError: clientsError,
+      );
+      await tester.tap(find.byKey(const Key('clients_button')));
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('muestra nombre, meta y último registro de cada cliente', (
+      tester,
+    ) async {
+      await openClients(tester);
+
+      expect(find.byType(ClientsListView), findsOneWidget);
+      expect(find.text('Ana'), findsOneWidget);
+      expect(find.text('2200 kcal · P 160 g · G 70 g'), findsOneWidget);
+      expect(find.textContaining('Meta del coach'), findsOneWidget);
+      expect(find.textContaining('Último registro:'), findsOneWidget);
+      expect(find.text('José Pérez'), findsOneWidget);
+      expect(find.text('Sin meta'), findsOneWidget);
+      expect(find.textContaining('Sin registros'), findsOneWidget);
+    });
+
+    testWidgets('la búsqueda filtra por nombre sin otra petición', (
+      tester,
+    ) async {
+      await openClients(tester);
+
+      await tester.enterText(find.byKey(const Key('clients_search')), 'JOSE');
+      await tester.pumpAndSettle();
+      expect(find.text('José Pérez'), findsOneWidget);
+      expect(find.text('Ana'), findsNothing);
+
+      await tester.enterText(find.byKey(const Key('clients_search')), 'zzz');
+      await tester.pumpAndSettle();
+      expect(
+        find.text('Ningún cliente coincide con la búsqueda.'),
+        findsOneWidget,
+      );
+      expect(clients.calls, 1);
+    });
+
+    testWidgets('sin clientes invita a compartir el código de invitación', (
+      tester,
+    ) async {
+      await openClients(tester, clientList: []);
+
+      expect(find.textContaining('código de invitación'), findsOneWidget);
+      expect(find.byKey(const Key('clients_search')), findsNothing);
+    });
+
+    testWidgets('un error al cargar permite reintentar', (tester) async {
+      await openClients(tester, clientsError: networkError);
+      expect(find.text(networkError.message), findsOneWidget);
+
+      clients.error = null;
+      await tester.tap(find.byKey(const Key('clients_retry')));
+      await tester.pumpAndSettle();
+      expect(find.text('Ana'), findsOneWidget);
+    });
+
+    testWidgets('el detalle da acceso a las metas y a las comidas', (
+      tester,
+    ) async {
+      await openClients(tester);
+
+      await tester.tap(find.byKey(Key('client_${testClientSummary.id}')));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(ClientDetailView), findsOneWidget);
+      expect(find.text('ana@macrofit.test'), findsOneWidget);
+      expect(find.text('2200 kcal · P 160 g · G 70 g'), findsOneWidget);
+      expect(find.byKey(const Key('client_detail_goals')), findsOneWidget);
+      final meals = tester.widget<ListTile>(
+        find.byKey(const Key('client_detail_meals')),
+      );
+      expect(meals.enabled, isTrue);
+    });
+  });
+
+  group('comidas de un cliente (HU-25)', () {
+    final today = dayOf(DateTime.now());
+    final photoMeal = testMealWithPhoto(
+      eatenAt: today.add(const Duration(hours: 14, minutes: 5)),
+    );
+    final manualMeal = testManualMeal(
+      eatenAt: today.add(const Duration(hours: 19, minutes: 30)),
+    );
+
+    Future<void> openMeals(
+      WidgetTester tester, {
+      Map<DateTime, List<ClientMeal>>? clientMeals,
+      ApiException? mealsError,
+    }) async {
+      await pumpApp(
+        tester,
+        state: const Authenticated(testCoach),
+        clientMeals: clientMeals,
+        mealsError: mealsError,
+      );
+      await tester.tap(find.byKey(const Key('clients_button')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(Key('client_${testClientSummary.id}')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('client_detail_meals')));
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets(
+      'desde el detalle se abren las comidas del día con hora, foto y valores',
+      (tester) async {
+        await openMeals(
+          tester,
+          clientMeals: {
+            today: [photoMeal, manualMeal],
+          },
+        );
+
+        expect(find.byType(ClientMealsView), findsOneWidget);
+        expect(find.text('Hoy'), findsOneWidget);
+        expect(find.text('14:05'), findsOneWidget);
+        expect(find.text('19:30'), findsOneWidget);
+        expect(find.text('413 kcal · P 42.2 g · G 4.9 g'), findsOneWidget);
+        expect(find.text('380 kcal · P 40 g · G 6.5 g'), findsOneWidget);
+        expect(
+          find.text('Total del día: 793 kcal · P 82.2 g · G 11.4 g'),
+          findsOneWidget,
+        );
+        expect(find.byKey(Key('meal_${photoMeal.id}_photo')), findsOneWidget);
+        expect(find.byKey(Key('meal_${manualMeal.id}_manual')), findsOneWidget);
+        expect(clients.photoRequests, [photoMeal.photoUrl]);
+      },
+    );
+
+    testWidgets('es de solo lectura', (tester) async {
+      await openMeals(
+        tester,
+        clientMeals: {
+          today: [photoMeal, manualMeal],
+        },
+      );
+
+      expect(find.byType(FloatingActionButton), findsNothing);
+      expect(find.byIcon(Icons.add), findsNothing);
+      expect(find.byIcon(Icons.edit), findsNothing);
+      expect(find.byIcon(Icons.edit_outlined), findsNothing);
+      expect(find.byIcon(Icons.delete), findsNothing);
+      expect(find.byIcon(Icons.delete_outline), findsNothing);
+    });
+
+    testWidgets('un día sin registros lo indica y permite elegir otra fecha', (
+      tester,
+    ) async {
+      await openMeals(tester);
+
+      expect(find.text('No hay registros este día.'), findsOneWidget);
+      await tester.tap(find.byKey(const Key('client_meals_pick_date')));
+      await tester.pumpAndSettle();
+      expect(find.byType(DatePickerDialog), findsOneWidget);
+    });
+
+    testWidgets('el coach cambia al día anterior', (tester) async {
+      await openMeals(tester);
+
+      await tester.tap(find.byKey(const Key('client_meals_prev')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Ayer'), findsOneWidget);
+      expect(
+        clients.mealRequests.last.date,
+        DateTime(today.year, today.month, today.day - 1),
+      );
+    });
+
+    testWidgets('un cliente desvinculado lo indica y regresa a la lista', (
+      tester,
+    ) async {
+      await openMeals(
+        tester,
+        mealsError: apiError(ApiErrorCode.clientNotLinked, status: 403),
+      );
+
+      expect(
+        find.text('Este cliente ya no está vinculado contigo.'),
+        findsOneWidget,
+      );
+      await tester.tap(find.byKey(const Key('client_meals_back')));
+      await tester.pumpAndSettle();
+      expect(find.byType(ClientsListView), findsOneWidget);
+      expect(find.byType(ClientDetailView), findsNothing);
+    });
+
+    testWidgets('sin conexión muestra el error y permite reintentar', (
+      tester,
+    ) async {
+      await openMeals(
+        tester,
+        clientMeals: {
+          today: [manualMeal],
+        },
+        mealsError: networkError,
+      );
+      expect(find.text(networkError.message), findsOneWidget);
+
+      clients.mealsError = null;
+      await tester.tap(find.byKey(const Key('client_meals_retry')));
+      await tester.pumpAndSettle();
+      expect(find.text('19:30'), findsOneWidget);
     });
   });
 }

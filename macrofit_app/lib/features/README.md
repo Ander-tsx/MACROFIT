@@ -10,6 +10,7 @@ feature; si necesitan algo de otra, usan su **dominio** (p. ej. `home` usa `auth
 | `profile/` | HU-03 perfil inicial (alta obligatoria) y edición | [profile/README.md](profile/README.md) |
 | `goals/` | HU-04 dominio de la meta, HU-05 metas de los clientes de un coach | [goals/README.md](goals/README.md) |
 | `meals/` | HU-06 tomar o elegir la foto de la comida y subirla | [meals/README.md](meals/README.md) |
+| `clients/` | HU-24 lista de clientes del coach con búsqueda y detalle, HU-25 registro diario de comidas del cliente | [clients/README.md](clients/README.md) |
 | `home/` | Pantallas principales de usuario y coach | [home/README.md](home/README.md) |
 
 ## Plantilla

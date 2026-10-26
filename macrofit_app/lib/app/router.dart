@@ -9,10 +9,16 @@ import '../features/auth/presentation/login/login_view_model.dart';
 import '../features/auth/presentation/register/register_view.dart';
 import '../features/auth/presentation/register/register_view_model.dart';
 import '../features/auth/presentation/splash/splash_view.dart';
+import '../features/clients/domain/entities/client_summary.dart';
+import '../features/clients/domain/repositories/clients_repository.dart';
+import '../features/clients/presentation/client_detail/client_detail_view.dart';
+import '../features/clients/presentation/client_detail/client_detail_view_model.dart';
+import '../features/clients/presentation/client_meals/client_meals_view.dart';
+import '../features/clients/presentation/client_meals/client_meals_view_model.dart';
+import '../features/clients/presentation/clients_list/clients_list_view.dart';
+import '../features/clients/presentation/clients_list/clients_list_view_model.dart';
 import '../features/goals/domain/entities/coach_client.dart';
 import '../features/goals/domain/repositories/coach_goals_repository.dart';
-import '../features/goals/presentation/coach_clients/coach_clients_view.dart';
-import '../features/goals/presentation/coach_clients/coach_clients_view_model.dart';
 import '../features/goals/presentation/coach_goal_form/coach_goal_form_view.dart';
 import '../features/goals/presentation/coach_goal_form/coach_goal_form_view_model.dart';
 import '../features/home/presentation/coach_home_view.dart';
@@ -124,9 +130,8 @@ GoRouter createRouter(
         path: AppRoutes.coachClients,
         builder: (context, _) => ChangeNotifierProvider(
           create: (context) =>
-              CoachClientsViewModel(context.read<CoachGoalsRepository>())
-                ..load(),
-          child: const CoachClientsView(),
+              ClientsListViewModel(context.read<ClientsRepository>())..load(),
+          child: const ClientsListView(),
         ),
       ),
       GoRoute(
@@ -140,6 +145,32 @@ GoRouter createRouter(
             client: state.extra! as CoachClient,
           )..load(),
           child: const CoachGoalFormView(),
+        ),
+      ),
+      GoRoute(
+        path: AppRoutes.coachClientMealsPattern,
+        // Sin el cliente (p. ej. al restaurar la ruta) se vuelve a la lista.
+        redirect: (_, state) =>
+            state.extra is CoachClient ? null : AppRoutes.coachClients,
+        builder: (context, state) => ChangeNotifierProvider(
+          create: (context) => ClientMealsViewModel(
+            repository: context.read<ClientsRepository>(),
+            client: state.extra! as CoachClient,
+          )..load(),
+          child: const ClientMealsView(),
+        ),
+      ),
+      GoRoute(
+        path: AppRoutes.coachClientDetailPattern,
+        // Sin el cliente (p. ej. al restaurar la ruta) se vuelve a la lista.
+        redirect: (_, state) =>
+            state.extra is ClientSummary ? null : AppRoutes.coachClients,
+        builder: (context, state) => ChangeNotifierProvider(
+          create: (context) => ClientDetailViewModel(
+            repository: context.read<ClientsRepository>(),
+            client: state.extra! as ClientSummary,
+          ),
+          child: const ClientDetailView(),
         ),
       ),
     ],

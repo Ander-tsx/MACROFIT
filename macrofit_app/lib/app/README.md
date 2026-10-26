@@ -16,7 +16,8 @@ publicDio ── AuthRemoteDataSource (register, login, refresh)
 sessionDio + AuthInterceptor ── SessionRemoteDataSource (me, logout)
                              ├─ ProfileRemoteDataSource (perfil, HU-03)
                              ├─ GoalsRemoteDataSource (metas, HU-05)
-                             └─ MealPhotosRemoteDataSource (foto de comida, HU-06)
+                             ├─ MealPhotosRemoteDataSource (foto de comida, HU-06)
+                             └─ ClientsRemoteDataSource (lista de clientes HU-24, comidas y fotos HU-25)
 SessionLocalDataSource (flutter_secure_storage)
 PhotoPickerDataSource (image_picker: cámara y galería, HU-06)
         ↓
@@ -25,6 +26,7 @@ LegalRepositoryImpl
 ProfileRepositoryImpl
 CoachGoalsRepositoryImpl
 MealPhotoRepositoryImpl
+ClientsRepositoryImpl
 ```
 
 - Hay **dos clientes Dio**: uno público y otro con `AuthInterceptor`. Las rutas públicas y la renovación de tokens van

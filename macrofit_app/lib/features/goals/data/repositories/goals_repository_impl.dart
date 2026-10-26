@@ -1,4 +1,3 @@
-import '../../domain/entities/coach_client.dart';
 import '../../domain/entities/nutritional_goal.dart';
 import '../../domain/repositories/coach_goals_repository.dart';
 import '../../domain/repositories/goals_repository.dart';
@@ -20,9 +19,6 @@ class CoachGoalsRepositoryImpl implements CoachGoalsRepository {
   const CoachGoalsRepositoryImpl(this._remote);
 
   final GoalsRemoteDataSource _remote;
-
-  @override
-  Future<List<CoachClient>> getClients() => _remote.getClients();
 
   @override
   Future<List<NutritionalGoal>> getClientGoals(String clientId) =>

@@ -7,9 +7,11 @@ test/
 ├── helpers/fakes.dart        # Fakes compartidos (repositorios, almacenamiento, adaptador HTTP)
 ├── app/
 │   ├── router_test.dart      # resolveRedirect: guard de sesión y redirección por rol
-│   └── app_test.dart         # Flujos de widgets: carga inicial, login por rol, registro, aviso, logout + atrás, perfil (HU-03), metas por coach (HU-05), foto de la comida (HU-06)
+│   └── app_test.dart         # Flujos de widgets: carga inicial, login por rol, registro, aviso, logout + atrás, perfil (HU-03), metas por coach (HU-05), foto de la comida (HU-06), lista de clientes (HU-24), comidas de un cliente (HU-25)
 ├── features/meals/           # MealPhotoValidator, MealPhotoRepositoryImpl (Dio e image_picker simulados) y MealPhotoViewModel
 ├── features/profile/         # Validadores, ProfileRepositoryImpl (Dio simulado) y ProfileFormViewModel
+├── features/goals/           # Cálculo de la meta, validadores, CoachGoalsRepositoryImpl y CoachGoalFormViewModel
+├── features/clients/         # Búsqueda por nombre, ClientsRepositoryImpl (JSON con nulos), textos del resumen y ViewModels de lista y detalle (HU-24); comidas y fotos con Dio simulado, textos y ViewModel de comidas (HU-25)
 └── features/auth/
     ├── domain/               # Validadores
     ├── data/                 # AuthRepositoryImpl (restaurar, login, logout) y AuthInterceptor (renovación)
@@ -23,9 +25,14 @@ flutter test
 ## Convenciones
 
 - **Sin red ni plugins reales.** Se usan *fakes* escritos a mano (no hay librería de mocks):
-  - `FakeAuthRepository`, `FakeLegalRepository`, `FakeProfileRepository`, `FakeCoachGoalsRepository`, `FakeMealPhotoRepository` para ViewModels y widgets.
-  - Fotos: `testPhoto` (PNG real de 1×1, se puede dibujar), `jpegBytes(n)` (firma JPEG de `n` bytes) y `testUploadedPhoto`.
+  - `FakeAuthRepository`, `FakeLegalRepository`, `FakeProfileRepository`, `FakeCoachGoalsRepository`, `FakeMealPhotoRepository`, `FakeClientsRepository` para ViewModels y widgets.
+  - Fotos (HU-06): `testPhoto` (PNG real de 1×1, se puede dibujar), `jpegBytes(n)` (firma JPEG de `n` bytes) y `testUploadedPhoto`.
   - Cuentas: `testUser` (con perfil), `testNewUser` (sin perfil, va al formulario de HU-03) y `testCoach`.
+  - Clientes del coach (HU-24): `testClientSummary` (meta del coach y un registro, mismo id que `testClient`) y
+    `testClientWithoutData` (`goal` y `last_meal_at` nulos).
+  - Comidas de un cliente (HU-25): `testMealWithPhoto()` y `testManualMeal()` (con `eatenAt` opcional), `testPhotoBytes`
+    (PNG de 1×1) y `dayOf(fecha)`. `FakeClientsRepository(meals: {día: [...]})` responde por día y registra
+    `mealRequests` y `photoRequests`.
   - `FakeSessionLocalDataSource` en lugar de `flutter_secure_storage`.
   - `FakeHttpAdapter` + `jsonResponse` / `errorResponse` para simular el backend en Dio.
 - Nombres de pruebas en español que describan el comportamiento (`'sin red conserva la sesión guardada'`).

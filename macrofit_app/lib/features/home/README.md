@@ -5,7 +5,7 @@ Pantallas a las que el router lleva tras iniciar sesión (HU-02). Hoy son provis
 | Archivo | Contenido |
 |---|---|
 | `presentation/user_home_view.dart` | `/user` — rol `user`. Botón **Mi perfil** (`/user/profile`, HU-03) y botón flotante **Registrar comida** (`/user/meals/photo`, HU-06). Se llenará con HU-10 (resumen diario), etc. |
-| `presentation/coach_home_view.dart` | `/coach` — rol `coach`. Botón **Mis clientes** (`/coach/clients`, HU-05). Se llenará con HU-12 (código de invitación), HU-24 (clientes), etc. |
+| `presentation/coach_home_view.dart` | `/coach` — rol `coach`. Botón **Mis clientes** (`/coach/clients`, lista de HU-24). Se llenará con HU-12 (código de invitación), etc. |
 | `presentation/home_view_model.dart` | Usuario actual y `logout()` (usa el `AuthRepository` del dominio de `auth`) |
 | `presentation/widgets/home_scaffold.dart` | Barra con el botón **Cerrar sesión** (con confirmación) común a ambas |
 | `presentation/widgets/welcome_message.dart` | Contenido provisional |

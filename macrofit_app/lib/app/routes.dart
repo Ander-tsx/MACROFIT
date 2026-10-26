@@ -23,8 +23,18 @@ abstract final class AppRoutes {
   /// Pantalla principal del rol `coach`.
   static const coachHome = '/coach';
 
-  /// HU-05: clientes vinculados del coach.
+  /// HU-24: clientes vinculados del coach con búsqueda.
   static const coachClients = '/coach/clients';
+
+  /// HU-24: detalle de un cliente (acceso a sus metas y comidas).
+  static const coachClientDetailPattern = '/coach/clients/:clientId';
+  static String coachClientDetail(String clientId) =>
+      '/coach/clients/$clientId';
+
+  /// HU-25: registro diario de comidas de un cliente (solo lectura).
+  static const coachClientMealsPattern = '/coach/clients/:clientId/meals';
+  static String coachClientMeals(String clientId) =>
+      '/coach/clients/$clientId/meals';
 
   /// HU-05: meta e historial de un cliente.
   static const coachClientGoalsPattern = '/coach/clients/:clientId/goals';

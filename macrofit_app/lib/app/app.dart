@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import '../features/auth/domain/repositories/auth_repository.dart';
+import '../features/clients/domain/repositories/clients_repository.dart';
 import '../features/goals/domain/repositories/coach_goals_repository.dart';
 import '../features/legal/domain/repositories/legal_repository.dart';
 import '../features/meals/domain/repositories/meal_photo_repository.dart';
@@ -51,6 +52,9 @@ class _MacroFitAppState extends State<MacroFitApp> {
         ),
         Provider<MealPhotoRepository>.value(
           value: dependencies.mealPhotoRepository,
+        ),
+        Provider<ClientsRepository>.value(
+          value: dependencies.clientsRepository,
         ),
       ],
       child: MaterialApp.router(
