@@ -43,6 +43,7 @@ abstract final class AppRoutes {
       '/coach/clients/$clientId/goals';
 
   /// HU-06: registro de comida (foto).
+  static const mealPhotoChild = 'meals/photo';
   static const mealPhoto = '/user/meals/photo';
 
   /// Pantallas del rol `coach`: su principal y las que cuelgan de ella.
