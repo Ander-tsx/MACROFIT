@@ -28,6 +28,9 @@ import '../features/meals/domain/repositories/meal_photo_repository.dart';
 import '../features/profile/data/datasources/profile_remote_data_source.dart';
 import '../features/profile/data/repositories/profile_repository_impl.dart';
 import '../features/profile/domain/repositories/profile_repository.dart';
+import '../features/coach_link/data/datasources/coach_link_remote_data_source.dart';
+import '../features/coach_link/data/repositories/coach_link_repository_impl.dart';
+import '../features/coach_link/domain/repositories/coach_link_repository.dart';
 
 /// Raíz de composición: el único lugar donde se crean las implementaciones
 /// concretas (capa de datos) y se conectan entre sí. El resto de la app solo
@@ -41,6 +44,7 @@ class AppDependencies {
     required this.mealPhotoRepository,
     required this.clientsRepository,
     required this.inviteCodeRepository,
+    required this.coachLinkRepository,
     required this.shareService,
   });
 
@@ -85,6 +89,9 @@ class AppDependencies {
       inviteCodeRepository: InviteCodeRepositoryImpl(
         InviteCodeRemoteDataSource(sessionDio),
       ),
+      coachLinkRepository: CoachLinkRepositoryImpl(
+        CoachLinkRemoteDataSource(sessionDio),
+      ),
       shareService: const SystemShareService(),
     );
   }
@@ -96,6 +103,7 @@ class AppDependencies {
   final MealPhotoRepository mealPhotoRepository;
   final ClientsRepository clientsRepository;
   final InviteCodeRepository inviteCodeRepository;
+  final CoachLinkRepository coachLinkRepository;
 
   /// Portapapeles y hoja de compartir del sistema (HU-12).
   final ShareService shareService;

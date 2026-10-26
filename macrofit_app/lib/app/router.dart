@@ -10,6 +10,9 @@ import '../features/auth/presentation/login/login_view_model.dart';
 import '../features/auth/presentation/register/register_view.dart';
 import '../features/auth/presentation/register/register_view_model.dart';
 import '../features/auth/presentation/splash/splash_view.dart';
+import '../features/coach_link/domain/repositories/coach_link_repository.dart';
+import '../features/coach_link/presentation/coach_link/coach_link_view.dart';
+import '../features/coach_link/presentation/coach_link/coach_link_view_model.dart';
 import '../features/clients/domain/entities/client_summary.dart';
 import '../features/clients/domain/repositories/clients_repository.dart';
 import '../features/clients/presentation/client_detail/client_detail_view.dart';
@@ -138,6 +141,15 @@ GoRouter createRouter(
             shareService: context.read<ShareService>(),
           )..load(),
           child: const InviteCodeView(),
+        ),
+      ),
+      GoRoute(
+        path: AppRoutes.coachLink,
+        builder: (context, _) => ChangeNotifierProvider(
+          create: (context) => CoachLinkViewModel(
+            repository: context.read<CoachLinkRepository>(),
+          ),
+          child: const CoachLinkView(),
         ),
       ),
       GoRoute(

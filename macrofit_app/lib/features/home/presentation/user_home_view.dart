@@ -32,11 +32,23 @@ class UserHomeView extends StatelessWidget {
         icon: const Icon(Icons.add_a_photo),
         label: const Text('Registrar comida'),
       ),
-      body: WelcomeMessage(
-        name: user?.name ?? '',
-        roleLabel: 'Usuario',
-        icon: Icons.person,
-        description: 'Aquí verás tu progreso, tus comidas y tus rutinas.',
+      body: ListView(
+        padding: const EdgeInsets.all(24),
+        children: [
+          WelcomeMessage(
+            name: user?.name ?? '',
+            roleLabel: 'Usuario',
+            icon: Icons.person,
+            description: 'Aquí verás tu progreso, tus comidas y tus rutinas.',
+          ),
+          const SizedBox(height: 24),
+          FilledButton.icon(
+            key: const Key('link_coach_nav_button'),
+            onPressed: () => context.push(AppRoutes.coachLink),
+            icon: const Icon(Icons.link),
+            label: const Text('Vincular con coach'),
+          ),
+        ],
       ),
     );
   }

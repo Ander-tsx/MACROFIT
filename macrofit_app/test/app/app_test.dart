@@ -34,6 +34,7 @@ void main() {
   late FakeMealPhotoRepository mealPhotos;
   late FakeClientsRepository clients;
   late FakeInviteCodeRepository inviteCodes;
+  late FakeCoachLinkRepository coachLinksRepo;
   late FakeShareService share;
 
   Future<void> pumpApp(
@@ -57,6 +58,7 @@ void main() {
       ..error = clientsError
       ..mealsError = mealsError;
     inviteCodes = FakeInviteCodeRepository()..error = inviteCodeError;
+    coachLinksRepo = FakeCoachLinkRepository();
     share = FakeShareService();
     await tester.pumpWidget(
       MacroFitApp(
@@ -68,6 +70,7 @@ void main() {
           mealPhotoRepository: mealPhotos,
           clientsRepository: clients,
           inviteCodeRepository: inviteCodes,
+          coachLinkRepository: coachLinksRepo,
           shareService: share,
         ),
       ),

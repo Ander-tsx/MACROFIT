@@ -15,10 +15,8 @@ abstract final class AppRoutes {
   /// HU-03: edición del perfil ("Mi perfil") del rol `user`.
   static const profileEdit = '/user/profile';
 
-  /// HU-06: tomar o elegir la foto de la comida y subirla ("Registrar comida").
-  /// Es subruta del inicio: al abrirla con `go` el inicio queda debajo.
-  static const mealPhotoChild = 'meals/photo';
-  static const mealPhoto = '$userHome/$mealPhotoChild';
+  /// HU-13: vinculación con el coach mediante código.
+  static const coachLink = '/user/coach-link';
 
   /// Pantalla principal del rol `coach`.
   static const coachHome = '/coach';
@@ -44,6 +42,9 @@ abstract final class AppRoutes {
   static String coachClientGoals(String clientId) =>
       '/coach/clients/$clientId/goals';
 
+  /// HU-06: registro de comida (foto).
+  static const mealPhoto = '/user/meals/photo';
+
   /// Pantallas del rol `coach`: su principal y las que cuelgan de ella.
   static bool isCoachRoute(String location) =>
       location == coachHome || location.startsWith('$coachHome/');
@@ -52,5 +53,5 @@ abstract final class AppRoutes {
   static const public = {login, register, privacyNotice};
 
   /// Rutas de un usuario con perfil completo (además del aviso de privacidad).
-  static const userRoutes = {userHome, profileEdit, mealPhoto};
+  static const userRoutes = {userHome, profileEdit, coachLink, mealPhoto};
 }

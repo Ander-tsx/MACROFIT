@@ -27,6 +27,8 @@ import 'package:macrofit_app/features/meals/domain/entities/meal_photo.dart';
 import 'package:macrofit_app/features/meals/domain/repositories/meal_photo_repository.dart';
 import 'package:macrofit_app/features/profile/domain/entities/profile.dart';
 import 'package:macrofit_app/features/profile/domain/repositories/profile_repository.dart';
+import 'package:macrofit_app/features/coach_link/data/models/coach_link_model.dart';
+import 'package:macrofit_app/features/coach_link/domain/repositories/coach_link_repository.dart';
 
 /// Usuario que ya capturó su perfil (HU-03): entra a la pantalla principal.
 const testUser = User(
@@ -601,3 +603,31 @@ Map<String, Object> sessionJson(
   'expires_in': 900,
   'user': userModelOf(user).toJson(),
 };
+
+class FakeCoachLinkRepository implements CoachLinkRepository {
+  FakeCoachLinkRepository({this.linkResult, this.linkException});
+
+  CoachLinkModel? linkResult;
+  Exception? linkException;
+  ApiException? error;
+
+  @override
+  Future<CoachLinkModel> linkCoach(String inviteCode) async {
+    if (error != null) throw error!;
+    if (linkException != null) throw linkException!;
+    return linkResult ??
+        const CoachLinkModel(
+          id: '1',
+          coachId: 'c1',
+          coachName: 'Laura',
+          coachEmail: 'laura@test.com',
+          status: 'active',
+        );
+  }
+
+  @override
+  Future<void> unlinkCoach() async {
+    if (error != null) throw error!;
+  }
+}
+
