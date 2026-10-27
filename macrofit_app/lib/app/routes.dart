@@ -54,6 +54,18 @@ abstract final class AppRoutes {
   static String coachClientGoals(String clientId) =>
       '/coach/clients/$clientId/goals';
 
+  /// HU-18: rutinas del coach (lista, crear y editar).
+  static const coachRoutines = '/coach/routines';
+  static const coachRoutineNew = '/coach/routines/new';
+
+  /// HU-18: selector de ejercicios del catálogo; regresa la selección con `pop`.
+  static const coachExercisePicker = '/coach/routines/exercises';
+
+  /// HU-18: editar una rutina. Recibe la `Routine` en `extra`; sin ella vuelve a la lista.
+  static const coachRoutineEditPattern = '/coach/routines/:routineId/edit';
+  static String coachRoutineEdit(String routineId) =>
+      '/coach/routines/$routineId/edit';
+
   /// Pantallas del rol `coach`: su principal y las que cuelgan de ella.
   static bool isCoachRoute(String location) =>
       location == coachHome || location.startsWith('$coachHome/');
