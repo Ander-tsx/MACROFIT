@@ -771,5 +771,20 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text(testInviteCode), findsOneWidget);
     });
+
+    testWidgets('abre la pantalla de vinculación con el coach desde el inicio', (
+      tester,
+    ) async {
+      await pumpApp(
+        tester,
+        state: const Authenticated(testUser),
+      );
+
+      expect(find.byKey(const Key('link_coach_nav_button')), findsOneWidget);
+      await tester.tap(find.byKey(const Key('link_coach_nav_button')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Vincular con coach'), findsWidgets);
+    });
   });
 }

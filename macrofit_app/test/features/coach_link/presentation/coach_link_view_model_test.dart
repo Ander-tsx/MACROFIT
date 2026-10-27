@@ -1,45 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:macrofit_app/core/errors/api_exception.dart';
-import 'package:macrofit_app/features/coach_link/data/models/coach_link_model.dart';
-import 'package:macrofit_app/features/coach_link/domain/repositories/coach_link_repository.dart';
+import 'package:macrofit_app/features/coach_link/domain/entities/coach_link.dart';
 import 'package:macrofit_app/features/coach_link/presentation/coach_link/coach_link_view_model.dart';
-
-class FakeCoachLinkRepository implements CoachLinkRepository {
-  FakeCoachLinkRepository({
-    this.linkResult,
-    this.linkException,
-    this.shouldThrowOnUnlink = false,
-  });
-
-  CoachLinkModel? linkResult;
-  Exception? linkException;
-  bool shouldThrowOnUnlink;
-  bool unlinkedCalled = false;
-
-  @override
-  Future<CoachLinkModel> linkCoach(String inviteCode) async {
-    if (linkException != null) throw linkException!;
-    return linkResult ??
-        const CoachLinkModel(
-          id: '1',
-          coachId: 'coach1',
-          coachName: 'Coach Test',
-          coachEmail: 'coach@test.com',
-          status: 'active',
-        );
-  }
-
-  @override
-  Future<void> unlinkCoach() async {
-    unlinkedCalled = true;
-    if (shouldThrowOnUnlink) {
-      throw const ApiException(
-        code: ApiErrorCode.unknown,
-        message: 'Error al desvincular',
-      );
-    }
-  }
-}
+import '../../../helpers/fakes.dart';
 
 void main() {
   group('CoachLinkViewModel', () {
@@ -71,28 +34,25 @@ void main() {
       expect(vm.errorMessage, 'El código de invitación es obligatorio.');
     });
 
-    test(
-      'vinculación exitosa normaliza a mayúsculas y asigna coach_name',
-      () async {
-        final repo = FakeCoachLinkRepository(
-          linkResult: const CoachLinkModel(
-            id: '1',
-            coachId: 'c1',
-            coachName: 'Laura',
-            coachEmail: 'laura@test.com',
-            status: 'active',
-          ),
-        );
-        final vm = CoachLinkViewModel(repository: repo);
+    test('vinculación exitosa normaliza a mayúsculas y asigna coach_name', () async {
+      final repo = FakeCoachLinkRepository(
+        linkResult: const CoachLink(
+          id: '1',
+          coachId: 'c1',
+          coachName: 'Laura',
+          coachEmail: 'laura@test.com',
+          status: 'active',
+        ),
+      );
+      final vm = CoachLinkViewModel(repository: repo);
 
-        vm.updateInviteCode('  k7p2qx ');
-        final success = await vm.linkCoach();
+      vm.updateInviteCode('  k7p2qx ');
+      final success = await vm.linkCoach();
 
-        expect(success, true);
-        expect(vm.linkedCoach?.coachName, 'Laura');
-        expect(vm.errorMessage, null);
-      },
-    );
+      expect(success, true);
+      expect(vm.linkedCoach?.coachName, 'Laura');
+      expect(vm.errorMessage, null);
+    });
 
     test('maneja INVITE_CODE_NOT_FOUND (Código inválido)', () async {
       final repo = FakeCoachLinkRepository(
@@ -144,7 +104,7 @@ void main() {
 
     test('desvinculación exitosa limpia linkedCoach', () async {
       final repo = FakeCoachLinkRepository(
-        linkResult: const CoachLinkModel(
+        linkResult: const CoachLink(
           id: '1',
           coachId: 'c1',
           coachName: 'Laura',
@@ -162,6 +122,31 @@ void main() {
       expect(success, true);
       expect(vm.linkedCoach, null);
       expect(repo.unlinkedCalled, true);
+    });
+
+    test('desvinculación con 404 USER_NOT_LINKED trata como éxito sin coach', () async {
+      final repo = FakeCoachLinkRepository(
+        linkedCoach: const CoachLink(
+          id: '1',
+          coachId: 'c1',
+          coachName: 'Laura',
+          coachEmail: 'laura@test.com',
+          status: 'active',
+        ),
+      );
+      repo.unlinkException = const ApiException(
+        code: ApiErrorCode.userNotLinked,
+        message: 'No vinculado',
+      );
+      final vm = CoachLinkViewModel(repository: repo);
+
+      await vm.load();
+      expect(vm.linkedCoach, isNotNull);
+
+      final success = await vm.unlinkCoach();
+      expect(success, true);
+      expect(vm.linkedCoach, null);
+      expect(vm.errorMessage, null);
     });
   });
 }

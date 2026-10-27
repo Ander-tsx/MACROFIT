@@ -1,9 +1,9 @@
 import '../../../../core/errors/api_exception.dart';
 import '../../../../core/presentation/view_model.dart';
-import '../../data/models/coach_link_model.dart';
+import '../../domain/entities/coach_link.dart';
 import '../../domain/repositories/coach_link_repository.dart';
 
-/// HU-13 — vinculación con el coach mediante código de invitación.
+/// HU-13 / HU-14 — vinculación y desvinculación con el coach mediante código.
 class CoachLinkViewModel extends ViewModel {
   CoachLinkViewModel({required this._repository});
 
@@ -12,12 +12,12 @@ class CoachLinkViewModel extends ViewModel {
   String _inviteCode = '';
   bool _isLoading = false;
   String? _errorMessage;
-  CoachLinkModel? _linkedCoach;
+  CoachLink? _linkedCoach;
 
   String get inviteCode => _inviteCode;
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
-  CoachLinkModel? get linkedCoach => _linkedCoach;
+  CoachLink? get linkedCoach => _linkedCoach;
 
   void updateInviteCode(String value) {
     _inviteCode = value;
@@ -25,8 +25,22 @@ class CoachLinkViewModel extends ViewModel {
     notifyListeners();
   }
 
+  /// Carga el estado de vinculación guardado en el dispositivo.
+  Future<void> load() async {
+    _isLoading = true;
+    notifyListeners();
+    try {
+      _linkedCoach = await _repository.getLinkedCoach();
+    } on Object {
+      _linkedCoach = null;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
   /// Vincula al usuario con el coach usando el código ingresado.
-  /// Se normaliza sin espacios y en mayúsculas (RF-12).
+  /// Se normaliza (trim y mayúsculas) según RF-12.
   Future<bool> linkCoach() async {
     final trimmed = _inviteCode.trim();
     if (trimmed.isEmpty) {
@@ -43,21 +57,21 @@ class CoachLinkViewModel extends ViewModel {
 
     try {
       _linkedCoach = await _repository.linkCoach(normalizedCode);
+      _isLoading = false;
       notifyListeners();
       return true;
     } on ApiException catch (error) {
       if (error.code == ApiErrorCode.inviteCodeNotFound) {
         _errorMessage = 'Código inválido';
       } else if (error.code == ApiErrorCode.userAlreadyLinked) {
-        _errorMessage = 'Ya tienes una vinculación activa con un coach. Primero debes desvincularte.';
+        _errorMessage =
+            'Ya tienes una vinculación activa con un coach. Primero debes desvincularte.';
       } else {
         _errorMessage = error.message;
       }
-      notifyListeners();
-      return false;
-    } finally {
       _isLoading = false;
       notifyListeners();
+      return false;
     }
   }
 
@@ -70,15 +84,20 @@ class CoachLinkViewModel extends ViewModel {
     try {
       await _repository.unlinkCoach();
       _linkedCoach = null;
+      _isLoading = false;
       notifyListeners();
       return true;
     } on ApiException catch (error) {
+      if (error.code == ApiErrorCode.userNotLinked) {
+        _linkedCoach = null;
+        _isLoading = false;
+        notifyListeners();
+        return true;
+      }
       _errorMessage = error.message;
-      notifyListeners();
-      return false;
-    } finally {
       _isLoading = false;
       notifyListeners();
+      return false;
     }
   }
 }

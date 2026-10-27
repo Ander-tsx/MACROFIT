@@ -27,7 +27,7 @@ import 'package:macrofit_app/features/meals/domain/entities/meal_photo.dart';
 import 'package:macrofit_app/features/meals/domain/repositories/meal_photo_repository.dart';
 import 'package:macrofit_app/features/profile/domain/entities/profile.dart';
 import 'package:macrofit_app/features/profile/domain/repositories/profile_repository.dart';
-import 'package:macrofit_app/features/coach_link/data/models/coach_link_model.dart';
+import 'package:macrofit_app/features/coach_link/domain/entities/coach_link.dart';
 import 'package:macrofit_app/features/coach_link/domain/repositories/coach_link_repository.dart';
 
 /// Usuario que ya capturó su perfil (HU-03): entra a la pantalla principal.
@@ -605,28 +605,47 @@ Map<String, Object> sessionJson(
 };
 
 class FakeCoachLinkRepository implements CoachLinkRepository {
-  FakeCoachLinkRepository({this.linkResult, this.linkException});
+  FakeCoachLinkRepository({
+    this.linkedCoach,
+    this.linkResult,
+    this.linkException,
+    this.unlinkException,
+    this.error,
+  });
 
-  CoachLinkModel? linkResult;
+  CoachLink? linkedCoach;
+  CoachLink? linkResult;
   Exception? linkException;
+  Exception? unlinkException;
   ApiException? error;
+  bool unlinkedCalled = false;
 
   @override
-  Future<CoachLinkModel> linkCoach(String inviteCode) async {
+  Future<CoachLink?> getLinkedCoach() async {
+    if (error != null) throw error!;
+    return linkedCoach;
+  }
+
+  @override
+  Future<CoachLink> linkCoach(String inviteCode) async {
     if (error != null) throw error!;
     if (linkException != null) throw linkException!;
-    return linkResult ??
-        const CoachLinkModel(
+    linkedCoach = linkResult ??
+        const CoachLink(
           id: '1',
           coachId: 'c1',
           coachName: 'Laura',
           coachEmail: 'laura@test.com',
           status: 'active',
         );
+    return linkedCoach!;
   }
 
   @override
   Future<void> unlinkCoach() async {
+    unlinkedCalled = true;
     if (error != null) throw error!;
+    if (unlinkException != null) throw unlinkException!;
+    linkedCoach = null;
   }
 }

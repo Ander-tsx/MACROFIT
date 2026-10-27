@@ -91,6 +91,7 @@ class AppDependencies {
       ),
       coachLinkRepository: CoachLinkRepositoryImpl(
         CoachLinkRemoteDataSource(sessionDio),
+        const FlutterSecureStorage(),
       ),
       shareService: const SystemShareService(),
     );

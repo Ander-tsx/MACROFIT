@@ -148,7 +148,7 @@ GoRouter createRouter(
         builder: (context, _) => ChangeNotifierProvider(
           create: (context) => CoachLinkViewModel(
             repository: context.read<CoachLinkRepository>(),
-          ),
+          )..load(),
           child: const CoachLinkView(),
         ),
       ),

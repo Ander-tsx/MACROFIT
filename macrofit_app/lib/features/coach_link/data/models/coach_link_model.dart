@@ -1,3 +1,5 @@
+import '../../domain/entities/coach_link.dart';
+
 /// Modelo de la vinculación con el coach (HU-13, HU-14).
 class CoachLinkModel {
   const CoachLinkModel({
@@ -23,4 +25,20 @@ class CoachLinkModel {
   final String coachName;
   final String coachEmail;
   final String status;
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'coach_id': coachId,
+        'coach_name': coachName,
+        'coach_email': coachEmail,
+        'status': status,
+      };
+
+  CoachLink toEntity() => CoachLink(
+        id: id,
+        coachId: coachId,
+        coachName: coachName,
+        coachEmail: coachEmail,
+        status: status,
+      );
 }

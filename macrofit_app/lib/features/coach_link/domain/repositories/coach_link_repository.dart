@@ -1,6 +1,7 @@
-import '../../data/models/coach_link_model.dart';
+import '../entities/coach_link.dart';
 
 abstract class CoachLinkRepository {
-  Future<CoachLinkModel> linkCoach(String inviteCode);
+  Future<CoachLink?> getLinkedCoach();
+  Future<CoachLink> linkCoach(String inviteCode);
   Future<void> unlinkCoach();
 }
