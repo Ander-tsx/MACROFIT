@@ -33,7 +33,9 @@ class WeightsView extends StatelessWidget {
                 border: const OutlineInputBorder(),
                 errorText: viewModel.fieldError('weight_kg'),
               ),
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
               onChanged: viewModel.setWeightInput,
               enabled: !viewModel.isSubmitting,
             ),

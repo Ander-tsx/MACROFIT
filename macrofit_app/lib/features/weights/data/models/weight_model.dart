@@ -20,9 +20,6 @@ class WeightModel {
   final double weightKg;
   final DateTime recordedAt;
 
-  WeightEntry toEntity() => WeightEntry(
-        id: id,
-        weightKg: weightKg,
-        recordedAt: recordedAt,
-      );
+  WeightEntry toEntity() =>
+      WeightEntry(id: id, weightKg: weightKg, recordedAt: recordedAt);
 }

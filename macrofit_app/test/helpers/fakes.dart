@@ -949,7 +949,8 @@ class FakeCoachLinkRepository implements CoachLinkRepository {
   Future<CoachLink> linkCoach(String inviteCode) async {
     if (error != null) throw error!;
     if (linkException != null) throw linkException!;
-    linkedCoach = linkResult ??
+    linkedCoach =
+        linkResult ??
         const CoachLink(
           id: '1',
           coachId: 'c1',

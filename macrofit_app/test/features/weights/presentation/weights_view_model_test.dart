@@ -28,9 +28,7 @@ void main() {
     test('carga el historial de peso exitosamente', () async {
       final now = DateTime.now();
       final repo = FakeWeightsRepository(
-        weights: [
-          WeightEntry(id: '1', weightKg: 78.5, recordedAt: now),
-        ],
+        weights: [WeightEntry(id: '1', weightKg: 78.5, recordedAt: now)],
       );
       final vm = WeightsViewModel(repository: repo);
 
@@ -60,19 +58,22 @@ void main() {
       expect(vm.weights.length, 1);
     });
 
-    test('registra un peso válido y lo añade al inicio del historial', () async {
-      final repo = FakeWeightsRepository();
-      final vm = WeightsViewModel(repository: repo);
+    test(
+      'registra un peso válido y lo añade al inicio del historial',
+      () async {
+        final repo = FakeWeightsRepository();
+        final vm = WeightsViewModel(repository: repo);
 
-      vm.setWeightInput('80.0');
-      final success = await vm.registerWeight();
+        vm.setWeightInput('80.0');
+        final success = await vm.registerWeight();
 
-      expect(success, true);
-      expect(vm.weights.length, 1);
-      expect(vm.weights.first.weightKg, 80.0);
-      expect(vm.weightInput, '');
-      expect(vm.fieldErrors, isEmpty);
-    });
+        expect(success, true);
+        expect(vm.weights.length, 1);
+        expect(vm.weights.first.weightKg, 80.0);
+        expect(vm.weightInput, '');
+        expect(vm.fieldErrors, isEmpty);
+      },
+    );
 
     test('maneja error de red (sin conexión) al registrar', () async {
       final repo = FakeWeightsRepository()
