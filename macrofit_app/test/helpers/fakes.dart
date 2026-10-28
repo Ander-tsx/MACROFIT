@@ -20,15 +20,22 @@ import 'package:macrofit_app/features/clients/domain/repositories/clients_reposi
 import 'package:macrofit_app/features/goals/domain/entities/coach_client.dart';
 import 'package:macrofit_app/features/goals/domain/entities/nutritional_goal.dart';
 import 'package:macrofit_app/features/goals/domain/repositories/coach_goals_repository.dart';
+import 'package:macrofit_app/features/goals/domain/repositories/goals_repository.dart';
 import 'package:macrofit_app/features/invite_code/domain/repositories/invite_code_repository.dart';
 import 'package:macrofit_app/features/legal/domain/entities/privacy_notice.dart';
 import 'package:macrofit_app/features/legal/domain/repositories/legal_repository.dart';
+import 'package:macrofit_app/features/meals/domain/entities/meal.dart';
+import 'package:macrofit_app/features/meals/domain/entities/meal_estimate.dart';
 import 'package:macrofit_app/features/meals/domain/entities/meal_photo.dart';
 import 'package:macrofit_app/features/meals/domain/repositories/meal_photo_repository.dart';
+import 'package:macrofit_app/features/meals/domain/repositories/meals_repository.dart';
 import 'package:macrofit_app/features/profile/domain/entities/profile.dart';
 import 'package:macrofit_app/features/profile/domain/repositories/profile_repository.dart';
 import 'package:macrofit_app/features/coach_link/domain/entities/coach_link.dart';
 import 'package:macrofit_app/features/coach_link/domain/repositories/coach_link_repository.dart';
+import 'package:macrofit_app/features/routines/domain/entities/exercise.dart';
+import 'package:macrofit_app/features/routines/domain/entities/routine.dart';
+import 'package:macrofit_app/features/routines/domain/repositories/routines_repository.dart';
 
 /// Usuario que ya capturó su perfil (HU-03): entra a la pantalla principal.
 const testUser = User(
@@ -350,6 +357,101 @@ class FakeMealPhotoRepository implements MealPhotoRepository {
   }
 }
 
+/// Foto subida con sus bytes, lista para la estimación (HU-07).
+final testPhotoUpload = MealPhotoUpload(
+  photo: testPhoto,
+  uploaded: testUploadedPhoto,
+);
+
+/// Estimación de `POST /meals/estimate` (HU-07): un alimento con porción y otro sin ella.
+final testEstimate = MealEstimate(
+  photoId: testUploadedPhoto.id,
+  foods: const [
+    EstimatedFood(
+      name: 'Arroz blanco cocido',
+      grams: 150,
+      values: NutritionValues(caloriesKcal: 195, proteinG: 4, fatG: 0.4),
+    ),
+    EstimatedFood(
+      name: 'Pechuga de pollo a la plancha',
+      values: NutritionValues(caloriesKcal: 218, proteinG: 38.2, fatG: 4.5),
+    ),
+  ],
+  totals: const NutritionValues(caloriesKcal: 413, proteinG: 42.2, fatG: 4.9),
+);
+
+/// Registros de comida en memoria (HU-07: estimación; HU-08: guardar).
+class FakeMealsRepository implements MealsRepository {
+  /// Si se asigna, la siguiente estimación lanza este error.
+  ApiException? estimateError;
+
+  /// Si se asigna, la estimación espera a que se complete (para ver la carga).
+  Completer<void>? estimateGate;
+
+  /// Si se asigna, el siguiente guardado lanza este error.
+  ApiException? createError;
+
+  final estimates = <String>[];
+
+  /// Registros enviados a `POST /meals`, en orden.
+  final created = <NewMeal>[];
+
+  @override
+  Future<MealEstimate> estimate(String photoId) async {
+    estimates.add(photoId);
+    await estimateGate?.future;
+    if (estimateError case final error?) throw error;
+    return testEstimate;
+  }
+
+  @override
+  Future<Meal> createMeal(NewMeal meal) async {
+    created.add(meal);
+    if (createError case final error?) throw error;
+    return Meal(
+      id: '6ad0a1b2c3d4e5f6a7b8c9d0',
+      photoId: meal.photoId,
+      eatenAt: DateTime.utc(2026, 10, 17, 1, 30),
+      date: DateTime(2026, 10, 16),
+      values: meal.values,
+      estimated: meal.estimated,
+    );
+  }
+}
+
+/// Metas del usuario en memoria (simula `GET /users/me/goals/current`, HU-26).
+/// Con [current] en `null` responde `404 PROFILE_NOT_FOUND`, como el backend.
+class FakeGoalsRepository implements GoalsRepository {
+  FakeGoalsRepository({NutritionalGoal? current, this.history = const []})
+    : current = current ?? testGoal(source: GoalSource.system);
+
+  /// Crea el repositorio de un usuario sin perfil ni meta del coach.
+  FakeGoalsRepository.withoutGoal() : history = const [];
+
+  NutritionalGoal? current;
+  final List<NutritionalGoal> history;
+
+  /// Si se asigna, la siguiente consulta lanza este error.
+  ApiException? error;
+
+  int currentCalls = 0;
+
+  /// Si se asigna, la consulta espera a que se complete (para ver el estado intermedio).
+  Completer<void>? gate;
+
+  @override
+  Future<NutritionalGoal> getCurrentGoal() async {
+    currentCalls++;
+    await gate?.future;
+    if (error case final error?) throw error;
+    return current ??
+        (throw apiError(ApiErrorCode.profileNotFound, status: 404));
+  }
+
+  @override
+  Future<List<NutritionalGoal>> getGoalsHistory() async => [...history];
+}
+
 /// Cliente con meta del coach y un registro de comida (HU-24). Mismo id que [testClient].
 final testClientSummary = ClientSummary(
   id: testClient.id,
@@ -605,41 +707,7 @@ Map<String, Object> sessionJson(
 };
 
 class FakeCoachLinkRepository implements CoachLinkRepository {
-  FakeCoachLinkRepository({
-    this.linkedCoach,
-    this.linkResult,
-    this.linkException,
-    this.unlinkException,
-    this.error,
-  });
-
-  CoachLink? linkedCoach;
-  CoachLink? linkResult;
-  Exception? linkException;
-  Exception? unlinkException;
-  ApiException? error;
-  bool unlinkedCalled = false;
-
-  @override
-  Future<CoachLink?> getLinkedCoach() async {
-    if (error != null) throw error!;
-    return linkedCoach;
-  }
-
-  @override
-  Future<CoachLink> linkCoach(String inviteCode) async {
-    if (error != null) throw error!;
-    if (linkException != null) throw linkException!;
-    linkedCoach = linkResult ??
-        const CoachLink(
-          id: '1',
-          coachId: 'c1',
-          coachName: 'Laura',
-          coachEmail: 'laura@test.com',
-          status: 'active',
-        );
-    return linkedCoach!;
-  }
+  // ... todo igual hasta unlinkCoach ...
 
   @override
   Future<void> unlinkCoach() async {
@@ -647,5 +715,20 @@ class FakeCoachLinkRepository implements CoachLinkRepository {
     if (error != null) throw error!;
     if (unlinkException != null) throw unlinkException!;
     linkedCoach = null;
+  }
+}
+
+// ───────────────────────── Rutinas del coach (HU-18) ─────────────────────────
+
+const testBenchPress = Exercise(
+  // ... todo el bloque de develop sin cambios ...
+
+  Routine _routineOf(String id, RoutineDraft draft) {
+    // ... sin cambios ...
+    return Routine(
+      // ...
+      createdAt: now,
+      updatedAt: now,
+    );
   }
 }

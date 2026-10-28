@@ -15,6 +15,7 @@ import '../features/clients/domain/repositories/clients_repository.dart';
 import '../features/goals/data/datasources/goals_remote_datasource.dart';
 import '../features/goals/data/repositories/goals_repository_impl.dart';
 import '../features/goals/domain/repositories/coach_goals_repository.dart';
+import '../features/goals/domain/repositories/goals_repository.dart';
 import '../features/invite_code/data/datasources/invite_code_remote_data_source.dart';
 import '../features/invite_code/data/repositories/invite_code_repository_impl.dart';
 import '../features/invite_code/domain/repositories/invite_code_repository.dart';
@@ -22,15 +23,21 @@ import '../features/legal/data/datasources/legal_remote_data_source.dart';
 import '../features/legal/data/repositories/legal_repository_impl.dart';
 import '../features/legal/domain/repositories/legal_repository.dart';
 import '../features/meals/data/datasources/meal_photos_remote_data_source.dart';
+import '../features/meals/data/datasources/meals_remote_data_source.dart';
 import '../features/meals/data/datasources/photo_picker_data_source.dart';
 import '../features/meals/data/repositories/meal_photo_repository_impl.dart';
+import '../features/meals/data/repositories/meals_repository_impl.dart';
 import '../features/meals/domain/repositories/meal_photo_repository.dart';
+import '../features/meals/domain/repositories/meals_repository.dart';
 import '../features/profile/data/datasources/profile_remote_data_source.dart';
 import '../features/profile/data/repositories/profile_repository_impl.dart';
 import '../features/profile/domain/repositories/profile_repository.dart';
 import '../features/coach_link/data/datasources/coach_link_remote_data_source.dart';
 import '../features/coach_link/data/repositories/coach_link_repository_impl.dart';
 import '../features/coach_link/domain/repositories/coach_link_repository.dart';
+import '../features/routines/data/datasources/routines_remote_data_source.dart';
+import '../features/routines/data/repositories/routines_repository_impl.dart';
+import '../features/routines/domain/repositories/routines_repository.dart';
 
 /// Raíz de composición: el único lugar donde se crean las implementaciones
 /// concretas (capa de datos) y se conectan entre sí. El resto de la app solo
@@ -40,11 +47,14 @@ class AppDependencies {
     required this.authRepository,
     required this.legalRepository,
     required this.profileRepository,
+    required this.goalsRepository,
     required this.coachGoalsRepository,
     required this.mealPhotoRepository,
+    required this.mealsRepository,
     required this.clientsRepository,
     required this.inviteCodeRepository,
     required this.coachLinkRepository,
+    required this.routinesRepository,
     required this.shareService,
   });
 
@@ -62,6 +72,7 @@ class AppDependencies {
       retryClient: publicDio,
     );
     sessionDio.interceptors.add(interceptor);
+    final goalsRemote = GoalsRemoteDataSource(sessionDio);
 
     final authRepository = AuthRepositoryImpl(
       authRemote: authRemote,
@@ -76,13 +87,13 @@ class AppDependencies {
       profileRepository: ProfileRepositoryImpl(
         ProfileRemoteDataSource(sessionDio),
       ),
-      coachGoalsRepository: CoachGoalsRepositoryImpl(
-        GoalsRemoteDataSource(sessionDio),
-      ),
+      goalsRepository: GoalsRepositoryImpl(goalsRemote),
+      coachGoalsRepository: CoachGoalsRepositoryImpl(goalsRemote),
       mealPhotoRepository: MealPhotoRepositoryImpl(
         picker: PhotoPickerDataSource(),
         remote: MealPhotosRemoteDataSource(sessionDio),
       ),
+      mealsRepository: MealsRepositoryImpl(MealsRemoteDataSource(sessionDio)),
       clientsRepository: ClientsRepositoryImpl(
         ClientsRemoteDataSource(sessionDio),
       ),
@@ -93,6 +104,9 @@ class AppDependencies {
         CoachLinkRemoteDataSource(sessionDio),
         const FlutterSecureStorage(),
       ),
+      routinesRepository: RoutinesRepositoryImpl(
+        RoutinesRemoteDataSource(sessionDio),
+      ),
       shareService: const SystemShareService(),
     );
   }
@@ -100,11 +114,16 @@ class AppDependencies {
   final AuthRepository authRepository;
   final LegalRepository legalRepository;
   final ProfileRepository profileRepository;
+  final GoalsRepository goalsRepository;
   final CoachGoalsRepository coachGoalsRepository;
   final MealPhotoRepository mealPhotoRepository;
+  final MealsRepository mealsRepository;
   final ClientsRepository clientsRepository;
   final InviteCodeRepository inviteCodeRepository;
   final CoachLinkRepository coachLinkRepository;
+
+  /// Rutinas del coach (HU-18) y catálogo de ejercicios (TEC-09).
+  final RoutinesRepository routinesRepository;
 
   /// Portapapeles y hoja de compartir del sistema (HU-12).
   final ShareService shareService;

@@ -23,23 +23,40 @@ import '../features/clients/presentation/clients_list/clients_list_view.dart';
 import '../features/clients/presentation/clients_list/clients_list_view_model.dart';
 import '../features/goals/domain/entities/coach_client.dart';
 import '../features/goals/domain/repositories/coach_goals_repository.dart';
+import '../features/goals/domain/repositories/goals_repository.dart';
 import '../features/goals/presentation/coach_goal_form/coach_goal_form_view.dart';
 import '../features/goals/presentation/coach_goal_form/coach_goal_form_view_model.dart';
 import '../features/home/presentation/coach_home_view.dart';
 import '../features/home/presentation/home_view_model.dart';
 import '../features/home/presentation/user_home_view.dart';
+import '../features/home/presentation/user_home_view_model.dart';
 import '../features/invite_code/domain/repositories/invite_code_repository.dart';
 import '../features/invite_code/presentation/invite_code/invite_code_view.dart';
 import '../features/invite_code/presentation/invite_code/invite_code_view_model.dart';
 import '../features/legal/domain/repositories/legal_repository.dart';
 import '../features/legal/presentation/privacy_notice/privacy_notice_view.dart';
 import '../features/legal/presentation/privacy_notice/privacy_notice_view_model.dart';
+import '../features/meals/domain/entities/meal.dart';
+import '../features/meals/domain/entities/meal_photo.dart';
 import '../features/meals/domain/repositories/meal_photo_repository.dart';
+import '../features/meals/domain/repositories/meals_repository.dart';
+import '../features/meals/presentation/meal_estimate/meal_estimate_view.dart';
+import '../features/meals/presentation/meal_estimate/meal_estimate_view_model.dart';
+import '../features/meals/presentation/meal_form/meal_form_view.dart';
+import '../features/meals/presentation/meal_form/meal_form_view_model.dart';
 import '../features/meals/presentation/meal_photo/meal_photo_view.dart';
 import '../features/meals/presentation/meal_photo/meal_photo_view_model.dart';
 import '../features/profile/domain/repositories/profile_repository.dart';
 import '../features/profile/presentation/profile_form/profile_form_view.dart';
 import '../features/profile/presentation/profile_form/profile_form_view_model.dart';
+import '../features/routines/domain/entities/routine.dart';
+import '../features/routines/domain/repositories/routines_repository.dart';
+import '../features/routines/presentation/exercise_picker/exercise_picker_view.dart';
+import '../features/routines/presentation/exercise_picker/exercise_picker_view_model.dart';
+import '../features/routines/presentation/routine_builder/routine_builder_view.dart';
+import '../features/routines/presentation/routine_builder/routine_builder_view_model.dart';
+import '../features/routines/presentation/routines_list/routines_list_view.dart';
+import '../features/routines/presentation/routines_list/routines_list_view_model.dart';
 import 'routes.dart';
 
 /// Crea el router. Escucha al [AuthRepository]: cada cambio de sesión vuelve a
@@ -89,7 +106,10 @@ GoRouter createRouter(
             ? AppRoutes.mealPhoto
             : null,
         builder: (context, _) => ChangeNotifierProvider(
-          create: (context) => HomeViewModel(context.read<AuthRepository>()),
+          create: (context) => UserHomeViewModel(
+            auth: context.read<AuthRepository>(),
+            goals: context.read<GoalsRepository>(),
+          )..loadGoal(),
           child: const UserHomeView(),
         ),
         routes: [
@@ -100,6 +120,32 @@ GoRouter createRouter(
                   MealPhotoViewModel(context.read<MealPhotoRepository>())
                     ..restoreRecoveredPhoto(),
               child: const MealPhotoView(),
+            ),
+          ),
+          GoRoute(
+            path: AppRoutes.mealEstimateChild,
+            // Sin la foto subida (p. ej. al restaurar la ruta) se vuelve al inicio.
+            redirect: (_, state) =>
+                state.extra is MealPhotoUpload ? null : AppRoutes.userHome,
+            builder: (context, state) => ChangeNotifierProvider(
+              create: (context) => MealEstimateViewModel(
+                repository: context.read<MealsRepository>(),
+                upload: state.extra! as MealPhotoUpload,
+              )..load(),
+              child: const MealEstimateView(),
+            ),
+          ),
+          GoRoute(
+            path: AppRoutes.mealFormChild,
+            // Sin el borrador (p. ej. al restaurar la ruta) se vuelve al inicio.
+            redirect: (_, state) =>
+                state.extra is MealDraft ? null : AppRoutes.userHome,
+            builder: (context, state) => ChangeNotifierProvider(
+              create: (context) => MealFormViewModel(
+                repository: context.read<MealsRepository>(),
+                draft: state.extra! as MealDraft,
+              ),
+              child: const MealFormView(),
             ),
           ),
         ],
@@ -161,6 +207,45 @@ GoRouter createRouter(
         ),
       ),
       GoRoute(
+        path: AppRoutes.coachRoutines,
+        builder: (context, _) => ChangeNotifierProvider(
+          create: (context) =>
+              RoutinesListViewModel(context.read<RoutinesRepository>())..load(),
+          child: const RoutinesListView(),
+        ),
+      ),
+      GoRoute(
+        path: AppRoutes.coachRoutineNew,
+        builder: (context, _) => ChangeNotifierProvider(
+          create: (context) => RoutineBuilderViewModel(
+            repository: context.read<RoutinesRepository>(),
+          ),
+          child: const RoutineBuilderView(),
+        ),
+      ),
+      GoRoute(
+        path: AppRoutes.coachExercisePicker,
+        builder: (context, _) => ChangeNotifierProvider(
+          create: (context) =>
+              ExercisePickerViewModel(context.read<RoutinesRepository>())
+                ..load(),
+          child: const ExercisePickerView(),
+        ),
+      ),
+      GoRoute(
+        path: AppRoutes.coachRoutineEditPattern,
+        // Sin la rutina (p. ej. al restaurar la ruta) se vuelve a la lista.
+        redirect: (_, state) =>
+            state.extra is Routine ? null : AppRoutes.coachRoutines,
+        builder: (context, state) => ChangeNotifierProvider(
+          create: (context) => RoutineBuilderViewModel(
+            repository: context.read<RoutinesRepository>(),
+            initial: state.extra! as Routine,
+          ),
+          child: const RoutineBuilderView(),
+        ),
+      ),
+      GoRoute(
         path: AppRoutes.coachClientGoalsPattern,
         // Sin el cliente (p. ej. al restaurar la ruta) se vuelve a la lista.
         redirect: (_, state) =>
@@ -217,8 +302,9 @@ String homeFor(Role role) => switch (role) {
 /// - Con sesión → la pantalla principal de su rol; nunca la del otro rol ni
 ///   login/registro. El aviso de privacidad sigue disponible.
 /// - Usuario sin perfil (HU-03) → solo el formulario de perfil inicial hasta
-///   completarlo. Con perfil: su pantalla principal, "Mi perfil" y
-///   "Registrar comida" (HU-06).
+///   completarlo. Con perfil: su pantalla principal, "Mi perfil",
+///   "Registrar comida" (HU-06), su estimación (HU-07) y el formulario de
+///   valores (HU-08).
 ///   Un coach nunca ve el formulario.
 String? resolveRedirect(AuthState state, String location) {
   switch (state) {

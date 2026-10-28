@@ -21,6 +21,10 @@ abstract final class ApiErrorCode {
   static const inviteCodeNotFound = 'INVITE_CODE_NOT_FOUND';
   static const userAlreadyLinked = 'USER_ALREADY_LINKED';
   static const userNotLinked = 'USER_NOT_LINKED';
+  static const foodNotRecognized = 'FOOD_NOT_RECOGNIZED';
+  static const foodProviderError = 'FOOD_PROVIDER_ERROR';
+  static const foodProviderTimeout = 'FOOD_PROVIDER_TIMEOUT';
+  static const routineNotFound = 'ROUTINE_NOT_FOUND';
 
   /// No se pudo contactar al servidor (sin red, servidor apagado, timeout).
   static const network = 'NETWORK_ERROR';

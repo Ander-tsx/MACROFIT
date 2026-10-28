@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:macrofit_app/app/app.dart';
@@ -12,6 +14,7 @@ import 'package:macrofit_app/features/clients/domain/entities/client_summary.dar
 import 'package:macrofit_app/features/clients/presentation/client_detail/client_detail_view.dart';
 import 'package:macrofit_app/features/clients/presentation/client_meals/client_meals_view.dart';
 import 'package:macrofit_app/features/clients/presentation/clients_list/clients_list_view.dart';
+import 'package:macrofit_app/features/goals/domain/entities/nutritional_goal.dart';
 import 'package:macrofit_app/features/goals/presentation/coach_goal_form/coach_goal_form_view.dart';
 import 'package:macrofit_app/features/home/presentation/coach_home_view.dart';
 import 'package:macrofit_app/features/home/presentation/user_home_view.dart';
@@ -19,10 +22,16 @@ import 'package:macrofit_app/features/invite_code/presentation/invite_code/invit
 import 'package:macrofit_app/features/legal/presentation/privacy_notice/privacy_notice_view.dart';
 import 'package:macrofit_app/features/meals/domain/entities/meal_photo.dart';
 import 'package:macrofit_app/features/meals/domain/entities/photo_pick_exception.dart';
+import 'package:macrofit_app/features/meals/presentation/meal_estimate/meal_estimate_view.dart';
+import 'package:macrofit_app/features/meals/presentation/meal_estimate/meal_estimate_view_model.dart';
+import 'package:macrofit_app/features/meals/presentation/meal_form/meal_form_view.dart';
 import 'package:macrofit_app/features/meals/presentation/meal_photo/meal_photo_view.dart';
 import 'package:macrofit_app/features/meals/presentation/meal_photo/meal_photo_view_model.dart';
 import 'package:macrofit_app/features/profile/domain/entities/profile.dart';
 import 'package:macrofit_app/features/profile/presentation/profile_form/profile_form_view.dart';
+import 'package:macrofit_app/features/routines/presentation/exercise_picker/exercise_picker_view.dart';
+import 'package:macrofit_app/features/routines/presentation/routine_builder/routine_builder_view.dart';
+import 'package:macrofit_app/features/routines/presentation/routines_list/routines_list_view.dart';
 
 import '../helpers/fakes.dart';
 
@@ -30,12 +39,15 @@ void main() {
   late FakeAuthRepository auth;
   late FakeLegalRepository legal;
   late FakeProfileRepository profiles;
+  late FakeGoalsRepository goals;
   late FakeCoachGoalsRepository coachGoals;
   late FakeMealPhotoRepository mealPhotos;
+  late FakeMealsRepository meals;
   late FakeClientsRepository clients;
   late FakeInviteCodeRepository inviteCodes;
   late FakeCoachLinkRepository coachLinksRepo;
   late FakeShareService share;
+  late FakeRoutinesRepository routines;
 
   Future<void> pumpApp(
     WidgetTester tester, {
@@ -43,34 +55,42 @@ void main() {
     bool settle = true,
     Profile? storedProfile,
     PickedPhoto? recoveredPhoto,
+    FakeGoalsRepository? goalsRepository,
     List<ClientSummary>? clientList,
     ApiException? clientsError,
     Map<DateTime, List<ClientMeal>>? clientMeals,
     ApiException? mealsError,
     ApiException? inviteCodeError,
+    ApiException? routinesError,
   }) async {
     auth = FakeAuthRepository(initialState: state);
     legal = FakeLegalRepository();
     profiles = FakeProfileRepository(stored: storedProfile);
+    goals = goalsRepository ?? FakeGoalsRepository();
     coachGoals = FakeCoachGoalsRepository();
     mealPhotos = FakeMealPhotoRepository(recovered: recoveredPhoto);
+    meals = FakeMealsRepository();
     clients = FakeClientsRepository(clients: clientList, meals: clientMeals)
       ..error = clientsError
       ..mealsError = mealsError;
     inviteCodes = FakeInviteCodeRepository()..error = inviteCodeError;
     coachLinksRepo = FakeCoachLinkRepository();
     share = FakeShareService();
+    routines = FakeRoutinesRepository()..listError = routinesError;
     await tester.pumpWidget(
       MacroFitApp(
         dependencies: AppDependencies(
           authRepository: auth,
           legalRepository: legal,
           profileRepository: profiles,
+          goalsRepository: goals,
           coachGoalsRepository: coachGoals,
           mealPhotoRepository: mealPhotos,
+          mealsRepository: meals,
           clientsRepository: clients,
           inviteCodeRepository: inviteCodes,
           coachLinkRepository: coachLinksRepo,
+          routinesRepository: routines,
           shareService: share,
         ),
       ),
@@ -392,8 +412,9 @@ void main() {
       await tester.tap(find.byKey(const Key('meal_photo_upload')));
       await tester.pumpAndSettle();
       expect(mealPhotos.uploads.single, testPhoto);
-      expect(find.byKey(const Key('meal_photo_uploaded')), findsOneWidget);
-      expect(find.byKey(const Key('meal_photo_camera')), findsNothing);
+      // HU-07: la foto subida pasa directo a la estimación.
+      expect(find.byType(MealPhotoView), findsNothing);
+      expect(find.byType(MealEstimateView), findsOneWidget);
     });
 
     testWidgets('con el permiso de cámara negado explica y ofrece la galería', (
@@ -435,6 +456,252 @@ void main() {
     testWidgets('un coach no ve el acceso a registrar comida', (tester) async {
       await pumpApp(tester, state: const Authenticated(testCoach));
       expect(find.byKey(const Key('register_meal_button')), findsNothing);
+    });
+  });
+
+  group('estimación nutricional (HU-07)', () {
+    /// Inicio → Registrar comida → galería → Usar esta foto.
+    Future<void> uploadPhoto(
+      WidgetTester tester, {
+      ApiException? estimateError,
+      Completer<void>? estimateGate,
+      bool settle = true,
+    }) async {
+      await pumpApp(tester, state: const Authenticated(testUser));
+      meals
+        ..estimateError = estimateError
+        ..estimateGate = estimateGate;
+      await tester.tap(find.byKey(const Key('register_meal_button')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('meal_photo_gallery')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('meal_photo_upload')));
+      settle ? await tester.pumpAndSettle() : await tester.pump();
+    }
+
+    testWidgets(
+      'al usar la foto estima con su id, muestra la carga y después el resultado',
+      (tester) async {
+        await uploadPhoto(
+          tester,
+          estimateGate: Completer<void>(),
+          settle: false,
+        );
+        await tester.pump();
+
+        expect(meals.estimates, [testUploadedPhoto.id]);
+        expect(find.byKey(const Key('meal_estimate_loading')), findsOneWidget);
+        expect(find.byKey(const Key('meal_estimate_photo')), findsOneWidget);
+
+        meals.estimateGate!.complete();
+        await tester.pumpAndSettle();
+
+        expect(find.byKey(const Key('meal_estimate_loading')), findsNothing);
+        expect(find.text('Arroz blanco cocido'), findsOneWidget);
+        expect(find.text('150 g'), findsOneWidget);
+        expect(find.text('Pechuga de pollo a la plancha'), findsOneWidget);
+        expect(
+          find.text('195\u00a0kcal · P\u00a04\u00a0g · G\u00a00.4\u00a0g'),
+          findsOneWidget,
+        );
+        expect(find.text('413 kcal'), findsOneWidget);
+        expect(find.text('42.2 g'), findsOneWidget);
+        expect(find.text('4.9 g'), findsOneWidget);
+        await tester.scrollUntilVisible(
+          find.byKey(const Key('meal_estimate_continue')),
+          200,
+        );
+        expect(find.byKey(const Key('meal_estimate_continue')), findsOneWidget);
+      },
+    );
+
+    testWidgets('el resultado muestra la leyenda de estimación (RNF-07)', (
+      tester,
+    ) async {
+      await uploadPhoto(tester);
+
+      expect(find.text(MealEstimateViewModel.disclaimer), findsOneWidget);
+    });
+
+    testWidgets('comida no reconocida ofrece solo capturar a mano', (
+      tester,
+    ) async {
+      await uploadPhoto(
+        tester,
+        estimateError: apiError(ApiErrorCode.foodNotRecognized, status: 422),
+      );
+
+      expect(
+        find.text(MealEstimateViewModel.notRecognizedMessage),
+        findsOneWidget,
+      );
+      expect(find.byKey(const Key('meal_estimate_manual')), findsOneWidget);
+      expect(find.byKey(const Key('meal_estimate_retry')), findsNothing);
+    });
+
+    testWidgets('sin conexión ofrece reintentar sin cerrar la pantalla', (
+      tester,
+    ) async {
+      await uploadPhoto(tester, estimateError: networkError);
+
+      expect(find.text(networkError.message), findsOneWidget);
+      expect(find.byKey(const Key('meal_estimate_manual')), findsOneWidget);
+
+      meals.estimateError = null;
+      await tester.tap(find.byKey(const Key('meal_estimate_retry')));
+      await tester.pumpAndSettle();
+
+      expect(meals.estimates, hasLength(2));
+      expect(find.byType(MealEstimateView), findsOneWidget);
+      expect(find.text('Arroz blanco cocido'), findsOneWidget);
+    });
+
+    testWidgets('atrás regresa al inicio, no a la foto ya subida', (
+      tester,
+    ) async {
+      await uploadPhoto(tester);
+
+      await tester.tap(find.byType(BackButton));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(UserHomeView), findsOneWidget);
+    });
+  });
+
+  group('formulario de valores (HU-08)', () {
+    /// Inicio → Registrar comida → galería → Usar esta foto → estimación.
+    Future<void> openEstimate(
+      WidgetTester tester, {
+      ApiException? estimateError,
+    }) async {
+      await pumpApp(tester, state: const Authenticated(testUser));
+      meals.estimateError = estimateError;
+      await tester.tap(find.byKey(const Key('register_meal_button')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('meal_photo_gallery')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('meal_photo_upload')));
+      await tester.pumpAndSettle();
+    }
+
+    Future<void> tapVisible(WidgetTester tester, Key key) async {
+      // Los campos de texto también tienen un Scrollable: se usa el de la lista.
+      await tester.scrollUntilVisible(
+        find.byKey(key),
+        200,
+        scrollable: find.byType(Scrollable).first,
+      );
+      await tester.tap(find.byKey(key));
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets(
+      'Continuar abre el formulario precargado y Guardar registra lo corregido',
+      (tester) async {
+        await openEstimate(tester);
+        await tapVisible(tester, const Key('meal_estimate_continue'));
+
+        expect(find.byType(MealFormView), findsOneWidget);
+        expect(find.text('Revisar valores'), findsOneWidget);
+        expect(find.text('413'), findsOneWidget);
+        expect(find.text('42.2'), findsOneWidget);
+        expect(find.text('4.9'), findsOneWidget);
+
+        await tester.enterText(
+          find.byKey(const Key('meal_form_calories_kcal')),
+          '380',
+        );
+        await tapVisible(tester, const Key('meal_form_submit'));
+
+        final meal = meals.created.single;
+        expect(meal.photoId, testUploadedPhoto.id);
+        expect(meal.values.caloriesKcal, 380);
+        expect(meal.values.proteinG, 42.2);
+        expect(meal.estimated, testEstimate.totals);
+        // TODO(HU-09-APP): el guardado irá al historial del día.
+        expect(find.byType(UserHomeView), findsOneWidget);
+        expect(find.text('Comida registrada'), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'comida no reconocida: Capturar a mano abre el formulario vacío y guarda sin estimated',
+      (tester) async {
+        await openEstimate(
+          tester,
+          estimateError: apiError(ApiErrorCode.foodNotRecognized, status: 422),
+        );
+        await tapVisible(tester, const Key('meal_estimate_manual'));
+
+        expect(find.text('Captura manual'), findsOneWidget);
+        expect(find.byKey(const Key('meal_form_photo')), findsOneWidget);
+
+        await tester.enterText(
+          find.byKey(const Key('meal_form_calories_kcal')),
+          '520',
+        );
+        await tester.enterText(
+          find.byKey(const Key('meal_form_protein_g')),
+          '30',
+        );
+        await tester.enterText(find.byKey(const Key('meal_form_fat_g')), '18');
+        await tapVisible(tester, const Key('meal_form_submit'));
+
+        final meal = meals.created.single;
+        expect(meal.photoId, testUploadedPhoto.id);
+        expect(meal.estimated, isNull);
+        expect(find.byType(UserHomeView), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'Capturar sin foto abre el formulario vacío y guarda sin foto',
+      (tester) async {
+        await pumpApp(tester, state: const Authenticated(testUser));
+        await tester.tap(find.byKey(const Key('register_meal_button')));
+        await tester.pumpAndSettle();
+        await tapVisible(tester, const Key('meal_photo_manual'));
+
+        expect(find.byType(MealFormView), findsOneWidget);
+        expect(find.text('Captura manual'), findsOneWidget);
+        expect(find.byKey(const Key('meal_form_photo')), findsNothing);
+
+        await tester.enterText(
+          find.byKey(const Key('meal_form_calories_kcal')),
+          '250',
+        );
+        await tester.enterText(
+          find.byKey(const Key('meal_form_protein_g')),
+          '10',
+        );
+        await tester.enterText(find.byKey(const Key('meal_form_fat_g')), '8');
+        await tapVisible(tester, const Key('meal_form_submit'));
+
+        final meal = meals.created.single;
+        expect(meal.photoId, isNull);
+        expect(meal.estimated, isNull);
+        expect(mealPhotos.uploads, isEmpty);
+      },
+    );
+
+    testWidgets('la validación local muestra el error junto a cada campo', (
+      tester,
+    ) async {
+      await pumpApp(tester, state: const Authenticated(testUser));
+      await tester.tap(find.byKey(const Key('register_meal_button')));
+      await tester.pumpAndSettle();
+      await tapVisible(tester, const Key('meal_photo_manual'));
+
+      await tester.enterText(
+        find.byKey(const Key('meal_form_calories_kcal')),
+        '-1',
+      );
+      await tapVisible(tester, const Key('meal_form_submit'));
+
+      expect(find.text('No puede ser negativo'), findsOneWidget);
+      expect(find.text('La proteína es obligatoria'), findsOneWidget);
+      expect(meals.created, isEmpty);
+      expect(find.byType(MealFormView), findsOneWidget);
     });
   });
 
@@ -785,6 +1052,286 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Vincular con coach'), findsWidgets);
+    });
+  });
+
+  group('rutinas del coach (HU-18)', () {
+    Future<void> openRoutines(
+      WidgetTester tester, {
+      ApiException? routinesError,
+    }) async {
+      await pumpApp(
+        tester,
+        state: const Authenticated(testCoach),
+        routinesError: routinesError,
+      );
+      await tester.tap(find.byKey(const Key('routines_home_button')));
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('el coach ve sus rutinas desde su pantalla principal', (
+      tester,
+    ) async {
+      await openRoutines(tester);
+
+      expect(find.byType(RoutinesListView), findsOneWidget);
+      expect(find.text('Torso A'), findsOneWidget);
+      expect(find.text('2 ejercicios · Pecho, Espalda'), findsOneWidget);
+      expect(find.text('Pierna'), findsOneWidget);
+    });
+
+    testWidgets('también se abren desde la barra del panel', (tester) async {
+      await pumpApp(tester, state: const Authenticated(testCoach));
+      await tester.tap(find.byKey(const Key('routines_button')));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(RoutinesListView), findsOneWidget);
+    });
+
+    testWidgets('sin rutinas lo indica', (tester) async {
+      await pumpApp(tester, state: const Authenticated(testCoach));
+      routines.routines = [];
+      await tester.tap(find.byKey(const Key('routines_home_button')));
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const Key('routines_empty')), findsOneWidget);
+      expect(find.byKey(const Key('routines_new')), findsOneWidget);
+    });
+
+    testWidgets('sin conexión muestra el error y permite reintentar', (
+      tester,
+    ) async {
+      await openRoutines(tester, routinesError: networkError);
+      expect(find.text(networkError.message), findsOneWidget);
+
+      routines.listError = null;
+      await tester.tap(find.byKey(const Key('routines_retry')));
+      await tester.pumpAndSettle();
+      expect(find.text('Torso A'), findsOneWidget);
+    });
+
+    testWidgets(
+      'crea una rutina con ejercicios elegidos del catálogo filtrado',
+      (tester) async {
+        await openRoutines(tester);
+        await tester.tap(find.byKey(const Key('routines_new')));
+        await tester.pumpAndSettle();
+        expect(find.byType(RoutineBuilderView), findsOneWidget);
+
+        await tester.enterText(find.byKey(const Key('routine_name')), 'Empuje');
+        await tester.tap(find.byKey(const Key('routine_add_exercises')));
+        await tester.pumpAndSettle();
+        expect(find.byType(ExercisePickerView), findsOneWidget);
+        expect(find.text(testSquat.name), findsOneWidget);
+
+        await tester.tap(find.byKey(const Key('exercise_filter_group_chest')));
+        await tester.pumpAndSettle();
+        expect(find.text(testSquat.name), findsNothing);
+        expect(routines.exerciseRequests.last.muscleGroup?.apiValue, 'chest');
+
+        await tester.tap(find.byKey(Key('exercise_${testPushUps.id}')));
+        await tester.tap(find.byKey(Key('exercise_${testBenchPress.id}')));
+        await tester.pump();
+        expect(find.text('Agregar (2)'), findsOneWidget);
+        await tester.tap(find.byKey(const Key('exercise_picker_add')));
+        await tester.pumpAndSettle();
+
+        expect(find.byType(RoutineBuilderView), findsOneWidget);
+        expect(find.text('1. ${testPushUps.name}'), findsOneWidget);
+        expect(find.text('2. ${testBenchPress.name}'), findsOneWidget);
+
+        await tester.tap(find.byKey(const Key('routine_submit')));
+        await tester.pumpAndSettle();
+
+        final draft = routines.created.single;
+        expect(draft.name, 'Empuje');
+        expect(draft.exercises.map((e) => (e.exerciseId, e.sets, e.reps)), [
+          (testPushUps.id, 3, 10),
+          (testBenchPress.id, 3, 10),
+        ]);
+        expect(find.byType(RoutinesListView), findsOneWidget);
+        expect(find.text('Empuje'), findsOneWidget);
+        expect(find.text('Rutina creada'), findsOneWidget);
+      },
+    );
+
+    testWidgets('la validación local marca los campos y no guarda', (
+      tester,
+    ) async {
+      await openRoutines(tester);
+      await tester.tap(find.byKey(const Key('routines_new')));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const Key('routine_submit')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('El nombre es obligatorio'), findsOneWidget);
+      expect(
+        find.text('La rutina debe tener al menos un ejercicio'),
+        findsOneWidget,
+      );
+      expect(routines.created, isEmpty);
+    });
+
+    testWidgets('editar guarda los cambios y la lista se actualiza', (
+      tester,
+    ) async {
+      await openRoutines(tester);
+      await tester.tap(find.text('Torso A'));
+      await tester.pumpAndSettle();
+      expect(find.text('Editar rutina'), findsOneWidget);
+
+      await tester.enterText(find.byKey(const Key('routine_name')), 'Torso B');
+      await tester.tap(find.byKey(const Key('routine_submit')));
+      await tester.pumpAndSettle();
+
+      expect(routines.updated.single.id, testRoutine.id);
+      expect(find.byType(RoutinesListView), findsOneWidget);
+      expect(find.text('Torso B'), findsOneWidget);
+      expect(find.text('Torso A'), findsNothing);
+    });
+
+    testWidgets('eliminar pide confirmación y actualiza la lista', (
+      tester,
+    ) async {
+      await openRoutines(tester);
+
+      Future<void> askToDelete() async {
+        await tester.tap(find.byKey(Key('routine_menu_${testRoutine.id}')));
+        await tester.pumpAndSettle();
+        await tester.tap(find.byKey(const Key('routine_menu_delete')));
+        await tester.pumpAndSettle();
+        expect(find.textContaining('¿Eliminar «Torso A»?'), findsOneWidget);
+      }
+
+      await askToDelete();
+      await tester.tap(find.byKey(const Key('routine_delete_cancel')));
+      await tester.pumpAndSettle();
+      expect(routines.deleted, isEmpty);
+      expect(find.text('Torso A'), findsOneWidget);
+
+      await askToDelete();
+      await tester.tap(find.byKey(const Key('routine_delete_confirm')));
+      await tester.pumpAndSettle();
+      expect(routines.deleted, [testRoutine.id]);
+      expect(find.text('Torso A'), findsNothing);
+      expect(find.text('Pierna'), findsOneWidget);
+      expect(find.text('Rutina eliminada'), findsOneWidget);
+    });
+
+    testWidgets('salir con cambios sin guardar pide confirmación', (
+      tester,
+    ) async {
+      await openRoutines(tester);
+      await tester.tap(find.byKey(const Key('routines_new')));
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byKey(const Key('routine_name')), 'Torso');
+      await tester.pump();
+
+      await tester.tap(find.byType(BackButton));
+      await tester.pumpAndSettle();
+      expect(find.text('¿Descartar cambios?'), findsOneWidget);
+
+      await tester.tap(find.byKey(const Key('routine_discard_cancel')));
+      await tester.pumpAndSettle();
+      expect(find.byType(RoutineBuilderView), findsOneWidget);
+
+      await tester.tap(find.byType(BackButton));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('routine_discard_confirm')));
+      await tester.pumpAndSettle();
+      expect(find.byType(RoutinesListView), findsOneWidget);
+      expect(routines.created, isEmpty);
+    });
+  });
+
+  group('meta vigente en la pantalla principal (HU-26)', () {
+    testWidgets('muestra la meta calculada con su origen', (tester) async {
+      await pumpApp(
+        tester,
+        state: const Authenticated(testUser),
+        goalsRepository: FakeGoalsRepository(
+          current: testGoal(
+            calories: 1900,
+            proteinG: 130,
+            fatG: 60,
+            source: GoalSource.system,
+          ),
+        ),
+      );
+
+      expect(find.byType(UserHomeView), findsOneWidget);
+      expect(find.text('1900 kcal'), findsOneWidget);
+      expect(find.text('130 g'), findsOneWidget);
+      expect(find.text('60 g'), findsOneWidget);
+      expect(find.text('Calculada'), findsOneWidget);
+      expect(goals.currentCalls, 1);
+    });
+
+    testWidgets('indica cuando la meta la definió el coach', (tester) async {
+      await pumpApp(
+        tester,
+        state: const Authenticated(testUser),
+        goalsRepository: FakeGoalsRepository(
+          current: testGoal(source: GoalSource.coach),
+        ),
+      );
+
+      expect(find.text('2200 kcal'), findsOneWidget);
+      expect(find.text('Definida por tu coach'), findsOneWidget);
+    });
+
+    testWidgets('sin meta muestra un mensaje y no un error', (tester) async {
+      await pumpApp(
+        tester,
+        state: const Authenticated(testUser),
+        goalsRepository: FakeGoalsRepository.withoutGoal(),
+      );
+
+      expect(find.byKey(const Key('home_goal_empty')), findsOneWidget);
+      expect(find.byKey(const Key('home_goal_retry')), findsNothing);
+    });
+
+    testWidgets('sin conexión muestra el error y reintenta', (tester) async {
+      await pumpApp(
+        tester,
+        state: const Authenticated(testUser),
+        goalsRepository: FakeGoalsRepository()..error = networkError,
+      );
+
+      expect(find.text(networkError.message), findsOneWidget);
+      goals.error = null;
+      await tester.tap(find.byKey(const Key('home_goal_retry')));
+      await tester.pumpAndSettle();
+
+      expect(find.text(networkError.message), findsNothing);
+      expect(find.text('2200 kcal'), findsOneWidget);
+      expect(goals.currentCalls, 2);
+    });
+
+    testWidgets('al regresar de Mi perfil se vuelve a consultar la meta', (
+      tester,
+    ) async {
+      await pumpApp(
+        tester,
+        state: const Authenticated(testUser),
+        storedProfile: testProfile,
+      );
+      expect(find.text('2200 kcal'), findsOneWidget);
+
+      await tester.tap(find.byKey(const Key('profile_button')));
+      await tester.pumpAndSettle();
+      // El backend recalcula la meta al cambiar el peso (HU-04).
+      goals.current = testGoal(calories: 2050, source: GoalSource.system);
+      await tester.enterText(find.byKey(const Key('profile_weight')), '70');
+      await tester.ensureVisible(find.byKey(const Key('profile_submit')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('profile_submit')));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(UserHomeView), findsOneWidget);
+      expect(find.text('2050 kcal'), findsOneWidget);
+      expect(goals.currentCalls, 2);
     });
   });
 }

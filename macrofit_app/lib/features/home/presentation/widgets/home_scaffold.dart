@@ -4,7 +4,10 @@ import 'package:provider/provider.dart';
 import '../home_view_model.dart';
 
 /// Estructura común de las pantallas principales: barra con cierre de sesión.
-class HomeScaffold extends StatelessWidget {
+///
+/// [T] es el ViewModel que la ruta inyecta (`HomeViewModel` o una subclase, como
+/// `UserHomeViewModel`); si no se indica, es `HomeViewModel`.
+class HomeScaffold<T extends HomeViewModel> extends StatelessWidget {
   const HomeScaffold({
     required this.title,
     required this.body,
@@ -23,7 +26,7 @@ class HomeScaffold extends StatelessWidget {
   final Widget? floatingActionButton;
 
   Future<void> _confirmLogout(BuildContext context) async {
-    final viewModel = context.read<HomeViewModel>();
+    final viewModel = context.read<T>();
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
@@ -47,7 +50,7 @@ class HomeScaffold extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final viewModel = context.watch<HomeViewModel>();
+    final viewModel = context.watch<T>();
 
     return Scaffold(
       appBar: AppBar(
