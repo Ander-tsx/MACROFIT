@@ -31,6 +31,15 @@ class MealPhotoViewModel extends ViewModel {
 
   /// Foto ya guardada en el backend; su `id` es el que usa HU-07.
   UploadedPhoto? get uploaded => _uploaded;
+
+  /// Foto subida con sus bytes; la vista la pasa a la estimación (HU-07).
+  MealPhotoUpload? get result => switch ((_photo, _uploaded)) {
+    (final photo?, final uploaded?) => MealPhotoUpload(
+      photo: photo,
+      uploaded: uploaded,
+    ),
+    _ => null,
+  };
   String? get error => _error;
   bool get isPicking => _isPicking;
   bool get isUploading => _isUploading;
@@ -88,7 +97,6 @@ class MealPhotoViewModel extends ViewModel {
     notifyListeners();
     try {
       _uploaded = await _repository.uploadPhoto(photo);
-      // TODO(HU-07-APP): pasar `_uploaded.id` a la estimación nutricional.
     } on ApiException catch (error) {
       _error = switch (error.code) {
         ApiErrorCode.photoTooLarge => MealPhotoValidator.tooLargeMessage,

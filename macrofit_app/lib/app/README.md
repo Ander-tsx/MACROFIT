@@ -17,6 +17,7 @@ sessionDio + AuthInterceptor ── SessionRemoteDataSource (me, logout)
                              ├─ ProfileRemoteDataSource (perfil, HU-03)
                              ├─ GoalsRemoteDataSource (metas, HU-05)
                              ├─ MealPhotosRemoteDataSource (foto de comida, HU-06)
+                             ├─ MealsRemoteDataSource (estimación HU-07, guardar registro HU-08)
                              └─ ClientsRemoteDataSource (lista de clientes HU-24, comidas y fotos HU-25)
 SessionLocalDataSource (flutter_secure_storage)
 PhotoPickerDataSource (image_picker: cámara y galería, HU-06)
@@ -26,6 +27,7 @@ LegalRepositoryImpl
 ProfileRepositoryImpl
 CoachGoalsRepositoryImpl
 MealPhotoRepositoryImpl
+MealsRepositoryImpl
 ClientsRepositoryImpl
 ```
 
@@ -42,7 +44,7 @@ ClientsRepositoryImpl
 | `AuthUnknown` (leyendo sesión) | `/` (carga) | → `/` |
 | `Unauthenticated` | `/login`, `/register`, `/privacy` | → `/login` |
 | `Authenticated(user)`, rol `user` **sin perfil** | `/profile/setup` y `/privacy` | → `/profile/setup` |
-| `Authenticated(user)`, rol `user` con perfil | `/user`, `/user/profile`, `/user/meals/photo` y `/privacy` | → `/user` |
+| `Authenticated(user)`, rol `user` con perfil | `/user`, `/user/profile`, `/user/meals/photo`, `/user/meals/estimate`, `/user/meals/form` y `/privacy` | → `/user` |
 | `Authenticated(user)`, rol `coach` | `/coach` y `/privacy` | → `/coach` |
 
 Consecuencias:
@@ -55,6 +57,11 @@ Consecuencias:
   `AuthRepository.markProfileCompleted()` cambia la sesión y el router lo lleva a `/user`. Un coach nunca ve el formulario.
 - HU-06: `/user/meals/photo` es subruta de `/user`. Si al arrancar hay una foto recuperada (Android cerró la app con la
   cámara abierta), la ruta `/user` redirige a ella; por eso `createRouter` recibe el `MealPhotoRepository`.
+- HU-07: `/user/meals/estimate` también es subruta de `/user` y recibe la foto subida en `extra` (`MealPhotoUpload`);
+  sin ella (p. ej. al restaurar la ruta) vuelve a `/user`. La pantalla de la foto la abre con `go`, así que atrás
+  regresa al inicio y no a la foto ya subida.
+- HU-08: `/user/meals/form` es subruta de `/user` y recibe un `MealDraft` en `extra` (sin él vuelve a `/user`). Se abre con
+  `push` desde la estimación o desde "Registrar comida"; al guardar, `go` regresa al inicio.
 
 ### Agregar una ruta
 

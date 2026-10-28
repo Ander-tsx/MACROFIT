@@ -1,13 +1,29 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
+import '../../../../app/routes.dart';
 import '../../../../core/presentation/widgets/error_banner.dart';
+import '../../domain/entities/meal.dart';
 import '../../domain/entities/meal_photo.dart';
 import 'meal_photo_view_model.dart';
 
 /// HU-06 — "Registrar comida": tomar o elegir la foto, ver la vista previa y subirla.
 class MealPhotoView extends StatelessWidget {
   const MealPhotoView({super.key});
+
+  /// Sube la foto y, si se guardó, abre la estimación (HU-07). `go` reemplaza
+  /// esta pantalla: la foto subida ya no se puede cambiar y atrás vuelve al inicio.
+  Future<void> _upload(
+    BuildContext context,
+    MealPhotoViewModel viewModel,
+  ) async {
+    await viewModel.upload();
+    if (!context.mounted) return;
+    if (viewModel.result case final upload?) {
+      context.go(AppRoutes.mealEstimate, extra: upload);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -32,7 +48,9 @@ class MealPhotoView extends StatelessWidget {
               if (photo != null) ...[
                 FilledButton.icon(
                   key: const Key('meal_photo_upload'),
-                  onPressed: viewModel.isBusy ? null : viewModel.upload,
+                  onPressed: viewModel.isBusy
+                      ? null
+                      : () => _upload(context, viewModel),
                   icon: viewModel.isUploading
                       ? const SizedBox.square(
                           dimension: 18,
@@ -51,6 +69,19 @@ class MealPhotoView extends StatelessWidget {
                 const SizedBox(height: 8),
               ],
               _SourceButtons(viewModel: viewModel),
+              const SizedBox(height: 12),
+              // HU-08: captura manual sin foto (formulario vacío, sin photo_id).
+              TextButton.icon(
+                key: const Key('meal_photo_manual'),
+                onPressed: viewModel.isBusy
+                    ? null
+                    : () => context.push(
+                        AppRoutes.mealForm,
+                        extra: const MealDraft(),
+                      ),
+                icon: const Icon(Icons.edit),
+                label: const Text('Capturar sin foto'),
+              ),
             ],
           ],
         ),

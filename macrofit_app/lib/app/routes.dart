@@ -26,6 +26,16 @@ abstract final class AppRoutes {
   static const mealPhotoChild = 'meals/photo';
   static const mealPhoto = '$userHome/$mealPhotoChild';
 
+  /// HU-07: estimación nutricional de la foto subida. Recibe la foto en
+  /// `extra` (`MealPhotoUpload`); sin ella vuelve al inicio.
+  static const mealEstimateChild = 'meals/estimate';
+  static const mealEstimate = '$userHome/$mealEstimateChild';
+
+  /// HU-08: revisar y corregir los valores (o capturarlos a mano) y guardar.
+  /// Recibe un `MealDraft` en `extra`; sin él vuelve al inicio.
+  static const mealFormChild = 'meals/form';
+  static const mealForm = '$userHome/$mealFormChild';
+
   /// Pantalla principal del rol `coach`.
   static const coachHome = '/coach';
 
@@ -50,6 +60,18 @@ abstract final class AppRoutes {
   static String coachClientGoals(String clientId) =>
       '/coach/clients/$clientId/goals';
 
+  /// HU-18: rutinas del coach (lista, crear y editar).
+  static const coachRoutines = '/coach/routines';
+  static const coachRoutineNew = '/coach/routines/new';
+
+  /// HU-18: selector de ejercicios del catálogo; regresa la selección con `pop`.
+  static const coachExercisePicker = '/coach/routines/exercises';
+
+  /// HU-18: editar una rutina. Recibe la `Routine` en `extra`; sin ella vuelve a la lista.
+  static const coachRoutineEditPattern = '/coach/routines/:routineId/edit';
+  static String coachRoutineEdit(String routineId) =>
+      '/coach/routines/$routineId/edit';
+
   /// Pantallas del rol `coach`: su principal y las que cuelgan de ella.
   static bool isCoachRoute(String location) =>
       location == coachHome || location.startsWith('$coachHome/');
@@ -64,5 +86,7 @@ abstract final class AppRoutes {
     coachLink,
     weights,
     mealPhoto,
+    mealEstimate,
+    mealForm,
   };
 }

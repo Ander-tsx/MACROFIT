@@ -20,14 +20,23 @@ import 'package:macrofit_app/features/clients/domain/repositories/clients_reposi
 import 'package:macrofit_app/features/goals/domain/entities/coach_client.dart';
 import 'package:macrofit_app/features/goals/domain/entities/nutritional_goal.dart';
 import 'package:macrofit_app/features/goals/domain/repositories/coach_goals_repository.dart';
+import 'package:macrofit_app/features/goals/domain/repositories/goals_repository.dart';
 import 'package:macrofit_app/features/invite_code/domain/repositories/invite_code_repository.dart';
 import 'package:macrofit_app/features/legal/domain/entities/privacy_notice.dart';
 import 'package:macrofit_app/features/legal/domain/repositories/legal_repository.dart';
+import 'package:macrofit_app/features/meals/domain/entities/meal.dart';
+import 'package:macrofit_app/features/meals/domain/entities/meal_estimate.dart';
 import 'package:macrofit_app/features/meals/domain/entities/meal_photo.dart';
 import 'package:macrofit_app/features/meals/domain/repositories/meal_photo_repository.dart';
+import 'package:macrofit_app/features/meals/domain/repositories/meals_repository.dart';
 import 'package:macrofit_app/features/profile/domain/entities/profile.dart';
 import 'package:macrofit_app/features/profile/domain/repositories/profile_repository.dart';
-import 'package:macrofit_app/features/weights/data/models/weight_model.dart';
+import 'package:macrofit_app/features/coach_link/domain/entities/coach_link.dart';
+import 'package:macrofit_app/features/coach_link/domain/repositories/coach_link_repository.dart';
+import 'package:macrofit_app/features/routines/domain/entities/exercise.dart';
+import 'package:macrofit_app/features/routines/domain/entities/routine.dart';
+import 'package:macrofit_app/features/routines/domain/repositories/routines_repository.dart';
+import 'package:macrofit_app/features/weights/domain/entities/weight_entry.dart';
 import 'package:macrofit_app/features/weights/domain/repositories/weights_repository.dart';
 
 /// Usuario que ya capturó su perfil (HU-03): entra a la pantalla principal.
@@ -350,6 +359,101 @@ class FakeMealPhotoRepository implements MealPhotoRepository {
   }
 }
 
+/// Foto subida con sus bytes, lista para la estimación (HU-07).
+final testPhotoUpload = MealPhotoUpload(
+  photo: testPhoto,
+  uploaded: testUploadedPhoto,
+);
+
+/// Estimación de `POST /meals/estimate` (HU-07): un alimento con porción y otro sin ella.
+final testEstimate = MealEstimate(
+  photoId: testUploadedPhoto.id,
+  foods: const [
+    EstimatedFood(
+      name: 'Arroz blanco cocido',
+      grams: 150,
+      values: NutritionValues(caloriesKcal: 195, proteinG: 4, fatG: 0.4),
+    ),
+    EstimatedFood(
+      name: 'Pechuga de pollo a la plancha',
+      values: NutritionValues(caloriesKcal: 218, proteinG: 38.2, fatG: 4.5),
+    ),
+  ],
+  totals: const NutritionValues(caloriesKcal: 413, proteinG: 42.2, fatG: 4.9),
+);
+
+/// Registros de comida en memoria (HU-07: estimación; HU-08: guardar).
+class FakeMealsRepository implements MealsRepository {
+  /// Si se asigna, la siguiente estimación lanza este error.
+  ApiException? estimateError;
+
+  /// Si se asigna, la estimación espera a que se complete (para ver la carga).
+  Completer<void>? estimateGate;
+
+  /// Si se asigna, el siguiente guardado lanza este error.
+  ApiException? createError;
+
+  final estimates = <String>[];
+
+  /// Registros enviados a `POST /meals`, en orden.
+  final created = <NewMeal>[];
+
+  @override
+  Future<MealEstimate> estimate(String photoId) async {
+    estimates.add(photoId);
+    await estimateGate?.future;
+    if (estimateError case final error?) throw error;
+    return testEstimate;
+  }
+
+  @override
+  Future<Meal> createMeal(NewMeal meal) async {
+    created.add(meal);
+    if (createError case final error?) throw error;
+    return Meal(
+      id: '6ad0a1b2c3d4e5f6a7b8c9d0',
+      photoId: meal.photoId,
+      eatenAt: DateTime.utc(2026, 10, 17, 1, 30),
+      date: DateTime(2026, 10, 16),
+      values: meal.values,
+      estimated: meal.estimated,
+    );
+  }
+}
+
+/// Metas del usuario en memoria (simula `GET /users/me/goals/current`, HU-26).
+/// Con [current] en `null` responde `404 PROFILE_NOT_FOUND`, como el backend.
+class FakeGoalsRepository implements GoalsRepository {
+  FakeGoalsRepository({NutritionalGoal? current, this.history = const []})
+    : current = current ?? testGoal(source: GoalSource.system);
+
+  /// Crea el repositorio de un usuario sin perfil ni meta del coach.
+  FakeGoalsRepository.withoutGoal() : history = const [];
+
+  NutritionalGoal? current;
+  final List<NutritionalGoal> history;
+
+  /// Si se asigna, la siguiente consulta lanza este error.
+  ApiException? error;
+
+  int currentCalls = 0;
+
+  /// Si se asigna, la consulta espera a que se complete (para ver el estado intermedio).
+  Completer<void>? gate;
+
+  @override
+  Future<NutritionalGoal> getCurrentGoal() async {
+    currentCalls++;
+    await gate?.future;
+    if (error case final error?) throw error;
+    return current ??
+        (throw apiError(ApiErrorCode.profileNotFound, status: 404));
+  }
+
+  @override
+  Future<List<NutritionalGoal>> getGoalsHistory() async => [...history];
+}
+
 /// Cliente con meta del coach y un registro de comida (HU-24). Mismo id que [testClient].
 final testClientSummary = ClientSummary(
   id: testClient.id,
@@ -605,27 +709,262 @@ Map<String, Object> sessionJson(
 };
 
 class FakeWeightsRepository implements WeightsRepository {
-  FakeWeightsRepository({this.weights = const [], this.error});
+  FakeWeightsRepository({
+    this.weights = const [],
+    this.error,
+    this.createError,
+  });
 
-  List<WeightModel> weights;
+  List<WeightEntry> weights;
   ApiException? error;
+  ApiException? createError;
 
   @override
-  Future<List<WeightModel>> getWeights() async {
+  Future<List<WeightEntry>> getWeights() async {
     if (error != null) throw error!;
     return weights;
   }
 
   @override
-  Future<WeightModel> createWeight(double weightKg) async {
+  Future<WeightEntry> createWeight(double weightKg) async {
+    if (createError != null) throw createError!;
     if (error != null) throw error!;
-    final entry = WeightModel(
+    final entry = WeightEntry(
       id: 'w${weights.length + 1}',
-      userId: 'user1',
       weightKg: weightKg,
       recordedAt: DateTime.now(),
     );
     weights = [entry, ...weights];
     return entry;
+  }
+}
+
+// ───────────────────────── Rutinas del coach (HU-18) ─────────────────────────
+
+const testBenchPress = Exercise(
+  id: '6ac6a0000000000000000001',
+  name: 'Press de banca con mancuernas',
+  muscleGroup: 'chest',
+  equipment: 'dumbbell',
+  level: 'beginner',
+);
+
+const testPushUps = Exercise(
+  id: '6ac6a0000000000000000002',
+  name: 'Flexiones de pecho',
+  muscleGroup: 'chest',
+  equipment: 'bodyweight',
+  level: 'beginner',
+);
+
+const testRow = Exercise(
+  id: '6ac6a0000000000000000003',
+  name: 'Remo con barra',
+  muscleGroup: 'back',
+  equipment: 'barbell',
+  level: 'intermediate',
+);
+
+const testSquat = Exercise(
+  id: '6ac6a0000000000000000004',
+  name: 'Sentadilla trasera',
+  muscleGroup: 'legs',
+  equipment: 'barbell',
+  level: 'advanced',
+);
+
+/// Catálogo de prueba (TEC-09): dos de pecho, uno de espalda y uno de piernas.
+const testExercises = [testBenchPress, testPushUps, testRow, testSquat];
+
+/// Rutina guardada «Torso A» con press de banca (4 × 10, 90 s) y remo (3 × 12, 60 s).
+final testRoutine = Routine(
+  id: '6b01a0000000000000000001',
+  name: 'Torso A',
+  exercises: const [
+    RoutineExercise(
+      exerciseId: '6ac6a0000000000000000001',
+      name: 'Press de banca con mancuernas',
+      muscleGroup: 'chest',
+      sets: 4,
+      reps: 10,
+      restSeconds: 90,
+    ),
+    RoutineExercise(
+      exerciseId: '6ac6a0000000000000000003',
+      name: 'Remo con barra',
+      muscleGroup: 'back',
+      sets: 3,
+      reps: 12,
+      restSeconds: 60,
+    ),
+  ],
+  createdAt: DateTime.utc(2026, 10, 26, 18),
+  updatedAt: DateTime.utc(2026, 10, 26, 18),
+);
+
+/// Segunda rutina guardada («Pierna»), con un solo ejercicio.
+final testLegRoutine = Routine(
+  id: '6b01a0000000000000000002',
+  name: 'Pierna',
+  exercises: const [
+    RoutineExercise(
+      exerciseId: '6ac6a0000000000000000004',
+      name: 'Sentadilla trasera',
+      muscleGroup: 'legs',
+      sets: 5,
+      reps: 5,
+      restSeconds: 120,
+    ),
+  ],
+  createdAt: DateTime.utc(2026, 10, 25, 18),
+  updatedAt: DateTime.utc(2026, 10, 25, 18),
+);
+
+/// Rutinas y catálogo en memoria (simula `/coach/routines` y `GET /exercises`).
+/// Crear, editar y eliminar cambian [routines], así que recargar muestra el cambio.
+class FakeRoutinesRepository implements RoutinesRepository {
+  FakeRoutinesRepository({List<Routine>? routines, List<Exercise>? exercises})
+    : routines = routines ?? [testRoutine, testLegRoutine],
+      exercises = exercises ?? [...testExercises];
+
+  List<Routine> routines;
+  List<Exercise> exercises;
+
+  /// Si se asigna, las siguientes llamadas del tipo correspondiente lanzan este error.
+  ApiException? listError;
+  ApiException? exercisesError;
+  ApiException? saveError;
+  ApiException? deleteError;
+
+  /// Si se asigna, la consulta del catálogo espera a que se complete.
+  Completer<void>? exercisesGate;
+
+  int listCalls = 0;
+  final exerciseRequests =
+      <({MuscleGroup? muscleGroup, ExerciseLevel? level})>[];
+  final created = <RoutineDraft>[];
+  final updated = <({String id, RoutineDraft draft})>[];
+  final deleted = <String>[];
+  int _nextId = 10;
+
+  @override
+  Future<List<Exercise>> getExercises({
+    MuscleGroup? muscleGroup,
+    ExerciseLevel? level,
+  }) async {
+    exerciseRequests.add((muscleGroup: muscleGroup, level: level));
+    await exercisesGate?.future;
+    if (exercisesError case final error?) throw error;
+    return [
+      for (final exercise in exercises)
+        if ((muscleGroup == null ||
+                exercise.muscleGroup == muscleGroup.apiValue) &&
+            (level == null || exercise.level == level.apiValue))
+          exercise,
+    ];
+  }
+
+  @override
+  Future<List<Routine>> getRoutines() async {
+    listCalls++;
+    if (listError case final error?) throw error;
+    return [...routines];
+  }
+
+  @override
+  Future<Routine> createRoutine(RoutineDraft draft) async {
+    created.add(draft);
+    if (saveError case final error?) throw error;
+    final routine = _routineOf('6b01a00000000000000000${_nextId++}', draft);
+    routines = [routine, ...routines];
+    return routine;
+  }
+
+  @override
+  Future<Routine> updateRoutine(String id, RoutineDraft draft) async {
+    updated.add((id: id, draft: draft));
+    if (saveError case final error?) throw error;
+    final routine = _routineOf(id, draft);
+    routines = [routine, ...routines.where((item) => item.id != id)];
+    return routine;
+  }
+
+  @override
+  Future<void> deleteRoutine(String id) async {
+    deleted.add(id);
+    if (deleteError case final error?) throw error;
+    routines = [...routines.where((item) => item.id != id)];
+  }
+
+  Routine _routineOf(String id, RoutineDraft draft) {
+    final now = DateTime.utc(2026, 10, 27, 12);
+    return Routine(
+      id: id,
+      name: draft.name,
+      exercises: [
+        for (final item in draft.exercises)
+          () {
+            final exercise = exercises.firstWhere(
+              (exercise) => exercise.id == item.exerciseId,
+            );
+            return RoutineExercise(
+              exerciseId: item.exerciseId,
+              name: exercise.name,
+              muscleGroup: exercise.muscleGroup,
+              sets: item.sets,
+              reps: item.reps,
+              restSeconds: item.restSeconds,
+            );
+          }(),
+      ],
+      createdAt: now,
+      updatedAt: now,
+    );
+  }
+}
+
+class FakeCoachLinkRepository implements CoachLinkRepository {
+  FakeCoachLinkRepository({
+    this.linkedCoach,
+    this.linkResult,
+    this.linkException,
+    this.unlinkException,
+    this.error,
+  });
+
+  CoachLink? linkedCoach;
+  CoachLink? linkResult;
+  Exception? linkException;
+  Exception? unlinkException;
+  ApiException? error;
+  bool unlinkedCalled = false;
+
+  @override
+  Future<CoachLink?> getLinkedCoach() async {
+    if (error != null) throw error!;
+    return linkedCoach;
+  }
+
+  @override
+  Future<CoachLink> linkCoach(String inviteCode) async {
+    if (error != null) throw error!;
+    if (linkException != null) throw linkException!;
+    linkedCoach = linkResult ??
+        const CoachLink(
+          id: '1',
+          coachId: 'c1',
+          coachName: 'Laura',
+          coachEmail: 'laura@test.com',
+          status: 'active',
+        );
+    return linkedCoach!;
+  }
+
+  @override
+  Future<void> unlinkCoach() async {
+    unlinkedCalled = true;
+    if (error != null) throw error!;
+    if (unlinkException != null) throw unlinkException!;
+    linkedCoach = null;
   }
 }

@@ -19,6 +19,7 @@ import 'package:macrofit_app/features/invite_code/presentation/invite_code/invit
 import 'package:macrofit_app/features/legal/presentation/privacy_notice/privacy_notice_view.dart';
 import 'package:macrofit_app/features/meals/domain/entities/meal_photo.dart';
 import 'package:macrofit_app/features/meals/domain/entities/photo_pick_exception.dart';
+import 'package:macrofit_app/features/meals/presentation/meal_estimate/meal_estimate_view.dart';
 import 'package:macrofit_app/features/meals/presentation/meal_photo/meal_photo_view.dart';
 import 'package:macrofit_app/features/meals/presentation/meal_photo/meal_photo_view_model.dart';
 import 'package:macrofit_app/features/profile/domain/entities/profile.dart';
@@ -30,12 +31,16 @@ void main() {
   late FakeAuthRepository auth;
   late FakeLegalRepository legal;
   late FakeProfileRepository profiles;
+  late FakeGoalsRepository goals;
   late FakeCoachGoalsRepository coachGoals;
   late FakeMealPhotoRepository mealPhotos;
+  late FakeMealsRepository meals;
   late FakeClientsRepository clients;
   late FakeInviteCodeRepository inviteCodes;
+  late FakeCoachLinkRepository coachLinksRepo;
   late FakeWeightsRepository weightsRepo;
   late FakeShareService share;
+  late FakeRoutinesRepository routines;
 
   Future<void> pumpApp(
     WidgetTester tester, {
@@ -43,34 +48,44 @@ void main() {
     bool settle = true,
     Profile? storedProfile,
     PickedPhoto? recoveredPhoto,
+    FakeGoalsRepository? goalsRepository,
     List<ClientSummary>? clientList,
     ApiException? clientsError,
     Map<DateTime, List<ClientMeal>>? clientMeals,
     ApiException? mealsError,
     ApiException? inviteCodeError,
+    ApiException? routinesError,
   }) async {
     auth = FakeAuthRepository(initialState: state);
     legal = FakeLegalRepository();
     profiles = FakeProfileRepository(stored: storedProfile);
+    goals = goalsRepository ?? FakeGoalsRepository();
     coachGoals = FakeCoachGoalsRepository();
     mealPhotos = FakeMealPhotoRepository(recovered: recoveredPhoto);
+    meals = FakeMealsRepository();
     clients = FakeClientsRepository(clients: clientList, meals: clientMeals)
       ..error = clientsError
       ..mealsError = mealsError;
     inviteCodes = FakeInviteCodeRepository()..error = inviteCodeError;
+    coachLinksRepo = FakeCoachLinkRepository();
     weightsRepo = FakeWeightsRepository();
     share = FakeShareService();
+    routines = FakeRoutinesRepository()..listError = routinesError;
     await tester.pumpWidget(
       MacroFitApp(
         dependencies: AppDependencies(
           authRepository: auth,
           legalRepository: legal,
           profileRepository: profiles,
+          goalsRepository: goals,
           coachGoalsRepository: coachGoals,
           mealPhotoRepository: mealPhotos,
+          mealsRepository: meals,
           clientsRepository: clients,
           inviteCodeRepository: inviteCodes,
+          coachLinkRepository: coachLinksRepo,
           weightsRepository: weightsRepo,
+          routinesRepository: routines,
           shareService: share,
         ),
       ),
@@ -392,7 +407,7 @@ void main() {
       await tester.tap(find.byKey(const Key('meal_photo_upload')));
       await tester.pumpAndSettle();
       expect(mealPhotos.uploads.single, testPhoto);
-      expect(find.byKey(const Key('meal_photo_uploaded')), findsOneWidget);
+      expect(find.byType(MealEstimateView), findsOneWidget);
       expect(find.byKey(const Key('meal_photo_camera')), findsNothing);
     });
 

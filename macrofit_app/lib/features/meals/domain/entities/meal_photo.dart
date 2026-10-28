@@ -39,3 +39,14 @@ class UploadedPhoto {
   @override
   int get hashCode => Object.hash(id, format, sizeBytes);
 }
+
+/// Foto ya subida junto con sus bytes, para mostrarla en los pasos siguientes
+/// (estimación de HU-07) sin volver a descargarla.
+class MealPhotoUpload {
+  const MealPhotoUpload({required this.photo, required this.uploaded});
+
+  final PickedPhoto photo;
+  final UploadedPhoto uploaded;
+
+  String get photoId => uploaded.id;
+}

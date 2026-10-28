@@ -18,6 +18,10 @@ abstract final class ApiErrorCode {
   static const photoTooLarge = 'PHOTO_TOO_LARGE';
   static const unsupportedPhotoType = 'UNSUPPORTED_PHOTO_TYPE';
   static const photoNotFound = 'PHOTO_NOT_FOUND';
+  static const foodNotRecognized = 'FOOD_NOT_RECOGNIZED';
+  static const foodProviderError = 'FOOD_PROVIDER_ERROR';
+  static const foodProviderTimeout = 'FOOD_PROVIDER_TIMEOUT';
+  static const routineNotFound = 'ROUTINE_NOT_FOUND';
 
   /// No se pudo contactar al servidor (sin red, servidor apagado, timeout).
   static const network = 'NETWORK_ERROR';
