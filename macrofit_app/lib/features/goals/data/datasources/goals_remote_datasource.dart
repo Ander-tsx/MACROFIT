@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 
 import '../../../../core/network/dio_factory.dart';
+import '../models/coach_client_model.dart';
 import '../models/goal_model.dart';
 
 /// Endpoints de metas (HU-04 y HU-05). Usa el cliente HTTP **con** `AuthInterceptor`.
@@ -19,6 +20,15 @@ class GoalsRemoteDataSource {
 
   /// HU-04 — `GET /users/me/goals`.
   Future<List<GoalModel>> getGoalsHistory() => _getGoals('/users/me/goals');
+
+  /// HU-05 — `GET /coach/clients`.
+  Future<List<CoachClientModel>> getClients() => guardApiCall(() async {
+    final response = await _dio.get<List<dynamic>>('/coach/clients');
+    return [
+      for (final json in response.data!)
+        CoachClientModel.fromJson(json as Map<String, dynamic>),
+    ];
+  });
 
   /// HU-05 — `GET /coach/clients/{clientId}/goals`.
   Future<List<GoalModel>> getClientGoals(String clientId) =>

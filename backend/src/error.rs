@@ -90,8 +90,6 @@ pub enum AppError {
     MealNotFound,
     /// 409 — la foto ya pertenece a otro registro de comida (HU-09).
     PhotoAlreadyUsed,
-    /// 404 — la rutina no existe, su id está mal formado o es de otro coach (no se distingue, HU-18).
-    RoutineNotFound,
 }
 
 impl AppError {
@@ -265,12 +263,6 @@ impl IntoResponse for AppError {
                 "El registro de comida no existe".to_string(),
                 FieldErrors::new(),
             ),
-            Self::RoutineNotFound => (
-                StatusCode::NOT_FOUND,
-                "ROUTINE_NOT_FOUND",
-                "La rutina no existe".to_string(),
-                FieldErrors::new(),
-            ),
             Self::PhotoAlreadyUsed => (
                 StatusCode::CONFLICT,
                 "PHOTO_ALREADY_USED",
@@ -342,7 +334,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn errores_del_reconocimiento_de_alimentos_y_de_rutinas_tienen_su_estado_y_codigo() {
+    async fn errores_del_reconocimiento_de_alimentos_tienen_su_estado_y_codigo() {
         for (error, status, code) in [
             (
                 AppError::FoodNotRecognized,
@@ -358,11 +350,6 @@ mod tests {
                 AppError::FoodProviderTimeout,
                 StatusCode::GATEWAY_TIMEOUT,
                 "FOOD_PROVIDER_TIMEOUT",
-            ),
-            (
-                AppError::RoutineNotFound,
-                StatusCode::NOT_FOUND,
-                "ROUTINE_NOT_FOUND",
             ),
         ] {
             let response = error.into_response();

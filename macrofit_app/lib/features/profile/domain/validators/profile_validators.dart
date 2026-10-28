@@ -5,8 +5,8 @@ import '../entities/profile.dart';
 ///
 /// TODO(TEC-12): rangos provisionales; cambiarlos aquí y en el backend a la vez.
 abstract final class ProfileValidators {
-  static const weightMinKg = 35;
-  static const weightMaxKg = 250;
+  static const weightMinKg = 30;
+  static const weightMaxKg = 300;
   static const heightMinCm = 100;
   static const heightMaxCm = 250;
   static const ageMinYears = 18;

@@ -3,19 +3,10 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
-import '../core/platform/share_service.dart';
 import '../features/auth/domain/repositories/auth_repository.dart';
-import '../features/clients/domain/repositories/clients_repository.dart';
-import '../features/coach_link/domain/repositories/coach_link_repository.dart';
 import '../features/goals/domain/repositories/coach_goals_repository.dart';
-import '../features/goals/domain/repositories/goals_repository.dart';
-import '../features/invite_code/domain/repositories/invite_code_repository.dart';
 import '../features/legal/domain/repositories/legal_repository.dart';
-import '../features/meals/domain/repositories/meal_photo_repository.dart';
-import '../features/meals/domain/repositories/meals_repository.dart';
 import '../features/profile/domain/repositories/profile_repository.dart';
-import '../features/routines/domain/repositories/routines_repository.dart';
-import '../features/progress/domain/repositories/weights_repository.dart';
 import 'dependencies.dart';
 import 'router.dart';
 import 'theme.dart';
@@ -33,7 +24,6 @@ class MacroFitApp extends StatefulWidget {
 class _MacroFitAppState extends State<MacroFitApp> {
   late final GoRouter _router = createRouter(
     widget.dependencies.authRepository,
-    mealPhotos: widget.dependencies.mealPhotoRepository,
   );
 
   @override
@@ -54,30 +44,9 @@ class _MacroFitAppState extends State<MacroFitApp> {
         Provider<ProfileRepository>.value(
           value: dependencies.profileRepository,
         ),
-        Provider<GoalsRepository>.value(value: dependencies.goalsRepository),
         Provider<CoachGoalsRepository>.value(
           value: dependencies.coachGoalsRepository,
         ),
-        Provider<MealPhotoRepository>.value(
-          value: dependencies.mealPhotoRepository,
-        ),
-        Provider<MealsRepository>.value(value: dependencies.mealsRepository),
-        Provider<ClientsRepository>.value(
-          value: dependencies.clientsRepository,
-        ),
-        Provider<InviteCodeRepository>.value(
-          value: dependencies.inviteCodeRepository,
-        ),
-        Provider<CoachLinkRepository>.value(
-          value: dependencies.coachLinkRepository,
-        ),
-        Provider<WeightsRepository>.value(
-          value: dependencies.weightsRepository,
-        ),
-        Provider<RoutinesRepository>.value(
-          value: dependencies.routinesRepository,
-        ),
-        Provider<ShareService>.value(value: dependencies.shareService),
       ],
       child: MaterialApp.router(
         title: 'MacroFit',
