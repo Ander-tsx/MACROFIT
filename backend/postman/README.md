@@ -16,7 +16,6 @@ postman/
 ├── profile/profile.postman_collection.json # src/routes/profile.rs → HU-03 perfil inicial
 ├── goals/goals.postman_collection.json # src/routes/goals.rs → HU-04 y HU-05 metas
 ├── weights/weights.postman_collection.json # src/routes/weights.rs → HU-21 registro de peso
-├── routines/routines.postman_collection.json # src/routes/routines.rs → HU-18 rutinas del coach
 ├── summary/summary.postman_collection.json # src/routes/summary.rs → HU-10 resumen diario y HU-11 resumen semanal (cuentas y registros propios)
 └── meals/meals.postman_collection.json # src/routes/meals.rs → HU-06 carga de foto, HU-07 estimación, HU-09 registros de comida, HU-08 valores corregidos, HU-25 comidas de un cliente (archivos de prueba en meals/files/)
 ```
@@ -89,7 +88,6 @@ ponlos en la carpeta o en el request).
 | `auth` | `Auth y roles (base)` | Ruta coach con coach, Ruta coach con usuario |
 | `profile` | `HU-03 Perfil` | Consulta antes de crear, Creación por coach, Consulta por coach, Campos faltantes, Valores fuera de rango, Valores no permitidos, Creación válida, Creación duplicada, Consulta, Verificación en /auth/me, Edición, Edición con valores inválidos, Edición sin campos, Consulta tras la edición |
 | `goals` | `HU-24 Lista de clientes` | Sin sesión, Cuenta de usuario, Coach con clientes, Cliente sin registros (fecha null), Cliente con registro (fecha del último), Cliente con meta del coach. Crea su coach y sus clientes con el código de invitación (HU-12/HU-13), desvincula a uno (HU-14) y guarda comidas con `POST /meals` (HU-09); no necesita `APP_ENV=development` |
-| `routines` | `HU-18 Rutinas del coach` | Crear rutina, Listar rutinas, Consultar rutina, Editar rutina, Consultar tras editar, Rutina sin ejercicios, Rutina sin nombre ni ejercicios, Series en 0, Repeticiones en 0 y descanso negativo, Ejercicio inexistente, Editar con datos inválidos, Rutina de otro coach (consultar / editar / eliminar), El otro coach no ve la rutina en su lista, Rutina inexistente, Id mal formado, Cuenta de usuario (crear / listar), Sin sesión, Eliminar rutina, Consultar tras eliminar, Eliminar de nuevo. Registra su coach, un segundo coach y un usuario; toma dos ejercicios de `GET /exercises` (va después de `exercises`) |
 | `meals` | `HU-06 Carga de foto` | Foto JPEG válida, Foto PNG válida, Tipo no permitido (GIF), Texto con extensión .jpg, Archivo demasiado grande, Sin archivo, Sin sesión, Cuenta de coach |
 | `meals` | `HU-07 Estimación nutricional` | Estimación válida, Sin photo_id, Foto inexistente, Id de foto mal formado, Foto de otro usuario, Sin sesión, Cuenta de coach. Contra el **simulador** (`FOOD_PROVIDER=simulator`) |
 | `meals` | `HU-09 Registros de comida` | Crear registro con foto, Captura manual sin foto, Crear registro que se eliminará, Foto ya usada en otro registro, Foto de otro usuario, Valores inválidos, Consultar por fecha, Día sin registros, Fecha inválida, Sin fecha, Eliminar un registro ajeno, Eliminar un registro inexistente, Eliminar, Consultar tras eliminar, La foto del registro eliminado ya no existe, Eliminar de nuevo, Sin sesión, Cuenta de coach (guardar / consultar / eliminar) |

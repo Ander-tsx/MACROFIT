@@ -7,7 +7,6 @@ Código que usan varias features. No contiene lógica de ninguna historia en par
 | `config/app_config.dart` | `AppConfig.fromEnvironment()`: URL de la API desde `--dart-define=API_BASE_URL` o el backend local por defecto |
 | `errors/api_exception.dart` | `ApiException` (`code`, `message`, `fields`, `statusCode`) y `ApiErrorCode` (códigos del backend + `NETWORK_ERROR`, `UNKNOWN_ERROR`) |
 | `network/dio_factory.dart` | `createDio(config)` y `guardApiCall`, que traduce `DioException` → `ApiException` |
-| `platform/share_service.dart` | `ShareService` (contrato) y `SystemShareService`: portapapeles (`Clipboard`) y hoja de compartir del sistema (`share_plus`) |
 | `presentation/view_model.dart` | `ViewModel` (base de todos los ViewModels) y `FormStateMixin` (errores por campo, error general, envío) |
 | `presentation/widgets/` | Widgets reutilizables: `ErrorBanner`, `PasswordField` |
 

@@ -194,11 +194,6 @@ El contrato completo (cuerpos, respuestas y códigos de error de cada endpoint) 
 | POST | `/coach/invite-code/regenerate` | Bearer (coach) | HU-12 | Genera un código nuevo; el anterior deja de ser válido |
 | POST | `/users/me/coach-link` | Bearer (user) | HU-13 | Vincula al usuario con un coach mediante su código de invitación |
 | DELETE | `/users/me/coach-link` | Bearer (user) | HU-14 | Desvincula al usuario de su coach activo |
-| POST | `/coach/routines` | Bearer (coach) | HU-18 | Crea una rutina personalizada con ejercicios del catálogo |
-| GET | `/coach/routines` | Bearer (coach) | HU-18 | Rutinas del coach de la sesión (la editada más recientemente primero) |
-| GET | `/coach/routines/{id}` | Bearer (coach) | HU-18 | Detalle de una rutina propia |
-| PUT | `/coach/routines/{id}` | Bearer (coach) | HU-18 | Reemplaza nombre y ejercicios de una rutina propia |
-| DELETE | `/coach/routines/{id}` | Bearer (coach) | HU-18 | Elimina una rutina propia |
 
 ### Contrato OpenAPI (TEC-14)
 
@@ -762,63 +757,6 @@ Respuesta **200 OK**:
 ]
 ```
 
-### Rutinas del coach — `/coach/routines` (HU-18)
-
-Cabecera `Authorization: Bearer <access_token>`. **Solo rol `coach`** (`403 FORBIDDEN_ROLE` para un `user`; sin sesión
-`401 UNAUTHORIZED`). Cada coach solo ve y modifica **sus** rutinas: una rutina ajena, inexistente o con id mal formado
-responde `404 ROUTINE_NOT_FOUND` (no se distingue). Los ejercicios salen del [catálogo de TEC-09](#catálogo-de-ejercicios--exercises-tec-09).
-
-**POST `/coach/routines`** y **PUT `/coach/routines/{id}`** (reemplazo completo, mismas reglas) reciben:
-
-```json
-{
-  "name": "Torso A",
-  "exercises": [
-    { "exercise_id": "6ac6...", "sets": 4, "reps": 10, "rest_seconds": 90 }
-  ]
-}
-```
-
-| Campo | Regla |
-|---|---|
-| `name` | Obligatorio, sin espacios alrededor, 1 a 80 caracteres |
-| `exercises` | Obligatorio, lista de 1 a 20 ejercicios, en el orden en que se hacen |
-| `exercises[i].exercise_id` | Obligatorio; id de un ejercicio que exista en el catálogo (`GET /exercises`) |
-| `exercises[i].sets` | Entero de 1 a 10 |
-| `exercises[i].reps` | Entero de 1 a 100 |
-| `exercises[i].rest_seconds` | Entero de 0 a 600 (segundos) |
-
-Todos los errores se devuelven juntos en `400 VALIDATION_ERROR`; los de un ejercicio se señalan como
-`exercises[i].<campo>` (p. ej. `exercises[0].sets`). Un `exercise_id` que no está en el catálogo (o mal formado) se señala
-en `exercises[i].exercise_id`. En el PUT, una rutina ajena responde `404` antes de validar el cuerpo.
-
-**Respuesta** (POST `201`, GET `/coach/routines/{id}` y PUT `200`; GET `/coach/routines` devuelve una lista, la editada
-más recientemente primero; DELETE `204` sin cuerpo):
-
-```json
-{
-  "id": "6b01...",
-  "name": "Torso A",
-  "exercises": [
-    {
-      "exercise_id": "6ac6...",
-      "name": "Press de banca con mancuernas",
-      "muscle_group": "chest",
-      "sets": 4,
-      "reps": 10,
-      "rest_seconds": 90
-    }
-  ],
-  "created_at": "2026-10-26T18:00:00Z",
-  "updated_at": "2026-10-26T18:00:00Z"
-}
-```
-
-`name` y `muscle_group` de cada ejercicio se copian del catálogo al guardar; `updated_at` cambia en cada edición.
-
-**Errores:** `400 VALIDATION_ERROR` / `INVALID_BODY` (POST y PUT), `401 UNAUTHORIZED` / `TOKEN_REVOKED`,
-`403 FORBIDDEN_ROLE`, `404 ROUTINE_NOT_FOUND` (rutas con `{id}`).
-
 ### POST `/dev/seed/exercises` (TEC-09)
 
 Solo existe con `APP_ENV=development`; en cualquier otro ambiente la ruta no se monta (`404`). Sin autenticación.
@@ -961,7 +899,6 @@ Todas las respuestas de error tienen la misma forma. `fields` siempre es un obje
 | `INVITE_CODE_NOT_FOUND` | 404 | El código de invitación no existe o ya no está vigente |
 | `PHOTO_NOT_FOUND` | 404 | La foto no existe o la cuenta no puede verla (no se distingue) |
 | `MEAL_NOT_FOUND` | 404 | El registro de comida no existe o es de otra cuenta (no se distingue, HU-09) |
-| `ROUTINE_NOT_FOUND` | 404 | La rutina no existe, su id está mal formado o es de otro coach (no se distingue, HU-18) |
 | `FOOD_NOT_RECOGNIZED` | 422 | El servicio de reconocimiento no encontró comida en la foto (HU-07): captura manual |
 | `USER_ALREADY_LINKED` | 409 | El usuario ya tiene una vinculación activa con un coach |
 | `EMAIL_ALREADY_EXISTS` | 409 | El correo ya está registrado |
