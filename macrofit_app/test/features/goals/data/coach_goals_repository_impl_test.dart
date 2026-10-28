@@ -33,20 +33,6 @@ void main() {
     return CoachGoalsRepositoryImpl(GoalsRemoteDataSource(dio));
   }
 
-  test('lista los clientes vinculados', () async {
-    final repository = build(
-      (_) => jsonResponse([
-        {'id': testClient.id, 'name': 'Ana', 'email': 'ana@macrofit.test'},
-      ], 200),
-    );
-
-    final clients = await repository.getClients();
-
-    expect(adapter.requests.single.path, '/coach/clients');
-    expect(clients.single.id, testClient.id);
-    expect(clients.single.name, 'Ana');
-  });
-
   test('consulta el historial de metas de un cliente', () async {
     final repository = build((_) => jsonResponse([_goalJson], 200));
 

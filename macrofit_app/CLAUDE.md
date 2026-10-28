@@ -13,7 +13,9 @@ Instrucciones para Claude Code al trabajar en `macrofit_app/`. Las reglas genera
 - `provider` + `ChangeNotifier`, `go_router` con guard de sesión (`resolveRedirect`), `dio` con `AuthInterceptor`,
   `flutter_secure_storage`.
 - Historias implementadas: HU-01 (registro con rol + aviso de privacidad), HU-02 (inicio, persistencia y cierre de sesión),
-  HU-03 (perfil inicial y edición), HU-05 (metas por coach).
+  HU-03 (perfil inicial y edición), HU-05 (metas por coach), HU-06 (foto de la comida), HU-07 (estimación nutricional), HU-08 (corrección de valores), HU-12 (código de invitación del
+  coach), HU-24 (lista de clientes del coach), HU-25 (comidas de un cliente),
+  HU-26 (meta vigente en la pantalla principal), HU-18 (constructor de rutinas del coach).
 - Antes de terminar: `dart format --output=none --set-exit-if-changed lib test`, `flutter analyze`, `flutter test`
   y prueba de punta a punta contra el backend con base temporal (AGENTS.md §7).
 

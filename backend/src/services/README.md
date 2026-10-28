@@ -30,8 +30,33 @@ Un archivo por dominio (`auth.rs`, y después `profile.rs`, `goals.rs`, ...). Aq
 | `profile.rs` | HU-03: `validate_new_profile` / `validate_profile_changes` (puras), `create_profile` (marca `profile_completed`), `get_profile`, `update_profile`; rangos válidos de TEC-12 y `parse_weight_kg` (reutilizable en HU-21) |
 | `coach_invite_codes.rs` | HU-12: `generate_code` (puro), `get_or_create_invite_code`, `regenerate_invite_code` |
 | `summary.rs` | HU-10: `sum_meals`, `remaining`, `build_daily_summary` y `end_of_day` (puras), `get_daily_summary` (valida la fecha, toma la meta con `goals::get_goal_at` y suma los registros con `meals::find_meals_by_date`). HU-11: `goal_met`, `week_dates`, `validate_start` y `build_weekly_summary` (puras, reutilizan el cálculo diario), `get_weekly_summary` (metas con `goals::get_goals_at` y registros con `meals::find_meals_between`, una consulta cada uno) |
+| `routine_engine.rs` | TEC-10 (RF-14): `generate_routine` (pura, sin base de datos) arma la rutina recomendada a partir de `RoutineProfile` (objetivo, nivel, días) y el catálogo de TEC-09; `session_plan`, `exercises_per_group`, `sets_for` y `reps_and_rest_for` exponen cada regla; errores propios `RoutineEngineError`. Sección abajo |
+| `routines.rs` | HU-18 (RF-22, CU-04): `validate_routine` (pura: nombre, ejercicios y volumen, cruzados con el catálogo que se le pasa; errores `exercises[i].<campo>`) y `requested_exercise_ids` (pura: ids a buscar), `create_routine`, `list_routines`, `get_routine`, `update_routine` (comprueba el dueño antes de validar), `delete_routine`; todas filtran por `coach_id` (ajena = `ROUTINE_NOT_FOUND`) |
 | `weights.rs` | HU-21: `validate_weight` (pura, con `profile::parse_weight_kg`), `record_weight` (guarda y actualiza el perfil), `list_weights` |
 | `food_recognition/` | TEC-02 (RNF-13): trait `FoodRecognizer` y `FoodService` (tiempo de espera); proveedores `simulator`, `logmeal`, `gemini` y `gemini_fatsecret`; `preprocess::prepare` (JPEG ≤ 1000 px). Sección abajo |
+
+### Motor de rutinas recomendadas (TEC-10)
+
+Reglas acordadas con el PO el 25/10/2026. `generate_routine` es una función pura: recibe el perfil y el catálogo
+(`&[Exercise]`, p. ej. el resultado de `exercises::list_exercises`) y devuelve la rutina; HU-15-API solo tiene que
+leer el perfil y el catálogo y exponer el resultado.
+
+| Regla | Valor |
+|---|---|
+| Sesiones | Una por día de entrenamiento (`training_days`, 1 a 7): nunca más que la disponibilidad (RF-14). Fuera de 1 a 7 → `InvalidTrainingDays` |
+| División | 1–3 días: **Cuerpo completo** (los 6 grupos). 4 días: **Torso** (pecho, espalda, hombros, brazos) / **Pierna** (piernas, core) alternados. 5–7 días: **Empuje** (pecho, hombros) / **Tirón** (espalda, brazos) / **Pierna** en rotación (7 días: E, T, P, E, T, P, E) |
+| Nombre de la sesión | Numerada con su foco: `Día 1 · Empuje`, `Día 2 · Tirón`…; no se ata a un día de la semana |
+| Ejercicios por grupo | Cuerpo completo: 1. Divisiones: 1 principiante, 2 intermedio; avanzado 3 en sesiones de dos grupos (Empuje, Tirón, Pierna) y 2 en Torso. Si el catálogo tiene menos, se usan los que haya (mínimo 1) |
+| Elección de ejercicios | Solo del nivel del usuario o inferiores (mismas reglas que HU-18-API); primero los de su nivel y después los más básicos, y a igual nivel por nombre. Un grupo sin ejercicios elegibles → `MissingExercises { muscle_group, level }` |
+| Series | 2 principiante · 3 intermedio · 4 avanzado |
+| Repeticiones y descanso | `gain_muscle` 10 reps / 90 s · `maintain` 12 reps / 60 s · `lose_fat` 15 reps / 45 s |
+| Nombre de la rutina | `Rutina recomendada · <objetivo> · <N> días` |
+
+- **Determinista:** el mismo perfil con el mismo catálogo da la misma rutina aunque el catálogo llegue en otro orden.
+- **Con el catálogo de TEC-09** (1 ejercicio por grupo y nivel) un principiante recibe 1 ejercicio por grupo en
+  cualquier división; las 63 combinaciones de objetivo, nivel y días generan una rutina válida
+  (`las_63_combinaciones_generan_una_rutina_valida`).
+- **Errores:** `RoutineEngineError` todavía no es un `AppError`; HU-15-API decide su código HTTP (`TODO(HU-15-API)`).
 
 ### Registro de peso (HU-21)
 

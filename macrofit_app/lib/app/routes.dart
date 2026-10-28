@@ -15,16 +15,61 @@ abstract final class AppRoutes {
   /// HU-03: edición del perfil ("Mi perfil") del rol `user`.
   static const profileEdit = '/user/profile';
 
+  /// HU-13: vinculación con el coach mediante código.
+  static const coachLink = '/user/coach-link';
+
+  /// HU-21: registro e historial de peso.
+  static const weights = '/user/weights';
+
+  /// HU-07: estimación nutricional de la foto subida. Recibe la foto en
+  /// `extra` (`MealPhotoUpload`); sin ella vuelve al inicio.
+  static const mealEstimateChild = 'meals/estimate';
+  static const mealEstimate = '$userHome/$mealEstimateChild';
+
+  /// HU-08: revisar y corregir los valores (o capturarlos a mano) y guardar.
+  /// Recibe un `MealDraft` en `extra`; sin él vuelve al inicio.
+  static const mealFormChild = 'meals/form';
+  static const mealForm = '$userHome/$mealFormChild';
+
   /// Pantalla principal del rol `coach`.
   static const coachHome = '/coach';
 
-  /// HU-05: clientes vinculados del coach.
+  /// HU-12: código de invitación del coach (ver, copiar, compartir y regenerar).
+  static const coachInviteCode = '/coach/invite-code';
+
+  /// HU-24: clientes vinculados del coach con búsqueda.
   static const coachClients = '/coach/clients';
+
+  /// HU-24: detalle de un cliente (acceso a sus metas y comidas).
+  static const coachClientDetailPattern = '/coach/clients/:clientId';
+  static String coachClientDetail(String clientId) =>
+      '/coach/clients/$clientId';
+
+  /// HU-25: registro diario de comidas de un cliente (solo lectura).
+  static const coachClientMealsPattern = '/coach/clients/:clientId/meals';
+  static String coachClientMeals(String clientId) =>
+      '/coach/clients/$clientId/meals';
 
   /// HU-05: meta e historial de un cliente.
   static const coachClientGoalsPattern = '/coach/clients/:clientId/goals';
   static String coachClientGoals(String clientId) =>
       '/coach/clients/$clientId/goals';
+
+  /// HU-06: registro de comida (foto).
+  static const mealPhotoChild = 'meals/photo';
+  static const mealPhoto = '/user/meals/photo';
+
+  /// HU-18: rutinas del coach (lista, crear y editar).
+  static const coachRoutines = '/coach/routines';
+  static const coachRoutineNew = '/coach/routines/new';
+
+  /// HU-18: selector de ejercicios del catálogo; regresa la selección con `pop`.
+  static const coachExercisePicker = '/coach/routines/exercises';
+
+  /// HU-18: editar una rutina. Recibe la `Routine` en `extra`; sin ella vuelve a la lista.
+  static const coachRoutineEditPattern = '/coach/routines/:routineId/edit';
+  static String coachRoutineEdit(String routineId) =>
+      '/coach/routines/$routineId/edit';
 
   /// Pantallas del rol `coach`: su principal y las que cuelgan de ella.
   static bool isCoachRoute(String location) =>
@@ -34,5 +79,13 @@ abstract final class AppRoutes {
   static const public = {login, register, privacyNotice};
 
   /// Rutas de un usuario con perfil completo (además del aviso de privacidad).
-  static const userRoutes = {userHome, profileEdit};
+  static const userRoutes = {
+    userHome,
+    profileEdit,
+    coachLink,
+    weights,
+    mealPhoto,
+    mealEstimate,
+    mealForm,
+  };
 }

@@ -71,6 +71,81 @@ void main() {
     });
   });
 
+  group('estimación nutricional (HU-07)', () {
+    test('un usuario con perfil abre la estimación', () {
+      expect(
+        resolveRedirect(const Authenticated(testUser), AppRoutes.mealEstimate),
+        isNull,
+      );
+    });
+
+    test('un coach, un usuario sin perfil o sin sesión no la abren', () {
+      expect(
+        resolveRedirect(const Authenticated(testCoach), AppRoutes.mealEstimate),
+        AppRoutes.coachHome,
+      );
+      expect(
+        resolveRedirect(
+          const Authenticated(testNewUser),
+          AppRoutes.mealEstimate,
+        ),
+        AppRoutes.profileSetup,
+      );
+      expect(
+        resolveRedirect(const Unauthenticated(), AppRoutes.mealEstimate),
+        AppRoutes.login,
+      );
+    });
+  });
+
+  group('formulario de valores (HU-08)', () {
+    test('un usuario con perfil abre el formulario', () {
+      expect(
+        resolveRedirect(const Authenticated(testUser), AppRoutes.mealForm),
+        isNull,
+      );
+    });
+
+    test('un coach, un usuario sin perfil o sin sesión no lo abren', () {
+      expect(
+        resolveRedirect(const Authenticated(testCoach), AppRoutes.mealForm),
+        AppRoutes.coachHome,
+      );
+      expect(
+        resolveRedirect(const Authenticated(testNewUser), AppRoutes.mealForm),
+        AppRoutes.profileSetup,
+      );
+      expect(
+        resolveRedirect(const Unauthenticated(), AppRoutes.mealForm),
+        AppRoutes.login,
+      );
+    });
+  });
+
+  group('foto de la comida (HU-06)', () {
+    test('un usuario con perfil abre "Registrar comida"', () {
+      expect(
+        resolveRedirect(const Authenticated(testUser), AppRoutes.mealPhoto),
+        isNull,
+      );
+    });
+
+    test('un coach, un usuario sin perfil o sin sesión no la abren', () {
+      expect(
+        resolveRedirect(const Authenticated(testCoach), AppRoutes.mealPhoto),
+        AppRoutes.coachHome,
+      );
+      expect(
+        resolveRedirect(const Authenticated(testNewUser), AppRoutes.mealPhoto),
+        AppRoutes.profileSetup,
+      );
+      expect(
+        resolveRedirect(const Unauthenticated(), AppRoutes.mealPhoto),
+        AppRoutes.login,
+      );
+    });
+  });
+
   group('metas por coach (HU-05)', () {
     test('un coach abre sus pantallas de clientes y metas', () {
       const state = Authenticated(testCoach);
@@ -105,6 +180,110 @@ void main() {
 
     test('una ruta parecida a la del coach no cuenta como suya', () {
       expect(AppRoutes.isCoachRoute('/coachmate'), isFalse);
+    });
+  });
+
+  group('código de invitación (HU-12)', () {
+    test('un coach abre su código de invitación', () {
+      expect(
+        resolveRedirect(
+          const Authenticated(testCoach),
+          AppRoutes.coachInviteCode,
+        ),
+        isNull,
+      );
+    });
+
+    test('un usuario no accede al código de invitación del coach', () {
+      expect(
+        resolveRedirect(
+          const Authenticated(testUser),
+          AppRoutes.coachInviteCode,
+        ),
+        AppRoutes.userHome,
+      );
+    });
+  });
+
+  group('rutinas del coach (HU-18)', () {
+    test('un coach abre su lista, el constructor y el selector', () {
+      for (final route in [
+        AppRoutes.coachRoutines,
+        AppRoutes.coachRoutineNew,
+        AppRoutes.coachExercisePicker,
+        AppRoutes.coachRoutineEdit('abc'),
+      ]) {
+        expect(
+          resolveRedirect(const Authenticated(testCoach), route),
+          isNull,
+          reason: route,
+        );
+      }
+    });
+
+    test('un usuario no accede a las rutinas del coach', () {
+      for (final route in [
+        AppRoutes.coachRoutines,
+        AppRoutes.coachRoutineNew,
+        AppRoutes.coachRoutineEdit('abc'),
+      ]) {
+        expect(
+          resolveRedirect(const Authenticated(testUser), route),
+          AppRoutes.userHome,
+          reason: route,
+        );
+      }
+    });
+
+    test('sin sesión van al inicio de sesión', () {
+      expect(
+        resolveRedirect(const Unauthenticated(), AppRoutes.coachRoutines),
+        AppRoutes.login,
+      );
+    });
+  });
+
+  group('clientes del coach (HU-24)', () {
+    test('un coach abre el detalle de un cliente', () {
+      expect(
+        resolveRedirect(
+          const Authenticated(testCoach),
+          AppRoutes.coachClientDetail('abc'),
+        ),
+        isNull,
+      );
+    });
+
+    test('un usuario no accede al detalle de un cliente', () {
+      expect(
+        resolveRedirect(
+          const Authenticated(testUser),
+          AppRoutes.coachClientDetail('abc'),
+        ),
+        AppRoutes.userHome,
+      );
+    });
+  });
+
+  group('comidas de un cliente (HU-25)', () {
+    test('un coach abre las comidas de un cliente', () {
+      expect(
+        resolveRedirect(
+          const Authenticated(testCoach),
+          AppRoutes.coachClientMeals('abc'),
+        ),
+        isNull,
+      );
+    });
+
+    test('un usuario no accede a las comidas de un cliente', () {
+      expect(
+        resolveRedirect(
+          const Authenticated(testUser),
+          AppRoutes.coachClientMeals('abc'),
+        ),
+        AppRoutes.userHome,
+      );
     });
   });
 

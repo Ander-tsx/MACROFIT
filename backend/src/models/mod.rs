@@ -6,5 +6,6 @@ pub mod meal;
 pub mod meal_photo;
 pub mod profile;
 pub mod refresh_token;
+pub mod routine;
 pub mod user;
 pub mod weight_entry;
