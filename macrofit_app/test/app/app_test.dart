@@ -46,6 +46,7 @@ void main() {
   late FakeClientsRepository clients;
   late FakeInviteCodeRepository inviteCodes;
   late FakeCoachLinkRepository coachLinksRepo;
+  late FakeWeightsRepository weightsRepo;
   late FakeShareService share;
   late FakeRoutinesRepository routines;
 
@@ -75,6 +76,7 @@ void main() {
       ..mealsError = mealsError;
     inviteCodes = FakeInviteCodeRepository()..error = inviteCodeError;
     coachLinksRepo = FakeCoachLinkRepository();
+    weightsRepo = FakeWeightsRepository();
     share = FakeShareService();
     routines = FakeRoutinesRepository()..listError = routinesError;
     await tester.pumpWidget(
@@ -90,6 +92,7 @@ void main() {
           clientsRepository: clients,
           inviteCodeRepository: inviteCodes,
           coachLinkRepository: coachLinksRepo,
+          weightsRepository: weightsRepo,
           routinesRepository: routines,
           shareService: share,
         ),
