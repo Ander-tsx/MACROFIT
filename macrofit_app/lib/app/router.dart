@@ -46,6 +46,14 @@ import '../features/meals/presentation/meal_photo/meal_photo_view_model.dart';
 import '../features/profile/domain/repositories/profile_repository.dart';
 import '../features/profile/presentation/profile_form/profile_form_view.dart';
 import '../features/profile/presentation/profile_form/profile_form_view_model.dart';
+import '../features/routines/domain/entities/routine.dart';
+import '../features/routines/domain/repositories/routines_repository.dart';
+import '../features/routines/presentation/exercise_picker/exercise_picker_view.dart';
+import '../features/routines/presentation/exercise_picker/exercise_picker_view_model.dart';
+import '../features/routines/presentation/routine_builder/routine_builder_view.dart';
+import '../features/routines/presentation/routine_builder/routine_builder_view_model.dart';
+import '../features/routines/presentation/routines_list/routines_list_view.dart';
+import '../features/routines/presentation/routines_list/routines_list_view_model.dart';
 import 'routes.dart';
 
 /// Crea el router. Escucha al [AuthRepository]: cada cambio de sesión vuelve a
@@ -184,6 +192,45 @@ GoRouter createRouter(
           create: (context) =>
               ClientsListViewModel(context.read<ClientsRepository>())..load(),
           child: const ClientsListView(),
+        ),
+      ),
+      GoRoute(
+        path: AppRoutes.coachRoutines,
+        builder: (context, _) => ChangeNotifierProvider(
+          create: (context) =>
+              RoutinesListViewModel(context.read<RoutinesRepository>())..load(),
+          child: const RoutinesListView(),
+        ),
+      ),
+      GoRoute(
+        path: AppRoutes.coachRoutineNew,
+        builder: (context, _) => ChangeNotifierProvider(
+          create: (context) => RoutineBuilderViewModel(
+            repository: context.read<RoutinesRepository>(),
+          ),
+          child: const RoutineBuilderView(),
+        ),
+      ),
+      GoRoute(
+        path: AppRoutes.coachExercisePicker,
+        builder: (context, _) => ChangeNotifierProvider(
+          create: (context) =>
+              ExercisePickerViewModel(context.read<RoutinesRepository>())
+                ..load(),
+          child: const ExercisePickerView(),
+        ),
+      ),
+      GoRoute(
+        path: AppRoutes.coachRoutineEditPattern,
+        // Sin la rutina (p. ej. al restaurar la ruta) se vuelve a la lista.
+        redirect: (_, state) =>
+            state.extra is Routine ? null : AppRoutes.coachRoutines,
+        builder: (context, state) => ChangeNotifierProvider(
+          create: (context) => RoutineBuilderViewModel(
+            repository: context.read<RoutinesRepository>(),
+            initial: state.extra! as Routine,
+          ),
+          child: const RoutineBuilderView(),
         ),
       ),
       GoRoute(

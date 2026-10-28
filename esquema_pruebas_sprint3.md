@@ -44,6 +44,15 @@
 | HU-08 | Captura manual (CU-01 flujos 3a y 4a). | Unitaria | **Capturar a mano** (tras un fallo de la estimación) y **Capturar sin foto** abren el mismo formulario vacío; se guarda sin `estimated`, con `photo_id` solo si hay foto. | [**5**](#caso-40) (mobile 5 · backend 0) |
 | HU-08 | Errores del guardado. | Unitaria | `400 VALIDATION_ERROR` marca cada campo con `applyApiError`, incluidos `estimated.<campo>` (*Valor estimado: …*); `409`, `404` y la falta de conexión muestran el mensaje sin perder los valores; un registro guardado no se vuelve a enviar. | [**6**](#caso-41) (mobile 6 · backend 0) |
 | HU-08 | Ruta del formulario. | Unitaria | Solo un usuario con perfil abre `/user/meals/form` (un coach, un usuario sin perfil o sin sesión son redirigidos). | [**2**](#caso-42) (mobile 2 · backend 0) |
+| HU-18 | La app interpreta `GET /exercises` (con filtros) y `/coach/routines`. | Unitaria | El catálogo se pide sin parámetros o con `muscle_group` y `level`; la lista, el `POST`, el `PUT /{id}` y el `DELETE /{id}` (`204`) usan su ruta y método; el cuerpo lleva `name` y `exercises[]` con `exercise_id`, `sets`, `reps` y `rest_seconds`; un `400` conserva los errores `exercises[i].<campo>`, `ROUTINE_NOT_FOUND` y la falta de red salen como `ApiException`. | [**9**](#caso-43) (mobile 9 · backend 0) |
+| HU-18 | El coach ve sus rutinas y crea una desde su pantalla principal (RF-22, CU-04 paso 1). | Interfaz | **Mis rutinas** (botón del panel o icono de la barra) abre la lista con nombre y resumen (`2 ejercicios · Pecho, Espalda`) en el orden de la API y el botón **Nueva rutina**; sin rutinas lo indica sin tratarlo como error. | [**5**](#caso-44) (mobile 5 · backend 0) |
+| HU-18 | Selector de ejercicios del catálogo con filtros por grupo muscular y nivel (CU-04 paso 3). | Unitaria | Se consulta `GET /exercises` sin filtros y con cada filtro elegido (repetir el mismo no vuelve a consultar); se marcan varios ejercicios y se agregan en el orden en que se marcaron, aunque cambie el filtro; sin resultados lo indica; sin red muestra el error y **Reintentar**; se descarta la respuesta de un filtro anterior. | [**8**](#caso-45) (mobile 8 · backend 0) |
+| HU-18 | Cada ejercicio lleva series, repeticiones y descanso; se puede quitar y reordenar antes de guardar. | Unitaria | Un ejercicio agregado llega con 3 × 10 y 60 s, editables; quitar lo saca y arrastrar cambia el orden en que se guarda (conserva sus valores); se puede repetir un ejercicio; no se agregan más de 20; se guarda con `POST` el nombre recortado y una rutina guardada no se vuelve a enviar. | [**8**](#caso-46) (mobile 8 · backend 0) |
+| HU-18 | Validación local con las mismas reglas que HU-18-API (CU-04 flujo 4a). | Unitaria | Nombre obligatorio (1 a 80 caracteres sin contar espacios alrededor), de 1 a 20 ejercicios, series enteras de 1 a 10, repeticiones de 1 a 100 y descanso de 0 a 600 s; todos los errores se reportan a la vez con los nombres de la API, marcan su campo, no llaman a la API y editar el campo limpia su error. | [**14**](#caso-47) (mobile 14 · backend 0) |
+| HU-18 | Errores de la API al guardar (CU-04 flujos 4a y 5a). | Unitaria | Un `400 VALIDATION_ERROR` marca `name` y `exercises[i].<campo>` en su ejercicio, incluido un ejercicio que no está en el catálogo; un `400` sin campos conocidos, la falta de conexión y `404 ROUTINE_NOT_FOUND` al editar muestran el mensaje sin perder lo capturado y se puede volver a guardar. | [**4**](#caso-48) (mobile 4 · backend 0) |
+| HU-18 | Editar guarda los cambios y eliminar pide confirmación; la lista se actualiza tras cada acción. | Interfaz | Editar precarga nombre y ejercicios y guarda con `PUT` a su id; eliminar pide confirmación (cancelar no llama a la API), muestra el progreso, recarga la lista y, si la rutina ya no existía (`404`), la quita igual; con otro error la conserva y muestra el mensaje. | [**10**](#caso-49) (mobile 10 · backend 0) |
+| HU-18 | Sin conexión al cargar la lista de rutinas (RNF-11). | Unitaria | Sin rutinas cargadas muestra el error en español con **Reintentar**, que vuelve a consultar; si falla una recarga se conserva la última lista. | [**3**](#caso-50) (mobile 3 · backend 0) |
+| HU-18 | Salir con cambios sin guardar y rutas del constructor. | Unitaria | Con cambios, **atrás** pide *¿Descartar cambios?* (seguir editando o descartar, sin guardar); solo el rol `coach` abre la lista, el constructor, el selector y la edición (un usuario va a su inicio y sin sesión al login). | [**4**](#caso-51) (mobile 4 · backend 0) |
 
 ## Cómo se cuentan las pruebas
 
@@ -59,6 +68,7 @@ Inventario al cerrar HU-06-APP: **243** pruebas mobile (`flutter test`; 198 en `
 Inventario al cerrar HU-26-APP: **256** pruebas mobile (`flutter test`; 243 en `develop` con HU-06-APP). HU-26-APP agrega 13 (8 del ViewModel y 5 de widgets). Sin cambios en el backend. Además se probó de punta a punta en el simulador de iPhone 16 contra el backend local con base temporal (no se cuenta).
 Inventario al cerrar HU-07-APP: **279** pruebas mobile (`flutter test`; 256 en `develop` con HU-26-APP). HU-07-APP agrega 23 (8 de datos, 8 de ViewModels, 2 de rutas y 5 de widgets) y cambia *elige de la galería, muestra la vista previa y la sube* (HU-06) para comprobar que la foto subida abre la estimación. Sin cambios en el backend. Además se probó a mano en un teléfono Android (moto g60) contra el backend de `develop` en local con `FOOD_SIMULATOR_MODE` `ok`, `not_recognized`, `error` y `timeout`, y sin conexión (no se cuenta); la API desplegada aún no tiene `POST /meals/estimate`.
 Inventario al cerrar HU-08-APP: **307** pruebas mobile (`flutter test`; 279 en `develop` con HU-07-APP). HU-08-APP agrega 28 (6 del validador, 3 de datos, 13 del ViewModel, 2 de rutas y 4 de widgets). Sin cambios en el backend. Además se probó a mano en un teléfono Android (moto g60) contra el backend de `develop` en local: guardado sin y con corrección, captura manual con foto (tras `422`) y sin foto, revisando en MongoDB los finales y `estimated` (no se cuenta).
+Inventario al cerrar HU-18-APP: **372** pruebas mobile (`flutter test`; 307 en `develop` con HU-08-APP). HU-18-APP agrega 65 (9 del validador, 9 de datos, 35 de ViewModels —19 del constructor, 9 de la lista y 7 del selector—, 3 de rutas y 9 de widgets). Sin cambios en el backend. Falta la prueba manual en un teléfono contra la API desplegada (no se cuenta).
 
 ## Detalle de las pruebas por caso
 
@@ -548,3 +558,131 @@ Mobile: 2 · Backend: 0
 
 - `macrofit_app/test/app/router_test.dart` › formulario de valores (HU-08) › un usuario con perfil abre el formulario
 - `macrofit_app/test/app/router_test.dart` › formulario de valores (HU-08) › un coach, un usuario sin perfil o sin sesión no lo abren
+
+### <a id="caso-43"></a>Caso 43 · HU-18 — La app llama a `GET /exercises` y a `/coach/routines` e interpreta sus respuestas
+
+Mobile: 9 · Backend: 0
+
+**Mobile**
+
+- `macrofit_app/test/features/routines/data/routines_repository_impl_test.dart` › catálogo (GET /exercises) › sin filtros no manda parámetros y convierte cada ejercicio
+- `macrofit_app/test/features/routines/data/routines_repository_impl_test.dart` › catálogo (GET /exercises) › manda grupo muscular y nivel como parámetros
+- `macrofit_app/test/features/routines/data/routines_repository_impl_test.dart` › lista las rutinas con GET /coach/routines
+- `macrofit_app/test/features/routines/data/routines_repository_impl_test.dart` › crea con POST /coach/routines y los nombres de la API
+- `macrofit_app/test/features/routines/data/routines_repository_impl_test.dart` › edita con PUT /coach/routines/{id}
+- `macrofit_app/test/features/routines/data/routines_repository_impl_test.dart` › elimina con DELETE /coach/routines/{id} (204 sin cuerpo)
+- `macrofit_app/test/features/routines/data/routines_repository_impl_test.dart` › un 400 conserva los errores por campo de cada ejercicio
+- `macrofit_app/test/features/routines/data/routines_repository_impl_test.dart` › una rutina ajena o inexistente lanza ROUTINE_NOT_FOUND
+- `macrofit_app/test/features/routines/data/routines_repository_impl_test.dart` › sin red lanza NETWORK_ERROR
+
+### <a id="caso-44"></a>Caso 44 · HU-18 — Lista de rutinas desde la pantalla principal
+
+Mobile: 5 · Backend: 0
+
+**Mobile**
+
+- `macrofit_app/test/app/app_test.dart` › rutinas del coach (HU-18) › el coach ve sus rutinas desde su pantalla principal
+- `macrofit_app/test/app/app_test.dart` › rutinas del coach (HU-18) › también se abren desde la barra del panel
+- `macrofit_app/test/app/app_test.dart` › rutinas del coach (HU-18) › sin rutinas lo indica
+- `macrofit_app/test/features/routines/presentation/routines_list_view_model_test.dart` › carga las rutinas del coach en el orden de la API
+- `macrofit_app/test/features/routines/presentation/routines_list_view_model_test.dart` › sin rutinas lo indica (no es un error)
+
+### <a id="caso-45"></a>Caso 45 · HU-18 — Selector de ejercicios con filtros
+
+Mobile: 8 · Backend: 0
+
+**Mobile**
+
+- `macrofit_app/test/features/routines/presentation/exercise_picker_view_model_test.dart` › carga el catálogo completo sin filtros
+- `macrofit_app/test/features/routines/presentation/exercise_picker_view_model_test.dart` › filtra por grupo muscular y nivel con GET /exercises
+- `macrofit_app/test/features/routines/presentation/exercise_picker_view_model_test.dart` › elegir el mismo filtro no vuelve a consultar
+- `macrofit_app/test/features/routines/presentation/exercise_picker_view_model_test.dart` › selección múltiple en el orden en que se marcan
+- `macrofit_app/test/features/routines/presentation/exercise_picker_view_model_test.dart` › la selección se conserva al cambiar de filtro
+- `macrofit_app/test/features/routines/presentation/exercise_picker_view_model_test.dart` › sin red muestra el error y reintentar vuelve a consultar
+- `macrofit_app/test/features/routines/presentation/exercise_picker_view_model_test.dart` › descarta la respuesta de un filtro anterior
+- `macrofit_app/test/app/app_test.dart` › rutinas del coach (HU-18) › crea una rutina con ejercicios elegidos del catálogo filtrado
+
+### <a id="caso-46"></a>Caso 46 · HU-18 — Series, repeticiones y descanso; quitar y reordenar
+
+Mobile: 8 · Backend: 0
+
+**Mobile**
+
+- `macrofit_app/test/features/routines/presentation/routine_builder_view_model_test.dart` › crear › empieza vacía y sin cambios
+- `macrofit_app/test/features/routines/presentation/routine_builder_view_model_test.dart` › crear › los ejercicios agregados llegan con 3 × 10 y 60 s
+- `macrofit_app/test/features/routines/presentation/routine_builder_view_model_test.dart` › crear › guarda con POST el nombre recortado y los valores capturados
+- `macrofit_app/test/features/routines/presentation/routine_builder_view_model_test.dart` › crear › una rutina guardada no se vuelve a enviar
+- `macrofit_app/test/features/routines/presentation/routine_builder_view_model_test.dart` › crear › quitar un ejercicio lo saca de la rutina
+- `macrofit_app/test/features/routines/presentation/routine_builder_view_model_test.dart` › crear › reordenar cambia el orden en que se guardan
+- `macrofit_app/test/features/routines/presentation/routine_builder_view_model_test.dart` › crear › se puede repetir un ejercicio
+- `macrofit_app/test/features/routines/presentation/routine_builder_view_model_test.dart` › crear › no se pueden agregar más de 20 ejercicios
+
+### <a id="caso-47"></a>Caso 47 · HU-18 — Validación local con las reglas de HU-18-API
+
+Mobile: 14 · Backend: 0
+
+**Mobile**
+
+- `macrofit_app/test/features/routines/domain/routine_validator_test.dart` › nombre › es obligatorio (vacío o solo espacios)
+- `macrofit_app/test/features/routines/domain/routine_validator_test.dart` › nombre › acepta hasta 80 caracteres sin contar los espacios alrededor
+- `macrofit_app/test/features/routines/domain/routine_validator_test.dart` › exige de 1 a 20 ejercicios
+- `macrofit_app/test/features/routines/domain/routine_validator_test.dart` › series: entero de 1 a 10 (mayor a cero)
+- `macrofit_app/test/features/routines/domain/routine_validator_test.dart` › repeticiones: entero de 1 a 100 (mayor a cero)
+- `macrofit_app/test/features/routines/domain/routine_validator_test.dart` › descanso: entero de 0 a 600 segundos
+- `macrofit_app/test/features/routines/domain/routine_validator_test.dart` › validate › una rutina válida no tiene errores
+- `macrofit_app/test/features/routines/domain/routine_validator_test.dart` › validate › reporta todos los errores a la vez con los nombres de la API
+- `macrofit_app/test/features/routines/domain/routine_validator_test.dart` › validate › sin ejercicios marca la lista (CU-04 4a)
+- `macrofit_app/test/features/routines/presentation/routine_builder_view_model_test.dart` › validación local (mismas reglas que HU-18-API) › sin nombre ni ejercicios no llama a la API (CU-04 4a)
+- `macrofit_app/test/features/routines/presentation/routine_builder_view_model_test.dart` › validación local (mismas reglas que HU-18-API) › series y repeticiones en cero marcan su ejercicio
+- `macrofit_app/test/features/routines/presentation/routine_builder_view_model_test.dart` › validación local (mismas reglas que HU-18-API) › editar un campo limpia solo su error
+- `macrofit_app/test/features/routines/presentation/routine_builder_view_model_test.dart` › validación local (mismas reglas que HU-18-API) › quitar o reordenar limpia los errores de los ejercicios
+- `macrofit_app/test/app/app_test.dart` › rutinas del coach (HU-18) › la validación local marca los campos y no guarda
+
+### <a id="caso-48"></a>Caso 48 · HU-18 — Errores de la API al guardar
+
+Mobile: 4 · Backend: 0
+
+**Mobile**
+
+- `macrofit_app/test/features/routines/presentation/routine_builder_view_model_test.dart` › errores de la API › un 400 marca cada campo, incluido un ejercicio fuera del catálogo (CU-04 4a y 5a)
+- `macrofit_app/test/features/routines/presentation/routine_builder_view_model_test.dart` › errores de la API › un 400 sin campos conocidos se muestra como error general
+- `macrofit_app/test/features/routines/presentation/routine_builder_view_model_test.dart` › errores de la API › sin red muestra el mensaje y permite volver a guardar
+- `macrofit_app/test/features/routines/presentation/routine_builder_view_model_test.dart` › editar › una rutina que ya no existe (404) muestra el mensaje
+
+### <a id="caso-49"></a>Caso 49 · HU-18 — Editar y eliminar; la lista se actualiza
+
+Mobile: 10 · Backend: 0
+
+**Mobile**
+
+- `macrofit_app/test/features/routines/presentation/routine_builder_view_model_test.dart` › editar › precarga el nombre y los ejercicios de la rutina
+- `macrofit_app/test/features/routines/presentation/routine_builder_view_model_test.dart` › editar › guarda los cambios con PUT a su id
+- `macrofit_app/test/features/routines/presentation/routine_builder_view_model_test.dart` › editar › volver al valor original ya no cuenta como cambio
+- `macrofit_app/test/features/routines/presentation/routines_list_view_model_test.dart` › eliminar › confirmado: llama a la API y recarga la lista
+- `macrofit_app/test/features/routines/presentation/routines_list_view_model_test.dart` › eliminar › cancelado: no llama a la API
+- `macrofit_app/test/features/routines/presentation/routines_list_view_model_test.dart` › eliminar › con error conserva la rutina y muestra el mensaje
+- `macrofit_app/test/features/routines/presentation/routines_list_view_model_test.dart` › eliminar › si ya no existe (404) la quita de la lista
+- `macrofit_app/test/features/routines/presentation/routines_list_view_model_test.dart` › eliminar › marca la rutina que se está eliminando
+- `macrofit_app/test/app/app_test.dart` › rutinas del coach (HU-18) › editar guarda los cambios y la lista se actualiza
+- `macrofit_app/test/app/app_test.dart` › rutinas del coach (HU-18) › eliminar pide confirmación y actualiza la lista
+
+### <a id="caso-50"></a>Caso 50 · HU-18 — Sin conexión al cargar la lista
+
+Mobile: 3 · Backend: 0
+
+**Mobile**
+
+- `macrofit_app/test/features/routines/presentation/routines_list_view_model_test.dart` › sin red muestra el error y reintentar vuelve a consultar
+- `macrofit_app/test/features/routines/presentation/routines_list_view_model_test.dart` › si falla una recarga conserva la última lista
+- `macrofit_app/test/app/app_test.dart` › rutinas del coach (HU-18) › sin conexión muestra el error y permite reintentar
+
+### <a id="caso-51"></a>Caso 51 · HU-18 — Salir sin guardar y rutas
+
+Mobile: 4 · Backend: 0
+
+**Mobile**
+
+- `macrofit_app/test/app/app_test.dart` › rutinas del coach (HU-18) › salir con cambios sin guardar pide confirmación
+- `macrofit_app/test/app/router_test.dart` › rutinas del coach (HU-18) › un coach abre su lista, el constructor y el selector
+- `macrofit_app/test/app/router_test.dart` › rutinas del coach (HU-18) › un usuario no accede a las rutinas del coach
+- `macrofit_app/test/app/router_test.dart` › rutinas del coach (HU-18) › sin sesión van al inicio de sesión

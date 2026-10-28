@@ -29,6 +29,9 @@ import 'package:macrofit_app/features/meals/presentation/meal_photo/meal_photo_v
 import 'package:macrofit_app/features/meals/presentation/meal_photo/meal_photo_view_model.dart';
 import 'package:macrofit_app/features/profile/domain/entities/profile.dart';
 import 'package:macrofit_app/features/profile/presentation/profile_form/profile_form_view.dart';
+import 'package:macrofit_app/features/routines/presentation/exercise_picker/exercise_picker_view.dart';
+import 'package:macrofit_app/features/routines/presentation/routine_builder/routine_builder_view.dart';
+import 'package:macrofit_app/features/routines/presentation/routines_list/routines_list_view.dart';
 
 import '../helpers/fakes.dart';
 
@@ -43,6 +46,7 @@ void main() {
   late FakeClientsRepository clients;
   late FakeInviteCodeRepository inviteCodes;
   late FakeShareService share;
+  late FakeRoutinesRepository routines;
 
   Future<void> pumpApp(
     WidgetTester tester, {
@@ -56,6 +60,7 @@ void main() {
     Map<DateTime, List<ClientMeal>>? clientMeals,
     ApiException? mealsError,
     ApiException? inviteCodeError,
+    ApiException? routinesError,
   }) async {
     auth = FakeAuthRepository(initialState: state);
     legal = FakeLegalRepository();
@@ -69,6 +74,7 @@ void main() {
       ..mealsError = mealsError;
     inviteCodes = FakeInviteCodeRepository()..error = inviteCodeError;
     share = FakeShareService();
+    routines = FakeRoutinesRepository()..listError = routinesError;
     await tester.pumpWidget(
       MacroFitApp(
         dependencies: AppDependencies(
@@ -81,6 +87,7 @@ void main() {
           mealsRepository: meals,
           clientsRepository: clients,
           inviteCodeRepository: inviteCodes,
+          routinesRepository: routines,
           shareService: share,
         ),
       ),
@@ -1027,6 +1034,196 @@ void main() {
       await tester.tap(find.byKey(const Key('invite_code_retry')));
       await tester.pumpAndSettle();
       expect(find.text(testInviteCode), findsOneWidget);
+    });
+  });
+
+  group('rutinas del coach (HU-18)', () {
+    Future<void> openRoutines(
+      WidgetTester tester, {
+      ApiException? routinesError,
+    }) async {
+      await pumpApp(
+        tester,
+        state: const Authenticated(testCoach),
+        routinesError: routinesError,
+      );
+      await tester.tap(find.byKey(const Key('routines_home_button')));
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('el coach ve sus rutinas desde su pantalla principal', (
+      tester,
+    ) async {
+      await openRoutines(tester);
+
+      expect(find.byType(RoutinesListView), findsOneWidget);
+      expect(find.text('Torso A'), findsOneWidget);
+      expect(find.text('2 ejercicios · Pecho, Espalda'), findsOneWidget);
+      expect(find.text('Pierna'), findsOneWidget);
+    });
+
+    testWidgets('también se abren desde la barra del panel', (tester) async {
+      await pumpApp(tester, state: const Authenticated(testCoach));
+      await tester.tap(find.byKey(const Key('routines_button')));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(RoutinesListView), findsOneWidget);
+    });
+
+    testWidgets('sin rutinas lo indica', (tester) async {
+      await pumpApp(tester, state: const Authenticated(testCoach));
+      routines.routines = [];
+      await tester.tap(find.byKey(const Key('routines_home_button')));
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const Key('routines_empty')), findsOneWidget);
+      expect(find.byKey(const Key('routines_new')), findsOneWidget);
+    });
+
+    testWidgets('sin conexión muestra el error y permite reintentar', (
+      tester,
+    ) async {
+      await openRoutines(tester, routinesError: networkError);
+      expect(find.text(networkError.message), findsOneWidget);
+
+      routines.listError = null;
+      await tester.tap(find.byKey(const Key('routines_retry')));
+      await tester.pumpAndSettle();
+      expect(find.text('Torso A'), findsOneWidget);
+    });
+
+    testWidgets(
+      'crea una rutina con ejercicios elegidos del catálogo filtrado',
+      (tester) async {
+        await openRoutines(tester);
+        await tester.tap(find.byKey(const Key('routines_new')));
+        await tester.pumpAndSettle();
+        expect(find.byType(RoutineBuilderView), findsOneWidget);
+
+        await tester.enterText(find.byKey(const Key('routine_name')), 'Empuje');
+        await tester.tap(find.byKey(const Key('routine_add_exercises')));
+        await tester.pumpAndSettle();
+        expect(find.byType(ExercisePickerView), findsOneWidget);
+        expect(find.text(testSquat.name), findsOneWidget);
+
+        await tester.tap(find.byKey(const Key('exercise_filter_group_chest')));
+        await tester.pumpAndSettle();
+        expect(find.text(testSquat.name), findsNothing);
+        expect(routines.exerciseRequests.last.muscleGroup?.apiValue, 'chest');
+
+        await tester.tap(find.byKey(Key('exercise_${testPushUps.id}')));
+        await tester.tap(find.byKey(Key('exercise_${testBenchPress.id}')));
+        await tester.pump();
+        expect(find.text('Agregar (2)'), findsOneWidget);
+        await tester.tap(find.byKey(const Key('exercise_picker_add')));
+        await tester.pumpAndSettle();
+
+        expect(find.byType(RoutineBuilderView), findsOneWidget);
+        expect(find.text('1. ${testPushUps.name}'), findsOneWidget);
+        expect(find.text('2. ${testBenchPress.name}'), findsOneWidget);
+
+        await tester.tap(find.byKey(const Key('routine_submit')));
+        await tester.pumpAndSettle();
+
+        final draft = routines.created.single;
+        expect(draft.name, 'Empuje');
+        expect(draft.exercises.map((e) => (e.exerciseId, e.sets, e.reps)), [
+          (testPushUps.id, 3, 10),
+          (testBenchPress.id, 3, 10),
+        ]);
+        expect(find.byType(RoutinesListView), findsOneWidget);
+        expect(find.text('Empuje'), findsOneWidget);
+        expect(find.text('Rutina creada'), findsOneWidget);
+      },
+    );
+
+    testWidgets('la validación local marca los campos y no guarda', (
+      tester,
+    ) async {
+      await openRoutines(tester);
+      await tester.tap(find.byKey(const Key('routines_new')));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const Key('routine_submit')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('El nombre es obligatorio'), findsOneWidget);
+      expect(
+        find.text('La rutina debe tener al menos un ejercicio'),
+        findsOneWidget,
+      );
+      expect(routines.created, isEmpty);
+    });
+
+    testWidgets('editar guarda los cambios y la lista se actualiza', (
+      tester,
+    ) async {
+      await openRoutines(tester);
+      await tester.tap(find.text('Torso A'));
+      await tester.pumpAndSettle();
+      expect(find.text('Editar rutina'), findsOneWidget);
+
+      await tester.enterText(find.byKey(const Key('routine_name')), 'Torso B');
+      await tester.tap(find.byKey(const Key('routine_submit')));
+      await tester.pumpAndSettle();
+
+      expect(routines.updated.single.id, testRoutine.id);
+      expect(find.byType(RoutinesListView), findsOneWidget);
+      expect(find.text('Torso B'), findsOneWidget);
+      expect(find.text('Torso A'), findsNothing);
+    });
+
+    testWidgets('eliminar pide confirmación y actualiza la lista', (
+      tester,
+    ) async {
+      await openRoutines(tester);
+
+      Future<void> askToDelete() async {
+        await tester.tap(find.byKey(Key('routine_menu_${testRoutine.id}')));
+        await tester.pumpAndSettle();
+        await tester.tap(find.byKey(const Key('routine_menu_delete')));
+        await tester.pumpAndSettle();
+        expect(find.textContaining('¿Eliminar «Torso A»?'), findsOneWidget);
+      }
+
+      await askToDelete();
+      await tester.tap(find.byKey(const Key('routine_delete_cancel')));
+      await tester.pumpAndSettle();
+      expect(routines.deleted, isEmpty);
+      expect(find.text('Torso A'), findsOneWidget);
+
+      await askToDelete();
+      await tester.tap(find.byKey(const Key('routine_delete_confirm')));
+      await tester.pumpAndSettle();
+      expect(routines.deleted, [testRoutine.id]);
+      expect(find.text('Torso A'), findsNothing);
+      expect(find.text('Pierna'), findsOneWidget);
+      expect(find.text('Rutina eliminada'), findsOneWidget);
+    });
+
+    testWidgets('salir con cambios sin guardar pide confirmación', (
+      tester,
+    ) async {
+      await openRoutines(tester);
+      await tester.tap(find.byKey(const Key('routines_new')));
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byKey(const Key('routine_name')), 'Torso');
+      await tester.pump();
+
+      await tester.tap(find.byType(BackButton));
+      await tester.pumpAndSettle();
+      expect(find.text('¿Descartar cambios?'), findsOneWidget);
+
+      await tester.tap(find.byKey(const Key('routine_discard_cancel')));
+      await tester.pumpAndSettle();
+      expect(find.byType(RoutineBuilderView), findsOneWidget);
+
+      await tester.tap(find.byType(BackButton));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('routine_discard_confirm')));
+      await tester.pumpAndSettle();
+      expect(find.byType(RoutinesListView), findsOneWidget);
+      expect(routines.created, isEmpty);
     });
   });
 

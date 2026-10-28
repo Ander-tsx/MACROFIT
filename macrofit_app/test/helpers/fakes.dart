@@ -31,6 +31,9 @@ import 'package:macrofit_app/features/meals/domain/repositories/meal_photo_repos
 import 'package:macrofit_app/features/meals/domain/repositories/meals_repository.dart';
 import 'package:macrofit_app/features/profile/domain/entities/profile.dart';
 import 'package:macrofit_app/features/profile/domain/repositories/profile_repository.dart';
+import 'package:macrofit_app/features/routines/domain/entities/exercise.dart';
+import 'package:macrofit_app/features/routines/domain/entities/routine.dart';
+import 'package:macrofit_app/features/routines/domain/repositories/routines_repository.dart';
 
 /// Usuario que ya capturó su perfil (HU-03): entra a la pantalla principal.
 const testUser = User(
@@ -700,3 +703,187 @@ Map<String, Object> sessionJson(
   'expires_in': 900,
   'user': userModelOf(user).toJson(),
 };
+
+// ───────────────────────── Rutinas del coach (HU-18) ─────────────────────────
+
+const testBenchPress = Exercise(
+  id: '6ac6a0000000000000000001',
+  name: 'Press de banca con mancuernas',
+  muscleGroup: 'chest',
+  equipment: 'dumbbell',
+  level: 'beginner',
+);
+
+const testPushUps = Exercise(
+  id: '6ac6a0000000000000000002',
+  name: 'Flexiones de pecho',
+  muscleGroup: 'chest',
+  equipment: 'bodyweight',
+  level: 'beginner',
+);
+
+const testRow = Exercise(
+  id: '6ac6a0000000000000000003',
+  name: 'Remo con barra',
+  muscleGroup: 'back',
+  equipment: 'barbell',
+  level: 'intermediate',
+);
+
+const testSquat = Exercise(
+  id: '6ac6a0000000000000000004',
+  name: 'Sentadilla trasera',
+  muscleGroup: 'legs',
+  equipment: 'barbell',
+  level: 'advanced',
+);
+
+/// Catálogo de prueba (TEC-09): dos de pecho, uno de espalda y uno de piernas.
+const testExercises = [testBenchPress, testPushUps, testRow, testSquat];
+
+/// Rutina guardada «Torso A» con press de banca (4 × 10, 90 s) y remo (3 × 12, 60 s).
+final testRoutine = Routine(
+  id: '6b01a0000000000000000001',
+  name: 'Torso A',
+  exercises: const [
+    RoutineExercise(
+      exerciseId: '6ac6a0000000000000000001',
+      name: 'Press de banca con mancuernas',
+      muscleGroup: 'chest',
+      sets: 4,
+      reps: 10,
+      restSeconds: 90,
+    ),
+    RoutineExercise(
+      exerciseId: '6ac6a0000000000000000003',
+      name: 'Remo con barra',
+      muscleGroup: 'back',
+      sets: 3,
+      reps: 12,
+      restSeconds: 60,
+    ),
+  ],
+  createdAt: DateTime.utc(2026, 10, 26, 18),
+  updatedAt: DateTime.utc(2026, 10, 26, 18),
+);
+
+/// Segunda rutina guardada («Pierna»), con un solo ejercicio.
+final testLegRoutine = Routine(
+  id: '6b01a0000000000000000002',
+  name: 'Pierna',
+  exercises: const [
+    RoutineExercise(
+      exerciseId: '6ac6a0000000000000000004',
+      name: 'Sentadilla trasera',
+      muscleGroup: 'legs',
+      sets: 5,
+      reps: 5,
+      restSeconds: 120,
+    ),
+  ],
+  createdAt: DateTime.utc(2026, 10, 25, 18),
+  updatedAt: DateTime.utc(2026, 10, 25, 18),
+);
+
+/// Rutinas y catálogo en memoria (simula `/coach/routines` y `GET /exercises`).
+/// Crear, editar y eliminar cambian [routines], así que recargar muestra el cambio.
+class FakeRoutinesRepository implements RoutinesRepository {
+  FakeRoutinesRepository({List<Routine>? routines, List<Exercise>? exercises})
+    : routines = routines ?? [testRoutine, testLegRoutine],
+      exercises = exercises ?? [...testExercises];
+
+  List<Routine> routines;
+  List<Exercise> exercises;
+
+  /// Si se asigna, las siguientes llamadas del tipo correspondiente lanzan este error.
+  ApiException? listError;
+  ApiException? exercisesError;
+  ApiException? saveError;
+  ApiException? deleteError;
+
+  /// Si se asigna, la consulta del catálogo espera a que se complete.
+  Completer<void>? exercisesGate;
+
+  int listCalls = 0;
+  final exerciseRequests =
+      <({MuscleGroup? muscleGroup, ExerciseLevel? level})>[];
+  final created = <RoutineDraft>[];
+  final updated = <({String id, RoutineDraft draft})>[];
+  final deleted = <String>[];
+  int _nextId = 10;
+
+  @override
+  Future<List<Exercise>> getExercises({
+    MuscleGroup? muscleGroup,
+    ExerciseLevel? level,
+  }) async {
+    exerciseRequests.add((muscleGroup: muscleGroup, level: level));
+    await exercisesGate?.future;
+    if (exercisesError case final error?) throw error;
+    return [
+      for (final exercise in exercises)
+        if ((muscleGroup == null ||
+                exercise.muscleGroup == muscleGroup.apiValue) &&
+            (level == null || exercise.level == level.apiValue))
+          exercise,
+    ];
+  }
+
+  @override
+  Future<List<Routine>> getRoutines() async {
+    listCalls++;
+    if (listError case final error?) throw error;
+    return [...routines];
+  }
+
+  @override
+  Future<Routine> createRoutine(RoutineDraft draft) async {
+    created.add(draft);
+    if (saveError case final error?) throw error;
+    final routine = _routineOf('6b01a00000000000000000${_nextId++}', draft);
+    routines = [routine, ...routines];
+    return routine;
+  }
+
+  @override
+  Future<Routine> updateRoutine(String id, RoutineDraft draft) async {
+    updated.add((id: id, draft: draft));
+    if (saveError case final error?) throw error;
+    final routine = _routineOf(id, draft);
+    routines = [routine, ...routines.where((item) => item.id != id)];
+    return routine;
+  }
+
+  @override
+  Future<void> deleteRoutine(String id) async {
+    deleted.add(id);
+    if (deleteError case final error?) throw error;
+    routines = [...routines.where((item) => item.id != id)];
+  }
+
+  Routine _routineOf(String id, RoutineDraft draft) {
+    final now = DateTime.utc(2026, 10, 27, 12);
+    return Routine(
+      id: id,
+      name: draft.name,
+      exercises: [
+        for (final item in draft.exercises)
+          () {
+            final exercise = exercises.firstWhere(
+              (exercise) => exercise.id == item.exerciseId,
+            );
+            return RoutineExercise(
+              exerciseId: item.exerciseId,
+              name: exercise.name,
+              muscleGroup: exercise.muscleGroup,
+              sets: item.sets,
+              reps: item.reps,
+              restSeconds: item.restSeconds,
+            );
+          }(),
+      ],
+      createdAt: now,
+      updatedAt: now,
+    );
+  }
+}

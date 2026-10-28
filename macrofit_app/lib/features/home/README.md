@@ -7,7 +7,7 @@ coach todavía es provisional.
 |---|---|
 | `presentation/user_home_view.dart` | `/user` — rol `user`. Meta vigente (HU-26) con «deslizar para actualizar» , botón **Mi perfil** (`/user/profile`, HU-03) y botón flotante **Registrar comida** (`/user/meals/photo`, HU-06). Se llenará con HU-10 (resumen diario), etc. |
 | `presentation/user_home_view_model.dart` | `UserHomeViewModel extends HomeViewModel`: sesión + `loadGoal()` (`GoalsRepository` del dominio de `goals`) |
-| `presentation/coach_home_view.dart` | `/coach` — rol `coach`. Botón **Mi código de invitación** (`/coach/invite-code`, HU-12; en el cuerpo y en la barra) y **Mis clientes** (`/coach/clients`, HU-24). |
+| `presentation/coach_home_view.dart` | `/coach` — rol `coach`. Botón **Mi código de invitación** (`/coach/invite-code`, HU-12; en el cuerpo y en la barra), **Mis clientes** (`/coach/clients`, HU-24) y **Mis rutinas** (`/coach/routines`, HU-18; en el cuerpo y en la barra). |
 | `presentation/home_view_model.dart` | Usuario actual y `logout()` (usa el `AuthRepository` del dominio de `auth`) |
 | `presentation/widgets/home_scaffold.dart` | Barra con el botón **Cerrar sesión** (con confirmación) común a ambas |
 | `presentation/widgets/current_goal_card.dart` | Tarjeta de la meta: calorías, proteína, grasa y origen («Calculada» / «Definida por tu coach») |
