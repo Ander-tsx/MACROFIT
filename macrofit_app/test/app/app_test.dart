@@ -1042,20 +1042,18 @@ void main() {
       expect(find.text(testInviteCode), findsOneWidget);
     });
 
-    testWidgets('abre la pantalla de vinculación con el coach desde el inicio', (
-      tester,
-    ) async {
-      await pumpApp(
-        tester,
-        state: const Authenticated(testUser),
-      );
+    testWidgets(
+      'abre la pantalla de vinculación con el coach desde el inicio',
+      (tester) async {
+        await pumpApp(tester, state: const Authenticated(testUser));
 
-      expect(find.byKey(const Key('link_coach_nav_button')), findsOneWidget);
-      await tester.tap(find.byKey(const Key('link_coach_nav_button')));
-      await tester.pumpAndSettle();
+        expect(find.byKey(const Key('link_coach_nav_button')), findsOneWidget);
+        await tester.tap(find.byKey(const Key('link_coach_nav_button')));
+        await tester.pumpAndSettle();
 
-      expect(find.text('Vincular con coach'), findsWidgets);
-    });
+        expect(find.text('Vincular con coach'), findsWidgets);
+      },
+    );
   });
 
   group('rutinas del coach (HU-18)', () {

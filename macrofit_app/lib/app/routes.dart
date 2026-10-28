@@ -67,6 +67,7 @@ abstract final class AppRoutes {
   static const coachRoutineEditPattern = '/coach/routines/:routineId/edit';
   static String coachRoutineEdit(String routineId) =>
       '/coach/routines/$routineId/edit';
+
   /// Pantallas del rol `coach`: su principal y las que cuelgan de ella.
   static bool isCoachRoute(String location) =>
       location == coachHome || location.startsWith('$coachHome/');
