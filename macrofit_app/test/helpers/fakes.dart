@@ -33,8 +33,8 @@ import 'package:macrofit_app/features/profile/domain/entities/profile.dart';
 import 'package:macrofit_app/features/profile/domain/repositories/profile_repository.dart';
 import 'package:macrofit_app/features/coach_link/domain/entities/coach_link.dart';
 import 'package:macrofit_app/features/coach_link/domain/repositories/coach_link_repository.dart';
-import 'package:macrofit_app/features/weights/domain/entities/weight_entry.dart';
-import 'package:macrofit_app/features/weights/domain/repositories/weights_repository.dart';
+import 'package:macrofit_app/features/progress/domain/entities/weight_entry.dart';
+import 'package:macrofit_app/features/progress/domain/repositories/weights_repository.dart';
 import 'package:macrofit_app/features/routines/domain/entities/exercise.dart';
 import 'package:macrofit_app/features/routines/domain/entities/routine.dart';
 import 'package:macrofit_app/features/routines/domain/repositories/routines_repository.dart';
@@ -918,7 +918,8 @@ class FakeCoachLinkRepository implements CoachLinkRepository {
   Future<CoachLink> linkCoach(String inviteCode) async {
     if (error != null) throw error!;
     if (linkException != null) throw linkException!;
-    linkedCoach = linkResult ??
+    linkedCoach =
+        linkResult ??
         const CoachLink(
           id: '1',
           coachId: 'c1',

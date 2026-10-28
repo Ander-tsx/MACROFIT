@@ -64,8 +64,7 @@ class CoachLinkViewModel extends ViewModel {
       if (error.code == ApiErrorCode.inviteCodeNotFound) {
         _errorMessage = 'Código inválido';
       } else if (error.code == ApiErrorCode.userAlreadyLinked) {
-        _errorMessage =
-            'Ya tienes una vinculación activa con un coach. Primero debes desvincularte.';
+        _errorMessage = 'Ya tienes una vinculación activa con un coach. Primero debes desvincularte.';
       } else {
         _errorMessage = error.message;
       }

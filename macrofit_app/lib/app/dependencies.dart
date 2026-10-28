@@ -38,9 +38,9 @@ import '../features/profile/domain/repositories/profile_repository.dart';
 import '../features/routines/data/datasources/routines_remote_data_source.dart';
 import '../features/routines/data/repositories/routines_repository_impl.dart';
 import '../features/routines/domain/repositories/routines_repository.dart';
-import '../features/weights/data/datasources/weights_remote_data_source.dart';
-import '../features/weights/data/repositories/weights_repository_impl.dart';
-import '../features/weights/domain/repositories/weights_repository.dart';
+import '../features/progress/data/datasources/weights_remote_data_source.dart';
+import '../features/progress/data/repositories/weights_repository_impl.dart';
+import '../features/progress/domain/repositories/weights_repository.dart';
 
 /// Raíz de composición: el único lugar donde se crean las implementaciones
 /// concretas (capa de datos) y se conectan entre sí. El resto de la app solo

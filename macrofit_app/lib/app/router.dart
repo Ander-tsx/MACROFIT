@@ -49,6 +49,9 @@ import '../features/meals/presentation/meal_photo/meal_photo_view_model.dart';
 import '../features/profile/domain/repositories/profile_repository.dart';
 import '../features/profile/presentation/profile_form/profile_form_view.dart';
 import '../features/profile/presentation/profile_form/profile_form_view_model.dart';
+import '../features/progress/domain/repositories/weights_repository.dart';
+import '../features/progress/presentation/weights/weights_view.dart';
+import '../features/progress/presentation/weights/weights_view_model.dart';
 import '../features/routines/domain/entities/routine.dart';
 import '../features/routines/domain/repositories/routines_repository.dart';
 import '../features/routines/presentation/exercise_picker/exercise_picker_view.dart';
@@ -196,6 +199,15 @@ GoRouter createRouter(
             repository: context.read<CoachLinkRepository>(),
           )..load(),
           child: const CoachLinkView(),
+        ),
+      ),
+      GoRoute(
+        path: AppRoutes.weights,
+        builder: (context, _) => ChangeNotifierProvider(
+          create: (context) =>
+              WeightsViewModel(repository: context.read<WeightsRepository>())
+                ..load(),
+          child: const WeightsView(),
         ),
       ),
       GoRoute(

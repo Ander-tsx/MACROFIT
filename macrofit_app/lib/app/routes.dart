@@ -18,6 +18,9 @@ abstract final class AppRoutes {
   /// HU-13: vinculación con el coach mediante código.
   static const coachLink = '/user/coach-link';
 
+  /// HU-21: registro e historial de peso.
+  static const weights = '/user/weights';
+
   /// HU-07: estimación nutricional de la foto subida. Recibe la foto en
   /// `extra` (`MealPhotoUpload`); sin ella vuelve al inicio.
   static const mealEstimateChild = 'meals/estimate';
@@ -67,6 +70,7 @@ abstract final class AppRoutes {
   static const coachRoutineEditPattern = '/coach/routines/:routineId/edit';
   static String coachRoutineEdit(String routineId) =>
       '/coach/routines/$routineId/edit';
+
   /// Pantallas del rol `coach`: su principal y las que cuelgan de ella.
   static bool isCoachRoute(String location) =>
       location == coachHome || location.startsWith('$coachHome/');
@@ -79,6 +83,7 @@ abstract final class AppRoutes {
     userHome,
     profileEdit,
     coachLink,
+    weights,
     mealPhoto,
     mealEstimate,
     mealForm,

@@ -15,7 +15,7 @@ import '../features/meals/domain/repositories/meal_photo_repository.dart';
 import '../features/meals/domain/repositories/meals_repository.dart';
 import '../features/profile/domain/repositories/profile_repository.dart';
 import '../features/routines/domain/repositories/routines_repository.dart';
-import '../features/weights/domain/repositories/weights_repository.dart';
+import '../features/progress/domain/repositories/weights_repository.dart';
 import 'dependencies.dart';
 import 'router.dart';
 import 'theme.dart';

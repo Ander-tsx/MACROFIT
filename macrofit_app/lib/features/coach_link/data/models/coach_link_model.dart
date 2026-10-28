@@ -27,18 +27,18 @@ class CoachLinkModel {
   final String status;
 
   Map<String, dynamic> toJson() => {
-        'id': id,
-        'coach_id': coachId,
-        'coach_name': coachName,
-        'coach_email': coachEmail,
-        'status': status,
-      };
+    'id': id,
+    'coach_id': coachId,
+    'coach_name': coachName,
+    'coach_email': coachEmail,
+    'status': status,
+  };
 
   CoachLink toEntity() => CoachLink(
-        id: id,
-        coachId: coachId,
-        coachName: coachName,
-        coachEmail: coachEmail,
-        status: status,
-      );
+    id: id,
+    coachId: coachId,
+    coachName: coachName,
+    coachEmail: coachEmail,
+    status: status,
+  );
 }
