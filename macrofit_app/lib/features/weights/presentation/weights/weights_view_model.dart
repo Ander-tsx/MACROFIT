@@ -1,32 +1,28 @@
 import '../../../../core/errors/api_exception.dart';
 import '../../../../core/presentation/view_model.dart';
-import '../../data/models/weight_model.dart';
+import '../../../profile/domain/validators/profile_validators.dart';
+import '../../domain/entities/weight_entry.dart';
 import '../../domain/repositories/weights_repository.dart';
-import '../../domain/validators/weight_validators.dart';
 
 /// HU-21 — registro e historial de peso.
-class WeightsViewModel extends ViewModel {
+class WeightsViewModel extends ViewModel with FormStateMixin {
   WeightsViewModel({required this._repository});
 
   final WeightsRepository _repository;
 
-  List<WeightModel> _weights = [];
+  List<WeightEntry> _weights = [];
   bool _isLoading = false;
-  bool _isSubmitting = false;
   String? _loadError;
   String _weightInput = '';
-  Map<String, String> _fieldErrors = {};
 
-  List<WeightModel> get weights => _weights;
+  List<WeightEntry> get weights => _weights;
   bool get isLoading => _isLoading;
-  bool get isSubmitting => _isSubmitting;
   String? get loadError => _loadError;
   String get weightInput => _weightInput;
-  Map<String, String> get fieldErrors => _fieldErrors;
 
   void setWeightInput(String value) {
     _weightInput = value;
-    _fieldErrors = {};
+    clearFieldError('weight_kg');
     notifyListeners();
   }
 
@@ -46,35 +42,32 @@ class WeightsViewModel extends ViewModel {
   }
 
   Future<bool> registerWeight() async {
-    final error = WeightValidators.weight(_weightInput);
-    if (error != null) {
-      _fieldErrors = {'weight_kg': error};
+    final validationError = ProfileValidators.weight(_weightInput);
+    if (validationError != null) {
+      setFieldErrors({'weight_kg': validationError});
       notifyListeners();
       return false;
     }
 
-    final weightValue = WeightValidators.parseNumber(_weightInput)!;
-    _isSubmitting = true;
-    _fieldErrors = {};
-    notifyListeners();
+    final weightValue = ProfileValidators.parseNumber(_weightInput)!;
+    setSubmitting(true);
+    setFieldErrors({});
+    setGeneralError(null);
 
     try {
       final newEntry = await _repository.createWeight(weightValue);
       _weights = [newEntry, ..._weights];
       _weightInput = '';
-      notifyListeners();
+      setSubmitting(false);
       return true;
     } on ApiException catch (error) {
-      if (error.code == ApiErrorCode.validation && error.fields.isNotEmpty) {
-        _fieldErrors = error.fields;
+      if (error.code == ApiErrorCode.validation) {
+        applyApiError(error, knownFields: {'weight_kg'});
       } else {
-        _fieldErrors = {'weight_kg': error.message};
+        setGeneralError(error.message);
       }
-      notifyListeners();
+      setSubmitting(false);
       return false;
-    } finally {
-      _isSubmitting = false;
-      notifyListeners();
     }
   }
 }

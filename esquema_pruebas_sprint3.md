@@ -686,3 +686,33 @@ Mobile: 4 · Backend: 0
 - `macrofit_app/test/app/router_test.dart` › rutinas del coach (HU-18) › un coach abre su lista, el constructor y el selector
 - `macrofit_app/test/app/router_test.dart` › rutinas del coach (HU-18) › un usuario no accede a las rutinas del coach
 - `macrofit_app/test/app/router_test.dart` › rutinas del coach (HU-18) › sin sesión van al inicio de sesión
+
+### <a id="caso-52"></a>Caso 52 · HU-13-APP & HU-14-APP — Vinculación y desvinculación con el coach
+
+Mobile: 7 · Backend: 0
+
+**Mobile**
+
+- `macrofit_app/test/features/coach_link/presentation/coach_link_view_model_test.dart` › vinculación exitosa normaliza a mayúsculas y asigna coach_name
+- `macrofit_app/test/features/coach_link/presentation/coach_link_view_model_test.dart` › maneja INVITE_CODE_NOT_FOUND (Código inválido)
+- `macrofit_app/test/features/coach_link/presentation/coach_link_view_model_test.dart` › maneja USER_ALREADY_LINKED
+- `macrofit_app/test/features/coach_link/presentation/coach_link_view_model_test.dart` › maneja error de red (sin conexión)
+- `macrofit_app/test/features/coach_link/presentation/coach_link_view_model_test.dart` › desvinculación exitosa limpia linkedCoach
+- `macrofit_app/test/features/coach_link/presentation/coach_link_view_model_test.dart` › desvinculación con 404 USER_NOT_LINKED trata como éxito sin coach
+- `macrofit_app/test/app/app_test.dart` › abre la pantalla de vinculación con el coach desde el inicio
+
+### <a id="caso-53"></a>Caso 53 · HU-21-APP — Registro e historial de peso
+
+Mobile: 8 · Backend: 0
+
+**Mobile**
+
+- `macrofit_app/test/features/weights/presentation/weights_view_model_test.dart` › rechaza vacío o no numérico
+- `macrofit_app/test/features/weights/presentation/weights_view_model_test.dart` › rechaza fuera de rango (35 a 250 kg) y acepta coma decimal
+- `macrofit_app/test/features/weights/presentation/weights_view_model_test.dart` › carga el historial de peso exitosamente
+- `macrofit_app/test/features/weights/presentation/weights_view_model_test.dart` › maneja error al cargar el historial y permite reintentar
+- `macrofit_app/test/features/weights/presentation/weights_view_model_test.dart` › registra un peso válido y lo añade al inicio del historial
+- `macrofit_app/test/features/weights/presentation/weights_view_model_test.dart` › maneja error de red (sin conexión) al registrar
+- `macrofit_app/test/features/weights/presentation/weights_view_model_test.dart` › maneja error de validación 400 de la API
+- `macrofit_app/test/app/app_test.dart` › abre la pantalla de registro e historial de peso desde el inicio
+

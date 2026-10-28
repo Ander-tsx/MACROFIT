@@ -1,25 +1,26 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:macrofit_app/core/errors/api_exception.dart';
-import 'package:macrofit_app/features/weights/data/models/weight_model.dart';
-import 'package:macrofit_app/features/weights/domain/validators/weight_validators.dart';
+import 'package:macrofit_app/features/profile/domain/validators/profile_validators.dart';
+import 'package:macrofit_app/features/weights/domain/entities/weight_entry.dart';
 import 'package:macrofit_app/features/weights/presentation/weights/weights_view_model.dart';
 
 import '../../../helpers/fakes.dart';
 
 void main() {
-  group('WeightValidators', () {
+  group('ProfileValidators weight', () {
     test('rechaza vacío o no numérico', () {
-      expect(WeightValidators.weight(''), isNotNull);
-      expect(WeightValidators.weight('   '), isNotNull);
-      expect(WeightValidators.weight('abc'), isNotNull);
+      expect(ProfileValidators.weight(''), isNotNull);
+      expect(ProfileValidators.weight('   '), isNotNull);
+      expect(ProfileValidators.weight('abc'), isNotNull);
     });
 
-    test('rechaza fuera de rango (35 a 250 kg)', () {
-      expect(WeightValidators.weight('34.9'), isNotNull);
-      expect(WeightValidators.weight('250.1'), isNotNull);
-      expect(WeightValidators.weight('35'), isNull);
-      expect(WeightValidators.weight('250'), isNull);
-      expect(WeightValidators.weight('75.5'), isNull);
+    test('rechaza fuera de rango (35 a 250 kg) y acepta coma decimal', () {
+      expect(ProfileValidators.weight('34.9'), isNotNull);
+      expect(ProfileValidators.weight('250.1'), isNotNull);
+      expect(ProfileValidators.weight('35'), isNull);
+      expect(ProfileValidators.weight('250'), isNull);
+      expect(ProfileValidators.weight('75,5'), isNull);
+      expect(ProfileValidators.parseNumber('75,5'), 75.5);
     });
   });
 
@@ -28,7 +29,7 @@ void main() {
       final now = DateTime.now();
       final repo = FakeWeightsRepository(
         weights: [
-          WeightModel(id: '1', userId: 'u1', weightKg: 78.5, recordedAt: now),
+          WeightEntry(id: '1', weightKg: 78.5, recordedAt: now),
         ],
       );
       final vm = WeightsViewModel(repository: repo);
@@ -39,22 +40,54 @@ void main() {
       expect(vm.loadError, null);
     });
 
-    test(
-      'registra un peso válido y lo añade al inicio del historial',
-      () async {
-        final repo = FakeWeightsRepository();
-        final vm = WeightsViewModel(repository: repo);
+    test('maneja error al cargar el historial y permite reintentar', () async {
+      final repo = FakeWeightsRepository()
+        ..error = const ApiException(
+          code: ApiErrorCode.network,
+          message: 'Sin conexión',
+        );
+      final vm = WeightsViewModel(repository: repo);
 
-        vm.setWeightInput('80.0');
-        final success = await vm.registerWeight();
+      await vm.load();
+      expect(vm.loadError, 'Sin conexión');
 
-        expect(success, true);
-        expect(vm.weights.length, 1);
-        expect(vm.weights.first.weightKg, 80.0);
-        expect(vm.weightInput, '');
-        expect(vm.fieldErrors, isEmpty);
-      },
-    );
+      repo.error = null;
+      repo.weights = [
+        WeightEntry(id: '1', weightKg: 75.0, recordedAt: DateTime.now()),
+      ];
+      await vm.load();
+      expect(vm.loadError, null);
+      expect(vm.weights.length, 1);
+    });
+
+    test('registra un peso válido y lo añade al inicio del historial', () async {
+      final repo = FakeWeightsRepository();
+      final vm = WeightsViewModel(repository: repo);
+
+      vm.setWeightInput('80.0');
+      final success = await vm.registerWeight();
+
+      expect(success, true);
+      expect(vm.weights.length, 1);
+      expect(vm.weights.first.weightKg, 80.0);
+      expect(vm.weightInput, '');
+      expect(vm.fieldErrors, isEmpty);
+    });
+
+    test('maneja error de red (sin conexión) al registrar', () async {
+      final repo = FakeWeightsRepository()
+        ..createError = const ApiException(
+          code: ApiErrorCode.network,
+          message: 'Sin red',
+        );
+      final vm = WeightsViewModel(repository: repo);
+
+      vm.setWeightInput('75.0');
+      final success = await vm.registerWeight();
+
+      expect(success, false);
+      expect(vm.generalError, 'Sin red');
+    });
 
     test('valida localmente peso inválido antes de llamar a la API', () async {
       final repo = FakeWeightsRepository();
@@ -70,7 +103,7 @@ void main() {
 
     test('maneja error de validación 400 de la API', () async {
       final repo = FakeWeightsRepository()
-        ..error = const ApiException(
+        ..createError = const ApiException(
           code: ApiErrorCode.validation,
           message: 'Inválido',
           fields: {'weight_kg': 'Peso inválido en servidor'},
@@ -81,7 +114,7 @@ void main() {
       final success = await vm.registerWeight();
 
       expect(success, false);
-      expect(vm.fieldErrors['weight_kg'], 'Peso inválido en servidor');
+      expect(vm.fieldError('weight_kg'), 'Peso inválido en servidor');
     });
   });
 }

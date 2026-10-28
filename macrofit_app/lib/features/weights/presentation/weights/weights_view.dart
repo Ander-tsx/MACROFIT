@@ -21,26 +21,20 @@ class WeightsView extends StatelessWidget {
           children: [
             Text('Registrar nuevo peso', style: theme.textTheme.titleMedium),
             const SizedBox(height: 12),
+            if (viewModel.generalError case final message?) ...[
+              ErrorBanner(message: message),
+              const SizedBox(height: 16),
+            ],
             TextField(
               key: const Key('weight_input'),
               decoration: InputDecoration(
                 labelText: 'Peso (kg)',
                 hintText: 'Ej. 75.5',
                 border: const OutlineInputBorder(),
-                errorText: viewModel.fieldErrors['weight_kg'],
+                errorText: viewModel.fieldError('weight_kg'),
               ),
-              keyboardType: const TextInputType.numberWithOptions(
-                decimal: true,
-              ),
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
               onChanged: viewModel.setWeightInput,
-              controller: TextEditingController.fromValue(
-                TextEditingValue(
-                  text: viewModel.weightInput,
-                  selection: TextSelection.collapsed(
-                    offset: viewModel.weightInput.length,
-                  ),
-                ),
-              ),
               enabled: !viewModel.isSubmitting,
             ),
             const SizedBox(height: 12),
@@ -63,7 +57,17 @@ class WeightsView extends StatelessWidget {
             if (viewModel.isLoading && viewModel.weights.isEmpty)
               const Center(child: CircularProgressIndicator())
             else if (viewModel.loadError case final message?)
-              ErrorBanner(message: message)
+              Column(
+                children: [
+                  ErrorBanner(message: message),
+                  const SizedBox(height: 16),
+                  FilledButton(
+                    key: const Key('weights_retry'),
+                    onPressed: viewModel.load,
+                    child: const Text('Reintentar'),
+                  ),
+                ],
+              )
             else if (viewModel.weights.isEmpty)
               const Text('Aún no tienes registros de peso.')
             else
@@ -74,7 +78,7 @@ class WeightsView extends StatelessWidget {
                     leading: const Icon(Icons.monitor_weight),
                     title: Text('${entry.weightKg} kg'),
                     subtitle: Text(
-                      _formatDate(entry.recordedAt),
+                      _formatDate(entry.recordedAt.toLocal()),
                       style: theme.textTheme.bodySmall,
                     ),
                   ),

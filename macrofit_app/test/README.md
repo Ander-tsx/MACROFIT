@@ -27,7 +27,7 @@ flutter test
 ## Convenciones
 
 - **Sin red ni plugins reales.** Se usan *fakes* escritos a mano (no hay librería de mocks):
-  - `FakeAuthRepository`, `FakeLegalRepository`, `FakeProfileRepository`, `FakeGoalsRepository` (meta vigente, HU-26; `withoutGoal()` responde `404 PROFILE_NOT_FOUND`), `FakeCoachGoalsRepository`, `FakeMealPhotoRepository`, `FakeMealsRepository`, `FakeClientsRepository` para ViewModels y widgets.
+  - `FakeAuthRepository`, `FakeLegalRepository`, `FakeProfileRepository`, `FakeGoalsRepository` (meta vigente, HU-26; `withoutGoal()` responde `404 PROFILE_NOT_FOUND`), `FakeCoachGoalsRepository`, `FakeMealPhotoRepository`, `FakeMealsRepository`, `FakeClientsRepository`, `FakeWeightsRepository`, `FakeCoachLinkRepository` para ViewModels y widgets.
   - Rutinas del coach (HU-18): catálogo `testExercises` (`testBenchPress`, `testPushUps`, `testRow`, `testSquat`),
     `testRoutine` («Torso A», 2 ejercicios) y `testLegRoutine` («Pierna»). `FakeRoutinesRepository` filtra el catálogo
     como la API, crea/edita/elimina en memoria (recargar muestra el cambio) y registra `exerciseRequests`, `created`,

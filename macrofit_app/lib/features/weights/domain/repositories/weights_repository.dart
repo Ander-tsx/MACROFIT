@@ -1,6 +1,6 @@
-import '../../data/models/weight_model.dart';
+import '../entities/weight_entry.dart';
 
 abstract class WeightsRepository {
-  Future<List<WeightModel>> getWeights();
-  Future<WeightModel> createWeight(double weightKg);
+  Future<List<WeightEntry>> getWeights();
+  Future<WeightEntry> createWeight(double weightKg);
 }
