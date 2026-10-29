@@ -55,6 +55,13 @@ class UserHomeView extends StatelessWidget {
               error: viewModel.goalError,
               onRetry: viewModel.loadGoal,
             ),
+            const SizedBox(height: 16),
+            FilledButton.icon(
+              key: const Key('link_coach_nav_button'),
+              onPressed: () => context.push(AppRoutes.coachLink),
+              icon: const Icon(Icons.link),
+              label: const Text('Vincular con coach'),
+            ),
           ],
         ),
       ),

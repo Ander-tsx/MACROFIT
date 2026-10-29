@@ -31,6 +31,10 @@ import 'package:macrofit_app/features/meals/domain/repositories/meal_photo_repos
 import 'package:macrofit_app/features/meals/domain/repositories/meals_repository.dart';
 import 'package:macrofit_app/features/profile/domain/entities/profile.dart';
 import 'package:macrofit_app/features/profile/domain/repositories/profile_repository.dart';
+import 'package:macrofit_app/features/coach_link/domain/entities/coach_link.dart';
+import 'package:macrofit_app/features/coach_link/domain/repositories/coach_link_repository.dart';
+import 'package:macrofit_app/features/progress/domain/entities/weight_entry.dart';
+import 'package:macrofit_app/features/progress/domain/repositories/weights_repository.dart';
 import 'package:macrofit_app/features/routines/domain/entities/exercise.dart';
 import 'package:macrofit_app/features/routines/domain/entities/routine.dart';
 import 'package:macrofit_app/features/routines/domain/repositories/routines_repository.dart';
@@ -885,5 +889,83 @@ class FakeRoutinesRepository implements RoutinesRepository {
       createdAt: now,
       updatedAt: now,
     );
+  }
+}
+
+class FakeCoachLinkRepository implements CoachLinkRepository {
+  FakeCoachLinkRepository({
+    this.linkedCoach,
+    this.linkResult,
+    this.linkException,
+    this.unlinkException,
+    this.error,
+  });
+
+  CoachLink? linkedCoach;
+  CoachLink? linkResult;
+  Exception? linkException;
+  Exception? unlinkException;
+  ApiException? error;
+  bool unlinkedCalled = false;
+
+  @override
+  Future<CoachLink?> getLinkedCoach() async {
+    if (error != null) throw error!;
+    return linkedCoach;
+  }
+
+  @override
+  Future<CoachLink> linkCoach(String inviteCode) async {
+    if (error != null) throw error!;
+    if (linkException != null) throw linkException!;
+    linkedCoach =
+        linkResult ??
+        const CoachLink(
+          id: '1',
+          coachId: 'c1',
+          coachName: 'Laura',
+          coachEmail: 'laura@test.com',
+          status: 'active',
+        );
+    return linkedCoach!;
+  }
+
+  @override
+  Future<void> unlinkCoach() async {
+    unlinkedCalled = true;
+    if (error != null) throw error!;
+    if (unlinkException != null) throw unlinkException!;
+    linkedCoach = null;
+  }
+}
+
+class FakeWeightsRepository implements WeightsRepository {
+  FakeWeightsRepository({
+    this.weights = const [],
+    this.error,
+    this.createError,
+  });
+
+  List<WeightEntry> weights;
+  ApiException? error;
+  ApiException? createError;
+
+  @override
+  Future<List<WeightEntry>> getWeights() async {
+    if (error != null) throw error!;
+    return weights;
+  }
+
+  @override
+  Future<WeightEntry> createWeight(double weightKg) async {
+    if (createError != null) throw createError!;
+    if (error != null) throw error!;
+    final entry = WeightEntry(
+      id: 'w${weights.length + 1}',
+      weightKg: weightKg,
+      recordedAt: DateTime.now(),
+    );
+    weights = [entry, ...weights];
+    return entry;
   }
 }

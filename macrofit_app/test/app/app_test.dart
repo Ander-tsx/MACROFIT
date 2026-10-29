@@ -45,6 +45,8 @@ void main() {
   late FakeMealsRepository meals;
   late FakeClientsRepository clients;
   late FakeInviteCodeRepository inviteCodes;
+  late FakeCoachLinkRepository coachLinksRepo;
+  late FakeWeightsRepository weightsRepo;
   late FakeShareService share;
   late FakeRoutinesRepository routines;
 
@@ -73,6 +75,8 @@ void main() {
       ..error = clientsError
       ..mealsError = mealsError;
     inviteCodes = FakeInviteCodeRepository()..error = inviteCodeError;
+    coachLinksRepo = FakeCoachLinkRepository();
+    weightsRepo = FakeWeightsRepository();
     share = FakeShareService();
     routines = FakeRoutinesRepository()..listError = routinesError;
     await tester.pumpWidget(
@@ -87,6 +91,8 @@ void main() {
           mealsRepository: meals,
           clientsRepository: clients,
           inviteCodeRepository: inviteCodes,
+          coachLinkRepository: coachLinksRepo,
+          weightsRepository: weightsRepo,
           routinesRepository: routines,
           shareService: share,
         ),
@@ -1035,6 +1041,19 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text(testInviteCode), findsOneWidget);
     });
+
+    testWidgets(
+      'abre la pantalla de vinculación con el coach desde el inicio',
+      (tester) async {
+        await pumpApp(tester, state: const Authenticated(testUser));
+
+        expect(find.byKey(const Key('link_coach_nav_button')), findsOneWidget);
+        await tester.tap(find.byKey(const Key('link_coach_nav_button')));
+        await tester.pumpAndSettle();
+
+        expect(find.text('Vincular con coach'), findsWidgets);
+      },
+    );
   });
 
   group('rutinas del coach (HU-18)', () {
