@@ -32,6 +32,9 @@ import '../features/meals/domain/repositories/meals_repository.dart';
 import '../features/profile/data/datasources/profile_remote_data_source.dart';
 import '../features/profile/data/repositories/profile_repository_impl.dart';
 import '../features/profile/domain/repositories/profile_repository.dart';
+import '../features/summary/data/datasources/summary_remote_data_source.dart';
+import '../features/summary/data/repositories/summary_repository_impl.dart';
+import '../features/summary/domain/repositories/summary_repository.dart';
 
 /// Raíz de composición: el único lugar donde se crean las implementaciones
 /// concretas (capa de datos) y se conectan entre sí. El resto de la app solo
@@ -47,6 +50,7 @@ class AppDependencies {
     required this.mealsRepository,
     required this.clientsRepository,
     required this.inviteCodeRepository,
+    required this.summaryRepository,
     required this.shareService,
   });
 
@@ -92,6 +96,9 @@ class AppDependencies {
       inviteCodeRepository: InviteCodeRepositoryImpl(
         InviteCodeRemoteDataSource(sessionDio),
       ),
+      summaryRepository: SummaryRepositoryImpl(
+        SummaryRemoteDataSource(sessionDio),
+      ),
       shareService: const SystemShareService(),
     );
   }
@@ -105,6 +112,7 @@ class AppDependencies {
   final MealsRepository mealsRepository;
   final ClientsRepository clientsRepository;
   final InviteCodeRepository inviteCodeRepository;
+  final SummaryRepository summaryRepository;
 
   /// Portapapeles y hoja de compartir del sistema (HU-12).
   final ShareService shareService;

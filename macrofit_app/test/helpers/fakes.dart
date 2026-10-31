@@ -31,6 +31,9 @@ import 'package:macrofit_app/features/meals/domain/repositories/meal_photo_repos
 import 'package:macrofit_app/features/meals/domain/repositories/meals_repository.dart';
 import 'package:macrofit_app/features/profile/domain/entities/profile.dart';
 import 'package:macrofit_app/features/profile/domain/repositories/profile_repository.dart';
+import 'package:macrofit_app/features/summary/domain/entities/day_summary.dart';
+import 'package:macrofit_app/features/summary/domain/entities/macro_values.dart';
+import 'package:macrofit_app/features/summary/domain/repositories/summary_repository.dart';
 
 /// Usuario que ya capturó su perfil (HU-03): entra a la pantalla principal.
 const testUser = User(
@@ -700,3 +703,56 @@ Map<String, Object> sessionJson(
   'expires_in': 900,
   'user': userModelOf(user).toJson(),
 };
+
+/// Resumen del día (HU-10) con 1050.5 kcal consumidas de una meta de 2200 kcal.
+DaySummary testDaySummary({
+  String date = '2026-10-16',
+  MacroValues goal = const MacroValues(
+    caloriesKcal: 2200,
+    proteinG: 160,
+    fatG: 70,
+  ),
+  MacroValues consumed = const MacroValues(
+    caloriesKcal: 1050.5,
+    proteinG: 70,
+    fatG: 35.5,
+  ),
+  GoalSource source = GoalSource.system,
+}) => DaySummary(
+  date: date,
+  goalSource: source,
+  goal: goal,
+  consumed: consumed,
+  remaining: MacroValues(
+    caloriesKcal: goal.caloriesKcal - consumed.caloriesKcal,
+    proteinG: goal.proteinG - consumed.proteinG,
+    fatG: goal.fatG - consumed.fatG,
+  ),
+);
+
+class FakeSummaryRepository implements SummaryRepository {
+  FakeSummaryRepository({DaySummary? daily})
+    : daily = daily ?? testDaySummary();
+
+  /// Usuario sin perfil ni meta: responde `404 PROFILE_NOT_FOUND`.
+  FakeSummaryRepository.withoutGoal() : daily = null;
+
+  DaySummary? daily;
+
+  /// Si se asigna, la siguiente consulta lanza este error.
+  ApiException? error;
+
+  /// Fechas pedidas, en orden.
+  final dailyDates = <String>[];
+
+  /// Si se asigna, la consulta espera a que se complete (para ver el estado intermedio).
+  Completer<void>? gate;
+
+  @override
+  Future<DaySummary> getDaily(String date) async {
+    dailyDates.add(date);
+    await gate?.future;
+    if (error case final error?) throw error;
+    return daily ?? (throw apiError(ApiErrorCode.profileNotFound, status: 404));
+  }
+}
