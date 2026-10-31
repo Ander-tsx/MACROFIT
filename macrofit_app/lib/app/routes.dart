@@ -30,6 +30,10 @@ abstract final class AppRoutes {
   static const mealFormChild = 'meals/form';
   static const mealForm = '$userHome/$mealFormChild';
 
+  /// HU-11: resumen semanal del usuario (7 días contra la meta de cada día).
+  static const weeklySummaryChild = 'summary';
+  static const weeklySummary = '$userHome/$weeklySummaryChild';
+
   /// Pantalla principal del rol `coach`.
   static const coachHome = '/coach';
 
@@ -68,5 +72,6 @@ abstract final class AppRoutes {
     mealPhoto,
     mealEstimate,
     mealForm,
+    weeklySummary,
   };
 }

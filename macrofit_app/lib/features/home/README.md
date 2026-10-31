@@ -10,6 +10,7 @@ coach todavía es provisional.
 | `presentation/coach_home_view.dart` | `/coach` — rol `coach`. Botón **Mi código de invitación** (`/coach/invite-code`, HU-12; en el cuerpo y en la barra) y **Mis clientes** (`/coach/clients`, HU-24). |
 | `presentation/home_view_model.dart` | Usuario actual y `logout()` (usa el `AuthRepository` del dominio de `auth`) |
 | `presentation/widgets/home_scaffold.dart` | Barra con el botón **Cerrar sesión** (con confirmación) común a ambas |
+| (`user_home_view.dart`, HU-11) | Botón de barras de la barra superior (`weekly_summary_button`, **Resumen semanal**) que abre `/user/summary` (`features/summary`) |
 | `presentation/widgets/daily_progress_card.dart` | Tarjeta del progreso del día (HU-10): una barra por calorías, proteína y grasa con consumido / meta y lo que falta o el exceso |
 | `presentation/widgets/current_goal_card.dart` | Tarjeta de la meta: calorías, proteína, grasa y origen («Calculada» / «Definida por tu coach») |
 | `presentation/widgets/welcome_message.dart` | Contenido provisional (coach) |

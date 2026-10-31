@@ -9,6 +9,7 @@ class DaySummaryModel extends DaySummary {
     required super.goal,
     required super.consumed,
     required super.remaining,
+    super.goalMet,
   });
 
   factory DaySummaryModel.fromJson(Map<String, dynamic> json) {
@@ -21,6 +22,7 @@ class DaySummaryModel extends DaySummary {
       goal: macroValuesFromJson(goal),
       consumed: macroValuesFromJson(json['consumed'] as Map<String, dynamic>),
       remaining: macroValuesFromJson(json['remaining'] as Map<String, dynamic>),
+      goalMet: json['goal_met'] as bool? ?? false,
     );
   }
 }

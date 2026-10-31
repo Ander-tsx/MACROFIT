@@ -49,6 +49,13 @@
 | HU-10 | La fecha del resumen es la de México (`APP_UTC_OFFSET`). | Unitaria | La app pide el día en `UTC-6` (a las 02:30 UTC del 17 es todavía el 16), con mes y día de dos cifras, cruzando mes y año, sin depender de la zona del dispositivo. | [**5**](#caso-45) (mobile 5 · backend 0) |
 | HU-10 | Sin meta y sin conexión al consultar el resumen (RNF-11). | Unitaria | `404 PROFILE_NOT_FOUND` muestra un mensaje, no un error ni **Reintentar**; antes de la primera consulta no se considera que falte; la falta de conexión muestra el mensaje con **Reintentar**; si falla una recarga se conserva el último resumen. | [**6**](#caso-46) (mobile 6 · backend 0) |
 | HU-10 | El resumen se vuelve a consultar (RF-09). | Interfaz | Al regresar de **Registrar comida** y al deslizar para actualizar se consulta de nuevo y se ven los registros guardados; no se lanza una segunda consulta mientras otra está en curso; actualizar trae también la meta. | [**5**](#caso-47) (mobile 5 · backend 0) |
+| HU-11 | Llamada a `GET /users/me/summary/weekly` y modelo del resumen semanal | Unitaria | Se pide `?start=AAAA-MM-DD`; los 7 días (meta con su origen, consumo, restante y `goal_met`), el promedio y `goal_met_days` se convierten a la entidad; `404 PROFILE_NOT_FOUND` sale como `ApiException`; un día del resumen diario, que no trae `goal_met`, queda en `false`. | [**4**](#caso-48) (mobile 4 · backend 0) |
+| HU-11 | Gráfica de los 7 días contra la meta de cada día (RF-10). | Interfaz | Una barra por día con las calorías consumidas y una raya con la meta de ese día; los días sin registros aparecen en 0; la lista de abajo repite `consumido / meta kcal` de cada día. | [**4**](#caso-49) (mobile 4 · backend 0) |
+| HU-11 | Promedio diario y días con la meta cumplida (RF-10). | Interfaz | Se muestran el promedio diario de calorías, proteína y grasa (*1700 kcal*, *124.3 g*, *50.7 g*) y *Días con la meta cumplida: 5 de 7*. | [**1**](#caso-50) (mobile 1 · backend 0) |
+| HU-11 | Cada día indica si cumplió la meta sin depender del color. | Interfaz | Cada día lleva una marca (✓ cumplida, ✗ no cumplida) sobre su barra y el texto *Meta cumplida* / *Meta no cumplida* en la lista. | [**1**](#caso-51) (mobile 1 · backend 0) |
+| HU-11 | Cambio a la semana anterior o siguiente. | Unitaria | La semana inicial termina hoy (día de México, no UTC) y no tiene siguiente; **‹** va 7 días atrás y vuelve a consultar; **›** regresa sin pasar de hoy; al cambiar se quita la semana anterior mientras carga, un error no la deja bajo otras fechas y la respuesta de una semana que ya no se ve se descarta; las fechas se calculan sin depender de la zona del teléfono. | [**12**](#caso-52) (mobile 12 · backend 0) |
+| HU-11 | Sin meta y sin conexión al consultar la semana (RNF-11). | Unitaria | `404 PROFILE_NOT_FOUND` muestra un mensaje, no un error ni **Reintentar**; antes de la primera consulta no se considera que falte; la falta de conexión muestra el mensaje en español con **Reintentar** sin cerrar la app; si falla una recarga de la misma semana se conserva el resumen; no se lanza una segunda consulta mientras otra está en curso. | [**7**](#caso-53) (mobile 7 · backend 0) |
+| HU-11 | Acceso y ruta del resumen semanal. | Unitaria | El botón *Resumen semanal* del inicio abre `/user/summary`, que pide la semana que termina hoy; solo un usuario con perfil la abre (un coach, un usuario sin perfil o sin sesión van a su pantalla). | [**3**](#caso-54) (mobile 3 · backend 0) |
 
 ## Cómo se cuentan las pruebas
 
@@ -65,6 +72,7 @@ Inventario al cerrar HU-26-APP: **256** pruebas mobile (`flutter test`; 243 en `
 Inventario al cerrar HU-07-APP: **279** pruebas mobile (`flutter test`; 256 en `develop` con HU-26-APP). HU-07-APP agrega 23 (8 de datos, 8 de ViewModels, 2 de rutas y 5 de widgets) y cambia *elige de la galería, muestra la vista previa y la sube* (HU-06) para comprobar que la foto subida abre la estimación. Sin cambios en el backend. Además se probó a mano en un teléfono Android (moto g60) contra el backend de `develop` en local con `FOOD_SIMULATOR_MODE` `ok`, `not_recognized`, `error` y `timeout`, y sin conexión (no se cuenta); la API desplegada aún no tiene `POST /meals/estimate`.
 Inventario al cerrar HU-08-APP: **307** pruebas mobile (`flutter test`; 279 en `develop` con HU-07-APP). HU-08-APP agrega 28 (6 del validador, 3 de datos, 13 del ViewModel, 2 de rutas y 4 de widgets). Sin cambios en el backend. Además se probó a mano en un teléfono Android (moto g60) contra el backend de `develop` en local: guardado sin y con corrección, captura manual con foto (tras `422`) y sin foto, revisando en MongoDB los finales y `estimated` (no se cuenta).
 Inventario al cerrar HU-10-APP: **333** pruebas mobile (`flutter test`; 307 en `develop` con HU-08-APP). HU-10-APP agrega 26 (4 de datos, 4 de la fecha, 11 del ViewModel y 7 de widgets). Sin cambios en el backend. Además se probó de punta a punta en el simulador de iPhone 16 contra el backend local con base temporal y se corrió la colección de Postman con Newman (299 requests, 846 aserciones, 0 fallos) (no se cuentan).
+Inventario al cerrar HU-11-APP: **365** pruebas mobile (`flutter test`; 333 en la rama de HU-10-APP, de la que sale). HU-11-APP agrega 32 (4 de datos, 3 de fechas, 15 del ViewModel, 8 de widgets y 2 de rutas). Sin cambios en el backend. Además se probó de punta a punta en el simulador de iPhone 16 contra el backend local con base temporal y se corrió la colección de Postman con Newman (299 requests, 846 aserciones, 0 fallos) (no se cuentan).
 
 ## Detalle de las pruebas por caso
 
@@ -615,3 +623,84 @@ Mobile: 5 · Backend: 0
 - `macrofit_app/test/features/home/presentation/user_home_view_model_test.dart` › resumen del día (HU-10) › refresh consulta la meta y el resumen
 - `macrofit_app/test/app/app_test.dart` › meta vigente en la pantalla principal (HU-26) › al regresar de registrar una comida se vuelve a consultar
 - `macrofit_app/test/app/app_test.dart` › meta vigente en la pantalla principal (HU-26) › al deslizar para actualizar se consulta de nuevo
+
+### <a id="caso-48"></a>Caso 48 · HU-11 — Llamada a `GET /users/me/summary/weekly` y modelo del resumen semanal
+
+Mobile: 4 · Backend: 0
+
+**Mobile**
+
+- `macrofit_app/test/features/summary/data/summary_repository_impl_test.dart` › resumen semanal (GET /users/me/summary/weekly) › manda start y convierte los 7 días, el promedio y los días cumplidos
+- `macrofit_app/test/features/summary/data/summary_repository_impl_test.dart` › resumen semanal (GET /users/me/summary/weekly) › cada día trae su meta, su consumo y si cumplió (goal_met)
+- `macrofit_app/test/features/summary/data/summary_repository_impl_test.dart` › resumen semanal (GET /users/me/summary/weekly) › 404 PROFILE_NOT_FOUND llega como ApiException con su código
+- `macrofit_app/test/features/summary/data/summary_repository_impl_test.dart` › resumen diario (GET /users/me/summary/daily) › un día del resumen diario no trae goal_met y queda en false
+
+### <a id="caso-49"></a>Caso 49 · HU-11 — Gráfica de los 7 días contra la meta de cada día (RF-10)
+
+Mobile: 4 · Backend: 0
+
+**Mobile**
+
+- `macrofit_app/test/features/summary/presentation/weekly_summary_view_model_test.dart` › con registros trae los 7 días, el promedio y los días cumplidos
+- `macrofit_app/test/features/summary/presentation/weekly_summary_view_model_test.dart` › una semana sin registros trae los 7 días en 0 sin días cumplidos
+- `macrofit_app/test/app/app_test.dart` › meta vigente en la pantalla principal (HU-26) › resumen semanal (HU-11) › muestra las calorías de los 7 días contra la meta
+- `macrofit_app/test/app/app_test.dart` › meta vigente en la pantalla principal (HU-26) › resumen semanal (HU-11) › los días sin registros aparecen en 0
+
+### <a id="caso-50"></a>Caso 50 · HU-11 — Promedio diario y días con la meta cumplida (RF-10)
+
+Mobile: 1 · Backend: 0
+
+**Mobile**
+
+- `macrofit_app/test/app/app_test.dart` › meta vigente en la pantalla principal (HU-26) › resumen semanal (HU-11) › muestra el promedio y los días con la meta cumplida
+
+### <a id="caso-51"></a>Caso 51 · HU-11 — Cada día indica si cumplió la meta sin depender del color
+
+Mobile: 1 · Backend: 0
+
+**Mobile**
+
+- `macrofit_app/test/app/app_test.dart` › meta vigente en la pantalla principal (HU-26) › resumen semanal (HU-11) › cada día indica si cumplió la meta sin depender del color
+
+### <a id="caso-52"></a>Caso 52 · HU-11 — Cambio a la semana anterior o siguiente
+
+Mobile: 12 · Backend: 0
+
+**Mobile**
+
+- `macrofit_app/test/features/summary/presentation/weekly_summary_view_model_test.dart` › la semana inicial termina hoy
+- `macrofit_app/test/features/summary/presentation/weekly_summary_view_model_test.dart` › hoy se toma en hora de México, no en UTC
+- `macrofit_app/test/features/summary/presentation/weekly_summary_view_model_test.dart` › la semana siguiente no puede terminar después de hoy
+- `macrofit_app/test/features/summary/presentation/weekly_summary_view_model_test.dart` › previousWeek va 7 días atrás y vuelve a consultar
+- `macrofit_app/test/features/summary/presentation/weekly_summary_view_model_test.dart` › nextWeek regresa a la semana siguiente y se detiene en hoy
+- `macrofit_app/test/features/summary/presentation/weekly_summary_view_model_test.dart` › al cambiar de semana se quita la anterior mientras carga
+- `macrofit_app/test/features/summary/presentation/weekly_summary_view_model_test.dart` › un error al cambiar de semana no deja la semana anterior bajo otras fechas
+- `macrofit_app/test/features/summary/presentation/weekly_summary_view_model_test.dart` › la respuesta de una semana que ya no se ve se descarta
+- `macrofit_app/test/app/app_test.dart` › meta vigente en la pantalla principal (HU-26) › resumen semanal (HU-11) › cambia a la semana anterior y regresa a la siguiente
+- `macrofit_app/test/features/summary/domain/app_day_test.dart` › shiftDay › suma y resta días cruzando mes y año
+- `macrofit_app/test/features/summary/domain/app_day_test.dart` › shiftDay › respeta los años bisiestos
+- `macrofit_app/test/features/summary/domain/app_day_test.dart` › weekdayOf, dayOfMonth y monthOf leen el día YYYY-MM-DD
+
+### <a id="caso-53"></a>Caso 53 · HU-11 — Sin meta y sin conexión al consultar la semana (RNF-11)
+
+Mobile: 7 · Backend: 0
+
+**Mobile**
+
+- `macrofit_app/test/features/summary/presentation/weekly_summary_view_model_test.dart` › sin meta (404 PROFILE_NOT_FOUND) no se considera un error
+- `macrofit_app/test/features/summary/presentation/weekly_summary_view_model_test.dart` › antes de cargar no se considera que falte el resumen
+- `macrofit_app/test/features/summary/presentation/weekly_summary_view_model_test.dart` › sin conexión muestra el error y permite reintentar
+- `macrofit_app/test/features/summary/presentation/weekly_summary_view_model_test.dart` › un error al recargar la misma semana conserva el resumen
+- `macrofit_app/test/features/summary/presentation/weekly_summary_view_model_test.dart` › no lanza una segunda consulta mientras otra está en curso
+- `macrofit_app/test/app/app_test.dart` › meta vigente en la pantalla principal (HU-26) › resumen semanal (HU-11) › sin meta muestra un mensaje y no un error
+- `macrofit_app/test/app/app_test.dart` › meta vigente en la pantalla principal (HU-26) › resumen semanal (HU-11) › sin conexión muestra el error en español y reintenta
+
+### <a id="caso-54"></a>Caso 54 · HU-11 — Acceso y ruta del resumen semanal
+
+Mobile: 3 · Backend: 0
+
+**Mobile**
+
+- `macrofit_app/test/app/app_test.dart` › meta vigente en la pantalla principal (HU-26) › resumen semanal (HU-11) › el botón del inicio abre el resumen semanal
+- `macrofit_app/test/app/router_test.dart` › resumen semanal (HU-11) › un usuario con perfil abre el resumen semanal
+- `macrofit_app/test/app/router_test.dart` › resumen semanal (HU-11) › un coach, un usuario sin perfil o sin sesión no lo abren

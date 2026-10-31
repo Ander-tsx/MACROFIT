@@ -8,7 +8,7 @@ cierre de sesión), **HU-03** (perfil inicial del usuario y su edición), **HU-0
 **HU-06** (tomar o elegir la foto de la comida y subirla), **HU-07** (estimación nutricional de la foto), **HU-08** (corrección de los valores y captura manual), **HU-12** (código de invitación del coach: ver, copiar,
 compartir y regenerar), **HU-24** (lista de clientes del coach con búsqueda y detalle de cada uno), **HU-25** (registro
 diario de comidas de un cliente, de solo lectura para el coach) y **HU-26** (meta vigente en la pantalla principal del
-usuario) y **HU-10** (progreso del día contra la meta).
+usuario) **HU-10** (progreso del día contra la meta) y **HU-11** (resumen semanal con gráfica).
 
 > **Si eres una persona o una sesión de IA que va a modificar la app, lee este archivo y el `README.md` de cada
 > carpeta que vayas a tocar** (`lib/app`, `lib/core`, `lib/features`, `lib/features/<feature>`, `test`).
