@@ -30,6 +30,8 @@ import 'package:macrofit_app/features/meals/presentation/meal_photo/meal_photo_v
 import 'package:macrofit_app/features/profile/domain/entities/profile.dart';
 import 'package:macrofit_app/features/profile/presentation/profile_form/profile_form_view.dart';
 import 'package:macrofit_app/features/summary/domain/entities/macro_values.dart';
+import 'package:macrofit_app/features/summary/domain/usecases/app_day.dart';
+import 'package:macrofit_app/features/summary/presentation/weekly_summary/weekly_summary_view.dart';
 
 import '../helpers/fakes.dart';
 
@@ -1215,6 +1217,148 @@ void main() {
 
       expect(summary.dailyDates, hasLength(2));
       expect(goals.currentCalls, 2);
+    });
+
+    group('resumen semanal (HU-11)', () {
+      Future<void> openWeekly(
+        WidgetTester tester, {
+        FakeSummaryRepository? repository,
+      }) async {
+        // Alto suficiente para que la lista construya los 7 días.
+        tester.view.physicalSize = const Size(800, 3200);
+        tester.view.devicePixelRatio = 1;
+        addTearDown(tester.view.reset);
+        await pumpApp(
+          tester,
+          state: const Authenticated(testUser),
+          summaryRepository: repository,
+        );
+        await tester.tap(find.byKey(const Key('weekly_summary_button')));
+        await tester.pumpAndSettle();
+      }
+
+      testWidgets('el botón del inicio abre el resumen semanal', (
+        tester,
+      ) async {
+        await openWeekly(tester);
+
+        expect(find.byType(WeeklySummaryView), findsOneWidget);
+        expect(summary.weeklyStarts, hasLength(1));
+        // La semana inicial termina hoy: empieza 6 días antes.
+        expect(
+          summary.weeklyStarts.single,
+          shiftDay(appDay(DateTime.now()), -6),
+        );
+      });
+
+      testWidgets('muestra las calorías de los 7 días contra la meta', (
+        tester,
+      ) async {
+        await openWeekly(tester);
+
+        expect(
+          find.byWidgetPredicate(
+            (widget) =>
+                widget.key is ValueKey<String> &&
+                (widget.key! as ValueKey<String>).value.startsWith(
+                  'weekly_bar_2',
+                ),
+          ),
+          findsNWidgets(7),
+        );
+        expect(
+          find.byWidgetPredicate(
+            (widget) =>
+                widget.key is ValueKey<String> &&
+                (widget.key! as ValueKey<String>).value.startsWith(
+                  'weekly_goal_2',
+                ),
+          ),
+          findsNWidgets(7),
+        );
+        expect(find.text('1900 / 2000 kcal'), findsNWidgets(5));
+        expect(find.text('2400 / 2000 kcal'), findsOneWidget);
+      });
+
+      testWidgets('los días sin registros aparecen en 0', (tester) async {
+        await openWeekly(
+          tester,
+          repository: FakeSummaryRepository(weekly: testEmptyWeekSummary()),
+        );
+
+        expect(find.text('0 / 2000 kcal'), findsNWidgets(7));
+        expect(find.text('Días con la meta cumplida: 0 de 7'), findsOneWidget);
+      });
+
+      testWidgets('muestra el promedio y los días con la meta cumplida', (
+        tester,
+      ) async {
+        await openWeekly(tester);
+
+        expect(find.text('1700 kcal'), findsOneWidget);
+        expect(find.text('124.3 g'), findsOneWidget);
+        expect(find.text('50.7 g'), findsOneWidget);
+        expect(find.text('Días con la meta cumplida: 5 de 7'), findsOneWidget);
+      });
+
+      testWidgets('cada día indica si cumplió la meta sin depender del color', (
+        tester,
+      ) async {
+        await openWeekly(tester);
+
+        expect(find.text('Meta cumplida'), findsNWidgets(5));
+        expect(find.text('Meta no cumplida'), findsNWidgets(2));
+        expect(find.byIcon(Icons.check_circle), findsNWidgets(10));
+        expect(find.byIcon(Icons.cancel_outlined), findsNWidgets(4));
+      });
+
+      testWidgets('cambia a la semana anterior y regresa a la siguiente', (
+        tester,
+      ) async {
+        await openWeekly(tester);
+        final next = find.byKey(const Key('weekly_next'));
+        // La semana inicial termina hoy: no hay una siguiente.
+        expect(tester.widget<IconButton>(next).onPressed, isNull);
+
+        await tester.tap(find.byKey(const Key('weekly_previous')));
+        await tester.pumpAndSettle();
+        final today = appDay(DateTime.now());
+        expect(summary.weeklyStarts.last, shiftDay(today, -13));
+        expect(tester.widget<IconButton>(next).onPressed, isNotNull);
+
+        await tester.tap(next);
+        await tester.pumpAndSettle();
+        expect(summary.weeklyStarts.last, shiftDay(today, -6));
+        expect(tester.widget<IconButton>(next).onPressed, isNull);
+      });
+
+      testWidgets('sin meta muestra un mensaje y no un error', (tester) async {
+        await openWeekly(
+          tester,
+          repository: FakeSummaryRepository.withoutGoal(),
+        );
+
+        expect(find.byKey(const Key('weekly_empty')), findsOneWidget);
+        expect(find.byKey(const Key('weekly_retry')), findsNothing);
+      });
+
+      testWidgets('sin conexión muestra el error en español y reintenta', (
+        tester,
+      ) async {
+        await openWeekly(
+          tester,
+          repository: FakeSummaryRepository()..error = networkError,
+        );
+
+        expect(find.text(networkError.message), findsOneWidget);
+        expect(find.byType(WeeklySummaryView), findsOneWidget);
+        summary.error = null;
+        await tester.tap(find.byKey(const Key('weekly_retry')));
+        await tester.pumpAndSettle();
+
+        expect(find.text(networkError.message), findsNothing);
+        expect(find.text('Días con la meta cumplida: 5 de 7'), findsOneWidget);
+      });
     });
 
     testWidgets('al regresar de Mi perfil se vuelve a consultar la meta', (

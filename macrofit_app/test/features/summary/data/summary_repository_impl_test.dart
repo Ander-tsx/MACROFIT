@@ -20,6 +20,44 @@ final _dailyJson = {
   'remaining': {'calories_kcal': 1149.5, 'protein_g': 90, 'fat_g': 34.5},
 };
 
+/// Respuesta `200` del contrato de `GET /users/me/summary/weekly` (backend/README.md):
+/// el primer día sin registros y el segundo con la meta del coach cumplida.
+Map<String, dynamic> _day(
+  String date, {
+  required String source,
+  required num goal,
+  required num consumed,
+  required bool met,
+}) => {
+  'date': date,
+  'goal': {
+    'source': source,
+    'calories_kcal': goal,
+    'protein_g': 140,
+    'fat_g': 51,
+  },
+  'consumed': {'calories_kcal': consumed, 'protein_g': 0, 'fat_g': 0},
+  'remaining': {
+    'calories_kcal': goal - consumed,
+    'protein_g': 140,
+    'fat_g': 51,
+  },
+  'goal_met': met,
+};
+
+final _weeklyJson = {
+  'start': '2026-10-16',
+  'end': '2026-10-22',
+  'days': [
+    _day('2026-10-16', source: 'system', goal: 1843, consumed: 0, met: false),
+    _day('2026-10-17', source: 'coach', goal: 2000, consumed: 1900, met: true),
+    for (var i = 18; i <= 22; i++)
+      _day('2026-10-$i', source: 'coach', goal: 2000, consumed: 0, met: false),
+  ],
+  'average': {'calories_kcal': 263.3, 'protein_g': 17.2, 'fat_g': 7.9},
+  'goal_met_days': 1,
+};
+
 void main() {
   late FakeHttpAdapter adapter;
 
@@ -102,6 +140,75 @@ void main() {
             ),
           ),
         );
+      },
+    );
+  });
+
+  group('resumen semanal (GET /users/me/summary/weekly)', () {
+    test(
+      'manda start y convierte los 7 días, el promedio y los días cumplidos',
+      () async {
+        final repository = build((_) => jsonResponse(_weeklyJson, 200));
+
+        final week = await repository.getWeekly('2026-10-16');
+
+        final request = adapter.requests.single;
+        expect(request.method, 'GET');
+        expect(request.path, '/users/me/summary/weekly');
+        expect(request.queryParameters, {'start': '2026-10-16'});
+        expect(week.start, '2026-10-16');
+        expect(week.end, '2026-10-22');
+        expect(week.days, hasLength(7));
+        expect(week.days.first.date, '2026-10-16');
+        expect(week.days.last.date, '2026-10-22');
+        expect(week.average.caloriesKcal, 263.3);
+        expect(week.average.proteinG, 17.2);
+        expect(week.average.fatG, 7.9);
+        expect(week.goalMetDays, 1);
+      },
+    );
+
+    test('cada día trae su meta, su consumo y si cumplió (goal_met)', () async {
+      final repository = build((_) => jsonResponse(_weeklyJson, 200));
+
+      final week = await repository.getWeekly('2026-10-16');
+
+      expect(week.days[0].goalMet, isFalse);
+      expect(week.days[0].consumed.caloriesKcal, 0);
+      expect(week.days[0].remaining.caloriesKcal, 1843);
+      expect(week.days[1].goalMet, isTrue);
+      expect(week.days[1].goal.caloriesKcal, 2000);
+      expect(week.days[1].goalSource, GoalSource.coach);
+    });
+
+    test(
+      '404 PROFILE_NOT_FOUND llega como ApiException con su código',
+      () async {
+        final repository = build(
+          (_) => errorResponse(ApiErrorCode.profileNotFound, 404),
+        );
+
+        await expectLater(
+          repository.getWeekly('2026-10-16'),
+          throwsA(
+            isA<ApiException>().having(
+              (e) => e.code,
+              'code',
+              ApiErrorCode.profileNotFound,
+            ),
+          ),
+        );
+      },
+    );
+
+    test(
+      'un día del resumen diario no trae goal_met y queda en false',
+      () async {
+        final repository = build((_) => jsonResponse(_dailyJson, 200));
+
+        final summary = await repository.getDaily('2026-10-16');
+
+        expect(summary.goalMet, isFalse);
       },
     );
   });

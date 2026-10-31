@@ -45,6 +45,8 @@ import '../features/meals/presentation/meal_photo/meal_photo_view.dart';
 import '../features/meals/presentation/meal_photo/meal_photo_view_model.dart';
 import '../features/profile/domain/repositories/profile_repository.dart';
 import '../features/summary/domain/repositories/summary_repository.dart';
+import '../features/summary/presentation/weekly_summary/weekly_summary_view.dart';
+import '../features/summary/presentation/weekly_summary/weekly_summary_view_model.dart';
 import '../features/profile/presentation/profile_form/profile_form_view.dart';
 import '../features/profile/presentation/profile_form/profile_form_view_model.dart';
 import 'routes.dart';
@@ -124,6 +126,15 @@ GoRouter createRouter(
                 upload: state.extra! as MealPhotoUpload,
               )..load(),
               child: const MealEstimateView(),
+            ),
+          ),
+          GoRoute(
+            path: AppRoutes.weeklySummaryChild,
+            builder: (context, _) => ChangeNotifierProvider(
+              create: (context) => WeeklySummaryViewModel(
+                repository: context.read<SummaryRepository>(),
+              )..load(),
+              child: const WeeklySummaryView(),
             ),
           ),
           GoRoute(

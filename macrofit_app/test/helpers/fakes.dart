@@ -33,7 +33,9 @@ import 'package:macrofit_app/features/profile/domain/entities/profile.dart';
 import 'package:macrofit_app/features/profile/domain/repositories/profile_repository.dart';
 import 'package:macrofit_app/features/summary/domain/entities/day_summary.dart';
 import 'package:macrofit_app/features/summary/domain/entities/macro_values.dart';
+import 'package:macrofit_app/features/summary/domain/entities/week_summary.dart';
 import 'package:macrofit_app/features/summary/domain/repositories/summary_repository.dart';
+import 'package:macrofit_app/features/summary/domain/usecases/app_day.dart';
 
 /// Usuario que ya capturó su perfil (HU-03): entra a la pantalla principal.
 const testUser = User(
@@ -731,13 +733,19 @@ DaySummary testDaySummary({
 );
 
 class FakeSummaryRepository implements SummaryRepository {
-  FakeSummaryRepository({DaySummary? daily})
+  FakeSummaryRepository({DaySummary? daily, this.weekly})
     : daily = daily ?? testDaySummary();
 
   /// Usuario sin perfil ni meta: responde `404 PROFILE_NOT_FOUND`.
-  FakeSummaryRepository.withoutGoal() : daily = null;
+  FakeSummaryRepository.withoutGoal() : daily = null, weekly = null;
 
   DaySummary? daily;
+
+  /// Resumen semanal (HU-11); sin él se arma uno desde la fecha pedida ([testWeekSummary]).
+  WeekSummary? weekly;
+
+  /// Inicios de semana pedidos, en orden.
+  final weeklyStarts = <String>[];
 
   /// Si se asigna, la siguiente consulta lanza este error.
   ApiException? error;
@@ -749,10 +757,77 @@ class FakeSummaryRepository implements SummaryRepository {
   Completer<void>? gate;
 
   @override
+  Future<WeekSummary> getWeekly(String start) async {
+    weeklyStarts.add(start);
+    await gate?.future;
+    if (error case final error?) throw error;
+    if (daily == null) {
+      throw apiError(ApiErrorCode.profileNotFound, status: 404);
+    }
+    return weekly ?? testWeekSummary(start: start);
+  }
+
+  @override
   Future<DaySummary> getDaily(String date) async {
     dailyDates.add(date);
     await gate?.future;
     if (error case final error?) throw error;
     return daily ?? (throw apiError(ApiErrorCode.profileNotFound, status: 404));
   }
+}
+
+/// Semana de 7 días desde [start]: cinco días con 1900 kcal (cumplen la meta de 2000),
+/// uno sin registros y el último con exceso (2400).
+WeekSummary testWeekSummary({String start = '2026-10-16'}) {
+  const goal = MacroValues(caloriesKcal: 2000, proteinG: 150, fatG: 60);
+  const empty = MacroValues(caloriesKcal: 0, proteinG: 0, fatG: 0);
+  const normal = MacroValues(caloriesKcal: 1900, proteinG: 140, fatG: 55);
+  const excess = MacroValues(caloriesKcal: 2400, proteinG: 170, fatG: 80);
+
+  DaySummary day(int offset, MacroValues consumed, {required bool met}) =>
+      DaySummary(
+        date: shiftDay(start, offset),
+        goalSource: GoalSource.system,
+        goal: goal,
+        consumed: consumed,
+        remaining: MacroValues(
+          caloriesKcal: goal.caloriesKcal - consumed.caloriesKcal,
+          proteinG: goal.proteinG - consumed.proteinG,
+          fatG: goal.fatG - consumed.fatG,
+        ),
+        goalMet: met,
+      );
+
+  return WeekSummary(
+    start: start,
+    end: shiftDay(start, 6),
+    days: [
+      for (var i = 0; i < 5; i++) day(i, normal, met: true),
+      day(5, empty, met: false),
+      day(6, excess, met: false),
+    ],
+    average: const MacroValues(caloriesKcal: 1700, proteinG: 124.3, fatG: 50.7),
+    goalMetDays: 5,
+  );
+}
+
+/// Semana sin ningún registro: los 7 días en 0, restante igual a la meta y ninguno cumplido.
+WeekSummary testEmptyWeekSummary({String start = '2026-10-16'}) {
+  const goal = MacroValues(caloriesKcal: 2000, proteinG: 150, fatG: 60);
+  return WeekSummary(
+    start: start,
+    end: shiftDay(start, 6),
+    days: [
+      for (var i = 0; i < 7; i++)
+        DaySummary(
+          date: shiftDay(start, i),
+          goalSource: GoalSource.system,
+          goal: goal,
+          consumed: const MacroValues(caloriesKcal: 0, proteinG: 0, fatG: 0),
+          remaining: goal,
+        ),
+    ],
+    average: const MacroValues(caloriesKcal: 0, proteinG: 0, fatG: 0),
+    goalMetDays: 0,
+  );
 }

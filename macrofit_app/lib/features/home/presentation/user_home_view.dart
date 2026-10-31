@@ -21,6 +21,12 @@ class UserHomeView extends StatelessWidget {
       title: 'Inicio',
       actions: [
         IconButton(
+          key: const Key('weekly_summary_button'),
+          tooltip: 'Resumen semanal',
+          icon: const Icon(Icons.bar_chart),
+          onPressed: () => context.push(AppRoutes.weeklySummary),
+        ),
+        IconButton(
           key: const Key('profile_button'),
           tooltip: 'Mi perfil',
           icon: const Icon(Icons.account_circle),
