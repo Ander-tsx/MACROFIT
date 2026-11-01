@@ -10,6 +10,9 @@ import '../features/auth/presentation/login/login_view_model.dart';
 import '../features/auth/presentation/register/register_view.dart';
 import '../features/auth/presentation/register/register_view_model.dart';
 import '../features/auth/presentation/splash/splash_view.dart';
+import '../features/coach_link/domain/repositories/coach_link_repository.dart';
+import '../features/coach_link/presentation/coach_link/coach_link_view.dart';
+import '../features/coach_link/presentation/coach_link/coach_link_view_model.dart';
 import '../features/clients/domain/entities/client_summary.dart';
 import '../features/clients/domain/repositories/clients_repository.dart';
 import '../features/clients/presentation/client_detail/client_detail_view.dart';
@@ -46,8 +49,22 @@ import '../features/meals/presentation/meal_history/meal_history_view_model.dart
 import '../features/meals/presentation/meal_photo/meal_photo_view.dart';
 import '../features/meals/presentation/meal_photo/meal_photo_view_model.dart';
 import '../features/profile/domain/repositories/profile_repository.dart';
+import '../features/summary/domain/repositories/summary_repository.dart';
+import '../features/summary/presentation/weekly_summary/weekly_summary_view.dart';
+import '../features/summary/presentation/weekly_summary/weekly_summary_view_model.dart';
 import '../features/profile/presentation/profile_form/profile_form_view.dart';
 import '../features/profile/presentation/profile_form/profile_form_view_model.dart';
+import '../features/progress/domain/repositories/weights_repository.dart';
+import '../features/progress/presentation/weights/weights_view.dart';
+import '../features/progress/presentation/weights/weights_view_model.dart';
+import '../features/routines/domain/entities/routine.dart';
+import '../features/routines/domain/repositories/routines_repository.dart';
+import '../features/routines/presentation/exercise_picker/exercise_picker_view.dart';
+import '../features/routines/presentation/exercise_picker/exercise_picker_view_model.dart';
+import '../features/routines/presentation/routine_builder/routine_builder_view.dart';
+import '../features/routines/presentation/routine_builder/routine_builder_view_model.dart';
+import '../features/routines/presentation/routines_list/routines_list_view.dart';
+import '../features/routines/presentation/routines_list/routines_list_view_model.dart';
 import 'routes.dart';
 
 /// Crea el router. Escucha al [AuthRepository]: cada cambio de sesión vuelve a
@@ -100,7 +117,8 @@ GoRouter createRouter(
           create: (context) => UserHomeViewModel(
             auth: context.read<AuthRepository>(),
             goals: context.read<GoalsRepository>(),
-          )..loadGoal(),
+            summary: context.read<SummaryRepository>(),
+          )..refresh(),
           child: const UserHomeView(),
         ),
         routes: [
@@ -124,6 +142,15 @@ GoRouter createRouter(
                 upload: state.extra! as MealPhotoUpload,
               )..load(),
               child: const MealEstimateView(),
+            ),
+          ),
+          GoRoute(
+            path: AppRoutes.weeklySummaryChild,
+            builder: (context, _) => ChangeNotifierProvider(
+              create: (context) => WeeklySummaryViewModel(
+                repository: context.read<SummaryRepository>(),
+              )..load(),
+              child: const WeeklySummaryView(),
             ),
           ),
           GoRoute(
@@ -193,11 +220,68 @@ GoRouter createRouter(
         ),
       ),
       GoRoute(
+        path: AppRoutes.coachLink,
+        builder: (context, _) => ChangeNotifierProvider(
+          create: (context) => CoachLinkViewModel(
+            repository: context.read<CoachLinkRepository>(),
+          )..load(),
+          child: const CoachLinkView(),
+        ),
+      ),
+      GoRoute(
+        path: AppRoutes.weights,
+        builder: (context, _) => ChangeNotifierProvider(
+          create: (context) =>
+              WeightsViewModel(repository: context.read<WeightsRepository>())
+                ..load(),
+          child: const WeightsView(),
+        ),
+      ),
+      GoRoute(
         path: AppRoutes.coachClients,
         builder: (context, _) => ChangeNotifierProvider(
           create: (context) =>
               ClientsListViewModel(context.read<ClientsRepository>())..load(),
           child: const ClientsListView(),
+        ),
+      ),
+      GoRoute(
+        path: AppRoutes.coachRoutines,
+        builder: (context, _) => ChangeNotifierProvider(
+          create: (context) =>
+              RoutinesListViewModel(context.read<RoutinesRepository>())..load(),
+          child: const RoutinesListView(),
+        ),
+      ),
+      GoRoute(
+        path: AppRoutes.coachRoutineNew,
+        builder: (context, _) => ChangeNotifierProvider(
+          create: (context) => RoutineBuilderViewModel(
+            repository: context.read<RoutinesRepository>(),
+          ),
+          child: const RoutineBuilderView(),
+        ),
+      ),
+      GoRoute(
+        path: AppRoutes.coachExercisePicker,
+        builder: (context, _) => ChangeNotifierProvider(
+          create: (context) =>
+              ExercisePickerViewModel(context.read<RoutinesRepository>())
+                ..load(),
+          child: const ExercisePickerView(),
+        ),
+      ),
+      GoRoute(
+        path: AppRoutes.coachRoutineEditPattern,
+        // Sin la rutina (p. ej. al restaurar la ruta) se vuelve a la lista.
+        redirect: (_, state) =>
+            state.extra is Routine ? null : AppRoutes.coachRoutines,
+        builder: (context, state) => ChangeNotifierProvider(
+          create: (context) => RoutineBuilderViewModel(
+            repository: context.read<RoutinesRepository>(),
+            initial: state.extra! as Routine,
+          ),
+          child: const RoutineBuilderView(),
         ),
       ),
       GoRoute(

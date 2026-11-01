@@ -7,8 +7,9 @@ import 'home_view_model.dart';
 import 'widgets/home_scaffold.dart';
 import 'widgets/welcome_message.dart';
 
-/// Pantalla principal del rol `coach`. Desde aquí se llega a su código de invitación (HU-12) y
-/// a sus clientes (HU-24); desde el detalle de cada cliente, a sus metas (HU-05) y comidas (HU-25).
+/// Pantalla principal del rol `coach`. Desde aquí se llega a su código de invitación (HU-12),
+/// a sus clientes (HU-24) y a sus rutinas (HU-18); desde el detalle de cada cliente, a sus
+/// metas (HU-05) y comidas (HU-25).
 class CoachHomeView extends StatelessWidget {
   const CoachHomeView({super.key});
 
@@ -31,6 +32,12 @@ class CoachHomeView extends StatelessWidget {
           icon: const Icon(Icons.groups),
           onPressed: () => context.push(AppRoutes.coachClients),
         ),
+        IconButton(
+          key: const Key('routines_button'),
+          tooltip: 'Mis rutinas',
+          icon: const Icon(Icons.fitness_center),
+          onPressed: () => context.push(AppRoutes.coachRoutines),
+        ),
       ],
       body: Center(
         child: SingleChildScrollView(
@@ -49,6 +56,13 @@ class CoachHomeView extends StatelessWidget {
                 onPressed: () => context.push(AppRoutes.coachInviteCode),
                 icon: const Icon(Icons.person_add_alt_1),
                 label: const Text('Mi código de invitación'),
+              ),
+              const SizedBox(height: 12),
+              FilledButton.icon(
+                key: const Key('routines_home_button'),
+                onPressed: () => context.push(AppRoutes.coachRoutines),
+                icon: const Icon(Icons.fitness_center),
+                label: const Text('Mis rutinas'),
               ),
               const SizedBox(height: 24),
             ],

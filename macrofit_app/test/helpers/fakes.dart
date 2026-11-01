@@ -31,6 +31,18 @@ import 'package:macrofit_app/features/meals/domain/repositories/meal_photo_repos
 import 'package:macrofit_app/features/meals/domain/repositories/meals_repository.dart';
 import 'package:macrofit_app/features/profile/domain/entities/profile.dart';
 import 'package:macrofit_app/features/profile/domain/repositories/profile_repository.dart';
+import 'package:macrofit_app/features/summary/domain/entities/day_summary.dart';
+import 'package:macrofit_app/features/summary/domain/entities/macro_values.dart';
+import 'package:macrofit_app/features/summary/domain/entities/week_summary.dart';
+import 'package:macrofit_app/features/summary/domain/repositories/summary_repository.dart';
+import 'package:macrofit_app/features/summary/domain/usecases/app_day.dart';
+import 'package:macrofit_app/features/coach_link/domain/entities/coach_link.dart';
+import 'package:macrofit_app/features/coach_link/domain/repositories/coach_link_repository.dart';
+import 'package:macrofit_app/features/progress/domain/entities/weight_entry.dart';
+import 'package:macrofit_app/features/progress/domain/repositories/weights_repository.dart';
+import 'package:macrofit_app/features/routines/domain/entities/exercise.dart';
+import 'package:macrofit_app/features/routines/domain/entities/routine.dart';
+import 'package:macrofit_app/features/routines/domain/repositories/routines_repository.dart';
 
 /// Usuario que ya capturó su perfil (HU-03): entra a la pantalla principal.
 const testUser = User(
@@ -778,3 +790,391 @@ Map<String, Object> sessionJson(
   'expires_in': 900,
   'user': userModelOf(user).toJson(),
 };
+
+/// Resumen del día (HU-10) con 1050.5 kcal consumidas de una meta de 2200 kcal.
+DaySummary testDaySummary({
+  String date = '2026-10-16',
+  MacroValues goal = const MacroValues(
+    caloriesKcal: 2200,
+    proteinG: 160,
+    fatG: 70,
+  ),
+  MacroValues consumed = const MacroValues(
+    caloriesKcal: 1050.5,
+    proteinG: 70,
+    fatG: 35.5,
+  ),
+  GoalSource source = GoalSource.system,
+}) => DaySummary(
+  date: date,
+  goalSource: source,
+  goal: goal,
+  consumed: consumed,
+  remaining: MacroValues(
+    caloriesKcal: goal.caloriesKcal - consumed.caloriesKcal,
+    proteinG: goal.proteinG - consumed.proteinG,
+    fatG: goal.fatG - consumed.fatG,
+  ),
+);
+
+class FakeSummaryRepository implements SummaryRepository {
+  FakeSummaryRepository({DaySummary? daily, this.weekly})
+    : daily = daily ?? testDaySummary();
+
+  /// Usuario sin perfil ni meta: responde `404 PROFILE_NOT_FOUND`.
+  FakeSummaryRepository.withoutGoal() : daily = null, weekly = null;
+
+  DaySummary? daily;
+
+  /// Resumen semanal (HU-11); sin él se arma uno desde la fecha pedida ([testWeekSummary]).
+  WeekSummary? weekly;
+
+  /// Inicios de semana pedidos, en orden.
+  final weeklyStarts = <String>[];
+
+  /// Si se asigna, la siguiente consulta lanza este error.
+  ApiException? error;
+
+  /// Fechas pedidas, en orden.
+  final dailyDates = <String>[];
+
+  /// Si se asigna, la consulta espera a que se complete (para ver el estado intermedio).
+  Completer<void>? gate;
+
+  @override
+  Future<WeekSummary> getWeekly(String start) async {
+    weeklyStarts.add(start);
+    await gate?.future;
+    if (error case final error?) throw error;
+    if (daily == null) {
+      throw apiError(ApiErrorCode.profileNotFound, status: 404);
+    }
+    return weekly ?? testWeekSummary(start: start);
+  }
+
+  @override
+  Future<DaySummary> getDaily(String date) async {
+    dailyDates.add(date);
+    await gate?.future;
+    if (error case final error?) throw error;
+    return daily ?? (throw apiError(ApiErrorCode.profileNotFound, status: 404));
+  }
+}
+
+/// Semana de 7 días desde [start]: cinco días con 1900 kcal (cumplen la meta de 2000),
+/// uno sin registros y el último con exceso (2400).
+WeekSummary testWeekSummary({String start = '2026-10-16'}) {
+  const goal = MacroValues(caloriesKcal: 2000, proteinG: 150, fatG: 60);
+  const empty = MacroValues(caloriesKcal: 0, proteinG: 0, fatG: 0);
+  const normal = MacroValues(caloriesKcal: 1900, proteinG: 140, fatG: 55);
+  const excess = MacroValues(caloriesKcal: 2400, proteinG: 170, fatG: 80);
+
+  DaySummary day(int offset, MacroValues consumed, {required bool met}) =>
+      DaySummary(
+        date: shiftDay(start, offset),
+        goalSource: GoalSource.system,
+        goal: goal,
+        consumed: consumed,
+        remaining: MacroValues(
+          caloriesKcal: goal.caloriesKcal - consumed.caloriesKcal,
+          proteinG: goal.proteinG - consumed.proteinG,
+          fatG: goal.fatG - consumed.fatG,
+        ),
+        goalMet: met,
+      );
+
+  return WeekSummary(
+    start: start,
+    end: shiftDay(start, 6),
+    days: [
+      for (var i = 0; i < 5; i++) day(i, normal, met: true),
+      day(5, empty, met: false),
+      day(6, excess, met: false),
+    ],
+    average: const MacroValues(caloriesKcal: 1700, proteinG: 124.3, fatG: 50.7),
+    goalMetDays: 5,
+  );
+}
+
+/// Semana sin ningún registro: los 7 días en 0, restante igual a la meta y ninguno cumplido.
+WeekSummary testEmptyWeekSummary({String start = '2026-10-16'}) {
+  const goal = MacroValues(caloriesKcal: 2000, proteinG: 150, fatG: 60);
+  return WeekSummary(
+    start: start,
+    end: shiftDay(start, 6),
+    days: [
+      for (var i = 0; i < 7; i++)
+        DaySummary(
+          date: shiftDay(start, i),
+          goalSource: GoalSource.system,
+          goal: goal,
+          consumed: const MacroValues(caloriesKcal: 0, proteinG: 0, fatG: 0),
+          remaining: goal,
+        ),
+    ],
+    average: const MacroValues(caloriesKcal: 0, proteinG: 0, fatG: 0),
+    goalMetDays: 0,
+  );
+}
+
+// ───────────────────────── Rutinas del coach (HU-18) ─────────────────────────
+
+const testBenchPress = Exercise(
+  id: '6ac6a0000000000000000001',
+  name: 'Press de banca con mancuernas',
+  muscleGroup: 'chest',
+  equipment: 'dumbbell',
+  level: 'beginner',
+);
+
+const testPushUps = Exercise(
+  id: '6ac6a0000000000000000002',
+  name: 'Flexiones de pecho',
+  muscleGroup: 'chest',
+  equipment: 'bodyweight',
+  level: 'beginner',
+);
+
+const testRow = Exercise(
+  id: '6ac6a0000000000000000003',
+  name: 'Remo con barra',
+  muscleGroup: 'back',
+  equipment: 'barbell',
+  level: 'intermediate',
+);
+
+const testSquat = Exercise(
+  id: '6ac6a0000000000000000004',
+  name: 'Sentadilla trasera',
+  muscleGroup: 'legs',
+  equipment: 'barbell',
+  level: 'advanced',
+);
+
+/// Catálogo de prueba (TEC-09): dos de pecho, uno de espalda y uno de piernas.
+const testExercises = [testBenchPress, testPushUps, testRow, testSquat];
+
+/// Rutina guardada «Torso A» con press de banca (4 × 10, 90 s) y remo (3 × 12, 60 s).
+final testRoutine = Routine(
+  id: '6b01a0000000000000000001',
+  name: 'Torso A',
+  exercises: const [
+    RoutineExercise(
+      exerciseId: '6ac6a0000000000000000001',
+      name: 'Press de banca con mancuernas',
+      muscleGroup: 'chest',
+      sets: 4,
+      reps: 10,
+      restSeconds: 90,
+    ),
+    RoutineExercise(
+      exerciseId: '6ac6a0000000000000000003',
+      name: 'Remo con barra',
+      muscleGroup: 'back',
+      sets: 3,
+      reps: 12,
+      restSeconds: 60,
+    ),
+  ],
+  createdAt: DateTime.utc(2026, 10, 26, 18),
+  updatedAt: DateTime.utc(2026, 10, 26, 18),
+);
+
+/// Segunda rutina guardada («Pierna»), con un solo ejercicio.
+final testLegRoutine = Routine(
+  id: '6b01a0000000000000000002',
+  name: 'Pierna',
+  exercises: const [
+    RoutineExercise(
+      exerciseId: '6ac6a0000000000000000004',
+      name: 'Sentadilla trasera',
+      muscleGroup: 'legs',
+      sets: 5,
+      reps: 5,
+      restSeconds: 120,
+    ),
+  ],
+  createdAt: DateTime.utc(2026, 10, 25, 18),
+  updatedAt: DateTime.utc(2026, 10, 25, 18),
+);
+
+/// Rutinas y catálogo en memoria (simula `/coach/routines` y `GET /exercises`).
+/// Crear, editar y eliminar cambian [routines], así que recargar muestra el cambio.
+class FakeRoutinesRepository implements RoutinesRepository {
+  FakeRoutinesRepository({List<Routine>? routines, List<Exercise>? exercises})
+    : routines = routines ?? [testRoutine, testLegRoutine],
+      exercises = exercises ?? [...testExercises];
+
+  List<Routine> routines;
+  List<Exercise> exercises;
+
+  /// Si se asigna, las siguientes llamadas del tipo correspondiente lanzan este error.
+  ApiException? listError;
+  ApiException? exercisesError;
+  ApiException? saveError;
+  ApiException? deleteError;
+
+  /// Si se asigna, la consulta del catálogo espera a que se complete.
+  Completer<void>? exercisesGate;
+
+  int listCalls = 0;
+  final exerciseRequests =
+      <({MuscleGroup? muscleGroup, ExerciseLevel? level})>[];
+  final created = <RoutineDraft>[];
+  final updated = <({String id, RoutineDraft draft})>[];
+  final deleted = <String>[];
+  int _nextId = 10;
+
+  @override
+  Future<List<Exercise>> getExercises({
+    MuscleGroup? muscleGroup,
+    ExerciseLevel? level,
+  }) async {
+    exerciseRequests.add((muscleGroup: muscleGroup, level: level));
+    await exercisesGate?.future;
+    if (exercisesError case final error?) throw error;
+    return [
+      for (final exercise in exercises)
+        if ((muscleGroup == null ||
+                exercise.muscleGroup == muscleGroup.apiValue) &&
+            (level == null || exercise.level == level.apiValue))
+          exercise,
+    ];
+  }
+
+  @override
+  Future<List<Routine>> getRoutines() async {
+    listCalls++;
+    if (listError case final error?) throw error;
+    return [...routines];
+  }
+
+  @override
+  Future<Routine> createRoutine(RoutineDraft draft) async {
+    created.add(draft);
+    if (saveError case final error?) throw error;
+    final routine = _routineOf('6b01a00000000000000000${_nextId++}', draft);
+    routines = [routine, ...routines];
+    return routine;
+  }
+
+  @override
+  Future<Routine> updateRoutine(String id, RoutineDraft draft) async {
+    updated.add((id: id, draft: draft));
+    if (saveError case final error?) throw error;
+    final routine = _routineOf(id, draft);
+    routines = [routine, ...routines.where((item) => item.id != id)];
+    return routine;
+  }
+
+  @override
+  Future<void> deleteRoutine(String id) async {
+    deleted.add(id);
+    if (deleteError case final error?) throw error;
+    routines = [...routines.where((item) => item.id != id)];
+  }
+
+  Routine _routineOf(String id, RoutineDraft draft) {
+    final now = DateTime.utc(2026, 10, 27, 12);
+    return Routine(
+      id: id,
+      name: draft.name,
+      exercises: [
+        for (final item in draft.exercises)
+          () {
+            final exercise = exercises.firstWhere(
+              (exercise) => exercise.id == item.exerciseId,
+            );
+            return RoutineExercise(
+              exerciseId: item.exerciseId,
+              name: exercise.name,
+              muscleGroup: exercise.muscleGroup,
+              sets: item.sets,
+              reps: item.reps,
+              restSeconds: item.restSeconds,
+            );
+          }(),
+      ],
+      createdAt: now,
+      updatedAt: now,
+    );
+  }
+}
+
+class FakeCoachLinkRepository implements CoachLinkRepository {
+  FakeCoachLinkRepository({
+    this.linkedCoach,
+    this.linkResult,
+    this.linkException,
+    this.unlinkException,
+    this.error,
+  });
+
+  CoachLink? linkedCoach;
+  CoachLink? linkResult;
+  Exception? linkException;
+  Exception? unlinkException;
+  ApiException? error;
+  bool unlinkedCalled = false;
+
+  @override
+  Future<CoachLink?> getLinkedCoach() async {
+    if (error != null) throw error!;
+    return linkedCoach;
+  }
+
+  @override
+  Future<CoachLink> linkCoach(String inviteCode) async {
+    if (error != null) throw error!;
+    if (linkException != null) throw linkException!;
+    linkedCoach =
+        linkResult ??
+        const CoachLink(
+          id: '1',
+          coachId: 'c1',
+          coachName: 'Laura',
+          coachEmail: 'laura@test.com',
+          status: 'active',
+        );
+    return linkedCoach!;
+  }
+
+  @override
+  Future<void> unlinkCoach() async {
+    unlinkedCalled = true;
+    if (error != null) throw error!;
+    if (unlinkException != null) throw unlinkException!;
+    linkedCoach = null;
+  }
+}
+
+class FakeWeightsRepository implements WeightsRepository {
+  FakeWeightsRepository({
+    this.weights = const [],
+    this.error,
+    this.createError,
+  });
+
+  List<WeightEntry> weights;
+  ApiException? error;
+  ApiException? createError;
+
+  @override
+  Future<List<WeightEntry>> getWeights() async {
+    if (error != null) throw error!;
+    return weights;
+  }
+
+  @override
+  Future<WeightEntry> createWeight(double weightKg) async {
+    if (createError != null) throw createError!;
+    if (error != null) throw error!;
+    final entry = WeightEntry(
+      id: 'w${weights.length + 1}',
+      weightKg: weightKg,
+      recordedAt: DateTime.now(),
+    );
+    weights = [entry, ...weights];
+    return entry;
+  }
+}
