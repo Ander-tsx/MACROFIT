@@ -205,6 +205,44 @@ void main() {
     });
   });
 
+  group('rutinas del coach (HU-18)', () {
+    test('un coach abre su lista, el constructor y el selector', () {
+      for (final route in [
+        AppRoutes.coachRoutines,
+        AppRoutes.coachRoutineNew,
+        AppRoutes.coachExercisePicker,
+        AppRoutes.coachRoutineEdit('abc'),
+      ]) {
+        expect(
+          resolveRedirect(const Authenticated(testCoach), route),
+          isNull,
+          reason: route,
+        );
+      }
+    });
+
+    test('un usuario no accede a las rutinas del coach', () {
+      for (final route in [
+        AppRoutes.coachRoutines,
+        AppRoutes.coachRoutineNew,
+        AppRoutes.coachRoutineEdit('abc'),
+      ]) {
+        expect(
+          resolveRedirect(const Authenticated(testUser), route),
+          AppRoutes.userHome,
+          reason: route,
+        );
+      }
+    });
+
+    test('sin sesión van al inicio de sesión', () {
+      expect(
+        resolveRedirect(const Unauthenticated(), AppRoutes.coachRoutines),
+        AppRoutes.login,
+      );
+    });
+  });
+
   group('clientes del coach (HU-24)', () {
     test('un coach abre el detalle de un cliente', () {
       expect(
