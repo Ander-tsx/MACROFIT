@@ -12,6 +12,9 @@ import '../features/auth/domain/repositories/auth_repository.dart';
 import '../features/clients/data/datasources/clients_remote_data_source.dart';
 import '../features/clients/data/repositories/clients_repository_impl.dart';
 import '../features/clients/domain/repositories/clients_repository.dart';
+import '../features/coach_link/data/datasources/coach_link_remote_data_source.dart';
+import '../features/coach_link/data/repositories/coach_link_repository_impl.dart';
+import '../features/coach_link/domain/repositories/coach_link_repository.dart';
 import '../features/goals/data/datasources/goals_remote_datasource.dart';
 import '../features/goals/data/repositories/goals_repository_impl.dart';
 import '../features/goals/domain/repositories/coach_goals_repository.dart';
@@ -35,6 +38,12 @@ import '../features/profile/domain/repositories/profile_repository.dart';
 import '../features/summary/data/datasources/summary_remote_data_source.dart';
 import '../features/summary/data/repositories/summary_repository_impl.dart';
 import '../features/summary/domain/repositories/summary_repository.dart';
+import '../features/routines/data/datasources/routines_remote_data_source.dart';
+import '../features/routines/data/repositories/routines_repository_impl.dart';
+import '../features/routines/domain/repositories/routines_repository.dart';
+import '../features/progress/data/datasources/weights_remote_data_source.dart';
+import '../features/progress/data/repositories/weights_repository_impl.dart';
+import '../features/progress/domain/repositories/weights_repository.dart';
 
 /// Raíz de composición: el único lugar donde se crean las implementaciones
 /// concretas (capa de datos) y se conectan entre sí. El resto de la app solo
@@ -51,6 +60,9 @@ class AppDependencies {
     required this.clientsRepository,
     required this.inviteCodeRepository,
     required this.summaryRepository,
+    required this.coachLinkRepository,
+    required this.weightsRepository,
+    required this.routinesRepository,
     required this.shareService,
   });
 
@@ -99,6 +111,16 @@ class AppDependencies {
       summaryRepository: SummaryRepositoryImpl(
         SummaryRemoteDataSource(sessionDio),
       ),
+      coachLinkRepository: CoachLinkRepositoryImpl(
+        CoachLinkRemoteDataSource(sessionDio),
+        const FlutterSecureStorage(),
+      ),
+      weightsRepository: WeightsRepositoryImpl(
+        WeightsRemoteDataSource(sessionDio),
+      ),
+      routinesRepository: RoutinesRepositoryImpl(
+        RoutinesRemoteDataSource(sessionDio),
+      ),
       shareService: const SystemShareService(),
     );
   }
@@ -113,6 +135,11 @@ class AppDependencies {
   final ClientsRepository clientsRepository;
   final InviteCodeRepository inviteCodeRepository;
   final SummaryRepository summaryRepository;
+  final CoachLinkRepository coachLinkRepository;
+  final WeightsRepository weightsRepository;
+
+  /// Rutinas del coach (HU-18) y catálogo de ejercicios (TEC-09).
+  final RoutinesRepository routinesRepository;
 
   /// Portapapeles y hoja de compartir del sistema (HU-12).
   final ShareService shareService;

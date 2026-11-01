@@ -28,7 +28,7 @@ void main() {
     }
   });
 
-  group('peso (30 a 300 kg)', () {
+  group('peso (35 a 250 kg)', () {
     test('vacío o no numérico se rechaza', () {
       expect(ProfileValidators.weight(''), 'El peso es obligatorio');
       expect(ProfileValidators.weight('  '), 'El peso es obligatorio');
@@ -36,10 +36,10 @@ void main() {
     });
 
     test('fuera de rango se rechaza y los límites se aceptan', () {
-      expect(ProfileValidators.weight('29.9'), isNotNull);
-      expect(ProfileValidators.weight('300.1'), isNotNull);
-      expect(ProfileValidators.weight('30'), isNull);
-      expect(ProfileValidators.weight('300'), isNull);
+      expect(ProfileValidators.weight('34.9'), isNotNull);
+      expect(ProfileValidators.weight('250.1'), isNotNull);
+      expect(ProfileValidators.weight('35'), isNull);
+      expect(ProfileValidators.weight('250'), isNull);
     });
 
     test('acepta coma decimal', () {
