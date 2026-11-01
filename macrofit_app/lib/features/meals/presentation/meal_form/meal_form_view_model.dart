@@ -93,6 +93,12 @@ class MealFormViewModel extends ViewModel with FormStateMixin {
       return true;
     } on ApiException catch (error) {
       applyApiError(error, knownFields: _apiFields);
+      // HU-09: la foto ya usada o inexistente se explica en español; los
+      // valores capturados se conservan para guardarlos sin foto.
+      if (error.code
+          case ApiErrorCode.photoAlreadyUsed || ApiErrorCode.photoNotFound) {
+        setGeneralError(MealSaveMessages.of(error));
+      }
       return false;
     } finally {
       setSubmitting(false);

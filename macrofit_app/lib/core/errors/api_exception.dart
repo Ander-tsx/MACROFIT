@@ -18,6 +18,8 @@ abstract final class ApiErrorCode {
   static const photoTooLarge = 'PHOTO_TOO_LARGE';
   static const unsupportedPhotoType = 'UNSUPPORTED_PHOTO_TYPE';
   static const photoNotFound = 'PHOTO_NOT_FOUND';
+  static const photoAlreadyUsed = 'PHOTO_ALREADY_USED';
+  static const mealNotFound = 'MEAL_NOT_FOUND';
   static const inviteCodeNotFound = 'INVITE_CODE_NOT_FOUND';
   static const userAlreadyLinked = 'USER_ALREADY_LINKED';
   static const userNotLinked = 'USER_NOT_LINKED';

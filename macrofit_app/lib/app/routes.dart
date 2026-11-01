@@ -31,6 +31,11 @@ abstract final class AppRoutes {
   static const mealFormChild = 'meals/form';
   static const mealForm = '$userHome/$mealFormChild';
 
+  /// HU-09: historial de comidas del día ("Mis comidas"). Puede recibir en
+  /// `extra` el día a mostrar (`DateTime`); sin él muestra hoy.
+  static const mealHistoryChild = 'meals';
+  static const mealHistory = '$userHome/$mealHistoryChild';
+
   /// HU-11: resumen semanal del usuario (7 días contra la meta de cada día).
   static const weeklySummaryChild = 'summary';
   static const weeklySummary = '$userHome/$weeklySummaryChild';
@@ -91,6 +96,7 @@ abstract final class AppRoutes {
     mealPhoto,
     mealEstimate,
     mealForm,
+    mealHistory,
     weeklySummary,
   };
 }

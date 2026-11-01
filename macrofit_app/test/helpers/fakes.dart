@@ -411,19 +411,97 @@ class FakeMealsRepository implements MealsRepository {
     return testEstimate;
   }
 
+  /// Día en que quedan los registros nuevos (el backend lo calcula al guardar).
+  DateTime savedDay = DateTime(2026, 10, 16);
+
+  /// Registros por día (HU-09), del más antiguo al más reciente.
+  final days = <DateTime, List<Meal>>{};
+
+  /// Si se asigna, la siguiente consulta, eliminación o foto lanza este error.
+  ApiException? listError;
+  ApiException? deleteError;
+  ApiException? photoError;
+
+  final listRequests = <DateTime>[];
+  final deleted = <String>[];
+  final photoRequests = <String>[];
+  var _nextId = 0;
+
   @override
   Future<Meal> createMeal(NewMeal meal) async {
     created.add(meal);
     if (createError case final error?) throw error;
-    return Meal(
-      id: '6ad0a1b2c3d4e5f6a7b8c9d0',
+    final saved = Meal(
+      id: '6ad0a1b2c3d4e5f6a7b8c9d${_nextId++}',
       photoId: meal.photoId,
-      eatenAt: DateTime.utc(2026, 10, 17, 1, 30),
-      date: DateTime(2026, 10, 16),
+      eatenAt: DateTime(
+        savedDay.year,
+        savedDay.month,
+        savedDay.day,
+        14,
+        _nextId,
+      ),
+      date: savedDay,
       values: meal.values,
       estimated: meal.estimated,
     );
+    days.putIfAbsent(savedDay, () => []).add(saved);
+    return saved;
   }
+
+  /// Si se asigna, la consulta espera a que se complete (para ver la carga).
+  Completer<void>? listGate;
+
+  @override
+  Future<List<Meal>> getMeals(DateTime day) async {
+    listRequests.add(day);
+    await listGate?.future;
+    if (listError case final error?) throw error;
+    return [...?days[DateTime(day.year, day.month, day.day)]];
+  }
+
+  @override
+  Future<void> deleteMeal(String id) async {
+    if (deleteError case final error?) throw error;
+    for (final meals in days.values) {
+      final before = meals.length;
+      meals.removeWhere((meal) => meal.id == id);
+      if (meals.length != before) {
+        deleted.add(id);
+        return;
+      }
+    }
+    throw apiError(ApiErrorCode.mealNotFound, status: 404);
+  }
+
+  @override
+  Future<Uint8List> getMealPhoto(String photoId) async {
+    photoRequests.add(photoId);
+    if (photoError case final error?) throw error;
+    return testPhotoBytes;
+  }
+}
+
+/// Registro guardado del usuario (HU-09) en [day], con foto o como captura manual.
+Meal testMeal({
+  required String id,
+  DateTime? eatenAt,
+  bool withPhoto = true,
+  NutritionValues values = const NutritionValues(
+    caloriesKcal: 413,
+    proteinG: 42.2,
+    fatG: 4.9,
+  ),
+}) {
+  final time = eatenAt ?? DateTime(2026, 10, 16, 14, 5);
+  return Meal(
+    id: id,
+    photoId: withPhoto ? 'foto-$id' : null,
+    eatenAt: time,
+    date: DateTime(time.year, time.month, time.day),
+    values: values,
+    estimated: withPhoto ? values : null,
+  );
 }
 
 /// Metas del usuario en memoria (simula `GET /users/me/goals/current`, HU-26).
