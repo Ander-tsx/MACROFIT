@@ -38,12 +38,19 @@
 | HU-07 | Comida no reconocida (CU-01 flujo 4a). | Unitaria | `422 FOOD_NOT_RECOGNIZED` muestra el mensaje y ofrece solo **Capturar a mano** (sin **Reintentar**). | [**2**](#caso-34) (mobile 2 · backend 0) |
 | HU-07 | Fallo del proveedor o sin conexión (CU-01 flujo 3a, RNF-11). | Unitaria | `502`, `504`, `404` y la falta de conexión salen como `ApiException`; `502`, `504`, sin conexión y otros errores muestran un mensaje en español y ofrecen **Reintentar** o **Capturar a mano** sin cerrar la pantalla; **Reintentar** vuelve a estimar la misma foto. | [**10**](#caso-35) (mobile 10 · backend 0) |
 | HU-07 | Ruta de la estimación. | Unitaria | Solo un usuario con perfil abre `/user/meals/estimate` (un coach, un usuario sin perfil o sin sesión son redirigidos); atrás regresa al inicio y no a la foto ya subida. | [**3**](#caso-36) (mobile 3 · backend 0) |
-| HU-08 | Formulario precargado y editable (RF-07, CU-01 paso 5). | Interfaz | **Continuar** abre *Revisar valores* con `413`, `42.2` y `4.9` en calorías, proteína y grasa, los tres editables. | [**2**](#caso-37) (mobile 2 · backend 0) |
+| HU-08 | Formulario precargado y editable (RF-07, CU-01 paso 5). | Interfaz | **Corregir valores** abre *Revisar valores* con `413`, `42.2` y `4.9` en calorías, proteína y grasa, los tres editables. | [**2**](#caso-37) (mobile 2 · backend 0) |
 | HU-08 | Validación local con los rangos de la API. | Unitaria | Solo números no negativos (con punto o coma decimal); calorías de 0 a 10 000 y proteína y grasa de 0 a 1 000 g, con el 0 y los límites aceptados; vacío, texto, negativos o fuera de rango marcan su campo, no llaman a la API, y editar el campo limpia su error. | [**9**](#caso-38) (mobile 9 · backend 0) |
 | HU-08 | Valores finales y estimados (`estimated`). | Unitaria | Sin corrección se mandan los mismos valores como finales y en `estimated` (el estimado exacto, aunque el campo lo muestre redondeado); con corrección `estimated` conserva lo estimado y los finales llevan lo corregido. | [**4**](#caso-39) (mobile 4 · backend 0) |
 | HU-08 | Captura manual (CU-01 flujos 3a y 4a). | Unitaria | **Capturar a mano** (tras un fallo de la estimación) y **Capturar sin foto** abren el mismo formulario vacío; se guarda sin `estimated`, con `photo_id` solo si hay foto. | [**5**](#caso-40) (mobile 5 · backend 0) |
 | HU-08 | Errores del guardado. | Unitaria | `400 VALIDATION_ERROR` marca cada campo con `applyApiError`, incluidos `estimated.<campo>` (*Valor estimado: …*); `409`, `404` y la falta de conexión muestran el mensaje sin perder los valores; un registro guardado no se vuelve a enviar. | [**6**](#caso-41) (mobile 6 · backend 0) |
 | HU-08 | Ruta del formulario. | Unitaria | Solo un usuario con perfil abre `/user/meals/form` (un coach, un usuario sin perfil o sin sesión son redirigidos). | [**2**](#caso-42) (mobile 2 · backend 0) |
+| HU-09 | Guardar el registro y regresar al historial del día (RF-08, CU-01 paso 6). | Unitaria | **Guardar** en la estimación manda los totales como finales y en `estimated` con la foto, una sola vez; desde la estimación o el formulario se abre el historial del día del registro con el registro nuevo y *Comida registrada*. | [**5**](#caso-43) (mobile 5 · backend 0) |
+| HU-09 | Registro por foto en 4 toques o menos (RNF-09). | Interfaz | Inicio → **Registrar comida** → **Elegir de la galería** → **Usar esta foto** → **Guardar**: 4 toques (sin contar el selector del sistema ni ediciones) y el registro queda guardado. | [**1**](#caso-44) (mobile 1 · backend 0) |
+| HU-09 | Historial del día (RF-08, CU-01 paso 7). | Unitaria | `GET /meals?date=AAAA-MM-DD` (sin la hora) en el orden de la API (del más antiguo al más reciente); cada registro muestra hora local, foto (descargada una vez) o *Captura manual* y valores, con el total del día; un día sin registros lo indica; un error permite reintentar. | [**9**](#caso-45) (mobile 9 · backend 0) |
+| HU-09 | Cambio de fecha. | Unitaria | **‹** y **›** cambian de día sin pasar de hoy; elegir una fecha ignora la hora y una futura se lleva a hoy. | [**4**](#caso-46) (mobile 4 · backend 0) |
+| HU-09 | Eliminar con confirmación. | Unitaria | El diálogo pide confirmar (cancelar conserva el registro); `DELETE /meals/{id}` quita el registro y avisa; `404 MEAL_NOT_FOUND` recarga la lista con un mensaje; sin conexión u otro error conserva la lista y muestra el error. | [**8**](#caso-47) (mobile 8 · backend 0) |
+| HU-09 | Errores de la foto al guardar sin perder los valores. | Unitaria | `409 PHOTO_ALREADY_USED` y `404 PHOTO_NOT_FOUND` muestran un mensaje en español de la app, en la estimación y en el formulario, conservando la estimación o los valores capturados. | [**4**](#caso-48) (mobile 4 · backend 0) |
+| HU-09 | Ruta del historial. | Unitaria | Solo un usuario con perfil abre `/user/meals` (un coach, un usuario sin perfil o sin sesión son redirigidos). | [**2**](#caso-49) (mobile 2 · backend 0) |
 
 ## Cómo se cuentan las pruebas
 
@@ -59,6 +66,7 @@ Inventario al cerrar HU-06-APP: **243** pruebas mobile (`flutter test`; 198 en `
 Inventario al cerrar HU-26-APP: **256** pruebas mobile (`flutter test`; 243 en `develop` con HU-06-APP). HU-26-APP agrega 13 (8 del ViewModel y 5 de widgets). Sin cambios en el backend. Además se probó de punta a punta en el simulador de iPhone 16 contra el backend local con base temporal (no se cuenta).
 Inventario al cerrar HU-07-APP: **279** pruebas mobile (`flutter test`; 256 en `develop` con HU-26-APP). HU-07-APP agrega 23 (8 de datos, 8 de ViewModels, 2 de rutas y 5 de widgets) y cambia *elige de la galería, muestra la vista previa y la sube* (HU-06) para comprobar que la foto subida abre la estimación. Sin cambios en el backend. Además se probó a mano en un teléfono Android (moto g60) contra el backend de `develop` en local con `FOOD_SIMULATOR_MODE` `ok`, `not_recognized`, `error` y `timeout`, y sin conexión (no se cuenta); la API desplegada aún no tiene `POST /meals/estimate`.
 Inventario al cerrar HU-08-APP: **307** pruebas mobile (`flutter test`; 279 en `develop` con HU-07-APP). HU-08-APP agrega 28 (6 del validador, 3 de datos, 13 del ViewModel, 2 de rutas y 4 de widgets). Sin cambios en el backend. Además se probó a mano en un teléfono Android (moto g60) contra el backend de `develop` en local: guardado sin y con corrección, captura manual con foto (tras `422`) y sin foto, revisando en MongoDB los finales y `estimated` (no se cuenta).
+Inventario al cerrar HU-09-APP: **338** pruebas mobile (`flutter test`; 307 en `develop` con HU-08-APP). HU-09-APP agrega 31 (5 de datos, 13 del ViewModel del historial, 6 de guardar desde la estimación, 2 de rutas y 5 de widgets) y cambia 5: la de HU-07 que esperaba **Continuar** (ahora **Guardar** y **Corregir valores**), las dos de HU-08 que regresaban al inicio (ahora al historial) y las dos de `409`/`404` del formulario (ahora con el mensaje de la app). Sin cambios en el backend. Además se probó a mano en un teléfono Android (moto g60) contra el backend de `develop` en local: guardar en 4 toques, corregir y guardar, historial con foto y captura manual, eliminar, `404 MEAL_NOT_FOUND` y cambio de día (no se cuenta).
 
 ## Detalle de las pruebas por caso
 
@@ -486,7 +494,7 @@ Mobile: 2 · Backend: 0
 **Mobile**
 
 - `macrofit_app/test/features/meals/presentation/meal_form_view_model_test.dart` › con estimación › se precarga con las calorías, proteína y grasa estimadas
-- `macrofit_app/test/app/app_test.dart` › formulario de valores (HU-08) › Continuar abre el formulario precargado y Guardar registra lo corregido
+- `macrofit_app/test/app/app_test.dart` › formulario de valores (HU-08) › Corregir valores abre el formulario precargado y Guardar registra lo corregido
 
 ### <a id="caso-38"></a>Caso 38 · HU-08 — Validación local con los rangos de la API
 
@@ -548,3 +556,85 @@ Mobile: 2 · Backend: 0
 
 - `macrofit_app/test/app/router_test.dart` › formulario de valores (HU-08) › un usuario con perfil abre el formulario
 - `macrofit_app/test/app/router_test.dart` › formulario de valores (HU-08) › un coach, un usuario sin perfil o sin sesión no lo abren
+
+### <a id="caso-43"></a>Caso 43 · HU-09 — Guardar el registro y regresar al historial del día
+
+Mobile: 5 · Backend: 0
+
+**Mobile**
+
+- `macrofit_app/test/features/meals/presentation/meal_estimate_view_model_test.dart` › guardar sin corregir (HU-09) › manda los totales como finales y en estimated con la foto
+- `macrofit_app/test/features/meals/presentation/meal_estimate_view_model_test.dart` › guardar sin corregir (HU-09) › sin estimación no guarda
+- `macrofit_app/test/features/meals/presentation/meal_estimate_view_model_test.dart` › guardar sin corregir (HU-09) › un registro guardado no se vuelve a enviar
+- `macrofit_app/test/app/app_test.dart` › formulario de valores (HU-08) › Corregir valores abre el formulario precargado y Guardar registra lo corregido
+- `macrofit_app/test/app/app_test.dart` › formulario de valores (HU-08) › comida no reconocida: Capturar a mano abre el formulario vacío y guarda sin estimated
+
+### <a id="caso-44"></a>Caso 44 · HU-09 — Registro por foto en 4 toques o menos
+
+Mobile: 1 · Backend: 0
+
+**Mobile**
+
+- `macrofit_app/test/app/app_test.dart` › historial de comidas (HU-09) › registro por foto en 4 toques desde el inicio hasta guardar (RNF-09)
+
+### <a id="caso-45"></a>Caso 45 · HU-09 — Historial del día
+
+Mobile: 9 · Backend: 0
+
+**Mobile**
+
+- `macrofit_app/test/features/meals/data/meals_repository_impl_test.dart` › historial (GET /meals, DELETE /meals/{id}, fotos) › pide el día con ?date=AAAA-MM-DD y conserva el orden de la API
+- `macrofit_app/test/features/meals/data/meals_repository_impl_test.dart` › historial (GET /meals, DELETE /meals/{id}, fotos) › un día sin registros es una lista vacía
+- `macrofit_app/test/features/meals/data/meals_repository_impl_test.dart` › historial (GET /meals, DELETE /meals/{id}, fotos) › descarga la foto de un registro como bytes
+- `macrofit_app/test/features/meals/presentation/meal_history_view_model_test.dart` › cargar el día › empieza en hoy y muestra los registros en el orden de la API
+- `macrofit_app/test/features/meals/presentation/meal_history_view_model_test.dart` › cargar el día › con el día del registro guardado empieza en ese día
+- `macrofit_app/test/features/meals/presentation/meal_history_view_model_test.dart` › cargar el día › el total del día suma los valores finales
+- `macrofit_app/test/features/meals/presentation/meal_history_view_model_test.dart` › cargar el día › un día sin registros lo indica
+- `macrofit_app/test/features/meals/presentation/meal_history_view_model_test.dart` › cargar el día › un error muestra el mensaje y reintentar vuelve a cargar
+- `macrofit_app/test/app/app_test.dart` › historial de comidas (HU-09) › Mis comidas muestra hora, foto y valores de cada registro del día
+
+### <a id="caso-46"></a>Caso 46 · HU-09 — Cambio de fecha
+
+Mobile: 4 · Backend: 0
+
+**Mobile**
+
+- `macrofit_app/test/features/meals/presentation/meal_history_view_model_test.dart` › cambiar de día › el día anterior carga ese día
+- `macrofit_app/test/features/meals/presentation/meal_history_view_model_test.dart` › cambiar de día › no avanza más allá de hoy
+- `macrofit_app/test/features/meals/presentation/meal_history_view_model_test.dart` › cambiar de día › elegir una fecha ignora la hora y una fecha futura se lleva a hoy
+- `macrofit_app/test/app/app_test.dart` › historial de comidas (HU-09) › un día sin registros lo indica y se puede cambiar de día
+
+### <a id="caso-47"></a>Caso 47 · HU-09 — Eliminar con confirmación
+
+Mobile: 8 · Backend: 0
+
+**Mobile**
+
+- `macrofit_app/test/features/meals/data/meals_repository_impl_test.dart` › historial (GET /meals, DELETE /meals/{id}, fotos) › eliminar usa DELETE /meals/{id}
+- `macrofit_app/test/features/meals/data/meals_repository_impl_test.dart` › historial (GET /meals, DELETE /meals/{id}, fotos) › 404 al eliminar se traduce a ApiException MEAL_NOT_FOUND
+- `macrofit_app/test/features/meals/presentation/meal_history_view_model_test.dart` › eliminar › quita el registro de la lista y lo avisa una sola vez
+- `macrofit_app/test/features/meals/presentation/meal_history_view_model_test.dart` › eliminar › 404 MEAL_NOT_FOUND recarga la lista con un mensaje
+- `macrofit_app/test/features/meals/presentation/meal_history_view_model_test.dart` › eliminar › sin conexión conserva la lista y muestra el error
+- `macrofit_app/test/features/meals/presentation/meal_history_view_model_test.dart` › eliminar › otro error de la API también conserva la lista
+- `macrofit_app/test/app/app_test.dart` › historial de comidas (HU-09) › eliminar pide confirmación: cancelar lo conserva y confirmar lo quita
+- `macrofit_app/test/app/app_test.dart` › historial de comidas (HU-09) › si el registro ya no existía recarga la lista y lo avisa (404 MEAL_NOT_FOUND)
+
+### <a id="caso-48"></a>Caso 48 · HU-09 — Errores de la foto al guardar sin perder los valores
+
+Mobile: 4 · Backend: 0
+
+**Mobile**
+
+- `macrofit_app/test/features/meals/presentation/meal_estimate_view_model_test.dart` › guardar sin corregir (HU-09) › 409 PHOTO_ALREADY_USED muestra el error y conserva la estimación
+- `macrofit_app/test/features/meals/presentation/meal_estimate_view_model_test.dart` › guardar sin corregir (HU-09) › 404 PHOTO_NOT_FOUND muestra el error y conserva la estimación
+- `macrofit_app/test/features/meals/presentation/meal_form_view_model_test.dart` › errores › 409 PHOTO_ALREADY_USED muestra el mensaje sin perder los valores
+- `macrofit_app/test/features/meals/presentation/meal_form_view_model_test.dart` › errores › 404 PHOTO_NOT_FOUND muestra el mensaje sin perder los valores
+
+### <a id="caso-49"></a>Caso 49 · HU-09 — Ruta del historial
+
+Mobile: 2 · Backend: 0
+
+**Mobile**
+
+- `macrofit_app/test/app/router_test.dart` › historial de comidas (HU-09) › un usuario con perfil abre "Mis comidas"
+- `macrofit_app/test/app/router_test.dart` › historial de comidas (HU-09) › un coach, un usuario sin perfil o sin sesión no lo abren

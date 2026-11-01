@@ -30,6 +30,11 @@ abstract final class AppRoutes {
   static const mealFormChild = 'meals/form';
   static const mealForm = '$userHome/$mealFormChild';
 
+  /// HU-09: historial de comidas del día ("Mis comidas"). Puede recibir en
+  /// `extra` el día a mostrar (`DateTime`); sin él muestra hoy.
+  static const mealHistoryChild = 'meals';
+  static const mealHistory = '$userHome/$mealHistoryChild';
+
   /// Pantalla principal del rol `coach`.
   static const coachHome = '/coach';
 
@@ -68,5 +73,6 @@ abstract final class AppRoutes {
     mealPhoto,
     mealEstimate,
     mealForm,
+    mealHistory,
   };
 }

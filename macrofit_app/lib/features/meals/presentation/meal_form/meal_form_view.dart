@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
-import '../../../../app/routes.dart';
 import '../../../../core/presentation/widgets/error_banner.dart';
+import '../widgets/meal_navigation.dart';
 import 'meal_form_view_model.dart';
 
 /// HU-08 — "Revisar valores" (precargado con la estimación) o "Captura manual"
@@ -17,10 +16,7 @@ class MealFormView extends StatelessWidget {
   ) async {
     final saved = await viewModel.submit();
     if (!saved || !context.mounted) return;
-    ScaffoldMessenger.of(context)
-        .showSnackBar(const SnackBar(content: Text('Comida registrada')));
-    // TODO(HU-09-APP): ir al historial del día con el registro nuevo.
-    context.go(AppRoutes.userHome);
+    showMealSaved(context, viewModel.saved!);
   }
 
   @override

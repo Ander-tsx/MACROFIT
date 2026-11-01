@@ -98,6 +98,33 @@ void main() {
     });
   });
 
+  group('historial de comidas (HU-09)', () {
+    test('un usuario con perfil abre "Mis comidas"', () {
+      expect(
+        resolveRedirect(const Authenticated(testUser), AppRoutes.mealHistory),
+        isNull,
+      );
+    });
+
+    test('un coach, un usuario sin perfil o sin sesión no lo abren', () {
+      expect(
+        resolveRedirect(const Authenticated(testCoach), AppRoutes.mealHistory),
+        AppRoutes.coachHome,
+      );
+      expect(
+        resolveRedirect(
+          const Authenticated(testNewUser),
+          AppRoutes.mealHistory,
+        ),
+        AppRoutes.profileSetup,
+      );
+      expect(
+        resolveRedirect(const Unauthenticated(), AppRoutes.mealHistory),
+        AppRoutes.login,
+      );
+    });
+  });
+
   group('formulario de valores (HU-08)', () {
     test('un usuario con perfil abre el formulario', () {
       expect(

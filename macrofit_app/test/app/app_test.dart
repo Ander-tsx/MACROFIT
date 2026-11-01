@@ -20,11 +20,14 @@ import 'package:macrofit_app/features/home/presentation/coach_home_view.dart';
 import 'package:macrofit_app/features/home/presentation/user_home_view.dart';
 import 'package:macrofit_app/features/invite_code/presentation/invite_code/invite_code_view.dart';
 import 'package:macrofit_app/features/legal/presentation/privacy_notice/privacy_notice_view.dart';
+import 'package:macrofit_app/features/meals/domain/entities/meal_estimate.dart';
 import 'package:macrofit_app/features/meals/domain/entities/meal_photo.dart';
 import 'package:macrofit_app/features/meals/domain/entities/photo_pick_exception.dart';
 import 'package:macrofit_app/features/meals/presentation/meal_estimate/meal_estimate_view.dart';
 import 'package:macrofit_app/features/meals/presentation/meal_estimate/meal_estimate_view_model.dart';
 import 'package:macrofit_app/features/meals/presentation/meal_form/meal_form_view.dart';
+import 'package:macrofit_app/features/meals/presentation/meal_history/meal_history_view.dart';
+import 'package:macrofit_app/features/meals/presentation/meal_history/meal_history_view_model.dart';
 import 'package:macrofit_app/features/meals/presentation/meal_photo/meal_photo_view.dart';
 import 'package:macrofit_app/features/meals/presentation/meal_photo/meal_photo_view_model.dart';
 import 'package:macrofit_app/features/profile/domain/entities/profile.dart';
@@ -498,10 +501,11 @@ void main() {
         expect(find.text('42.2 g'), findsOneWidget);
         expect(find.text('4.9 g'), findsOneWidget);
         await tester.scrollUntilVisible(
-          find.byKey(const Key('meal_estimate_continue')),
+          find.byKey(const Key('meal_estimate_save')),
           200,
         );
-        expect(find.byKey(const Key('meal_estimate_continue')), findsOneWidget);
+        expect(find.byKey(const Key('meal_estimate_save')), findsOneWidget);
+        expect(find.byKey(const Key('meal_estimate_correct')), findsOneWidget);
       },
     );
 
@@ -586,10 +590,10 @@ void main() {
     }
 
     testWidgets(
-      'Continuar abre el formulario precargado y Guardar registra lo corregido',
+      'Corregir valores abre el formulario precargado y Guardar registra lo corregido',
       (tester) async {
         await openEstimate(tester);
-        await tapVisible(tester, const Key('meal_estimate_continue'));
+        await tapVisible(tester, const Key('meal_estimate_correct'));
 
         expect(find.byType(MealFormView), findsOneWidget);
         expect(find.text('Revisar valores'), findsOneWidget);
@@ -608,8 +612,8 @@ void main() {
         expect(meal.values.caloriesKcal, 380);
         expect(meal.values.proteinG, 42.2);
         expect(meal.estimated, testEstimate.totals);
-        // TODO(HU-09-APP): el guardado irá al historial del día.
-        expect(find.byType(UserHomeView), findsOneWidget);
+        // HU-09: al guardar se abre el historial del día con el registro nuevo.
+        expect(find.byType(MealHistoryView), findsOneWidget);
         expect(find.text('Comida registrada'), findsOneWidget);
       },
     );
@@ -640,7 +644,7 @@ void main() {
         final meal = meals.created.single;
         expect(meal.photoId, testUploadedPhoto.id);
         expect(meal.estimated, isNull);
-        expect(find.byType(UserHomeView), findsOneWidget);
+        expect(find.byType(MealHistoryView), findsOneWidget);
       },
     );
 
@@ -693,6 +697,169 @@ void main() {
       expect(meals.created, isEmpty);
       expect(find.byType(MealFormView), findsOneWidget);
     });
+  });
+
+  group('historial de comidas (HU-09)', () {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final yesterday = DateTime(now.year, now.month, now.day - 1);
+
+    Future<void> tapVisible(WidgetTester tester, Key key) async {
+      // Los campos de texto también tienen un Scrollable: se usa el de la lista.
+      await tester.scrollUntilVisible(
+        find.byKey(key),
+        200,
+        scrollable: find.byType(Scrollable).first,
+      );
+      await tester.tap(find.byKey(key));
+      await tester.pumpAndSettle();
+    }
+
+    Future<void> openHistory(WidgetTester tester) async {
+      await pumpApp(tester, state: const Authenticated(testUser));
+      meals.days[today] = [
+        testMeal(
+          id: 'desayuno',
+          eatenAt: today.add(const Duration(hours: 8, minutes: 30)),
+        ),
+        testMeal(
+          id: 'comida',
+          eatenAt: today.add(const Duration(hours: 14, minutes: 5)),
+          withPhoto: false,
+          values: const NutritionValues(
+            caloriesKcal: 380,
+            proteinG: 40,
+            fatG: 6.5,
+          ),
+        ),
+      ];
+      await tapVisible(tester, const Key('meal_history_button'));
+    }
+
+    testWidgets(
+      'registro por foto en 4 toques desde el inicio hasta guardar (RNF-09)',
+      (tester) async {
+        await pumpApp(tester, state: const Authenticated(testUser));
+        meals.savedDay = today;
+        var taps = 0;
+        Future<void> tap(Key key) async {
+          taps++;
+          await tapVisible(tester, key);
+        }
+
+        await tap(const Key('register_meal_button'));
+        await tap(const Key('meal_photo_gallery'));
+        await tap(const Key('meal_photo_upload'));
+        await tap(const Key('meal_estimate_save'));
+
+        expect(taps, 4);
+        final meal = meals.created.single;
+        expect(meal.photoId, testUploadedPhoto.id);
+        expect(meal.values, testEstimate.totals);
+        expect(meal.estimated, testEstimate.totals);
+        // Regresa al historial del día con el registro nuevo.
+        expect(find.byType(MealHistoryView), findsOneWidget);
+        expect(find.text('Comida registrada'), findsOneWidget);
+        expect(
+          find.byKey(const Key('meal_6ad0a1b2c3d4e5f6a7b8c9d0')),
+          findsOneWidget,
+        );
+      },
+    );
+
+    testWidgets(
+      'Mis comidas muestra hora, foto y valores de cada registro del día',
+      (tester) async {
+        await openHistory(tester);
+
+        expect(find.byType(MealHistoryView), findsOneWidget);
+        expect(find.text('Hoy'), findsOneWidget);
+        expect(meals.listRequests, [today]);
+        expect(find.text('08:30'), findsOneWidget);
+        expect(find.text('14:05'), findsOneWidget);
+        expect(find.byKey(const Key('meal_desayuno_photo')), findsOneWidget);
+        expect(find.byKey(const Key('meal_comida_manual')), findsOneWidget);
+        expect(find.text('Captura manual'), findsOneWidget);
+        expect(find.text('380 kcal · P 40 g · G 6.5 g'), findsOneWidget);
+        expect(
+          find.text('Total del día: 793 kcal · P 82.2 g · G 11.4 g'),
+          findsOneWidget,
+        );
+        expect(meals.photoRequests, ['foto-desayuno']);
+      },
+    );
+
+    testWidgets('un día sin registros lo indica y se puede cambiar de día', (
+      tester,
+    ) async {
+      await pumpApp(tester, state: const Authenticated(testUser));
+      meals.days[yesterday] = [
+        testMeal(id: 'cena', eatenAt: yesterday.add(const Duration(hours: 20))),
+      ];
+      await tapVisible(tester, const Key('meal_history_button'));
+
+      expect(find.byKey(const Key('meal_history_empty')), findsOneWidget);
+
+      await tester.tap(find.byKey(const Key('meal_history_prev')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Ayer'), findsOneWidget);
+      expect(find.text('20:00'), findsOneWidget);
+      expect(find.byKey(const Key('meal_history_empty')), findsNothing);
+    });
+
+    testWidgets(
+      'eliminar pide confirmación: cancelar lo conserva y confirmar lo quita',
+      (tester) async {
+        await openHistory(tester);
+
+        await tester.tap(find.byKey(const Key('meal_desayuno_delete')));
+        await tester.pumpAndSettle();
+        expect(find.text('¿Eliminar este registro?'), findsOneWidget);
+        await tester.tap(find.byKey(const Key('meal_delete_cancel')));
+        await tester.pumpAndSettle();
+        expect(meals.deleted, isEmpty);
+        expect(find.byKey(const Key('meal_desayuno')), findsOneWidget);
+
+        await tester.tap(find.byKey(const Key('meal_desayuno_delete')));
+        await tester.pumpAndSettle();
+        await tester.tap(find.byKey(const Key('meal_delete_confirm')));
+        await tester.pumpAndSettle();
+
+        expect(meals.deleted, ['desayuno']);
+        expect(find.byKey(const Key('meal_desayuno')), findsNothing);
+        expect(find.byKey(const Key('meal_comida')), findsOneWidget);
+        expect(find.text('Registro eliminado'), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'si el registro ya no existía recarga la lista y lo avisa (404 MEAL_NOT_FOUND)',
+      (tester) async {
+        await openHistory(tester);
+        // Otro dispositivo ya lo eliminó.
+        meals.days[today]!.removeWhere((meal) => meal.id == 'desayuno');
+
+        await tester.tap(find.byKey(const Key('meal_desayuno_delete')));
+        await tester.pumpAndSettle();
+        // La recarga tarda: mientras, la lista (y la tarjeta) se reemplaza por la carga.
+        final gate = meals.listGate = Completer<void>();
+        await tester.tap(find.byKey(const Key('meal_delete_confirm')));
+        await tester.pump();
+        await tester.pump();
+        expect(find.byKey(const Key('meal_desayuno')), findsNothing);
+        gate.complete();
+        await tester.pumpAndSettle();
+
+        expect(meals.listRequests, [today, today]);
+        expect(find.byKey(const Key('meal_desayuno')), findsNothing);
+        expect(find.byKey(const Key('meal_comida')), findsOneWidget);
+        expect(
+          find.text(MealHistoryViewModel.alreadyDeletedMessage),
+          findsOneWidget,
+        );
+      },
+    );
   });
 
   group('lista de clientes (HU-24)', () {

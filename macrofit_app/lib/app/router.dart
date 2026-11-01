@@ -41,6 +41,8 @@ import '../features/meals/presentation/meal_estimate/meal_estimate_view.dart';
 import '../features/meals/presentation/meal_estimate/meal_estimate_view_model.dart';
 import '../features/meals/presentation/meal_form/meal_form_view.dart';
 import '../features/meals/presentation/meal_form/meal_form_view_model.dart';
+import '../features/meals/presentation/meal_history/meal_history_view.dart';
+import '../features/meals/presentation/meal_history/meal_history_view_model.dart';
 import '../features/meals/presentation/meal_photo/meal_photo_view.dart';
 import '../features/meals/presentation/meal_photo/meal_photo_view_model.dart';
 import '../features/profile/domain/repositories/profile_repository.dart';
@@ -135,6 +137,18 @@ GoRouter createRouter(
                 draft: state.extra! as MealDraft,
               ),
               child: const MealFormView(),
+            ),
+          ),
+          GoRoute(
+            path: AppRoutes.mealHistoryChild,
+            builder: (context, state) => ChangeNotifierProvider(
+              create: (context) => MealHistoryViewModel(
+                repository: context.read<MealsRepository>(),
+                initialDate: state.extra is DateTime
+                    ? state.extra! as DateTime
+                    : null,
+              )..load(),
+              child: const MealHistoryView(),
             ),
           ),
         ],
@@ -245,7 +259,7 @@ String homeFor(Role role) => switch (role) {
 /// - Usuario sin perfil (HU-03) → solo el formulario de perfil inicial hasta
 ///   completarlo. Con perfil: su pantalla principal, "Mi perfil",
 ///   "Registrar comida" (HU-06), su estimación (HU-07) y el formulario de
-///   valores (HU-08).
+///   valores (HU-08) y "Mis comidas" (HU-09).
 ///   Un coach nunca ve el formulario.
 String? resolveRedirect(AuthState state, String location) {
   switch (state) {

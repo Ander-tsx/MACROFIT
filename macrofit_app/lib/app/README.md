@@ -17,7 +17,7 @@ sessionDio + AuthInterceptor ── SessionRemoteDataSource (me, logout)
                              ├─ ProfileRemoteDataSource (perfil, HU-03)
                              ├─ GoalsRemoteDataSource (metas, HU-05)
                              ├─ MealPhotosRemoteDataSource (foto de comida, HU-06)
-                             ├─ MealsRemoteDataSource (estimación HU-07, guardar registro HU-08)
+                             ├─ MealsRemoteDataSource (estimación HU-07, guardar HU-08, historial, eliminar y fotos HU-09)
                              └─ ClientsRemoteDataSource (lista de clientes HU-24, comidas y fotos HU-25)
 SessionLocalDataSource (flutter_secure_storage)
 PhotoPickerDataSource (image_picker: cámara y galería, HU-06)
@@ -44,7 +44,7 @@ ClientsRepositoryImpl
 | `AuthUnknown` (leyendo sesión) | `/` (carga) | → `/` |
 | `Unauthenticated` | `/login`, `/register`, `/privacy` | → `/login` |
 | `Authenticated(user)`, rol `user` **sin perfil** | `/profile/setup` y `/privacy` | → `/profile/setup` |
-| `Authenticated(user)`, rol `user` con perfil | `/user`, `/user/profile`, `/user/meals/photo`, `/user/meals/estimate`, `/user/meals/form` y `/privacy` | → `/user` |
+| `Authenticated(user)`, rol `user` con perfil | `/user`, `/user/profile`, `/user/meals/photo`, `/user/meals/estimate`, `/user/meals/form`, `/user/meals` y `/privacy` | → `/user` |
 | `Authenticated(user)`, rol `coach` | `/coach` y `/privacy` | → `/coach` |
 
 Consecuencias:
@@ -61,7 +61,9 @@ Consecuencias:
   sin ella (p. ej. al restaurar la ruta) vuelve a `/user`. La pantalla de la foto la abre con `go`, así que atrás
   regresa al inicio y no a la foto ya subida.
 - HU-08: `/user/meals/form` es subruta de `/user` y recibe un `MealDraft` en `extra` (sin él vuelve a `/user`). Se abre con
-  `push` desde la estimación o desde "Registrar comida"; al guardar, `go` regresa al inicio.
+  `push` desde la estimación o desde "Registrar comida".
+- HU-09: `/user/meals` ("Mis comidas") es subruta de `/user` y puede recibir el día en `extra` (`DateTime`). Al guardar un
+  registro (desde la estimación o el formulario) se abre con `go`: el inicio queda debajo y atrás regresa a él.
 
 ### Agregar una ruta
 

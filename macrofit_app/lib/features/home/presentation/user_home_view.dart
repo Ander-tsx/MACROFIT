@@ -8,7 +8,7 @@ import 'widgets/current_goal_card.dart';
 import 'widgets/home_scaffold.dart';
 
 /// Pantalla principal del rol `user`: meta vigente (HU-26). Desde aquí se abren
-/// "Mi perfil" (HU-03) y "Registrar comida" (HU-06).
+/// "Mi perfil" (HU-03), "Registrar comida" (HU-06) y "Mis comidas" (HU-09).
 class UserHomeView extends StatelessWidget {
   const UserHomeView({super.key});
 
@@ -54,6 +54,14 @@ class UserHomeView extends StatelessWidget {
               hasNoGoal: viewModel.hasNoGoal,
               error: viewModel.goalError,
               onRetry: viewModel.loadGoal,
+            ),
+            const SizedBox(height: 16),
+            // HU-09: historial de comidas del día.
+            OutlinedButton.icon(
+              key: const Key('meal_history_button'),
+              onPressed: () => context.push(AppRoutes.mealHistory),
+              icon: const Icon(Icons.restaurant_menu),
+              label: const Text('Mis comidas'),
             ),
           ],
         ),

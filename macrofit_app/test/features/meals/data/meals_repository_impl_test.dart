@@ -105,6 +105,106 @@ void main() {
     });
   });
 
+  group('historial (GET /meals, DELETE /meals/{id}, fotos)', () {
+    test('pide el día con ?date=AAAA-MM-DD y conserva el orden de la API', () async {
+      final repository = build(
+        (_) => jsonResponse([
+          {
+            'id': 'a',
+            'photo_id': 'foto-a',
+            'eaten_at': '2026-10-16T14:30:00Z',
+            'date': '2026-10-16',
+            'calories_kcal': 413.0,
+            'protein_g': 42.2,
+            'fat_g': 4.9,
+            'estimated': {
+              'calories_kcal': 413,
+              'protein_g': 42.2,
+              'fat_g': 4.9,
+            },
+          },
+          {
+            'id': 'b',
+            'photo_id': null,
+            'eaten_at': '2026-10-17T01:30:00Z',
+            'date': '2026-10-16',
+            'calories_kcal': 380,
+            'protein_g': 40,
+            'fat_g': 6.5,
+            'estimated': null,
+          },
+        ], 200),
+      );
+
+      final meals = await repository.getMeals(DateTime(2026, 10, 16, 21, 5));
+
+      final request = adapter.requests.single;
+      expect(request.method, 'GET');
+      expect(request.path, '/meals');
+      expect(request.queryParameters, {'date': '2026-10-16'});
+      expect(meals.map((m) => m.id), ['a', 'b']);
+      expect(meals.first.photoId, 'foto-a');
+      expect(meals.last.photoId, isNull);
+      expect(meals.last.estimated, isNull);
+      // Una cena después de las 18:00 de México ya es el día siguiente en UTC,
+      // pero queda en el día de la app (`date`).
+      expect(meals.last.eatenAt, DateTime.utc(2026, 10, 17, 1, 30));
+      expect(meals.last.date, DateTime(2026, 10, 16));
+    });
+
+    test('un día sin registros es una lista vacía', () async {
+      final repository = build((_) => jsonResponse(<Object>[], 200));
+
+      expect(await repository.getMeals(DateTime(2026, 10, 1)), isEmpty);
+      expect(adapter.requests.single.queryParameters, {'date': '2026-10-01'});
+    });
+
+    test('eliminar usa DELETE /meals/{id}', () async {
+      final repository = build((_) => ResponseBody.fromString('', 204));
+
+      await repository.deleteMeal('6ad0a1b2c3d4e5f6a7b8c9d0');
+
+      final request = adapter.requests.single;
+      expect(request.method, 'DELETE');
+      expect(request.path, '/meals/6ad0a1b2c3d4e5f6a7b8c9d0');
+    });
+
+    test('404 al eliminar se traduce a ApiException MEAL_NOT_FOUND', () async {
+      final repository = build(
+        (_) => errorResponse(ApiErrorCode.mealNotFound, 404),
+      );
+
+      await expectLater(
+        repository.deleteMeal('x'),
+        throwsA(
+          isA<ApiException>().having(
+            (e) => e.code,
+            'code',
+            ApiErrorCode.mealNotFound,
+          ),
+        ),
+      );
+    });
+
+    test('descarga la foto de un registro como bytes', () async {
+      final repository = build(
+        (_) => ResponseBody.fromBytes(
+          testPhotoBytes,
+          200,
+          headers: {
+            Headers.contentTypeHeader: ['image/png'],
+          },
+        ),
+      );
+
+      final bytes = await repository.getMealPhoto('foto-a');
+
+      expect(adapter.requests.single.path, '/meals/photos/foto-a');
+      expect(adapter.requests.single.responseType, ResponseType.bytes);
+      expect(bytes, testPhotoBytes);
+    });
+  });
+
   group('registro (POST /meals)', () {
     Map<String, Object?> mealJson({Object? photoId, Object? estimated}) => {
       'id': '6ad0a1b2c3d4e5f6a7b8c9d0',

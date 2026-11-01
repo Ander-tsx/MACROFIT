@@ -7,6 +7,7 @@ import 'package:provider/provider.dart';
 import '../../../../app/routes.dart';
 import '../../../../core/presentation/widgets/error_banner.dart';
 import '../../domain/entities/meal_estimate.dart';
+import '../widgets/meal_navigation.dart';
 import '../widgets/meal_texts.dart';
 import 'meal_estimate_view_model.dart';
 
@@ -15,10 +16,20 @@ import 'meal_estimate_view_model.dart';
 class MealEstimateView extends StatelessWidget {
   const MealEstimateView({super.key});
 
-  /// HU-08: "Continuar" abre el formulario precargado con la estimación y
-  /// "Capturar a mano" lo abre vacío (con la foto ya subida).
+  /// HU-08: "Corregir valores" abre el formulario precargado con la estimación
+  /// y "Capturar a mano" lo abre vacío (con la foto ya subida).
   void _openForm(BuildContext context, MealEstimateViewModel viewModel) {
     unawaited(context.push(AppRoutes.mealForm, extra: viewModel.formDraft));
+  }
+
+  /// HU-09: guarda lo estimado sin corregir y abre el historial del día.
+  Future<void> _save(
+    BuildContext context,
+    MealEstimateViewModel viewModel,
+  ) async {
+    final saved = await viewModel.save();
+    if (!saved || !context.mounted) return;
+    showMealSaved(context, viewModel.saved!);
   }
 
   @override
@@ -49,11 +60,34 @@ class MealEstimateView extends StatelessWidget {
             else if (estimate != null) ...[
               _Result(estimate: estimate),
               const SizedBox(height: 24),
+              if (viewModel.saveError case final message?) ...[
+                ErrorBanner(
+                  key: const Key('meal_estimate_save_error'),
+                  message: message,
+                ),
+                const SizedBox(height: 16),
+              ],
               FilledButton.icon(
-                key: const Key('meal_estimate_continue'),
-                onPressed: () => _openForm(context, viewModel),
-                icon: const Icon(Icons.arrow_forward),
-                label: const Text('Continuar'),
+                key: const Key('meal_estimate_save'),
+                onPressed: viewModel.isSaving
+                    ? null
+                    : () => _save(context, viewModel),
+                icon: viewModel.isSaving
+                    ? const SizedBox.square(
+                        dimension: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.check),
+                label: const Text('Guardar'),
+              ),
+              const SizedBox(height: 12),
+              OutlinedButton.icon(
+                key: const Key('meal_estimate_correct'),
+                onPressed: viewModel.isSaving
+                    ? null
+                    : () => _openForm(context, viewModel),
+                icon: const Icon(Icons.edit),
+                label: const Text('Corregir valores'),
               ),
             ] else if (viewModel.error case final message?) ...[
               ErrorBanner(
