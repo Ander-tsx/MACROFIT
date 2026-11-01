@@ -122,6 +122,36 @@ void main() {
     });
   });
 
+  group('resumen semanal (HU-11)', () {
+    test('un usuario con perfil abre el resumen semanal', () {
+      expect(
+        resolveRedirect(const Authenticated(testUser), AppRoutes.weeklySummary),
+        isNull,
+      );
+    });
+
+    test('un coach, un usuario sin perfil o sin sesión no lo abren', () {
+      expect(
+        resolveRedirect(
+          const Authenticated(testCoach),
+          AppRoutes.weeklySummary,
+        ),
+        AppRoutes.coachHome,
+      );
+      expect(
+        resolveRedirect(
+          const Authenticated(testNewUser),
+          AppRoutes.weeklySummary,
+        ),
+        AppRoutes.profileSetup,
+      );
+      expect(
+        resolveRedirect(const Unauthenticated(), AppRoutes.weeklySummary),
+        AppRoutes.login,
+      );
+    });
+  });
+
   group('foto de la comida (HU-06)', () {
     test('un usuario con perfil abre "Registrar comida"', () {
       expect(

@@ -1,4 +1,5 @@
 import '../../domain/entities/day_summary.dart';
+import '../../domain/entities/week_summary.dart';
 import '../../domain/repositories/summary_repository.dart';
 import '../datasources/summary_remote_data_source.dart';
 
@@ -9,4 +10,7 @@ class SummaryRepositoryImpl implements SummaryRepository {
 
   @override
   Future<DaySummary> getDaily(String date) => _remote.getDaily(date);
+
+  @override
+  Future<WeekSummary> getWeekly(String start) => _remote.getWeekly(start);
 }
