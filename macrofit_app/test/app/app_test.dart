@@ -29,6 +29,7 @@ import 'package:macrofit_app/features/meals/presentation/meal_photo/meal_photo_v
 import 'package:macrofit_app/features/meals/presentation/meal_photo/meal_photo_view_model.dart';
 import 'package:macrofit_app/features/profile/domain/entities/profile.dart';
 import 'package:macrofit_app/features/profile/presentation/profile_form/profile_form_view.dart';
+import 'package:macrofit_app/features/summary/domain/entities/macro_values.dart';
 import 'package:macrofit_app/features/routines/presentation/exercise_picker/exercise_picker_view.dart';
 import 'package:macrofit_app/features/routines/presentation/routine_builder/routine_builder_view.dart';
 import 'package:macrofit_app/features/routines/presentation/routines_list/routines_list_view.dart';
@@ -48,6 +49,7 @@ void main() {
   late FakeCoachLinkRepository coachLinksRepo;
   late FakeWeightsRepository weightsRepo;
   late FakeShareService share;
+  late FakeSummaryRepository summary;
   late FakeRoutinesRepository routines;
 
   Future<void> pumpApp(
@@ -58,6 +60,7 @@ void main() {
     PickedPhoto? recoveredPhoto,
     FakeGoalsRepository? goalsRepository,
     List<ClientSummary>? clientList,
+    FakeSummaryRepository? summaryRepository,
     ApiException? clientsError,
     Map<DateTime, List<ClientMeal>>? clientMeals,
     ApiException? mealsError,
@@ -71,6 +74,7 @@ void main() {
     coachGoals = FakeCoachGoalsRepository();
     mealPhotos = FakeMealPhotoRepository(recovered: recoveredPhoto);
     meals = FakeMealsRepository();
+    summary = summaryRepository ?? FakeSummaryRepository();
     clients = FakeClientsRepository(clients: clientList, meals: clientMeals)
       ..error = clientsError
       ..mealsError = mealsError;
@@ -82,6 +86,7 @@ void main() {
     await tester.pumpWidget(
       MacroFitApp(
         dependencies: AppDependencies(
+          summaryRepository: summary,
           authRepository: auth,
           legalRepository: legal,
           profileRepository: profiles,
@@ -1042,18 +1047,23 @@ void main() {
       expect(find.text(testInviteCode), findsOneWidget);
     });
 
-    testWidgets(
-      'abre la pantalla de vinculación con el coach desde el inicio',
-      (tester) async {
-        await pumpApp(tester, state: const Authenticated(testUser));
+    testWidgets('abre la pantalla de vinculación con el coach desde el inicio', (
+      tester,
+    ) async {
+      await pumpApp(tester, state: const Authenticated(testUser));
+      // Con el progreso del día (HU-10) el botón queda debajo de las tarjetas.
+      await tester.scrollUntilVisible(
+        find.byKey(const Key('link_coach_nav_button')),
+        200,
+        scrollable: find.byType(Scrollable).first,
+      );
 
-        expect(find.byKey(const Key('link_coach_nav_button')), findsOneWidget);
-        await tester.tap(find.byKey(const Key('link_coach_nav_button')));
-        await tester.pumpAndSettle();
+      expect(find.byKey(const Key('link_coach_nav_button')), findsOneWidget);
+      await tester.tap(find.byKey(const Key('link_coach_nav_button')));
+      await tester.pumpAndSettle();
 
-        expect(find.text('Vincular con coach'), findsWidgets);
-      },
-    );
+      expect(find.text('Vincular con coach'), findsWidgets);
+    });
   });
 
   group('rutinas del coach (HU-18)', () {
@@ -1307,6 +1317,124 @@ void main() {
 
       expect(find.text(networkError.message), findsNothing);
       expect(find.text('2200 kcal'), findsOneWidget);
+      expect(goals.currentCalls, 2);
+    });
+
+    testWidgets('muestra el progreso del día con consumido, meta y restante', (
+      tester,
+    ) async {
+      await pumpApp(tester, state: const Authenticated(testUser));
+
+      expect(find.text('1050.5 / 2200 kcal'), findsOneWidget);
+      expect(find.text('Te faltan 1149.5 kcal'), findsOneWidget);
+      expect(find.text('70 / 160 g'), findsOneWidget);
+      expect(find.text('Te faltan 90 g'), findsOneWidget);
+      expect(find.text('35.5 / 70 g'), findsOneWidget);
+      expect(find.byKey(const Key('home_summary_fat_bar')), findsOneWidget);
+    });
+
+    testWidgets('con exceso la barra se llena y dice cuánto se pasó', (
+      tester,
+    ) async {
+      await pumpApp(
+        tester,
+        state: const Authenticated(testUser),
+        summaryRepository: FakeSummaryRepository(
+          daily: testDaySummary(
+            consumed: const MacroValues(
+              caloriesKcal: 2350,
+              proteinG: 100,
+              fatG: 40,
+            ),
+          ),
+        ),
+      );
+
+      expect(find.text('Te pasaste por 150 kcal'), findsOneWidget);
+      final bar = tester.widget<LinearProgressIndicator>(
+        find.byKey(const Key('home_summary_calories_bar')),
+      );
+      expect(bar.value, 1);
+    });
+
+    testWidgets('un día sin registros muestra consumo en 0', (tester) async {
+      await pumpApp(
+        tester,
+        state: const Authenticated(testUser),
+        summaryRepository: FakeSummaryRepository(
+          daily: testDaySummary(
+            consumed: const MacroValues(caloriesKcal: 0, proteinG: 0, fatG: 0),
+          ),
+        ),
+      );
+
+      expect(find.text('0 / 2200 kcal'), findsOneWidget);
+      expect(find.text('Te faltan 2200 kcal'), findsOneWidget);
+    });
+
+    testWidgets('sin meta el resumen muestra un mensaje y no un error', (
+      tester,
+    ) async {
+      await pumpApp(
+        tester,
+        state: const Authenticated(testUser),
+        summaryRepository: FakeSummaryRepository.withoutGoal(),
+      );
+
+      expect(find.byKey(const Key('home_summary_empty')), findsOneWidget);
+      expect(find.byKey(const Key('home_summary_retry')), findsNothing);
+    });
+
+    testWidgets('sin conexión el resumen muestra el error y reintenta', (
+      tester,
+    ) async {
+      await pumpApp(
+        tester,
+        state: const Authenticated(testUser),
+        summaryRepository: FakeSummaryRepository()..error = networkError,
+      );
+
+      expect(find.text(networkError.message), findsOneWidget);
+      summary.error = null;
+      await tester.tap(find.byKey(const Key('home_summary_retry')));
+      await tester.pumpAndSettle();
+
+      expect(find.text(networkError.message), findsNothing);
+      expect(find.text('Te faltan 1149.5 kcal'), findsOneWidget);
+      expect(summary.dailyDates, hasLength(2));
+    });
+
+    testWidgets('al regresar de registrar una comida se vuelve a consultar', (
+      tester,
+    ) async {
+      await pumpApp(tester, state: const Authenticated(testUser));
+      expect(summary.dailyDates, hasLength(1));
+
+      await tester.tap(find.byKey(const Key('register_meal_button')));
+      await tester.pumpAndSettle();
+      summary.daily = testDaySummary(
+        consumed: const MacroValues(caloriesKcal: 1500, proteinG: 90, fatG: 50),
+      );
+      tester.state<NavigatorState>(find.byType(Navigator).first).pop();
+      await tester.pumpAndSettle();
+
+      expect(summary.dailyDates, hasLength(2));
+      expect(find.text('1500 / 2200 kcal'), findsOneWidget);
+    });
+
+    testWidgets('al deslizar para actualizar se consulta de nuevo', (
+      tester,
+    ) async {
+      await pumpApp(tester, state: const Authenticated(testUser));
+
+      await tester.fling(
+        find.byType(ListView).first,
+        const Offset(0, 400),
+        1000,
+      );
+      await tester.pumpAndSettle();
+
+      expect(summary.dailyDates, hasLength(2));
       expect(goals.currentCalls, 2);
     });
 

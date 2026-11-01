@@ -5,9 +5,10 @@ import 'package:provider/provider.dart';
 import '../../../app/routes.dart';
 import 'user_home_view_model.dart';
 import 'widgets/current_goal_card.dart';
+import 'widgets/daily_progress_card.dart';
 import 'widgets/home_scaffold.dart';
 
-/// Pantalla principal del rol `user`: meta vigente (HU-26). Desde aquí se abren
+/// Pantalla principal del rol `user`: progreso del día (HU-10) y meta vigente (HU-26). Desde aquí se abren
 /// "Mi perfil" (HU-03) y "Registrar comida" (HU-06).
 class UserHomeView extends StatelessWidget {
   const UserHomeView({super.key});
@@ -27,18 +28,23 @@ class UserHomeView extends StatelessWidget {
             await context.push(AppRoutes.profileEdit);
             if (!context.mounted) return;
             // Al regresar se consulta de nuevo: editar el perfil puede recalcular la meta (HU-04).
-            await viewModel.loadGoal();
+            await viewModel.refresh();
           },
         ),
       ],
       floatingActionButton: FloatingActionButton.extended(
         key: const Key('register_meal_button'),
-        onPressed: () => context.push(AppRoutes.mealPhoto),
+        onPressed: () async {
+          await context.push(AppRoutes.mealPhoto);
+          if (!context.mounted) return;
+          // Al regresar se consulta de nuevo: guardar una comida cambia el resumen (HU-10).
+          await viewModel.loadSummary();
+        },
         icon: const Icon(Icons.add_a_photo),
         label: const Text('Registrar comida'),
       ),
       body: RefreshIndicator(
-        onRefresh: viewModel.loadGoal,
+        onRefresh: viewModel.refresh,
         child: ListView(
           // Abajo deja espacio para el botón flotante de "Registrar comida".
           padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
@@ -46,6 +52,14 @@ class UserHomeView extends StatelessWidget {
             Text(
               'Hola, ${viewModel.user?.name ?? ''}',
               style: Theme.of(context).textTheme.headlineSmall,
+            ),
+            const SizedBox(height: 16),
+            DailyProgressCard(
+              summary: viewModel.daySummary,
+              isLoading: viewModel.isLoadingSummary,
+              hasNoSummary: viewModel.hasNoSummary,
+              error: viewModel.summaryError,
+              onRetry: viewModel.loadSummary,
             ),
             const SizedBox(height: 16),
             CurrentGoalCard(
