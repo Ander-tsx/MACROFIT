@@ -8,6 +8,7 @@ test/
 ├── app/
 │   ├── router_test.dart      # resolveRedirect: guard de sesión y redirección por rol
 │   └── app_test.dart         # Flujos de widgets: carga inicial, login por rol, registro, aviso, logout + atrás, perfil (HU-03), metas por coach (HU-05), foto de la comida (HU-06), estimación nutricional (HU-07), formulario de valores (HU-08), historial de comidas con RNF-09 en 4 toques (HU-09), lista de clientes (HU-24), comidas de un cliente (HU-25), código de invitación (HU-12), rutinas del coach (HU-18)
+├── core/presentation/        # Tema (claro/oscuro) y widgets compartidos de la guía visual (TEC-17)
 ├── features/meals/           # MealPhotoValidator, MealPhotoRepositoryImpl (Dio e image_picker simulados) y MealPhotoViewModel; MealsRepositoryImpl (Dio simulado) y MealEstimateViewModel (HU-07); MealValuesValidator y MealFormViewModel (HU-08); MealHistoryViewModel y guardar desde la estimación (HU-09)
 ├── features/profile/         # Validadores, ProfileRepositoryImpl (Dio simulado) y ProfileFormViewModel
 ├── features/goals/           # Cálculo de la meta, validadores, CoachGoalsRepositoryImpl y CoachGoalFormViewModel

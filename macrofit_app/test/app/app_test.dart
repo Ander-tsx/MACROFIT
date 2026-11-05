@@ -9,6 +9,7 @@ import 'package:macrofit_app/features/auth/presentation/login/login_view.dart';
 import 'package:macrofit_app/features/auth/presentation/register/register_view.dart';
 import 'package:macrofit_app/features/auth/presentation/splash/splash_view.dart';
 import 'package:macrofit_app/core/errors/api_exception.dart';
+import 'package:macrofit_app/core/presentation/theme/lucide_icons.dart';
 import 'package:macrofit_app/features/clients/domain/entities/client_meal.dart';
 import 'package:macrofit_app/features/clients/domain/entities/client_summary.dart';
 import 'package:macrofit_app/features/clients/presentation/client_detail/client_detail_view.dart';
@@ -35,6 +36,7 @@ import 'package:macrofit_app/features/profile/presentation/profile_form/profile_
 import 'package:macrofit_app/features/summary/domain/entities/macro_values.dart';
 import 'package:macrofit_app/features/summary/domain/usecases/app_day.dart';
 import 'package:macrofit_app/features/summary/presentation/weekly_summary/weekly_summary_view.dart';
+import 'package:macrofit_app/features/progress/presentation/weights/weights_view.dart';
 import 'package:macrofit_app/features/routines/presentation/exercise_picker/exercise_picker_view.dart';
 import 'package:macrofit_app/features/routines/presentation/routine_builder/routine_builder_view.dart';
 import 'package:macrofit_app/features/routines/presentation/routines_list/routines_list_view.dart';
@@ -177,12 +179,99 @@ void main() {
     expect(find.textContaining('Aviso de privacidad integral'), findsOneWidget);
   });
 
+  group('barra inferior (TEC-17)', () {
+    testWidgets('cambia entre pestañas y vuelve al inicio', (tester) async {
+      await pumpApp(tester, state: const Authenticated(testUser));
+
+      await tester.tap(find.byKey(const Key('weights_button')));
+      await tester.pumpAndSettle();
+      expect(find.byType(WeightsView), findsOneWidget);
+
+      await tester.tap(find.byKey(const Key('weekly_summary_button')));
+      await tester.pumpAndSettle();
+      expect(find.byType(WeeklySummaryView), findsOneWidget);
+      expect(find.byType(WeightsView), findsNothing);
+
+      await tester.tap(find.byKey(const Key('home_tab')));
+      await tester.pumpAndSettle();
+      expect(find.byType(UserHomeView), findsOneWidget);
+      expect(find.byType(WeeklySummaryView), findsNothing);
+    });
+
+    testWidgets('se ve en las pantallas secundarias y no al registrar comida', (
+      tester,
+    ) async {
+      await pumpApp(
+        tester,
+        state: const Authenticated(testUser),
+        storedProfile: testProfile,
+      );
+
+      await tester.tap(find.byKey(const Key('profile_button')));
+      await tester.pumpAndSettle();
+      expect(
+        find.byKey(const Key('meal_history_button')).hitTestable(),
+        findsOneWidget,
+      );
+
+      await tester.tap(find.byKey(const Key('register_meal_button')));
+      await tester.pumpAndSettle();
+      expect(find.byType(MealPhotoView), findsOneWidget);
+      expect(
+        find.byKey(const Key('meal_history_button')).hitTestable(),
+        findsNothing,
+      );
+    });
+
+    testWidgets('el coach cambia a sus clientes y a sus rutinas', (
+      tester,
+    ) async {
+      await pumpApp(tester, state: const Authenticated(testCoach));
+
+      await tester.tap(find.byKey(const Key('clients_button')));
+      await tester.pumpAndSettle();
+      expect(find.byType(ClientsListView), findsOneWidget);
+
+      await tester.tap(find.byKey(const Key('routines_button')));
+      await tester.pumpAndSettle();
+      expect(find.byType(RoutinesListView), findsOneWidget);
+      expect(find.byType(ClientsListView), findsNothing);
+    });
+  });
+
+  testWidgets('el coach cierra sesión desde la hoja de su cuenta', (
+    tester,
+  ) async {
+    await pumpApp(tester, state: const Authenticated(testCoach));
+
+    await tester.tap(find.byKey(const Key('account_button')));
+    await tester.pumpAndSettle();
+    expect(find.text(testCoach.email), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('logout_button')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('logout_confirm')));
+    await tester.pumpAndSettle();
+
+    expect(auth.logoutCalls, 1);
+    expect(find.byType(LoginView), findsOneWidget);
+  });
+
   testWidgets('cerrar sesión vuelve al login y atrás no regresa', (
     tester,
   ) async {
-    await pumpApp(tester, state: const Authenticated(testUser));
+    await pumpApp(
+      tester,
+      state: const Authenticated(testUser),
+      storedProfile: testProfile,
+    );
     expect(find.byType(UserHomeView), findsOneWidget);
 
+    // TEC-17: cerrar sesión vive al final de "Mi perfil".
+    await tester.tap(find.byKey(const Key('profile_button')));
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.byKey(const Key('logout_button')));
+    await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('logout_button')));
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('logout_confirm')));
@@ -1058,6 +1147,9 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(find.byKey(Key('client_${testClientSummary.id}')));
       await tester.pumpAndSettle();
+      // TEC-17: la barra inferior ocupa el pie de la pantalla; se lleva a la vista.
+      await tester.ensureVisible(find.byKey(const Key('client_detail_meals')));
+      await tester.pumpAndSettle();
       await tester.tap(find.byKey(const Key('client_detail_meals')));
       await tester.pumpAndSettle();
     }
@@ -1227,6 +1319,11 @@ void main() {
     ) async {
       await openInviteCode(tester);
 
+      // TEC-17: la barra inferior ocupa el pie de la pantalla; se lleva a la vista.
+      await tester.ensureVisible(
+        find.byKey(const Key('invite_code_regenerate')),
+      );
+      await tester.pumpAndSettle();
       await tester.tap(find.byKey(const Key('invite_code_regenerate')));
       await tester.pumpAndSettle();
       expect(find.textContaining('dejará de funcionar'), findsOneWidget);
@@ -1244,6 +1341,11 @@ void main() {
     testWidgets('cancelar la regeneración conserva el código', (tester) async {
       await openInviteCode(tester);
 
+      // TEC-17: la barra inferior ocupa el pie de la pantalla; se lleva a la vista.
+      await tester.ensureVisible(
+        find.byKey(const Key('invite_code_regenerate')),
+      );
+      await tester.pumpAndSettle();
       await tester.tap(find.byKey(const Key('invite_code_regenerate')));
       await tester.pumpAndSettle();
       await tester.tap(find.byKey(const Key('invite_code_regenerate_cancel')));
@@ -1746,8 +1848,8 @@ void main() {
 
         expect(find.text('Meta cumplida'), findsNWidgets(5));
         expect(find.text('Meta no cumplida'), findsNWidgets(2));
-        expect(find.byIcon(Icons.check_circle), findsNWidgets(10));
-        expect(find.byIcon(Icons.cancel_outlined), findsNWidgets(4));
+        expect(find.byIcon(LucideIcons.circleCheck), findsNWidgets(10));
+        expect(find.byIcon(LucideIcons.circleX), findsNWidgets(4));
       });
 
       testWidgets('cambia a la semana anterior y regresa a la siguiente', (

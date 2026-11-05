@@ -18,8 +18,9 @@ abstract final class AppRoutes {
   /// HU-13: vinculación con el coach mediante código.
   static const coachLink = '/user/coach-link';
 
-  /// HU-21: registro e historial de peso.
-  static const weights = '/user/weights';
+  /// HU-21: registro e historial de peso (pestaña "Peso", subruta de `/user`).
+  static const weightsChild = 'weights';
+  static const weights = '$userHome/$weightsChild';
 
   /// HU-07: estimación nutricional de la foto subida. Recibe la foto en
   /// `extra` (`MealPhotoUpload`); sin ella vuelve al inicio.
@@ -46,8 +47,9 @@ abstract final class AppRoutes {
   /// HU-12: código de invitación del coach (ver, copiar, compartir y regenerar).
   static const coachInviteCode = '/coach/invite-code';
 
-  /// HU-24: clientes vinculados del coach con búsqueda.
-  static const coachClients = '/coach/clients';
+  /// HU-24: clientes vinculados del coach con búsqueda (pestaña, subruta de `/coach`).
+  static const coachClientsChild = 'clients';
+  static const coachClients = '$coachHome/$coachClientsChild';
 
   /// HU-24: detalle de un cliente (acceso a sus metas y comidas).
   static const coachClientDetailPattern = '/coach/clients/:clientId';
@@ -68,8 +70,10 @@ abstract final class AppRoutes {
   static const mealPhotoChild = 'meals/photo';
   static const mealPhoto = '/user/meals/photo';
 
-  /// HU-18: rutinas del coach (lista, crear y editar).
-  static const coachRoutines = '/coach/routines';
+  /// HU-18: rutinas del coach (lista, crear y editar). La lista es una pestaña,
+  /// subruta de `/coach`.
+  static const coachRoutinesChild = 'routines';
+  static const coachRoutines = '$coachHome/$coachRoutinesChild';
   static const coachRoutineNew = '/coach/routines/new';
 
   /// HU-18: selector de ejercicios del catálogo; regresa la selección con `pop`.

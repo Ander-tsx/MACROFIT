@@ -128,6 +128,10 @@ Flujo: `View → ViewModel → Repository (contrato del dominio) → RepositoryI
 | `flutter_markdown_plus` | Renderizar el aviso de privacidad (sustituye a `flutter_markdown`, descontinuado) |
 | `image_picker` | HU-06: cámara y galería; pide los permisos y comprime la foto (lado mayor 1600 px, JPEG calidad 85) |
 | `share_plus` | Hoja de compartir del sistema para el código de invitación (HU-12), detrás de `ShareService` |
+| `blobatar` | TEC-17: avatar determinista generado a partir del correo de cada persona (`AppAvatar`) |
+
+**Recursos locales (TEC-17):** tipografía Inter (`assets/fonts/inter`, SIL OFL), íconos Lucide (`assets/fonts/lucide`,
+ISC) y fondos de las tarjetas destacadas (`assets/images`). Ver la guía visual en `lib/app/README.md`.
 
 ## Reglas generales
 
