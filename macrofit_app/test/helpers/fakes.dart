@@ -38,7 +38,9 @@ import 'package:macrofit_app/features/summary/domain/repositories/summary_reposi
 import 'package:macrofit_app/features/summary/domain/usecases/app_day.dart';
 import 'package:macrofit_app/features/coach_link/domain/entities/coach_link.dart';
 import 'package:macrofit_app/features/coach_link/domain/repositories/coach_link_repository.dart';
+import 'package:macrofit_app/features/progress/domain/entities/progress_report.dart';
 import 'package:macrofit_app/features/progress/domain/entities/weight_entry.dart';
+import 'package:macrofit_app/features/progress/domain/repositories/progress_repository.dart';
 import 'package:macrofit_app/features/progress/domain/repositories/weights_repository.dart';
 import 'package:macrofit_app/features/routines/domain/entities/exercise.dart';
 import 'package:macrofit_app/features/routines/domain/entities/routine.dart';
@@ -1176,5 +1178,93 @@ class FakeWeightsRepository implements WeightsRepository {
     );
     weights = [entry, ...weights];
     return entry;
+  }
+}
+
+// ───────────────────────────── HU-22 · Progreso ─────────────────────────────
+
+/// Reporte de progreso de [from] a [to] (`YYYY-MM-DD`): un día por fecha con meta de
+/// 2000 kcal / 150 g / 60 g; los días pares consumen 1900 kcal (cumplen), los impares
+/// nada. Con [withData] en `false` no hay pesos ni comidas.
+ProgressReport testProgressReport({
+  required String from,
+  required String to,
+  bool withData = true,
+  int trainingDays = 4,
+}) {
+  final days = <String>[];
+  for (var day = from; day.compareTo(to) <= 0; day = shiftDay(day, 1)) {
+    days.add(day);
+  }
+  const goal = MacroValues(caloriesKcal: 2000, proteinG: 150, fatG: 60);
+  const eaten = MacroValues(caloriesKcal: 1900, proteinG: 140, fatG: 55);
+  const nothing = MacroValues(caloriesKcal: 0, proteinG: 0, fatG: 0);
+  return ProgressReport(
+    from: from,
+    to: to,
+    weights: withData
+        ? [
+            WeightPoint(
+              recordedAt: DateTime.parse('${from}T15:00:00Z'),
+              weightKg: 73.1,
+            ),
+            WeightPoint(
+              recordedAt: DateTime.parse('${to}T15:00:00Z'),
+              weightKg: 72.4,
+            ),
+          ]
+        : const [],
+    days: [
+      for (final (index, day) in days.indexed)
+        ProgressDay(
+          date: day,
+          goal: goal,
+          consumed: withData && index.isEven ? eaten : nothing,
+          goalMet: withData && index.isEven,
+        ),
+    ],
+    compliance: [
+      for (
+        var start = from;
+        start.compareTo(to) <= 0;
+        start = shiftDay(start, 7)
+      )
+        WeeklyCompliance(
+          weekStart: start,
+          weekEnd: shiftDay(start, 6).compareTo(to) <= 0
+              ? shiftDay(start, 6)
+              : to,
+          completedSessions: 0,
+          plannedSessions: trainingDays,
+        ),
+    ],
+  );
+}
+
+/// Progreso en memoria (simula `GET /users/me/progress`, HU-22).
+class FakeProgressRepository implements ProgressRepository {
+  FakeProgressRepository({this.withData = true});
+
+  /// `false`: pesos y comidas vacíos.
+  bool withData;
+
+  /// Si se asigna, la siguiente consulta lanza este error.
+  ApiException? error;
+
+  /// Si se asigna, la consulta espera a que se complete.
+  Completer<void>? gate;
+
+  /// Periodos pedidos, en orden (`desde..hasta`).
+  final requests = <String>[];
+
+  @override
+  Future<ProgressReport> getProgress({
+    required String from,
+    required String to,
+  }) async {
+    requests.add('$from..$to');
+    await gate?.future;
+    if (error case final error?) throw error;
+    return testProgressReport(from: from, to: to, withData: withData);
   }
 }

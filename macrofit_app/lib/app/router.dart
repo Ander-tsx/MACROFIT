@@ -55,7 +55,10 @@ import '../features/summary/presentation/weekly_summary/weekly_summary_view.dart
 import '../features/summary/presentation/weekly_summary/weekly_summary_view_model.dart';
 import '../features/profile/presentation/profile_form/profile_form_view.dart';
 import '../features/profile/presentation/profile_form/profile_form_view_model.dart';
+import '../features/progress/domain/repositories/progress_repository.dart';
 import '../features/progress/domain/repositories/weights_repository.dart';
+import '../features/progress/presentation/progress_charts/progress_view.dart';
+import '../features/progress/presentation/progress_charts/progress_view_model.dart';
 import '../features/progress/presentation/weights/weights_view.dart';
 import '../features/progress/presentation/weights/weights_view_model.dart';
 import '../features/routines/domain/entities/routine.dart';
@@ -127,6 +130,18 @@ GoRouter createRouter(
           child: const UserHomeView(),
         ),
         routes: [
+          GoRoute(
+            path: AppRoutes.progressChild,
+            pageBuilder: (context, state) => tabPage(
+              state,
+              ChangeNotifierProvider(
+                create: (context) => ProgressViewModel(
+                  repository: context.read<ProgressRepository>(),
+                )..load(),
+                child: const ProgressView(),
+              ),
+            ),
+          ),
           GoRoute(
             path: AppRoutes.weightsChild,
             pageBuilder: (context, state) => tabPage(

@@ -14,6 +14,7 @@ feature; si necesitan algo de otra, usan su **dominio** (p. ej. `home` usa `auth
 | `invite_code/` | HU-12 código de invitación del coach: ver, copiar, compartir y regenerar | [invite_code/README.md](invite_code/README.md) |
 | `summary/` | HU-10 resumen del día (consumo contra la meta), HU-11 resumen semanal con gráfica | [summary/README.md](summary/README.md) |
 | `routines/` | HU-18 constructor de rutinas del coach (crear, editar, eliminar) con el catálogo de ejercicios de TEC-09 | [routines/README.md](routines/README.md) |
+| `progress/` | HU-21 registro e historial de peso; HU-22 gráficas de peso, consumo por día y cumplimiento (semana o mes) | [progress/README.md](progress/README.md) |
 | `home/` | Pantallas principales de usuario y coach; HU-26 meta vigente del usuario; HU-10 progreso del día | [home/README.md](home/README.md) |
 
 ## Plantilla

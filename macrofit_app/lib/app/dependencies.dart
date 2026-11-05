@@ -41,8 +41,11 @@ import '../features/summary/domain/repositories/summary_repository.dart';
 import '../features/routines/data/datasources/routines_remote_data_source.dart';
 import '../features/routines/data/repositories/routines_repository_impl.dart';
 import '../features/routines/domain/repositories/routines_repository.dart';
+import '../features/progress/data/datasources/progress_remote_data_source.dart';
 import '../features/progress/data/datasources/weights_remote_data_source.dart';
+import '../features/progress/data/repositories/progress_repository_impl.dart';
 import '../features/progress/data/repositories/weights_repository_impl.dart';
+import '../features/progress/domain/repositories/progress_repository.dart';
 import '../features/progress/domain/repositories/weights_repository.dart';
 
 /// Raíz de composición: el único lugar donde se crean las implementaciones
@@ -62,6 +65,7 @@ class AppDependencies {
     required this.summaryRepository,
     required this.coachLinkRepository,
     required this.weightsRepository,
+    required this.progressRepository,
     required this.routinesRepository,
     required this.shareService,
   });
@@ -118,6 +122,9 @@ class AppDependencies {
       weightsRepository: WeightsRepositoryImpl(
         WeightsRemoteDataSource(sessionDio),
       ),
+      progressRepository: ProgressRepositoryImpl(
+        ProgressRemoteDataSource(sessionDio),
+      ),
       routinesRepository: RoutinesRepositoryImpl(
         RoutinesRemoteDataSource(sessionDio),
       ),
@@ -137,6 +144,9 @@ class AppDependencies {
   final SummaryRepository summaryRepository;
   final CoachLinkRepository coachLinkRepository;
   final WeightsRepository weightsRepository;
+
+  /// HU-22: series de progreso (`GET /users/me/progress`).
+  final ProgressRepository progressRepository;
 
   /// Rutinas del coach (HU-18) y catálogo de ejercicios (TEC-09).
   final RoutinesRepository routinesRepository;

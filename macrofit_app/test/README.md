@@ -12,6 +12,7 @@ test/
 ├── features/meals/           # MealPhotoValidator, MealPhotoRepositoryImpl (Dio e image_picker simulados) y MealPhotoViewModel; MealsRepositoryImpl (Dio simulado) y MealEstimateViewModel (HU-07); MealValuesValidator y MealFormViewModel (HU-08); MealHistoryViewModel y guardar desde la estimación (HU-09)
 ├── features/profile/         # Validadores, ProfileRepositoryImpl (Dio simulado) y ProfileFormViewModel
 ├── features/goals/           # Cálculo de la meta, validadores, CoachGoalsRepositoryImpl y CoachGoalFormViewModel
+├── features/progress/        # HU-22: ProgressPeriod (semana/mes), ProgressModel y repositorio (Dio simulado), ProgressViewModel; FakeProgressRepository y testProgressReport en helpers
 ├── features/summary/         # SummaryRepositoryImpl (Dio simulado) `appDay`/`shiftDay` (día en hora de México, HU-10) y `WeeklySummaryViewModel` (HU-11); el progreso del día se prueba en `features/home` y `app/`
 ├── features/invite_code/     # InviteCodeRepositoryImpl (Dio simulado) e InviteCodeViewModel (HU-12)
 ├── features/clients/         # Búsqueda por nombre, ClientsRepositoryImpl (JSON con nulos), textos del resumen y ViewModels de lista y detalle (HU-24); comidas y fotos con Dio simulado, textos y ViewModel de comidas (HU-25)

@@ -36,6 +36,7 @@ import 'package:macrofit_app/features/profile/presentation/profile_form/profile_
 import 'package:macrofit_app/features/summary/domain/entities/macro_values.dart';
 import 'package:macrofit_app/features/summary/domain/usecases/app_day.dart';
 import 'package:macrofit_app/features/summary/presentation/weekly_summary/weekly_summary_view.dart';
+import 'package:macrofit_app/features/progress/presentation/progress_charts/progress_view.dart';
 import 'package:macrofit_app/features/progress/presentation/weights/weights_view.dart';
 import 'package:macrofit_app/features/routines/presentation/exercise_picker/exercise_picker_view.dart';
 import 'package:macrofit_app/features/routines/presentation/routine_builder/routine_builder_view.dart';
@@ -55,6 +56,7 @@ void main() {
   late FakeInviteCodeRepository inviteCodes;
   late FakeCoachLinkRepository coachLinksRepo;
   late FakeWeightsRepository weightsRepo;
+  late FakeProgressRepository progress;
   late FakeShareService share;
   late FakeSummaryRepository summary;
   late FakeRoutinesRepository routines;
@@ -88,6 +90,7 @@ void main() {
     inviteCodes = FakeInviteCodeRepository()..error = inviteCodeError;
     coachLinksRepo = FakeCoachLinkRepository();
     weightsRepo = FakeWeightsRepository();
+    progress = FakeProgressRepository();
     share = FakeShareService();
     routines = FakeRoutinesRepository()..listError = routinesError;
     await tester.pumpWidget(
@@ -105,6 +108,7 @@ void main() {
           inviteCodeRepository: inviteCodes,
           coachLinkRepository: coachLinksRepo,
           weightsRepository: weightsRepo,
+          progressRepository: progress,
           routinesRepository: routines,
           shareService: share,
         ),
@@ -179,18 +183,121 @@ void main() {
     expect(find.textContaining('Aviso de privacidad integral'), findsOneWidget);
   });
 
+  group('progreso (HU-22)', () {
+    Future<void> openProgress(WidgetTester tester) async {
+      // Alto suficiente para construir las tres gráficas.
+      tester.view.physicalSize = const Size(800, 2400);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      await pumpApp(tester, state: const Authenticated(testUser));
+      await tester.tap(find.byKey(const Key('progress_button')));
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('muestra peso, consumo por día y entrenamiento de la semana', (
+      tester,
+    ) async {
+      await openProgress(tester);
+
+      expect(find.byType(ProgressView), findsOneWidget);
+      expect(progress.requests, hasLength(1));
+      expect(find.byKey(const Key('progress_weight_chart')), findsOneWidget);
+      expect(find.text('−0.7 kg en el periodo'), findsOneWidget);
+      expect(find.byKey(const Key('progress_chart_calories')), findsOneWidget);
+      expect(find.text('Dentro de la meta: 4 de 7 días'), findsOneWidget);
+      expect(
+        find.byKey(const Key('progress_compliance_chart')),
+        findsOneWidget,
+      );
+      expect(find.text('0 de 4 sesiones en el periodo'), findsOneWidget);
+    });
+
+    testWidgets('cambia el macro de la gráfica de consumo', (tester) async {
+      await openProgress(tester);
+
+      await tester.tap(find.byKey(const Key('progress_macro_protein')));
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const Key('progress_chart_protein')), findsOneWidget);
+      expect(find.byKey(const Key('progress_chart_calories')), findsNothing);
+    });
+
+    testWidgets('cambia a mes y no permite ir a un periodo futuro', (
+      tester,
+    ) async {
+      await openProgress(tester);
+      final next = find.byKey(const Key('progress_next'));
+      expect(tester.widget<IconButton>(next).onPressed, isNull);
+
+      await tester.tap(find.byKey(const Key('progress_range_month')));
+      await tester.pumpAndSettle();
+      final today = appDay(DateTime.now());
+      expect(progress.requests.last, '${today.substring(0, 8)}01..$today');
+      expect(tester.widget<IconButton>(next).onPressed, isNull);
+
+      await tester.tap(find.byKey(const Key('progress_previous')));
+      await tester.pumpAndSettle();
+      expect(tester.widget<IconButton>(next).onPressed, isNotNull);
+    });
+
+    testWidgets('sin datos suficientes muestra mensajes en lugar de gráficas', (
+      tester,
+    ) async {
+      tester.view.physicalSize = const Size(800, 2400);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      await pumpApp(tester, state: const Authenticated(testUser));
+      progress.withData = false;
+      await tester.tap(find.byKey(const Key('progress_button')));
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const Key('progress_weight_empty')), findsOneWidget);
+      expect(
+        find.byKey(const Key('progress_consumption_empty')),
+        findsOneWidget,
+      );
+      expect(find.byKey(const Key('progress_weight_chart')), findsNothing);
+    });
+
+    testWidgets('sin conexión muestra el error en español y reintenta', (
+      tester,
+    ) async {
+      await pumpApp(tester, state: const Authenticated(testUser));
+      progress.error = networkError;
+      await tester.tap(find.byKey(const Key('progress_button')));
+      await tester.pumpAndSettle();
+
+      expect(find.text(networkError.message), findsOneWidget);
+      progress.error = null;
+      await tester.tap(find.byKey(const Key('progress_retry')));
+      await tester.pumpAndSettle();
+
+      expect(find.text(networkError.message), findsNothing);
+      expect(find.byKey(const Key('progress_weight')), findsOneWidget);
+    });
+
+    testWidgets('"Registrar" abre el registro de peso', (tester) async {
+      await openProgress(tester);
+
+      await tester.tap(find.byKey(const Key('progress_register_weight')));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(WeightsView), findsOneWidget);
+    });
+  });
+
   group('barra inferior (TEC-17)', () {
     testWidgets('cambia entre pestañas y vuelve al inicio', (tester) async {
       await pumpApp(tester, state: const Authenticated(testUser));
 
-      await tester.tap(find.byKey(const Key('weights_button')));
+      await tester.tap(find.byKey(const Key('progress_button')));
       await tester.pumpAndSettle();
-      expect(find.byType(WeightsView), findsOneWidget);
+      expect(find.byType(ProgressView), findsOneWidget);
 
       await tester.tap(find.byKey(const Key('weekly_summary_button')));
       await tester.pumpAndSettle();
       expect(find.byType(WeeklySummaryView), findsOneWidget);
-      expect(find.byType(WeightsView), findsNothing);
+      expect(find.byType(ProgressView), findsNothing);
 
       await tester.tap(find.byKey(const Key('home_tab')));
       await tester.pumpAndSettle();

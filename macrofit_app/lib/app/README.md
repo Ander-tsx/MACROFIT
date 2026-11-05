@@ -45,7 +45,7 @@ ClientsRepositoryImpl
 | `AuthUnknown` (leyendo sesión) | `/` (carga) | → `/` |
 | `Unauthenticated` | `/login`, `/register`, `/privacy` | → `/login` |
 | `Authenticated(user)`, rol `user` **sin perfil** | `/profile/setup` y `/privacy` | → `/profile/setup` |
-| `Authenticated(user)`, rol `user` con perfil | `/user`, `/user/profile`, `/user/meals/photo`, `/user/meals/estimate`, `/user/meals/form`, `/user/meals` y `/privacy` | → `/user` |
+| `Authenticated(user)`, rol `user` con perfil | `/user`, `/user/progress`, `/user/weights`, `/user/profile`, `/user/meals/photo`, `/user/meals/estimate`, `/user/meals/form`, `/user/meals` y `/privacy` | → `/user` |
 | `Authenticated(user)`, rol `coach` | `/coach` y `/privacy` | → `/coach` |
 
 Consecuencias:
@@ -70,7 +70,8 @@ Consecuencias:
 
 - `MaterialApp.router(builder:)` envuelve el navegador con `AppShell`, que dibuja **una sola** `AppDock` encima de
   todas las pantallas: no se mueve al cambiar de pantalla.
-- Pestañas del usuario: Inicio (`/user`), Comidas (`/user/meals`), Semana (`/user/summary`) y Peso (`/user/weights`);
+- Pestañas del usuario: Inicio (`/user`), Comidas (`/user/meals`), Semana (`/user/summary`) y Progreso (`/user/progress`,
+  HU-22; desde ahí se registra el peso en `/user/weights`);
   acción principal: escanear (`/user/meals/photo`). Del coach: Inicio (`/coach`), Clientes (`/coach/clients`) y
   Rutinas (`/coach/routines`); acción principal: código de invitación.
 - Las pestañas son **subrutas del inicio de su rol** (mismos URL de siempre): la barra las abre con `go`, el inicio queda
