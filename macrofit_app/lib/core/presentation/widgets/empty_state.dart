@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 
 import '../theme/app_tokens.dart';
 import '../theme/theme_context.dart';
-import 'icon_bubble.dart';
 
 /// Estado vacío: no hay datos que mostrar todavía. Explica por qué y, si aplica,
 /// ofrece la acción que lo resuelve.
@@ -60,11 +59,7 @@ class EmptyState extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              IconBubble(
-                icon: icon,
-                size: AppSizes.iconBubbleLarge,
-                color: colors.onSurfaceVariant,
-              ),
+              _EmptyArt(icon: icon),
               const SizedBox(height: AppSpacing.lg),
               Text(title, style: text.titleMedium, textAlign: TextAlign.center),
               if (message != null) ...[
@@ -84,6 +79,50 @@ class EmptyState extends StatelessWidget {
               ],
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Ilustración del estado vacío: el ícono dentro de círculos concéntricos que
+/// aparecen escalonados.
+class _EmptyArt extends StatelessWidget {
+  const _EmptyArt({required this.icon});
+
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    Widget ring(double size, double alpha, int order) =>
+        TweenAnimationBuilder<double>(
+          tween: Tween(begin: 0, end: 1),
+          duration: AppDurations.slow + AppMotion.stagger * order,
+          curve: Curves.easeOutBack,
+          builder: (context, scale, child) =>
+              Transform.scale(scale: scale, child: child),
+          child: Container(
+            width: size,
+            height: size,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: colors.surfaceContainerHigh.withValues(alpha: alpha),
+            ),
+          ),
+        );
+
+    return ExcludeSemantics(
+      child: SizedBox.square(
+        dimension: AppSizes.emptyArt,
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            ring(AppSizes.emptyArt, AppOpacity.track, 2),
+            ring(AppSizes.emptyArtMiddle, AppOpacity.muted / 1.5, 1),
+            ring(AppSizes.emptyArtInner, 1, 0),
+            Icon(icon, size: AppSizes.iconXl, color: colors.onSurfaceVariant),
+          ],
         ),
       ),
     );

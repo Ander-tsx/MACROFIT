@@ -9,7 +9,8 @@ import '../../../../core/presentation/widgets/loading_state.dart';
 import '../home_view_model.dart';
 
 /// Estructura común de las pantallas principales (guía visual, "Pantallas
-/// principales"): saludo con la fecha, contenido y barra inferior flotante.
+/// principales"): fondo con resplandor superior, saludo con avatar y cierre de
+/// sesión, contenido y barra inferior flotante.
 ///
 /// [T] es el ViewModel que la ruta inyecta (`HomeViewModel` o una subclase, como
 /// `UserHomeViewModel`); si no se indica, es `HomeViewModel`.
@@ -53,80 +54,84 @@ class HomeScaffold<T extends HomeViewModel> extends StatelessWidget {
   Widget build(BuildContext context) {
     final viewModel = context.watch<T>();
     final text = context.text;
-    final colors = context.colors;
     final name = viewModel.user?.name ?? '';
-    final today = MaterialLocalizations.of(context)
-        .formatMediumDate(DateTime.now());
-
     final avatar = AppAvatar(name: name);
 
     return Scaffold(
       extendBody: true,
-      body: Column(
-        children: [
-          SafeArea(
-            bottom: false,
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(
-                AppSpacing.screen,
-                AppSpacing.md,
-                AppSpacing.md,
-                AppSpacing.sm,
-              ),
-              child: Row(
-                children: [
-                  if (onAvatarTap case final onTap?)
-                    IconButton(
-                      key: avatarKey,
-                      tooltip: avatarTooltip,
-                      padding: EdgeInsets.zero,
-                      onPressed: onTap,
-                      icon: avatar,
-                    )
-                  else
-                    avatar,
-                  const SizedBox(width: AppSpacing.md),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Semantics(
-                          header: true,
-                          child: Text(
-                            'Hola, $name',
-                            style: text.titleLarge,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
+      body: DecoratedBox(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.center,
+            colors: [
+              context.appColors.glow,
+              context.theme.scaffoldBackgroundColor,
+            ],
+          ),
+        ),
+        child: Column(
+          children: [
+            SafeArea(
+              bottom: false,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.xxl,
+                  AppSpacing.lg,
+                  AppSpacing.sm,
+                  AppSpacing.md,
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Semantics(
+                            header: true,
+                            child: Text(
+                              'Hola, $name',
+                              style: text.headlineMedium,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
                           ),
-                        ),
-                        Text(
-                          '$subtitle · $today',
-                          style: text.bodySmall,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ],
+                          Text(
+                            subtitle,
+                            style: text.bodyMedium?.copyWith(
+                              color: context.colors.onSurfaceVariant,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
-                  IconButton(
-                    key: const Key('logout_button'),
-                    tooltip: 'Cerrar sesión',
-                    style: IconButton.styleFrom(
-                      backgroundColor: colors.surface,
+                    if (onAvatarTap case final onTap?)
+                      IconButton(
+                        key: avatarKey,
+                        tooltip: avatarTooltip,
+                        padding: EdgeInsets.zero,
+                        onPressed: onTap,
+                        icon: avatar,
+                      )
+                    else
+                      avatar,
+                    IconButton(
+                      key: const Key('logout_button'),
+                      tooltip: 'Cerrar sesión',
+                      icon: viewModel.isLoggingOut
+                          ? const InlineSpinner()
+                          : const Icon(Icons.logout_rounded),
+                      onPressed: viewModel.isLoggingOut
+                          ? null
+                          : () => _confirmLogout(context),
                     ),
-                    icon: viewModel.isLoggingOut
-                        ? const InlineSpinner()
-                        : const Icon(Icons.logout_rounded),
-                    onPressed: viewModel.isLoggingOut
-                        ? null
-                        : () => _confirmLogout(context),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
-          ),
-          Expanded(child: body),
-        ],
+            Expanded(child: body),
+          ],
+        ),
       ),
       bottomNavigationBar: dock,
     );

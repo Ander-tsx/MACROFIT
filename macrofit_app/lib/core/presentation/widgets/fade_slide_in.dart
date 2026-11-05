@@ -67,16 +67,19 @@ class StateSwitcher extends StatelessWidget {
     return AnimatedSize(
       duration: AppDurations.normal,
       curve: Curves.easeOutCubic,
-      alignment: Alignment.topCenter,
+      alignment: AlignmentDirectional.topStart,
       child: AnimatedSwitcher(
         duration: AppDurations.normal,
         switchInCurve: Curves.easeOut,
         switchOutCurve: Curves.easeIn,
         layoutBuilder: (current, previous) => Stack(
-          alignment: Alignment.topCenter,
+          alignment: AlignmentDirectional.topStart,
           children: [...previous, ?current],
         ),
-        child: KeyedSubtree(key: ValueKey(stateKey), child: child),
+        child: KeyedSubtree(
+          key: ValueKey(stateKey),
+          child: SizedBox(width: double.infinity, child: child),
+        ),
       ),
     );
   }

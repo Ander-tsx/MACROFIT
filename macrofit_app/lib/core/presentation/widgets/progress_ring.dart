@@ -35,8 +35,8 @@ class ProgressRing extends StatelessWidget {
     return Semantics(
       label: semanticLabel,
       child: TweenAnimationBuilder<double>(
-        tween: Tween(end: value.clamp(0, 1).toDouble()),
-        duration: AppDurations.slow,
+        tween: Tween(begin: 0, end: value.clamp(0, 1).toDouble()),
+        duration: AppDurations.rings,
         curve: Curves.easeOutCubic,
         builder: (context, animated, child) => CustomPaint(
           painter: _RingPainter(

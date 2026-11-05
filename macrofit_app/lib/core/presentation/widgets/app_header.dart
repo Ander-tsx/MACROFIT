@@ -1,11 +1,9 @@
 import 'package:flutter/material.dart';
 
 import '../theme/app_tokens.dart';
-import '../theme/theme_context.dart';
 
-/// Encabezado de las pantallas secundarias: botón atrás circular, título y
-/// acciones. Sustituye al `AppBar` directo para que todas las pantallas se vean
-/// igual.
+/// Encabezado de las pantallas secundarias (referencia: "Food"): flecha atrás,
+/// título grande en negrita y acciones con íconos simples.
 class AppHeader extends StatelessWidget implements PreferredSizeWidget {
   const AppHeader({
     required this.title,
@@ -17,36 +15,27 @@ class AppHeader extends StatelessWidget implements PreferredSizeWidget {
   final String title;
   final List<Widget> actions;
 
-  /// Fondo distinto al de la pantalla (p. ej. sobre una foto).
+  /// Fondo distinto al de la pantalla.
   final Color? backgroundColor;
 
-  static const double _height = AppSizes.control + AppSpacing.md;
+  static const double _height = AppSizes.control + AppSpacing.lg;
 
   @override
   Size get preferredSize => const Size.fromHeight(_height);
 
   @override
   Widget build(BuildContext context) {
-    final colors = context.colors;
     final canPop = ModalRoute.of(context)?.impliesAppBarDismissal ?? false;
 
     return AppBar(
       toolbarHeight: _height,
       backgroundColor: backgroundColor,
       automaticallyImplyLeading: false,
-      leadingWidth: canPop ? AppSizes.control + AppSpacing.lg : null,
-      titleSpacing: canPop ? 0 : AppSpacing.screen,
+      titleSpacing: canPop ? 0 : AppSpacing.xxl,
       leading: canPop
-          ? Padding(
-              padding: const EdgeInsets.only(left: AppSpacing.lg),
-              child: Center(
-                child: BackButton(
-                  style: IconButton.styleFrom(
-                    backgroundColor: colors.surface,
-                    foregroundColor: colors.onSurface,
-                    side: BorderSide(color: colors.outlineVariant),
-                  ),
-                ),
+          ? const BackButton(
+              style: ButtonStyle(
+                iconSize: WidgetStatePropertyAll(AppSizes.iconLg),
               ),
             )
           : null,

@@ -16,7 +16,7 @@ import '../../../../core/presentation/widgets/primary_button.dart';
 import '../../../../core/presentation/widgets/section_card.dart';
 import '../../../../core/presentation/widgets/status_banner.dart';
 import '../../domain/entities/meal_estimate.dart';
-import '../widgets/macro_column_tile.dart';
+import '../../../../core/presentation/widgets/stat_tile.dart';
 import '../widgets/meal_navigation.dart';
 import '../widgets/meal_texts.dart';
 import 'meal_estimate_view_model.dart';
@@ -50,97 +50,102 @@ class MealEstimateView extends StatelessWidget {
     return Scaffold(
       appBar: const AppHeader(title: 'Estimación'),
       body: SafeArea(
-        child: ListView(
+        // Todo el contenido se construye de una vez (pantalla corta): los
+        // botones existen aunque estén fuera de la vista.
+        child: SingleChildScrollView(
           padding: AppSpacing.screenPadding,
-          children: [
-            ClipRRect(
-              borderRadius: AppRadius.xlAll,
-              child: Image.memory(
-                viewModel.upload.photo.bytes,
-                key: const Key('meal_estimate_photo'),
-                height: AppSizes.photoHeader,
-                fit: BoxFit.cover,
-                gaplessPlayback: true,
-                semanticLabel: 'Foto de tu comida',
-              ),
-            ),
-            const SizedBox(height: AppSpacing.xxl),
-            if (viewModel.isLoading)
-              const LoadingState(
-                key: Key('meal_estimate_loading'),
-                message: 'Estimando calorías, proteína y grasa…',
-              )
-            else if (estimate != null) ...[
-              FadeSlideIn(child: _Totals(estimate: estimate)),
-              const SizedBox(height: AppSpacing.md),
-              FadeSlideIn(index: 1, child: _Foods(estimate: estimate)),
-              const SizedBox(height: AppSpacing.md),
-              const FadeSlideIn(
-                index: 2,
-                child: StatusBanner(
-                  key: Key('meal_estimate_disclaimer'),
-                  message: MealEstimateViewModel.disclaimer,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              ClipRRect(
+                borderRadius: AppRadius.xlAll,
+                child: Image.memory(
+                  viewModel.upload.photo.bytes,
+                  key: const Key('meal_estimate_photo'),
+                  height: AppSizes.photoHeader,
+                  fit: BoxFit.cover,
+                  gaplessPlayback: true,
+                  semanticLabel: 'Foto de tu comida',
                 ),
               ),
               const SizedBox(height: AppSpacing.xxl),
-              if (viewModel.saveError case final message?) ...[
-                ErrorBanner(
-                  key: const Key('meal_estimate_save_error'),
-                  message: message,
+              if (viewModel.isLoading)
+                const LoadingState(
+                  key: Key('meal_estimate_loading'),
+                  message: 'Estimando calorías, proteína y grasa…',
+                )
+              else if (estimate != null) ...[
+                FadeSlideIn(child: _Totals(estimate: estimate)),
+                const SizedBox(height: AppSpacing.md),
+                FadeSlideIn(index: 1, child: _Foods(estimate: estimate)),
+                const SizedBox(height: AppSpacing.md),
+                const FadeSlideIn(
+                  index: 2,
+                  child: StatusBanner(
+                    key: Key('meal_estimate_disclaimer'),
+                    message: MealEstimateViewModel.disclaimer,
+                  ),
                 ),
-                const SizedBox(height: AppSpacing.lg),
-              ],
-              PrimaryButton(
-                key: const Key('meal_estimate_save'),
-                label: 'Guardar',
-                icon: Icons.check_rounded,
-                isLoading: viewModel.isSaving,
-                onPressed: () => _save(context, viewModel),
-              ),
-              const SizedBox(height: AppSpacing.md),
-              PrimaryButton(
-                key: const Key('meal_estimate_correct'),
-                label: 'Corregir valores',
-                icon: Icons.tune_rounded,
-                variant: AppButtonVariant.outlined,
-                onPressed: viewModel.isSaving
-                    ? null
-                    : () => _openForm(context, viewModel),
-              ),
-            ] else if (viewModel.error case final message?) ...[
-              FadeSlideIn(
-                child: ErrorBanner(
-                  key: const Key('meal_estimate_error'),
-                  message: message,
-                ),
-              ),
-              const SizedBox(height: AppSpacing.xxl),
-              if (viewModel.canRetry) ...[
+                const SizedBox(height: AppSpacing.xxl),
+                if (viewModel.saveError case final message?) ...[
+                  ErrorBanner(
+                    key: const Key('meal_estimate_save_error'),
+                    message: message,
+                  ),
+                  const SizedBox(height: AppSpacing.lg),
+                ],
                 PrimaryButton(
-                  key: const Key('meal_estimate_retry'),
-                  label: 'Reintentar',
-                  icon: Icons.refresh_rounded,
-                  onPressed: viewModel.retry,
+                  key: const Key('meal_estimate_save'),
+                  label: 'Guardar',
+                  icon: Icons.check_rounded,
+                  isLoading: viewModel.isSaving,
+                  onPressed: () => _save(context, viewModel),
                 ),
                 const SizedBox(height: AppSpacing.md),
+                PrimaryButton(
+                  key: const Key('meal_estimate_correct'),
+                  label: 'Corregir valores',
+                  icon: Icons.tune_rounded,
+                  variant: AppButtonVariant.outlined,
+                  onPressed: viewModel.isSaving
+                      ? null
+                      : () => _openForm(context, viewModel),
+                ),
+              ] else if (viewModel.error case final message?) ...[
+                FadeSlideIn(
+                  child: ErrorBanner(
+                    key: const Key('meal_estimate_error'),
+                    message: message,
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.xxl),
+                if (viewModel.canRetry) ...[
+                  PrimaryButton(
+                    key: const Key('meal_estimate_retry'),
+                    label: 'Reintentar',
+                    icon: Icons.refresh_rounded,
+                    onPressed: viewModel.retry,
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+                ],
+                PrimaryButton(
+                  key: const Key('meal_estimate_manual'),
+                  label: 'Capturar a mano',
+                  icon: Icons.edit_note_rounded,
+                  variant: AppButtonVariant.outlined,
+                  onPressed: () => _openForm(context, viewModel),
+                ),
               ],
-              PrimaryButton(
-                key: const Key('meal_estimate_manual'),
-                label: 'Capturar a mano',
-                icon: Icons.edit_note_rounded,
-                variant: AppButtonVariant.outlined,
-                onPressed: () => _openForm(context, viewModel),
-              ),
             ],
-          ],
+          ),
         ),
       ),
     );
   }
 }
 
-/// Totales en tres columnas: calorías (oscura) y proteína y grasa con un
-/// relleno según cuánto aportan a la energía de la comida.
+/// Totales en mosaicos (referencia: "Nutrition info"). El pie de proteína y
+/// grasa indica cuánto aportan a la energía de la comida.
 class _Totals extends StatelessWidget {
   const _Totals({required this.estimate});
 
@@ -155,42 +160,46 @@ class _Totals extends StatelessWidget {
     final app = context.appColors;
     final totals = estimate.totals;
     final kcal = totals.caloriesKcal;
-    double share(double grams, int kcalPerGram) =>
-        kcal <= 0 ? 0 : grams * kcalPerGram / kcal;
+    String share(double grams, int kcalPerGram) => kcal <= 0
+        ? '—'
+        : '${(grams * kcalPerGram / kcal * 100).round()} % energía';
 
-    return Row(
-      key: const Key('meal_estimate_totals'),
-      children: [
-        Expanded(
-          child: MacroColumnTile(
-            label: Macro.calories.label,
-            value: '${formatAmount(kcal)} kcal',
-            fill: 1,
-            fillColor: app.hero,
-            background: app.hero,
-            foreground: app.accent,
-            mutedForeground: app.onHeroMuted,
+    return SectionCard(
+      title: 'Valores nutricionales',
+      child: Row(
+        key: const Key('meal_estimate_totals'),
+        children: [
+          Expanded(
+            child: StatTile(
+              label: Macro.calories.label,
+              color: Macro.calories.color(app),
+              value: formatAmount(kcal),
+              unit: 'kcal',
+              footer: 'total',
+            ),
           ),
-        ),
-        const SizedBox(width: AppSpacing.sm),
-        Expanded(
-          child: MacroColumnTile(
-            label: Macro.protein.label,
-            value: '${formatAmount(totals.proteinG)} g',
-            fill: share(totals.proteinG, _proteinKcalPerGram),
-            fillColor: Macro.protein.container(app),
+          const SizedBox(width: AppSpacing.sm),
+          Expanded(
+            child: StatTile(
+              label: Macro.protein.label,
+              color: Macro.protein.color(app),
+              value: formatAmount(totals.proteinG),
+              unit: 'g',
+              footer: share(totals.proteinG, _proteinKcalPerGram),
+            ),
           ),
-        ),
-        const SizedBox(width: AppSpacing.sm),
-        Expanded(
-          child: MacroColumnTile(
-            label: Macro.fat.label,
-            value: '${formatAmount(totals.fatG)} g',
-            fill: share(totals.fatG, _fatKcalPerGram),
-            fillColor: Macro.fat.container(app),
+          const SizedBox(width: AppSpacing.sm),
+          Expanded(
+            child: StatTile(
+              label: Macro.fat.label,
+              color: Macro.fat.color(app),
+              value: formatAmount(totals.fatG),
+              unit: 'g',
+              footer: share(totals.fatG, _fatKcalPerGram),
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }

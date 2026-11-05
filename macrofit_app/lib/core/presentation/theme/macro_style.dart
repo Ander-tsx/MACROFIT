@@ -20,9 +20,9 @@ enum Macro {
     Macro.fat => colors.fat,
   };
 
-  Color container(AppColors colors) => switch (this) {
-    Macro.calories => colors.caloriesContainer,
-    Macro.protein => colors.proteinContainer,
-    Macro.fat => colors.fatContainer,
+  Color track(AppColors colors) => switch (this) {
+    Macro.calories => colors.caloriesTrack,
+    Macro.protein => colors.proteinTrack,
+    Macro.fat => colors.fatTrack,
   };
 }

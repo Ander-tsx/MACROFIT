@@ -31,13 +31,33 @@ class AppAvatar extends StatelessWidget {
         ? context.text.headlineMedium
         : context.text.titleMedium;
 
+    // Aro con los tres colores de los macros alrededor de la inicial.
     return ExcludeSemantics(
       child: Container(
         width: size,
         height: size,
-        alignment: Alignment.center,
-        decoration: BoxDecoration(color: background, shape: BoxShape.circle),
-        child: Text(initialOf(name), style: text?.copyWith(color: foreground)),
+        padding: const EdgeInsets.all(AppSpacing.xxs),
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          gradient: SweepGradient(
+            colors: [app.calories, app.protein, app.fat, app.calories],
+          ),
+        ),
+        child: Container(
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: background,
+            shape: BoxShape.circle,
+            border: Border.all(
+              color: context.theme.scaffoldBackgroundColor,
+              width: AppSpacing.xxs,
+            ),
+          ),
+          child: Text(
+            initialOf(name),
+            style: text?.copyWith(color: foreground),
+          ),
+        ),
       ),
     );
   }

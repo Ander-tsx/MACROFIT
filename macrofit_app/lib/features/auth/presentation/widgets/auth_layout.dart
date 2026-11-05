@@ -4,9 +4,11 @@ import '../../../../core/presentation/theme/app_tokens.dart';
 import '../../../../core/presentation/theme/theme_context.dart';
 import '../../../../core/presentation/widgets/brand_mark.dart';
 import '../../../../core/presentation/widgets/fade_slide_in.dart';
+import '../../../../core/presentation/widgets/macro_rings.dart';
 
-/// Estructura de la entrada a la app: encabezado oscuro con la marca y una hoja
-/// clara con el formulario. Se desplaza completa cuando aparece el teclado.
+/// Estructura de la entrada a la app: encabezado con la marca y los anillos de
+/// MacroFit llenándose, y una hoja con el formulario. Se desplaza completa
+/// cuando aparece el teclado.
 class AuthLayout extends StatelessWidget {
   const AuthLayout({required this.tagline, required this.child, super.key});
 
@@ -15,74 +17,101 @@ class AuthLayout extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final app = context.appColors;
     final text = context.text;
+    final colors = context.colors;
 
-    return CustomScrollView(
-      slivers: [
-        SliverToBoxAdapter(
-          child: SafeArea(
-            bottom: false,
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(
-                AppSpacing.screen,
-                AppSpacing.xxl,
-                AppSpacing.screen,
-                AppSpacing.xxl,
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      const BrandMark(size: AppSizes.iconXl),
-                      const SizedBox(width: AppSpacing.md),
-                      Text(
-                        'MacroFit',
-                        style: text.headlineMedium?.copyWith(color: app.onHero),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: AppSpacing.md),
-                  Text(
-                    tagline,
-                    style: text.bodyLarge?.copyWith(color: app.onHeroMuted),
-                  ),
-                ],
-              ),
-            ),
-          ),
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.center,
+          colors: [
+            context.appColors.glow,
+            context.theme.scaffoldBackgroundColor,
+          ],
         ),
-        SliverFillRemaining(
-          hasScrollBody: false,
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              color: context.colors.surface,
-              borderRadius: AppRadius.sheetTop,
-            ),
+      ),
+      child: CustomScrollView(
+        slivers: [
+          SliverToBoxAdapter(
             child: SafeArea(
-              top: false,
+              bottom: false,
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(
-                  AppSpacing.screen,
                   AppSpacing.xxl,
-                  AppSpacing.screen,
+                  AppSpacing.xxl,
+                  AppSpacing.xxl,
                   AppSpacing.xxl,
                 ),
-                child: Align(
-                  alignment: Alignment.topCenter,
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(
-                      maxWidth: AppSizes.maxContentWidth,
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              const BrandMark(size: AppSizes.iconXl),
+                              const SizedBox(width: AppSpacing.md),
+                              Text('MacroFit', style: text.headlineMedium),
+                            ],
+                          ),
+                          const SizedBox(height: AppSpacing.md),
+                          Text(
+                            tagline,
+                            style: text.bodyLarge?.copyWith(
+                              color: colors.onSurfaceVariant,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                    child: FadeSlideIn(child: child),
+                    const SizedBox(width: AppSpacing.lg),
+                    // Ilustración: los anillos de la app llenándose.
+                    const MacroRings(
+                      calories: 0.82,
+                      protein: 0.64,
+                      fat: 0.46,
+                      size: AppSizes.ringLarge,
+                      strokeWidth: AppSizes.ringStroke,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          SliverFillRemaining(
+            hasScrollBody: false,
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                color: colors.surface,
+                borderRadius: AppRadius.sheetTop,
+              ),
+              child: SafeArea(
+                top: false,
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(
+                    AppSpacing.xxl,
+                    AppSpacing.xxxl,
+                    AppSpacing.xxl,
+                    AppSpacing.xxl,
+                  ),
+                  child: Align(
+                    alignment: Alignment.topCenter,
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(
+                        maxWidth: AppSizes.maxContentWidth,
+                      ),
+                      child: FadeSlideIn(child: child),
+                    ),
                   ),
                 ),
               ),
             ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }

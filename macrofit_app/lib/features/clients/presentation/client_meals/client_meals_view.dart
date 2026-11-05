@@ -1,11 +1,22 @@
 import 'dart:async';
-import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
+import '../../../../core/presentation/theme/app_tokens.dart';
+import '../../../../core/presentation/widgets/app_header.dart';
+import '../../../../core/presentation/widgets/async_photo.dart';
+import '../../../../core/presentation/widgets/day_total_card.dart';
+import '../../../../core/presentation/widgets/empty_state.dart';
 import '../../../../core/presentation/widgets/error_banner.dart';
+import '../../../../core/presentation/widgets/error_state.dart';
+import '../../../../core/presentation/widgets/fade_slide_in.dart';
+import '../../../../core/presentation/widgets/loading_state.dart';
+import '../../../../core/presentation/widgets/meal_entry_card.dart';
+import '../../../../core/presentation/widgets/period_navigator.dart';
+import '../../../../core/presentation/widgets/primary_button.dart';
+import '../../../../core/presentation/widgets/section_card.dart';
 import '../../domain/entities/client_meal.dart';
 import '../widgets/client_meal_texts.dart';
 import 'client_meals_view_model.dart';
@@ -23,26 +34,50 @@ class ClientMealsView extends StatelessWidget {
     final viewModel = context.watch<ClientMealsViewModel>();
 
     return Scaffold(
-      appBar: AppBar(title: Text('Comidas de ${viewModel.client.name}')),
+      appBar: AppHeader(title: 'Comidas de ${viewModel.client.name}'),
       body: SafeArea(
         child: viewModel.isUnlinked
-            ? _Message(
-                children: [
-                  const ErrorBanner(
-                    message: 'Este cliente ya no está vinculado contigo.',
+            ? Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(AppSpacing.xxl),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const ErrorBanner(
+                        message: 'Este cliente ya no está vinculado contigo.',
+                      ),
+                      const SizedBox(height: AppSpacing.xl),
+                      PrimaryButton(
+                        key: const Key('client_meals_back'),
+                        label: 'Volver a mis clientes',
+                        icon: Icons.arrow_back_rounded,
+                        onPressed: () => context.pop(true),
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 16),
-                  FilledButton(
-                    key: const Key('client_meals_back'),
-                    onPressed: () => context.pop(true),
-                    child: const Text('Volver a mis clientes'),
-                  ),
-                ],
+                ),
               )
             : Column(
                 children: [
-                  _DayBar(viewModel: viewModel),
-                  const Divider(height: 1),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(
+                      AppSpacing.screen,
+                      0,
+                      AppSpacing.screen,
+                      AppSpacing.md,
+                    ),
+                    child: PeriodNavigator(
+                      label: dayLabel(viewModel.date, now: viewModel.today),
+                      previousKey: const Key('client_meals_prev'),
+                      nextKey: const Key('client_meals_next'),
+                      labelKey: const Key('client_meals_date'),
+                      previousTooltip: 'Día anterior',
+                      nextTooltip: 'Día siguiente',
+                      onPrevious: viewModel.previousDay,
+                      onNext: viewModel.canGoForward ? viewModel.nextDay : null,
+                      onLabelTap: () => _pickDate(context, viewModel),
+                    ),
+                  ),
                   Expanded(child: _body(context, viewModel)),
                 ],
               ),
@@ -51,37 +86,27 @@ class ClientMealsView extends StatelessWidget {
   }
 
   Widget _body(BuildContext context, ClientMealsViewModel viewModel) {
-    if (viewModel.isLoading) {
-      return const Center(child: CircularProgressIndicator());
-    }
+    if (viewModel.isLoading) return const LoadingState();
     if (viewModel.error case final message?) {
-      return _Message(
-        children: [
-          ErrorBanner(message: message),
-          const SizedBox(height: 16),
-          FilledButton(
-            key: const Key('client_meals_retry'),
-            onPressed: viewModel.load,
-            child: const Text('Reintentar'),
-          ),
-        ],
+      return ErrorState(
+        message: message,
+        onRetry: viewModel.load,
+        retryKey: const Key('client_meals_retry'),
       );
     }
     if (viewModel.isEmptyDay) {
-      return _Message(
-        children: [
-          Icon(
-            Icons.no_meals_outlined,
-            size: 48,
-            color: Theme.of(context).colorScheme.primary,
-          ),
-          const SizedBox(height: 16),
-          const Text('No hay registros este día.', textAlign: TextAlign.center),
-          const SizedBox(height: 16),
-          OutlinedButton(
+      return EmptyState(
+        icon: Icons.no_meals_outlined,
+        title: 'No hay registros este día.',
+        message: 'Tu cliente no registró comidas en esta fecha.',
+        actions: [
+          PrimaryButton(
             key: const Key('client_meals_pick_date'),
+            label: 'Elige otra fecha',
+            icon: Icons.calendar_today_rounded,
+            variant: AppButtonVariant.outlined,
+            expand: false,
             onPressed: () => _pickDate(context, viewModel),
-            child: const Text('Elige otra fecha'),
           ),
         ],
       );
@@ -90,16 +115,38 @@ class ClientMealsView extends StatelessWidget {
     return RefreshIndicator(
       onRefresh: viewModel.load,
       child: ListView(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.fromLTRB(
+          AppSpacing.screen,
+          0,
+          AppSpacing.screen,
+          AppSpacing.huge,
+        ),
         children: [
-          Text(
-            'Total del día: ${mealValuesText(calories: totals.calories, proteinG: totals.proteinG, fatG: totals.fatG)}',
-            key: const Key('client_meals_totals'),
-            style: Theme.of(context).textTheme.titleSmall,
+          FadeSlideIn(
+            child: DayTotalCard(
+              key: const Key('client_meals_totals'),
+              values: mealValuesText(
+                calories: totals.calories,
+                proteinG: totals.proteinG,
+                fatG: totals.fatG,
+              ),
+            ),
           ),
-          const SizedBox(height: 8),
-          for (final meal in viewModel.meals)
-            _MealCard(meal: meal, viewModel: viewModel),
+          const SizedBox(height: AppSpacing.cardGap),
+          FadeSlideIn(
+            index: 1,
+            child: SectionCard(
+              title: 'Registros',
+              child: Column(
+                children: [
+                  for (final (index, meal) in viewModel.meals.indexed) ...[
+                    if (index > 0) const Divider(height: AppSpacing.lg),
+                    _MealRow(meal: meal, viewModel: viewModel),
+                  ],
+                ],
+              ),
+            ),
+          ),
         ],
       ),
     );
@@ -120,164 +167,29 @@ Future<void> _pickDate(
   if (picked != null) unawaited(viewModel.selectDate(picked));
 }
 
-class _DayBar extends StatelessWidget {
-  const _DayBar({required this.viewModel});
-
-  final ClientMealsViewModel viewModel;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      child: Row(
-        children: [
-          IconButton(
-            key: const Key('client_meals_prev'),
-            tooltip: 'Día anterior',
-            icon: const Icon(Icons.chevron_left),
-            onPressed: viewModel.previousDay,
-          ),
-          Expanded(
-            child: TextButton.icon(
-              key: const Key('client_meals_date'),
-              icon: const Icon(Icons.calendar_today_outlined, size: 18),
-              label: Text(dayLabel(viewModel.date, now: viewModel.today)),
-              onPressed: () => _pickDate(context, viewModel),
-            ),
-          ),
-          IconButton(
-            key: const Key('client_meals_next'),
-            tooltip: 'Día siguiente',
-            icon: const Icon(Icons.chevron_right),
-            onPressed: viewModel.canGoForward ? viewModel.nextDay : null,
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _MealCard extends StatelessWidget {
-  const _MealCard({required this.meal, required this.viewModel});
+class _MealRow extends StatelessWidget {
+  const _MealRow({required this.meal, required this.viewModel});
 
   final ClientMeal meal;
   final ClientMealsViewModel viewModel;
 
   @override
   Widget build(BuildContext context) {
-    final textTheme = Theme.of(context).textTheme;
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Row(
-          children: [
-            SizedBox.square(
-              dimension: 72,
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(8),
-                child: switch (meal.photoUrl) {
-                  final url? => _MealPhoto(
-                    key: Key('meal_${meal.id}_photo'),
-                    photo: viewModel.photo(url),
-                  ),
-                  null => _NoPhoto(key: Key('meal_${meal.id}_manual')),
-                },
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    mealTimeText(meal.eatenAt),
-                    style: textTheme.titleMedium,
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    mealValuesText(
-                      calories: meal.caloriesKcal,
-                      proteinG: meal.proteinG,
-                      fatG: meal.fatG,
-                    ),
-                  ),
-                  if (meal.photoUrl == null)
-                    Text('Captura manual', style: textTheme.bodySmall),
-                ],
-              ),
-            ),
-          ],
+    return MealEntryCard(
+      time: mealTimeText(meal.eatenAt),
+      values: mealValuesText(
+        calories: meal.caloriesKcal,
+        proteinG: meal.proteinG,
+        fatG: meal.fatG,
+      ),
+      isManual: meal.photoUrl == null,
+      photo: switch (meal.photoUrl) {
+        final url? => AsyncPhoto(
+          key: Key('meal_${meal.id}_photo'),
+          photo: viewModel.photo(url),
         ),
-      ),
-    );
-  }
-}
-
-class _MealPhoto extends StatelessWidget {
-  const _MealPhoto({required this.photo, super.key});
-
-  final Future<Uint8List> photo;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-    return FutureBuilder<Uint8List>(
-      future: photo,
-      builder: (context, snapshot) {
-        if (snapshot.data case final bytes?) {
-          return Image.memory(
-            bytes,
-            fit: BoxFit.cover,
-            semanticLabel: 'Foto de la comida',
-            errorBuilder: (_, _, _) =>
-                Icon(Icons.broken_image_outlined, color: colors.outline),
-          );
-        }
-        if (snapshot.hasError) {
-          return ColoredBox(
-            color: colors.surfaceContainerHighest,
-            child: Icon(Icons.broken_image_outlined, color: colors.outline),
-          );
-        }
-        return ColoredBox(
-          color: colors.surfaceContainerHighest,
-          child: const Center(
-            child: SizedBox.square(
-              dimension: 20,
-              child: CircularProgressIndicator(strokeWidth: 2),
-            ),
-          ),
-        );
+        null => PhotoPlaceholder(key: Key('meal_${meal.id}_manual')),
       },
-    );
-  }
-}
-
-class _NoPhoto extends StatelessWidget {
-  const _NoPhoto({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-    return ColoredBox(
-      color: colors.surfaceContainerHighest,
-      child: Icon(Icons.restaurant_outlined, color: colors.outline),
-    );
-  }
-}
-
-class _Message extends StatelessWidget {
-  const _Message({required this.children});
-
-  final List<Widget> children;
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(mainAxisSize: MainAxisSize.min, children: children),
-      ),
     );
   }
 }

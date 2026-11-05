@@ -2,12 +2,13 @@ import 'package:flutter/material.dart';
 
 import '../theme/app_tokens.dart';
 import '../theme/theme_context.dart';
-import 'surface_card.dart';
+import 'list_row.dart';
 
-/// Registro de comida en una lista por día: foto (o ícono si fue captura manual),
-/// hora, valores y una acción opcional a la derecha.
+/// Registro de comida en la lista de un día (referencia: "Log meal"): foto (o
+/// ícono si fue captura manual), hora, valores y una acción opcional a la derecha.
 ///
-/// La usan "Mis comidas" (HU-09) y las comidas de un cliente (HU-25).
+/// Va dentro de una tarjeta (`MealDayCard`). La usan "Mis comidas" (HU-09) y
+/// las comidas de un cliente (HU-25).
 class MealEntryCard extends StatelessWidget {
   const MealEntryCard({
     required this.time,
@@ -31,44 +32,12 @@ class MealEntryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final text = context.text;
-    final colors = context.colors;
-    return SurfaceCard(
-      padding: const EdgeInsets.all(AppSpacing.md),
-      child: Row(
-        children: [
-          SizedBox.square(
-            dimension: AppSizes.thumbnail,
-            child: ClipRRect(borderRadius: AppRadius.lgAll, child: photo),
-          ),
-          const SizedBox(width: AppSpacing.md),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Icon(
-                      Icons.schedule_rounded,
-                      size: AppSizes.iconXs,
-                      color: colors.onSurfaceVariant,
-                    ),
-                    const SizedBox(width: AppSpacing.xs),
-                    Text(time, style: text.titleMedium),
-                  ],
-                ),
-                const SizedBox(height: AppSpacing.xs),
-                Text(values, style: text.bodyMedium),
-                if (isManual) ...[
-                  const SizedBox(height: AppSpacing.sm),
-                  const _Tag(label: 'Captura manual'),
-                ],
-              ],
-            ),
-          ),
-          ?trailing,
-        ],
-      ),
+    return ListRow(
+      leading: photo,
+      title: time,
+      subtitle: values,
+      footer: isManual ? const _Tag(label: 'Captura manual') : null,
+      action: trailing,
     );
   }
 }

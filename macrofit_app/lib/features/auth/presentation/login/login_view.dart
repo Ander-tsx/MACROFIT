@@ -22,7 +22,6 @@ class LoginView extends StatelessWidget {
     final text = context.text;
 
     return Scaffold(
-      backgroundColor: context.appColors.hero,
       body: AuthLayout(
         tagline: 'Registra tus comidas con una foto y alcanza tu meta.',
         child: AutofillGroup(

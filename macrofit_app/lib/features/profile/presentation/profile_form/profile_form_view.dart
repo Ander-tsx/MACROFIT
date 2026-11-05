@@ -2,7 +2,21 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
+import '../../../../core/presentation/theme/app_tokens.dart';
+import '../../../../core/presentation/theme/theme_context.dart';
+import '../../../../core/presentation/widgets/app_header.dart';
+import '../../../../core/presentation/widgets/app_snack_bar.dart';
+import '../../../../core/presentation/widgets/app_text_field.dart';
+import '../../../../core/presentation/widgets/choice_pills.dart';
+import '../../../../core/presentation/widgets/content_width.dart';
+import '../../../../core/presentation/widgets/date_field.dart';
 import '../../../../core/presentation/widgets/error_banner.dart';
+import '../../../../core/presentation/widgets/error_state.dart';
+import '../../../../core/presentation/widgets/fade_slide_in.dart';
+import '../../../../core/presentation/widgets/field_error_text.dart';
+import '../../../../core/presentation/widgets/loading_state.dart';
+import '../../../../core/presentation/widgets/primary_button.dart';
+import '../../../../core/presentation/widgets/section_card.dart';
 import '../../domain/entities/profile.dart';
 import '../../domain/validators/profile_validators.dart';
 import 'profile_form_view_model.dart';
@@ -18,8 +32,7 @@ class ProfileFormView extends StatelessWidget {
     final saved = await viewModel.submit();
     // En el alta el router cambia de pantalla solo; en la edición se regresa.
     if (!saved || !viewModel.isEditing || !context.mounted) return;
-    ScaffoldMessenger.of(context)
-        .showSnackBar(const SnackBar(content: Text('Perfil actualizado')));
+    showAppSnackBar(ScaffoldMessenger.of(context), 'Perfil actualizado');
     if (context.canPop()) context.pop();
   }
 
@@ -51,19 +64,16 @@ class ProfileFormView extends StatelessWidget {
     final viewModel = context.watch<ProfileFormViewModel>();
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(viewModel.isEditing ? 'Mi perfil' : 'Tu perfil inicial'),
+      appBar: AppHeader(
+        title: viewModel.isEditing ? 'Mi perfil' : 'Tu perfil inicial',
         actions: [
           if (!viewModel.isEditing)
             IconButton(
               key: const Key('profile_logout'),
               tooltip: 'Cerrar sesión',
               icon: viewModel.isLoggingOut
-                  ? const SizedBox.square(
-                      dimension: 20,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Icon(Icons.logout),
+                  ? const InlineSpinner()
+                  : const Icon(Icons.logout_rounded),
               onPressed: viewModel.isLoggingOut ? null : viewModel.logout,
             ),
         ],
@@ -73,215 +83,199 @@ class ProfileFormView extends StatelessWidget {
   }
 
   Widget _body(BuildContext context, ProfileFormViewModel viewModel) {
-    if (viewModel.isLoading) {
-      return const Center(child: CircularProgressIndicator());
-    }
+    if (viewModel.isLoading) return const LoadingState();
     if (viewModel.loadError case final message?) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              ErrorBanner(message: message),
-              const SizedBox(height: 16),
-              FilledButton(
-                key: const Key('profile_retry'),
-                onPressed: viewModel.load,
-                child: const Text('Reintentar'),
-              ),
-            ],
-          ),
-        ),
+      return ErrorState(
+        message: message,
+        onRetry: viewModel.load,
+        retryKey: const Key('profile_retry'),
       );
     }
 
-    final theme = Theme.of(context);
-    return Center(
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.all(24),
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 420),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              if (!viewModel.isEditing) ...[
-                Text(
+    final colors = context.colors;
+    return SingleChildScrollView(
+      padding: AppSpacing.screenPadding,
+      child: ContentWidth(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            if (!viewModel.isEditing) ...[
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+                child: Text(
                   'Cuéntanos sobre ti para calcular tu meta y recomendarte rutinas.',
-                  style: theme.textTheme.bodyLarge,
-                ),
-                const SizedBox(height: 24),
-              ],
-              if (viewModel.generalError case final message?) ...[
-                ErrorBanner(message: message),
-                const SizedBox(height: 16),
-              ],
-              const _SectionTitle('Objetivo'),
-              SegmentedButton<Objective>(
-                key: const Key('profile_objective'),
-                emptySelectionAllowed: true,
-                showSelectedIcon: false,
-                selected: {?viewModel.objective},
-                onSelectionChanged: (selection) => viewModel.setObjective(
-                  selection.isEmpty ? null : selection.first,
-                ),
-                segments: [
-                  for (final objective in Objective.values)
-                    ButtonSegment(
-                      value: objective,
-                      label: Text(objective.label, textAlign: TextAlign.center),
-                    ),
-                ],
-              ),
-              _FieldErrorText(
-                viewModel.fieldError(ProfileFormViewModel.objectiveField),
-              ),
-              const SizedBox(height: 20),
-              const _SectionTitle('Nivel'),
-              SegmentedButton<ExperienceLevel>(
-                key: const Key('profile_level'),
-                emptySelectionAllowed: true,
-                showSelectedIcon: false,
-                selected: {?viewModel.level},
-                onSelectionChanged: (selection) => viewModel.setLevel(
-                  selection.isEmpty ? null : selection.first,
-                ),
-                segments: [
-                  for (final level in ExperienceLevel.values)
-                    ButtonSegment(
-                      value: level,
-                      label: Text(level.label, textAlign: TextAlign.center),
-                    ),
-                ],
-              ),
-              _FieldErrorText(
-                viewModel.fieldError(ProfileFormViewModel.levelField),
-              ),
-              const SizedBox(height: 20),
-              const _SectionTitle('Días de entrenamiento por semana'),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: [
-                  for (
-                    var days = ProfileValidators.trainingDaysMin;
-                    days <= ProfileValidators.trainingDaysMax;
-                    days++
-                  )
-                    ChoiceChip(
-                      key: Key('profile_training_days_$days'),
-                      label: Text('$days'),
-                      selected: viewModel.trainingDays == days,
-                      onSelected: (selected) =>
-                          viewModel.setTrainingDays(selected ? days : null),
-                    ),
-                ],
-              ),
-              _FieldErrorText(
-                viewModel.fieldError(ProfileFormViewModel.trainingDaysField),
-              ),
-              const SizedBox(height: 20),
-              TextFormField(
-                key: const Key('profile_weight'),
-                initialValue: viewModel.weight,
-                keyboardType: const TextInputType.numberWithOptions(
-                  decimal: true,
-                ),
-                textInputAction: TextInputAction.next,
-                onChanged: viewModel.setWeight,
-                decoration: InputDecoration(
-                  labelText: 'Peso',
-                  suffixText: 'kg',
-                  helperText:
-                      'Entre ${ProfileValidators.weightMinKg} y ${ProfileValidators.weightMaxKg} kg',
-                  errorText: viewModel.fieldError(
-                    ProfileFormViewModel.weightField,
+                  style: context.text.bodyLarge?.copyWith(
+                    color: colors.onSurfaceVariant,
                   ),
-                  border: const OutlineInputBorder(),
                 ),
               ),
-              const SizedBox(height: 16),
-              TextFormField(
-                key: const Key('profile_height'),
-                initialValue: viewModel.height,
-                keyboardType: const TextInputType.numberWithOptions(
-                  decimal: true,
-                ),
-                textInputAction: TextInputAction.done,
-                onChanged: viewModel.setHeight,
-                decoration: InputDecoration(
-                  labelText: 'Estatura',
-                  suffixText: 'cm',
-                  helperText:
-                      'Entre ${ProfileValidators.heightMinCm} y ${ProfileValidators.heightMaxCm} cm',
-                  errorText: viewModel.fieldError(
-                    ProfileFormViewModel.heightField,
-                  ),
-                  border: const OutlineInputBorder(),
-                ),
-              ),
-              const SizedBox(height: 20),
-              const _SectionTitle('Sexo'),
-              SegmentedButton<Gender>(
-                key: const Key('profile_gender'),
-                emptySelectionAllowed: true,
-                showSelectedIcon: false,
-                selected: {?viewModel.gender},
-                onSelectionChanged: (selection) => viewModel.setGender(
-                  selection.isEmpty ? null : selection.first,
-                ),
-                segments: [
-                  for (final gender in Gender.values)
-                    ButtonSegment(value: gender, label: Text(gender.label)),
-                ],
-              ),
-              _FieldErrorText(
-                viewModel.fieldError(ProfileFormViewModel.genderField),
-              ),
-              const SizedBox(height: 20),
-              InkWell(
-                key: const Key('profile_birth_date'),
-                borderRadius: BorderRadius.circular(4),
-                onTap: () => _pickBirthDate(context, viewModel),
-                child: InputDecorator(
-                  isEmpty: viewModel.birthDate == null,
-                  decoration: InputDecoration(
-                    labelText: 'Fecha de nacimiento',
-                    suffixIcon: const Icon(Icons.calendar_today),
-                    errorText: viewModel.fieldError(
-                      ProfileFormViewModel.birthDateField,
-                    ),
-                    border: const OutlineInputBorder(),
-                  ),
-                  child: Text(switch (viewModel.birthDate) {
-                    final date? => _formatDate(date),
-                    null => '',
-                  }),
-                ),
-              ),
-              const SizedBox(height: 24),
-              FilledButton(
-                key: const Key('profile_submit'),
-                onPressed: viewModel.isSubmitting
-                    ? null
-                    : () => _submit(context, viewModel),
-                child: viewModel.isSubmitting
-                    ? const SizedBox.square(
-                        dimension: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : Text(
-                        viewModel.isEditing
-                            ? 'Guardar cambios'
-                            : 'Guardar y continuar',
-                      ),
-              ),
+              const SizedBox(height: AppSpacing.lg),
             ],
-          ),
+            if (viewModel.generalError case final message?) ...[
+              FadeSlideIn(child: ErrorBanner(message: message)),
+              const SizedBox(height: AppSpacing.md),
+            ],
+            FadeSlideIn(
+              child: SectionCard(
+                title: 'Tu objetivo',
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    const _Label('Objetivo'),
+                    ChoicePills<Objective>(
+                      key: const Key('profile_objective'),
+                      options: Objective.values,
+                      selected: viewModel.objective,
+                      labelOf: (objective) => objective.label,
+                      hasError: _hasError(
+                        viewModel,
+                        ProfileFormViewModel.objectiveField,
+                      ),
+                      onChanged: viewModel.setObjective,
+                    ),
+                    FieldErrorText(
+                      viewModel.fieldError(ProfileFormViewModel.objectiveField),
+                    ),
+                    const SizedBox(height: AppSpacing.xl),
+                    const _Label('Nivel'),
+                    ChoicePills<ExperienceLevel>(
+                      key: const Key('profile_level'),
+                      options: ExperienceLevel.values,
+                      selected: viewModel.level,
+                      labelOf: (level) => level.label,
+                      hasError: _hasError(
+                        viewModel,
+                        ProfileFormViewModel.levelField,
+                      ),
+                      onChanged: viewModel.setLevel,
+                    ),
+                    FieldErrorText(
+                      viewModel.fieldError(ProfileFormViewModel.levelField),
+                    ),
+                    const SizedBox(height: AppSpacing.xl),
+                    const _Label('Días de entrenamiento por semana'),
+                    ChoicePills<int>(
+                      options: [
+                        for (
+                          var days = ProfileValidators.trainingDaysMin;
+                          days <= ProfileValidators.trainingDaysMax;
+                          days++
+                        )
+                          days,
+                      ],
+                      selected: viewModel.trainingDays,
+                      labelOf: (days) => '$days',
+                      keyOf: (days) => Key('profile_training_days_$days'),
+                      hasError: _hasError(
+                        viewModel,
+                        ProfileFormViewModel.trainingDaysField,
+                      ),
+                      onChanged: viewModel.setTrainingDays,
+                    ),
+                    FieldErrorText(
+                      viewModel.fieldError(
+                        ProfileFormViewModel.trainingDaysField,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: AppSpacing.cardGap),
+            FadeSlideIn(
+              index: 1,
+              child: SectionCard(
+                title: 'Sobre ti',
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    AppTextField(
+                      key: const Key('profile_weight'),
+                      label: 'Peso',
+                      icon: Icons.monitor_weight_outlined,
+                      initialValue: viewModel.weight,
+                      keyboardType: const TextInputType.numberWithOptions(
+                        decimal: true,
+                      ),
+                      textInputAction: TextInputAction.next,
+                      onChanged: viewModel.setWeight,
+                      suffixText: 'kg',
+                      helperText:
+                          'Entre ${ProfileValidators.weightMinKg} y ${ProfileValidators.weightMaxKg} kg',
+                      errorText: viewModel.fieldError(
+                        ProfileFormViewModel.weightField,
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.md),
+                    AppTextField(
+                      key: const Key('profile_height'),
+                      label: 'Estatura',
+                      icon: Icons.height_rounded,
+                      initialValue: viewModel.height,
+                      keyboardType: const TextInputType.numberWithOptions(
+                        decimal: true,
+                      ),
+                      textInputAction: TextInputAction.done,
+                      onChanged: viewModel.setHeight,
+                      suffixText: 'cm',
+                      helperText:
+                          'Entre ${ProfileValidators.heightMinCm} y ${ProfileValidators.heightMaxCm} cm',
+                      errorText: viewModel.fieldError(
+                        ProfileFormViewModel.heightField,
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.md),
+                    DateField(
+                      key: const Key('profile_birth_date'),
+                      label: 'Fecha de nacimiento',
+                      value: switch (viewModel.birthDate) {
+                        final date? => _formatDate(date),
+                        null => null,
+                      },
+                      errorText: viewModel.fieldError(
+                        ProfileFormViewModel.birthDateField,
+                      ),
+                      onTap: () => _pickBirthDate(context, viewModel),
+                    ),
+                    const SizedBox(height: AppSpacing.xl),
+                    const _Label('Sexo'),
+                    ChoicePills<Gender>(
+                      key: const Key('profile_gender'),
+                      options: Gender.values,
+                      selected: viewModel.gender,
+                      labelOf: (gender) => gender.label,
+                      hasError: _hasError(
+                        viewModel,
+                        ProfileFormViewModel.genderField,
+                      ),
+                      onChanged: viewModel.setGender,
+                    ),
+                    FieldErrorText(
+                      viewModel.fieldError(ProfileFormViewModel.genderField),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: AppSpacing.xxl),
+            PrimaryButton(
+              key: const Key('profile_submit'),
+              label: viewModel.isEditing
+                  ? 'Guardar cambios'
+                  : 'Guardar y continuar',
+              icon: Icons.check_rounded,
+              isLoading: viewModel.isSubmitting,
+              onPressed: () => _submit(context, viewModel),
+            ),
+            const SizedBox(height: AppSpacing.xxl),
+          ],
         ),
       ),
     );
   }
+
+  static bool _hasError(ProfileFormViewModel viewModel, String field) =>
+      viewModel.fieldError(field) != null;
 
   /// `dd/mm/aaaa`.
   static String _formatDate(DateTime date) {
@@ -290,37 +284,20 @@ class ProfileFormView extends StatelessWidget {
   }
 }
 
-class _SectionTitle extends StatelessWidget {
-  const _SectionTitle(this.text);
+/// Etiqueta de un grupo de opciones dentro de una tarjeta.
+class _Label extends StatelessWidget {
+  const _Label(this.text);
 
   final String text;
 
   @override
   Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.only(bottom: 8),
-    child: Text(text, style: Theme.of(context).textTheme.titleSmall),
-  );
-}
-
-/// Mensaje de error para controles que no son `TextField`.
-class _FieldErrorText extends StatelessWidget {
-  const _FieldErrorText(this.message);
-
-  final String? message;
-
-  @override
-  Widget build(BuildContext context) {
-    final message = this.message;
-    if (message == null) return const SizedBox.shrink();
-    final theme = Theme.of(context);
-    return Padding(
-      padding: const EdgeInsets.only(top: 6, left: 12),
-      child: Text(
-        message,
-        style: theme.textTheme.bodySmall?.copyWith(
-          color: theme.colorScheme.error,
-        ),
+    padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+    child: Text(
+      text,
+      style: context.text.labelLarge?.copyWith(
+        color: context.colors.onSurfaceVariant,
       ),
-    );
-  }
+    ),
+  );
 }

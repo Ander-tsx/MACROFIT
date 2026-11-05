@@ -5,8 +5,8 @@ import '../theme/app_tokens.dart';
 import '../theme/theme_context.dart';
 import 'press_scale.dart';
 
-/// Superficie base de la guía visual: esquinas de 28 px, sombra suave y sin
-/// borde. Si recibe [onTap] reacciona al toque (escala y vibración).
+/// Superficie base de la guía visual: esquinas de 30 px, sin borde; en claro
+/// lleva una sombra suave. Si recibe [onTap] reacciona al toque (escala y vibración).
 class SurfaceCard extends StatelessWidget {
   const SurfaceCard({
     required this.child,
@@ -35,13 +35,6 @@ class SurfaceCard extends StatelessWidget {
         color: color ?? colors.surface,
         borderRadius: radius,
         boxShadow: shadow && !isDark ? AppShadows.soft(context) : null,
-        border: isDark
-            ? Border.all(
-                color: colors.outlineVariant.withValues(
-                  alpha: AppOpacity.hairline,
-                ),
-              )
-            : null,
       ),
       child: Material(
         type: MaterialType.transparency,

@@ -4,79 +4,92 @@ import 'app_tokens.dart';
 
 /// Paleta base de MacroFit (ver la guía en `lib/app/README.md`).
 ///
+/// Inspirada en One UI: negro puro y grises cálidos en oscuro, grises claros
+/// en claro, y tres colores vivos para los macronutrientes.
+///
 /// Es el **único** archivo con valores de color. El `ColorScheme` de `AppTheme` y la
 /// extensión [AppColors] se arman con estos valores; las vistas solo leen el tema.
 abstract final class AppPalette {
-  // Tinta (texto y botones principales en claro, fondos en oscuro).
-  static const ink950 = Color(0xFF0B0D10);
-  static const ink900 = Color(0xFF121315);
-  static const ink850 = Color(0xFF15181C);
-  static const ink800 = Color(0xFF1C2025);
-  static const ink700 = Color(0xFF262B32);
-  static const ink600 = Color(0xFF353B44);
-  static const ink500 = Color(0xFF63666D);
-  static const ink400 = Color(0xFF8A939E);
-  static const ink300 = Color(0xFFA9B1BB);
+  // Neutros oscuros.
+  static const black = Color(0xFF000000);
+  static const night900 = Color(0xFF0B0B0D);
+  static const night800 = Color(0xFF17171B);
+  static const night700 = Color(0xFF222327);
+  static const night600 = Color(0xFF2D2E33);
+  static const night500 = Color(0xFF3B3C42);
+  static const night400 = Color(0xFF5C5D64);
+  static const night300 = Color(0xFF9C9CA3);
 
-  // Neutros fríos (fondos en claro).
-  static const mist50 = Color(0xFFFFFFFF);
-  static const mist100 = Color(0xFFF4F4F1);
-  static const mist200 = Color(0xFFEDEDE9);
-  static const mist300 = Color(0xFFE4E4DF);
-  static const mist400 = Color(0xFFD6D6D0);
-  static const mist500 = Color(0xFFC2C2BB);
+  // Neutros claros.
+  static const white = Color(0xFFFFFFFF);
+  static const day100 = Color(0xFFF2F2F5);
+  static const day200 = Color(0xFFEBEBF0);
+  static const day300 = Color(0xFFE1E1E7);
+  static const day400 = Color(0xFFCFCFD6);
+  static const day500 = Color(0xFF66666E);
+  static const ink = Color(0xFF111114);
+  static const snow = Color(0xFFF4F4F6);
 
-  // Verde de marca: progreso, éxito y calorías.
-  static const green900 = Color(0xFF0B4A26);
-  static const green800 = Color(0xFF12371F);
-  static const green700 = Color(0xFF15803D);
-  static const green500 = Color(0xFF22A55B);
-  static const green400 = Color(0xFF4ADE80);
-  static const green200 = Color(0xFFBBF7D0);
-  static const green100 = Color(0xFFDCF5E5);
-  static const lime300 = Color(0xFFC6F36B);
+  // Calorías: verde.
+  static const green300 = Color(0xFF8BD448);
+  static const green700 = Color(0xFF3B8A10);
+  static const greenDeep = Color(0xFF24381A);
+  static const greenSoft = Color(0xFFE3F3D6);
 
-  // Azul: proteína e información.
-  static const blue900 = Color(0xFF173A7A);
-  static const blue800 = Color(0xFF14284D);
-  static const blue600 = Color(0xFF2563EB);
-  static const blue400 = Color(0xFF60A5FA);
-  static const blue200 = Color(0xFFBFDBFE);
-  static const blue100 = Color(0xFFE2ECFF);
+  // Proteína: cian.
+  static const cyan300 = Color(0xFF2CC6EE);
+  static const cyan700 = Color(0xFF0A7FAA);
+  static const cyanDeep = Color(0xFF12313B);
+  static const cyanSoft = Color(0xFFD9F1F9);
 
-  // Ámbar: grasa y advertencias.
-  static const amber900 = Color(0xFF7A4A06);
-  static const amber800 = Color(0xFF3D2A0A);
-  static const amber600 = Color(0xFFD97706);
-  static const amber400 = Color(0xFFFBBF24);
-  static const amber200 = Color(0xFFFDE68A);
-  static const amber100 = Color(0xFFFEF3C7);
+  // Grasa: morado.
+  static const purple300 = Color(0xFFB76CFF);
+  static const purple700 = Color(0xFF8338D6);
+  static const purpleDeep = Color(0xFF2E1E40);
+  static const purpleSoft = Color(0xFFEEE1FB);
 
-  // Rojo: errores y acciones destructivas.
-  static const red900 = Color(0xFF8A1C1C);
-  static const red800 = Color(0xFF3B1414);
-  static const red600 = Color(0xFFC62828);
-  static const red400 = Color(0xFFF87171);
-  static const red200 = Color(0xFFFECACA);
-  static const red100 = Color(0xFFFDE7E7);
+  // Advertencia: ámbar.
+  static const amber300 = Color(0xFFFFC24D);
+  static const amber700 = Color(0xFF9A5F00);
+  static const amberDeep = Color(0xFF3A2A0C);
+  static const amberSoft = Color(0xFFFFF1D6);
 
-  static const shadow = Color(0xFF0B0D10);
+  // Error: rojo coral.
+  static const red300 = Color(0xFFFF6B6B);
+  static const red700 = Color(0xFFD3303B);
+  static const redDeep = Color(0xFF3A1416);
+  static const redSoft = Color(0xFFFDE4E5);
+
+  // Tarjetas destacadas (degradados).
+  static const forest600 = Color(0xFF0E6B52);
+  static const forest400 = Color(0xFF16896B);
+  static const ocean600 = Color(0xFF145DB8);
+  static const ocean400 = Color(0xFF1F7BD8);
+  static const ember600 = Color(0xFFCB5A33);
+  static const ember400 = Color(0xFFE47E4C);
+
+  // Fondo del inicio: resplandor azul noche arriba.
+  static const navyGlow = Color(0xFF0F2347);
+  static const skyGlow = Color(0xFFDCE6F7);
+
+  static const shadow = Color(0xFF000000);
   static const transparent = Color(0x00000000);
 }
 
 /// Colores semánticos que el `ColorScheme` de Material no cubre: macronutrientes,
-/// estados (éxito, advertencia, información) y el encabezado oscuro.
+/// estados (éxito, advertencia, información), tarjetas destacadas y la barra
+/// flotante.
 ///
 /// Se leen con `context.appColors` (ver `theme_context.dart`).
 @immutable
 class AppColors extends ThemeExtension<AppColors> {
   const AppColors({
     required this.calories,
-    required this.caloriesContainer,
+    required this.caloriesTrack,
     required this.protein,
-    required this.proteinContainer,
+    required this.proteinTrack,
     required this.fat,
-    required this.fatContainer,
+    required this.fatTrack,
     required this.success,
     required this.successContainer,
     required this.onSuccessContainer,
@@ -92,17 +105,26 @@ class AppColors extends ThemeExtension<AppColors> {
     required this.heroGlass,
     required this.accent,
     required this.onAccent,
+    required this.featureGreen,
+    required this.featureGreenLight,
+    required this.featureBlue,
+    required this.featureBlueLight,
+    required this.featureEmber,
+    required this.featureEmberLight,
+    required this.onFeature,
+    required this.glow,
     required this.shadow,
   });
 
-  /// Macronutrientes: siempre el mismo color en toda la app.
+  /// Macronutrientes: siempre el mismo color en toda la app (anillos, barras, etiquetas).
   final Color calories;
-  final Color caloriesContainer;
+  final Color caloriesTrack;
   final Color protein;
-  final Color proteinContainer;
+  final Color proteinTrack;
   final Color fat;
-  final Color fatContainer;
+  final Color fatTrack;
 
+  /// Estados.
   final Color success;
   final Color successContainer;
   final Color onSuccessContainer;
@@ -113,76 +135,103 @@ class AppColors extends ThemeExtension<AppColors> {
   final Color infoContainer;
   final Color onInfoContainer;
 
-  /// Encabezado oscuro de las pantallas principales y de la autenticación.
+  /// Superficie oscura flotante (barra inferior, avisos).
   final Color hero;
   final Color onHero;
   final Color onHeroMuted;
   final Color heroGlass;
 
-  /// Acento de marca (lima) para resaltar sobre fondos oscuros.
+  /// Acento de marca: botón principal de la barra y resaltados.
   final Color accent;
   final Color onAccent;
 
+  /// Tarjetas destacadas: degradado de dos tonos y texto blanco.
+  final Color featureGreen;
+  final Color featureGreenLight;
+  final Color featureBlue;
+  final Color featureBlueLight;
+  final Color featureEmber;
+  final Color featureEmberLight;
+  final Color onFeature;
+
+  /// Resplandor superior del fondo del inicio.
+  final Color glow;
   final Color shadow;
 
   static const light = AppColors(
-    calories: AppPalette.green500,
-    caloriesContainer: AppPalette.green100,
-    protein: AppPalette.blue600,
-    proteinContainer: AppPalette.blue100,
-    fat: AppPalette.amber600,
-    fatContainer: AppPalette.amber100,
+    calories: AppPalette.green700,
+    caloriesTrack: AppPalette.greenSoft,
+    protein: AppPalette.cyan700,
+    proteinTrack: AppPalette.cyanSoft,
+    fat: AppPalette.purple700,
+    fatTrack: AppPalette.purpleSoft,
     success: AppPalette.green700,
-    successContainer: AppPalette.green100,
-    onSuccessContainer: AppPalette.green900,
-    warning: AppPalette.amber600,
-    warningContainer: AppPalette.amber100,
-    onWarningContainer: AppPalette.amber900,
-    info: AppPalette.blue600,
-    infoContainer: AppPalette.blue100,
-    onInfoContainer: AppPalette.blue900,
-    hero: AppPalette.ink900,
-    onHero: AppPalette.mist50,
-    onHeroMuted: AppPalette.ink300,
-    heroGlass: AppPalette.ink700,
-    accent: AppPalette.lime300,
-    onAccent: AppPalette.ink900,
+    successContainer: AppPalette.greenSoft,
+    onSuccessContainer: AppPalette.green700,
+    warning: AppPalette.amber700,
+    warningContainer: AppPalette.amberSoft,
+    onWarningContainer: AppPalette.amber700,
+    info: AppPalette.cyan700,
+    infoContainer: AppPalette.cyanSoft,
+    onInfoContainer: AppPalette.cyan700,
+    hero: AppPalette.night700,
+    onHero: AppPalette.snow,
+    onHeroMuted: AppPalette.night300,
+    heroGlass: AppPalette.night600,
+    accent: AppPalette.green300,
+    onAccent: AppPalette.ink,
+    featureGreen: AppPalette.forest600,
+    featureGreenLight: AppPalette.forest400,
+    featureBlue: AppPalette.ocean600,
+    featureBlueLight: AppPalette.ocean400,
+    featureEmber: AppPalette.ember600,
+    featureEmberLight: AppPalette.ember400,
+    onFeature: AppPalette.white,
+    glow: AppPalette.skyGlow,
     shadow: AppPalette.shadow,
   );
 
   static const dark = AppColors(
-    calories: AppPalette.green400,
-    caloriesContainer: AppPalette.green800,
-    protein: AppPalette.blue400,
-    proteinContainer: AppPalette.blue800,
-    fat: AppPalette.amber400,
-    fatContainer: AppPalette.amber800,
-    success: AppPalette.green400,
-    successContainer: AppPalette.green800,
-    onSuccessContainer: AppPalette.green200,
-    warning: AppPalette.amber400,
-    warningContainer: AppPalette.amber800,
-    onWarningContainer: AppPalette.amber200,
-    info: AppPalette.blue400,
-    infoContainer: AppPalette.blue800,
-    onInfoContainer: AppPalette.blue200,
-    hero: AppPalette.ink850,
-    onHero: AppPalette.mist100,
-    onHeroMuted: AppPalette.ink300,
-    heroGlass: AppPalette.ink700,
-    accent: AppPalette.lime300,
-    onAccent: AppPalette.ink900,
+    calories: AppPalette.green300,
+    caloriesTrack: AppPalette.greenDeep,
+    protein: AppPalette.cyan300,
+    proteinTrack: AppPalette.cyanDeep,
+    fat: AppPalette.purple300,
+    fatTrack: AppPalette.purpleDeep,
+    success: AppPalette.green300,
+    successContainer: AppPalette.greenDeep,
+    onSuccessContainer: AppPalette.green300,
+    warning: AppPalette.amber300,
+    warningContainer: AppPalette.amberDeep,
+    onWarningContainer: AppPalette.amber300,
+    info: AppPalette.cyan300,
+    infoContainer: AppPalette.cyanDeep,
+    onInfoContainer: AppPalette.cyan300,
+    hero: AppPalette.night600,
+    onHero: AppPalette.snow,
+    onHeroMuted: AppPalette.night300,
+    heroGlass: AppPalette.night500,
+    accent: AppPalette.green300,
+    onAccent: AppPalette.ink,
+    featureGreen: AppPalette.forest600,
+    featureGreenLight: AppPalette.forest400,
+    featureBlue: AppPalette.ocean600,
+    featureBlueLight: AppPalette.ocean400,
+    featureEmber: AppPalette.ember600,
+    featureEmberLight: AppPalette.ember400,
+    onFeature: AppPalette.white,
+    glow: AppPalette.navyGlow,
     shadow: AppPalette.shadow,
   );
 
   @override
   AppColors copyWith({
     Color? calories,
-    Color? caloriesContainer,
+    Color? caloriesTrack,
     Color? protein,
-    Color? proteinContainer,
+    Color? proteinTrack,
     Color? fat,
-    Color? fatContainer,
+    Color? fatTrack,
     Color? success,
     Color? successContainer,
     Color? onSuccessContainer,
@@ -198,14 +247,22 @@ class AppColors extends ThemeExtension<AppColors> {
     Color? heroGlass,
     Color? accent,
     Color? onAccent,
+    Color? featureGreen,
+    Color? featureGreenLight,
+    Color? featureBlue,
+    Color? featureBlueLight,
+    Color? featureEmber,
+    Color? featureEmberLight,
+    Color? onFeature,
+    Color? glow,
     Color? shadow,
   }) => AppColors(
     calories: calories ?? this.calories,
-    caloriesContainer: caloriesContainer ?? this.caloriesContainer,
+    caloriesTrack: caloriesTrack ?? this.caloriesTrack,
     protein: protein ?? this.protein,
-    proteinContainer: proteinContainer ?? this.proteinContainer,
+    proteinTrack: proteinTrack ?? this.proteinTrack,
     fat: fat ?? this.fat,
-    fatContainer: fatContainer ?? this.fatContainer,
+    fatTrack: fatTrack ?? this.fatTrack,
     success: success ?? this.success,
     successContainer: successContainer ?? this.successContainer,
     onSuccessContainer: onSuccessContainer ?? this.onSuccessContainer,
@@ -221,6 +278,14 @@ class AppColors extends ThemeExtension<AppColors> {
     heroGlass: heroGlass ?? this.heroGlass,
     accent: accent ?? this.accent,
     onAccent: onAccent ?? this.onAccent,
+    featureGreen: featureGreen ?? this.featureGreen,
+    featureGreenLight: featureGreenLight ?? this.featureGreenLight,
+    featureBlue: featureBlue ?? this.featureBlue,
+    featureBlueLight: featureBlueLight ?? this.featureBlueLight,
+    featureEmber: featureEmber ?? this.featureEmber,
+    featureEmberLight: featureEmberLight ?? this.featureEmberLight,
+    onFeature: onFeature ?? this.onFeature,
+    glow: glow ?? this.glow,
     shadow: shadow ?? this.shadow,
   );
 
@@ -230,11 +295,11 @@ class AppColors extends ThemeExtension<AppColors> {
     Color mix(Color a, Color b) => Color.lerp(a, b, t)!;
     return AppColors(
       calories: mix(calories, other.calories),
-      caloriesContainer: mix(caloriesContainer, other.caloriesContainer),
+      caloriesTrack: mix(caloriesTrack, other.caloriesTrack),
       protein: mix(protein, other.protein),
-      proteinContainer: mix(proteinContainer, other.proteinContainer),
+      proteinTrack: mix(proteinTrack, other.proteinTrack),
       fat: mix(fat, other.fat),
-      fatContainer: mix(fatContainer, other.fatContainer),
+      fatTrack: mix(fatTrack, other.fatTrack),
       success: mix(success, other.success),
       successContainer: mix(successContainer, other.successContainer),
       onSuccessContainer: mix(onSuccessContainer, other.onSuccessContainer),
@@ -250,6 +315,14 @@ class AppColors extends ThemeExtension<AppColors> {
       heroGlass: mix(heroGlass, other.heroGlass),
       accent: mix(accent, other.accent),
       onAccent: mix(onAccent, other.onAccent),
+      featureGreen: mix(featureGreen, other.featureGreen),
+      featureGreenLight: mix(featureGreenLight, other.featureGreenLight),
+      featureBlue: mix(featureBlue, other.featureBlue),
+      featureBlueLight: mix(featureBlueLight, other.featureBlueLight),
+      featureEmber: mix(featureEmber, other.featureEmber),
+      featureEmberLight: mix(featureEmberLight, other.featureEmberLight),
+      onFeature: mix(onFeature, other.onFeature),
+      glow: mix(glow, other.glow),
       shadow: mix(shadow, other.shadow),
     );
   }

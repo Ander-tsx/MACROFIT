@@ -3,7 +3,18 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import '../../../../app/routes.dart';
+import '../../../../core/presentation/theme/app_tokens.dart';
+import '../../../../core/presentation/theme/theme_context.dart';
+import '../../../../core/presentation/widgets/app_avatar.dart';
+import '../../../../core/presentation/widgets/app_header.dart';
+import '../../../../core/presentation/widgets/empty_state.dart';
 import '../../../../core/presentation/widgets/error_banner.dart';
+import '../../../../core/presentation/widgets/error_state.dart';
+import '../../../../core/presentation/widgets/fade_slide_in.dart';
+import '../../../../core/presentation/widgets/loading_state.dart';
+import '../../../../core/presentation/widgets/press_scale.dart';
+import '../../../../core/presentation/widgets/primary_button.dart';
+import '../../../../core/presentation/widgets/surface_card.dart';
 import '../../domain/entities/client_summary.dart';
 import '../widgets/client_summary_texts.dart';
 import 'clients_list_view_model.dart';
@@ -17,57 +28,42 @@ class ClientsListView extends StatelessWidget {
     final viewModel = context.watch<ClientsListViewModel>();
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Mis clientes')),
+      appBar: const AppHeader(title: 'Mis clientes'),
       body: SafeArea(child: _body(context, viewModel)),
     );
   }
 
   Widget _body(BuildContext context, ClientsListViewModel viewModel) {
     if (viewModel.clients.isEmpty) {
-      if (viewModel.isLoading) {
-        return const Center(child: CircularProgressIndicator());
-      }
+      if (viewModel.isLoading) return const LoadingState();
       if (viewModel.error case final message?) {
-        return _CenteredMessage(
-          children: [
-            ErrorBanner(message: message),
-            const SizedBox(height: 16),
-            FilledButton(
-              key: const Key('clients_retry'),
-              onPressed: viewModel.load,
-              child: const Text('Reintentar'),
-            ),
-          ],
+        return ErrorState(
+          message: message,
+          onRetry: viewModel.load,
+          retryKey: const Key('clients_retry'),
         );
       }
       if (viewModel.hasNoClients) {
-        return _CenteredMessage(
-          children: [
-            Icon(
-              Icons.group_add_outlined,
-              size: 48,
-              color: Theme.of(context).colorScheme.primary,
-            ),
-            const SizedBox(height: 16),
-            const Text(
-              'Todavía no tienes clientes vinculados.\n'
-              'Comparte tu código de invitación para que tus clientes '
-              'se vinculen contigo.',
-              key: Key('clients_empty'),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 16),
-            FilledButton.icon(
+        return EmptyState(
+          key: const Key('clients_empty'),
+          icon: Icons.group_add_rounded,
+          title: 'Todavía no tienes clientes vinculados.',
+          message:
+              'Comparte tu código de invitación para que tus clientes se '
+              'vinculen contigo.',
+          actions: [
+            PrimaryButton(
               key: const Key('clients_invite_code'),
+              label: 'Ver mi código de invitación',
+              icon: Icons.qr_code_2_rounded,
               onPressed: () => context.push(AppRoutes.coachInviteCode),
-              icon: const Icon(Icons.person_add_alt_1),
-              label: const Text('Ver mi código de invitación'),
             ),
-            const SizedBox(height: 8),
-            OutlinedButton(
+            PrimaryButton(
               key: const Key('clients_reload'),
+              label: 'Actualizar',
+              icon: Icons.refresh_rounded,
+              variant: AppButtonVariant.ghost,
               onPressed: viewModel.load,
-              child: const Text('Actualizar'),
             ),
           ],
         );
@@ -78,51 +74,90 @@ class ClientsListView extends StatelessWidget {
     return Column(
       children: [
         Padding(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-          child: TextField(
-            key: const Key('clients_search'),
-            onChanged: viewModel.search,
-            textInputAction: TextInputAction.search,
-            decoration: const InputDecoration(
-              prefixIcon: Icon(Icons.search),
-              hintText: 'Buscar por nombre',
-            ),
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.screen,
+            0,
+            AppSpacing.screen,
+            AppSpacing.md,
           ),
+          child: _SearchField(onChanged: viewModel.search),
         ),
         if (viewModel.error case final message?)
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.screen,
+              0,
+              AppSpacing.screen,
+              AppSpacing.md,
+            ),
             child: ErrorBanner(message: message),
           ),
         Expanded(
           child: RefreshIndicator(
             onRefresh: viewModel.load,
-            child: viewModel.hasNoMatches
-                ? ListView(
-                    padding: const EdgeInsets.all(24),
-                    children: const [
-                      Text(
-                        'Ningún cliente coincide con la búsqueda.',
-                        textAlign: TextAlign.center,
-                      ),
-                    ],
+            child: ListView(
+              padding: const EdgeInsets.fromLTRB(
+                AppSpacing.screen,
+                0,
+                AppSpacing.screen,
+                AppSpacing.huge,
+              ),
+              children: [
+                if (viewModel.hasNoMatches)
+                  const EmptyState(
+                    icon: Icons.person_search_rounded,
+                    title: 'Sin resultados',
+                    message: 'Ningún cliente coincide con la búsqueda.',
                   )
-                : ListView.separated(
-                    itemCount: visible.length,
-                    separatorBuilder: (_, _) => const Divider(height: 1),
-                    itemBuilder: (context, index) => _ClientTile(
-                      client: visible[index],
-                      onTap: () async {
-                        final client = visible[index];
-                        await context.push(
-                          AppRoutes.coachClientDetail(client.id),
-                          extra: client,
-                        );
-                        // Al regresar se recarga por si cambió su meta.
-                        await viewModel.load();
-                      },
+                else ...[
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(
+                      AppSpacing.md,
+                      0,
+                      AppSpacing.md,
+                      AppSpacing.sm,
+                    ),
+                    child: Text(
+                      visible.length == 1
+                          ? '1 cliente'
+                          : '${visible.length} clientes',
+                      style: context.text.labelLarge?.copyWith(
+                        color: context.colors.onSurfaceVariant,
+                      ),
                     ),
                   ),
+                  FadeSlideIn(
+                    child: SurfaceCard(
+                      padding: const EdgeInsets.symmetric(
+                        vertical: AppSpacing.sm,
+                      ),
+                      child: Column(
+                        children: [
+                          for (final (index, client) in visible.indexed) ...[
+                            if (index > 0)
+                              const Divider(
+                                height: AppSpacing.xxs,
+                                indent: AppSpacing.dividerInset,
+                              ),
+                            _ClientRow(
+                              client: client,
+                              onTap: () async {
+                                await context.push(
+                                  AppRoutes.coachClientDetail(client.id),
+                                  extra: client,
+                                );
+                                // Al regresar se recarga por si cambió su meta.
+                                await viewModel.load();
+                              },
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ],
+            ),
           ),
         ),
       ],
@@ -130,50 +165,90 @@ class ClientsListView extends StatelessWidget {
   }
 }
 
-class _ClientTile extends StatelessWidget {
-  const _ClientTile({required this.client, required this.onTap});
+/// Buscador en forma de píldora.
+class _SearchField extends StatelessWidget {
+  const _SearchField({required this.onChanged});
+
+  final ValueChanged<String> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return TextField(
+      key: const Key('clients_search'),
+      onChanged: onChanged,
+      textInputAction: TextInputAction.search,
+      decoration: InputDecoration(
+        prefixIcon: const Icon(Icons.search_rounded),
+        hintText: 'Buscar por nombre',
+        fillColor: context.colors.surfaceContainerHigh,
+        border: const OutlineInputBorder(
+          borderRadius: AppRadius.pillAll,
+          borderSide: BorderSide.none,
+        ),
+        enabledBorder: const OutlineInputBorder(
+          borderRadius: AppRadius.pillAll,
+          borderSide: BorderSide.none,
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: AppRadius.pillAll,
+          borderSide: BorderSide(
+            color: context.colors.onSurface,
+            width: AppSizes.borderThick,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ClientRow extends StatelessWidget {
+  const _ClientRow({required this.client, required this.onTap});
 
   final ClientSummary client;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
+    final text = context.text;
+    final colors = context.colors;
     final goal = client.goal;
     final lastMeal = lastMealText(client.lastMealAt, now: DateTime.now());
-    return ListTile(
-      key: Key('client_${client.id}'),
-      leading: CircleAvatar(child: Text(_initial(client.name))),
-      title: Text(client.name),
-      subtitle: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(goalSummaryText(goal)),
-          Text(goal == null ? lastMeal : '${goalSourceText(goal)} · $lastMeal'),
-        ],
-      ),
-      isThreeLine: true,
-      trailing: const Icon(Icons.chevron_right),
-      onTap: onTap,
-    );
-  }
-}
-
-String _initial(String name) {
-  final trimmed = name.trim();
-  return trimmed.isEmpty ? '?' : trimmed.substring(0, 1).toUpperCase();
-}
-
-class _CenteredMessage extends StatelessWidget {
-  const _CenteredMessage({required this.children});
-
-  final List<Widget> children;
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(mainAxisSize: MainAxisSize.min, children: children),
+    return PressScale(
+      child: InkWell(
+        key: Key('client_${client.id}'),
+        onTap: withHaptic(onTap),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.xl,
+            vertical: AppSpacing.md,
+          ),
+          child: Row(
+            children: [
+              AppAvatar(
+                name: client.name,
+                size: AppSizes.avatar + AppSpacing.xs,
+              ),
+              const SizedBox(width: AppSpacing.lg),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(client.name, style: text.titleMedium),
+                    const SizedBox(height: AppSpacing.xxs),
+                    Text(goalSummaryText(goal), style: text.bodyMedium),
+                    Text(
+                      goal == null
+                          ? lastMeal
+                          : '${goalSourceText(goal)} · $lastMeal',
+                      style: text.bodySmall,
+                    ),
+                  ],
+                ),
+              ),
+              Icon(Icons.chevron_right_rounded, color: colors.onSurfaceVariant),
+            ],
+          ),
+        ),
       ),
     );
   }

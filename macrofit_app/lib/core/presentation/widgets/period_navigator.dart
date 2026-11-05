@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 
 import '../theme/app_tokens.dart';
 import '../theme/theme_context.dart';
+import 'press_scale.dart';
 
-/// Cambio de periodo (día o semana): anterior, etiqueta y siguiente, dentro de
-/// una píldora. Si se pasa [onLabelTap], la etiqueta abre un selector de fecha.
+/// Cambio de periodo (día o semana) con la píldora central de la referencia:
+/// flecha anterior, «Hoy» y flecha siguiente. Si se pasa [onLabelTap], la
+/// píldora abre un selector de fecha.
 class PeriodNavigator extends StatelessWidget {
   const PeriodNavigator({
     required this.label,
@@ -35,49 +37,67 @@ class PeriodNavigator extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = context.colors;
     final onLabelTap = this.onLabelTap;
-
-    return DecoratedBox(
-      decoration: ShapeDecoration(
-        color: colors.surface,
-        shape: StadiumBorder(side: BorderSide(color: colors.outlineVariant)),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(AppSpacing.xs),
-        child: Row(
-          children: [
-            IconButton(
-              key: previousKey,
-              tooltip: previousTooltip,
-              icon: const Icon(Icons.chevron_left_rounded),
-              onPressed: onPrevious,
-            ),
-            Expanded(
-              child: onLabelTap == null
-                  ? Text(
-                      label,
-                      key: labelKey,
-                      textAlign: TextAlign.center,
-                      style: context.text.titleMedium,
-                    )
-                  : TextButton.icon(
-                      key: labelKey,
-                      onPressed: onLabelTap,
-                      icon: const Icon(
-                        Icons.calendar_today_rounded,
-                        size: AppSizes.iconSm,
-                      ),
-                      label: Text(label),
-                    ),
-            ),
-            IconButton(
-              key: nextKey,
-              tooltip: nextTooltip,
-              icon: const Icon(Icons.chevron_right_rounded),
-              onPressed: onNext,
-            ),
-          ],
+    final labelText = AnimatedSwitcher(
+      duration: AppDurations.normal,
+      transitionBuilder: (child, animation) => FadeTransition(
+        opacity: animation,
+        child: ScaleTransition(
+          scale: Tween(
+            begin: AppMotion.pressedScale,
+            end: 1.0,
+          ).animate(animation),
+          child: child,
         ),
       ),
+      child: Text(
+        label,
+        key: ValueKey(label),
+        textAlign: TextAlign.center,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: context.text.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+      ),
+    );
+
+    return Row(
+      children: [
+        IconButton(
+          key: previousKey,
+          tooltip: previousTooltip,
+          color: colors.onSurfaceVariant,
+          icon: const Icon(Icons.chevron_left_rounded),
+          onPressed: withHaptic(onPrevious, selection: true),
+        ),
+        Expanded(
+          child: PressScale(
+            enabled: onLabelTap != null,
+            child: Material(
+              color: colors.surfaceContainerHigh,
+              shape: const StadiumBorder(),
+              clipBehavior: Clip.antiAlias,
+              child: InkWell(
+                key: onLabelTap == null ? null : labelKey,
+                onTap: withHaptic(onLabelTap, selection: true),
+                child: SizedBox(
+                  height: AppSizes.periodPill,
+                  child: Center(
+                    child: onLabelTap == null
+                        ? KeyedSubtree(key: labelKey, child: labelText)
+                        : labelText,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+        IconButton(
+          key: nextKey,
+          tooltip: nextTooltip,
+          color: colors.onSurfaceVariant,
+          icon: const Icon(Icons.chevron_right_rounded),
+          onPressed: withHaptic(onNext, selection: true),
+        ),
+      ],
     );
   }
 }

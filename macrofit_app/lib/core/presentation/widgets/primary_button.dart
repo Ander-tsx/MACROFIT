@@ -21,6 +21,9 @@ enum AppButtonVariant {
 
   /// Acción destructiva (eliminar, desvincular).
   danger,
+
+  /// Sobre una tarjeta de color: píldora blanca translúcida con texto blanco.
+  onColor,
 }
 
 /// Botón principal de MacroFit: píldora de 56 px de alto con ícono opcional y
@@ -114,6 +117,24 @@ class PrimaryButton extends StatelessWidget {
       AppButtonVariant.ghost => TextButton(
         onPressed: onTap,
         style: TextButton.styleFrom(minimumSize: size, padding: padding),
+        child: content,
+      ),
+      AppButtonVariant.onColor => OutlinedButton(
+        onPressed: onTap,
+        style: OutlinedButton.styleFrom(
+          minimumSize: size,
+          padding: padding,
+          foregroundColor: context.appColors.onFeature,
+          backgroundColor: context.appColors.onFeature.withValues(
+            alpha: AppOpacity.glass,
+          ),
+          side: BorderSide(
+            color: context.appColors.onFeature.withValues(
+              alpha: AppOpacity.muted,
+            ),
+            width: AppSizes.borderThick,
+          ),
+        ),
         child: content,
       ),
       AppButtonVariant.danger => FilledButton(

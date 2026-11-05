@@ -20,6 +20,7 @@ import '../../../../core/presentation/widgets/meal_entry_card.dart';
 import '../../../../core/presentation/widgets/period_navigator.dart';
 import '../../../../core/presentation/widgets/press_scale.dart';
 import '../../../../core/presentation/widgets/primary_button.dart';
+import '../../../../core/presentation/widgets/section_card.dart';
 import '../../domain/entities/meal.dart';
 import '../widgets/meal_texts.dart';
 import 'meal_history_view_model.dart';
@@ -65,26 +66,11 @@ class MealHistoryView extends StatelessWidget {
                 onLabelTap: () => _pickDate(context, viewModel),
               ),
             ),
-            Expanded(
-              child: AnimatedSwitcher(
-                duration: AppDurations.normal,
-                child: KeyedSubtree(
-                  key: ValueKey(_stateOf(viewModel)),
-                  child: _body(context, viewModel),
-                ),
-              ),
-            ),
+            Expanded(child: _body(context, viewModel)),
           ],
         ),
       ),
     );
-  }
-
-  static String _stateOf(MealHistoryViewModel viewModel) {
-    if (viewModel.isLoading) return 'loading';
-    if (viewModel.error != null) return 'error';
-    if (viewModel.isEmptyDay) return 'empty';
-    return 'list-${viewModel.date}';
   }
 
   Widget _body(BuildContext context, MealHistoryViewModel viewModel) {
@@ -137,14 +123,21 @@ class MealHistoryView extends StatelessWidget {
               values: mealValuesText(viewModel.totals),
             ),
           ),
-          const SizedBox(height: AppSpacing.md),
-          for (final (index, meal) in viewModel.meals.indexed) ...[
-            FadeSlideIn(
-              index: index + 1,
-              child: _MealCard(meal: meal, viewModel: viewModel),
+          const SizedBox(height: AppSpacing.cardGap),
+          FadeSlideIn(
+            index: 1,
+            child: SectionCard(
+              title: 'Registros',
+              child: Column(
+                children: [
+                  for (final (index, meal) in viewModel.meals.indexed) ...[
+                    if (index > 0) const Divider(height: AppSpacing.lg),
+                    _MealCard(meal: meal, viewModel: viewModel),
+                  ],
+                ],
+              ),
             ),
-            const SizedBox(height: AppSpacing.sm),
-          ],
+          ),
         ],
       ),
     );
