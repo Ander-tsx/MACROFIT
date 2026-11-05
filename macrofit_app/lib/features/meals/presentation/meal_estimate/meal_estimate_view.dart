@@ -5,8 +5,18 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import '../../../../app/routes.dart';
+import '../../../../core/presentation/theme/app_tokens.dart';
+import '../../../../core/presentation/theme/macro_style.dart';
+import '../../../../core/presentation/theme/theme_context.dart';
+import '../../../../core/presentation/widgets/app_header.dart';
 import '../../../../core/presentation/widgets/error_banner.dart';
+import '../../../../core/presentation/widgets/fade_slide_in.dart';
+import '../../../../core/presentation/widgets/loading_state.dart';
+import '../../../../core/presentation/widgets/primary_button.dart';
+import '../../../../core/presentation/widgets/section_card.dart';
+import '../../../../core/presentation/widgets/status_banner.dart';
 import '../../domain/entities/meal_estimate.dart';
+import '../widgets/macro_column_tile.dart';
 import '../widgets/meal_navigation.dart';
 import '../widgets/meal_texts.dart';
 import 'meal_estimate_view_model.dart';
@@ -38,77 +48,88 @@ class MealEstimateView extends StatelessWidget {
     final estimate = viewModel.estimate;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Estimación')),
+      appBar: const AppHeader(title: 'Estimación'),
       body: SafeArea(
         child: ListView(
-          padding: const EdgeInsets.all(24),
+          padding: AppSpacing.screenPadding,
           children: [
             ClipRRect(
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: AppRadius.xlAll,
               child: Image.memory(
                 viewModel.upload.photo.bytes,
                 key: const Key('meal_estimate_photo'),
-                height: 180,
+                height: AppSizes.photoHeader,
                 fit: BoxFit.cover,
                 gaplessPlayback: true,
                 semanticLabel: 'Foto de tu comida',
               ),
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: AppSpacing.xxl),
             if (viewModel.isLoading)
-              const _Loading()
+              const LoadingState(
+                key: Key('meal_estimate_loading'),
+                message: 'Estimando calorías, proteína y grasa…',
+              )
             else if (estimate != null) ...[
-              _Result(estimate: estimate),
-              const SizedBox(height: 24),
+              FadeSlideIn(child: _Totals(estimate: estimate)),
+              const SizedBox(height: AppSpacing.md),
+              FadeSlideIn(index: 1, child: _Foods(estimate: estimate)),
+              const SizedBox(height: AppSpacing.md),
+              const FadeSlideIn(
+                index: 2,
+                child: StatusBanner(
+                  key: Key('meal_estimate_disclaimer'),
+                  message: MealEstimateViewModel.disclaimer,
+                ),
+              ),
+              const SizedBox(height: AppSpacing.xxl),
               if (viewModel.saveError case final message?) ...[
                 ErrorBanner(
                   key: const Key('meal_estimate_save_error'),
                   message: message,
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: AppSpacing.lg),
               ],
-              FilledButton.icon(
+              PrimaryButton(
                 key: const Key('meal_estimate_save'),
-                onPressed: viewModel.isSaving
-                    ? null
-                    : () => _save(context, viewModel),
-                icon: viewModel.isSaving
-                    ? const SizedBox.square(
-                        dimension: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Icon(Icons.check),
-                label: const Text('Guardar'),
+                label: 'Guardar',
+                icon: Icons.check_rounded,
+                isLoading: viewModel.isSaving,
+                onPressed: () => _save(context, viewModel),
               ),
-              const SizedBox(height: 12),
-              OutlinedButton.icon(
+              const SizedBox(height: AppSpacing.md),
+              PrimaryButton(
                 key: const Key('meal_estimate_correct'),
+                label: 'Corregir valores',
+                icon: Icons.tune_rounded,
+                variant: AppButtonVariant.outlined,
                 onPressed: viewModel.isSaving
                     ? null
                     : () => _openForm(context, viewModel),
-                icon: const Icon(Icons.edit),
-                label: const Text('Corregir valores'),
               ),
             ] else if (viewModel.error case final message?) ...[
-              ErrorBanner(
-                key: const Key('meal_estimate_error'),
-                message: message,
-              ),
-              const SizedBox(height: 24),
-              if (viewModel.canRetry) ...[
-                FilledButton.icon(
-                  key: const Key('meal_estimate_retry'),
-                  onPressed: viewModel.retry,
-                  icon: const Icon(Icons.refresh),
-                  label: const Text('Reintentar'),
+              FadeSlideIn(
+                child: ErrorBanner(
+                  key: const Key('meal_estimate_error'),
+                  message: message,
                 ),
-                const SizedBox(height: 12),
+              ),
+              const SizedBox(height: AppSpacing.xxl),
+              if (viewModel.canRetry) ...[
+                PrimaryButton(
+                  key: const Key('meal_estimate_retry'),
+                  label: 'Reintentar',
+                  icon: Icons.refresh_rounded,
+                  onPressed: viewModel.retry,
+                ),
+                const SizedBox(height: AppSpacing.md),
               ],
-              OutlinedButton.icon(
+              PrimaryButton(
                 key: const Key('meal_estimate_manual'),
+                label: 'Capturar a mano',
+                icon: Icons.edit_note_rounded,
+                variant: AppButtonVariant.outlined,
                 onPressed: () => _openForm(context, viewModel),
-                icon: const Icon(Icons.edit),
-                label: const Text('Capturar a mano'),
               ),
             ],
           ],
@@ -118,120 +139,113 @@ class MealEstimateView extends StatelessWidget {
   }
 }
 
-class _Loading extends StatelessWidget {
-  const _Loading();
-
-  @override
-  Widget build(BuildContext context) {
-    return Semantics(
-      liveRegion: true,
-      child: const Column(
-        key: Key('meal_estimate_loading'),
-        children: [
-          CircularProgressIndicator(),
-          SizedBox(height: 16),
-          Text(
-            'Estimando calorías, proteína y grasa…',
-            textAlign: TextAlign.center,
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _Result extends StatelessWidget {
-  const _Result({required this.estimate});
+/// Totales en tres columnas: calorías (oscura) y proteína y grasa con un
+/// relleno según cuánto aportan a la energía de la comida.
+class _Totals extends StatelessWidget {
+  const _Totals({required this.estimate});
 
   final MealEstimate estimate;
 
+  /// Energía por gramo (Atwater) para saber cuánto aporta cada macro.
+  static const _proteinKcalPerGram = 4;
+  static const _fatKcalPerGram = 9;
+
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colors = theme.colorScheme;
+    final app = context.appColors;
     final totals = estimate.totals;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
+    final kcal = totals.caloriesKcal;
+    double share(double grams, int kcalPerGram) =>
+        kcal <= 0 ? 0 : grams * kcalPerGram / kcal;
+
+    return Row(
+      key: const Key('meal_estimate_totals'),
       children: [
-        Text('Alimentos identificados', style: theme.textTheme.titleMedium),
-        const SizedBox(height: 8),
-        for (final (index, food) in estimate.foods.indexed)
-          ListTile(
-            key: Key('meal_estimate_food_$index'),
-            contentPadding: EdgeInsets.zero,
-            leading: const Icon(Icons.restaurant),
-            title: Text(food.name),
-            subtitle: Text(mealValuesText(food.values)),
-            trailing: food.grams == null
-                ? null
-                : Text('${formatAmount(food.grams!)} g'),
-          ),
-        const SizedBox(height: 16),
-        Card(
-          key: const Key('meal_estimate_totals'),
-          margin: EdgeInsets.zero,
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Row(
-              children: [
-                _Total(
-                  label: 'Calorías',
-                  value: '${formatAmount(totals.caloriesKcal)} kcal',
-                ),
-                _Total(
-                  label: 'Proteína',
-                  value: '${formatAmount(totals.proteinG)} g',
-                ),
-                _Total(label: 'Grasa', value: '${formatAmount(totals.fatG)} g'),
-              ],
-            ),
+        Expanded(
+          child: MacroColumnTile(
+            label: Macro.calories.label,
+            value: '${formatAmount(kcal)} kcal',
+            fill: 1,
+            fillColor: app.hero,
+            background: app.hero,
+            foreground: app.accent,
+            mutedForeground: app.onHeroMuted,
           ),
         ),
-        const SizedBox(height: 16),
-        Row(
-          key: const Key('meal_estimate_disclaimer'),
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Icon(Icons.info_outline, size: 20, color: colors.onSurfaceVariant),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Text(
-                MealEstimateViewModel.disclaimer,
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: colors.onSurfaceVariant,
-                ),
-              ),
-            ),
-          ],
+        const SizedBox(width: AppSpacing.sm),
+        Expanded(
+          child: MacroColumnTile(
+            label: Macro.protein.label,
+            value: '${formatAmount(totals.proteinG)} g',
+            fill: share(totals.proteinG, _proteinKcalPerGram),
+            fillColor: Macro.protein.container(app),
+          ),
+        ),
+        const SizedBox(width: AppSpacing.sm),
+        Expanded(
+          child: MacroColumnTile(
+            label: Macro.fat.label,
+            value: '${formatAmount(totals.fatG)} g',
+            fill: share(totals.fatG, _fatKcalPerGram),
+            fillColor: Macro.fat.container(app),
+          ),
         ),
       ],
     );
   }
 }
 
-class _Total extends StatelessWidget {
-  const _Total({required this.label, required this.value});
+class _Foods extends StatelessWidget {
+  const _Foods({required this.estimate});
 
-  final String label;
-  final String value;
+  final MealEstimate estimate;
 
   @override
   Widget build(BuildContext context) {
-    final textTheme = Theme.of(context).textTheme;
-    // Cada total ocupa un tercio; con letra grande el valor se reduce en vez
-    // de juntarse con el siguiente.
-    return Expanded(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 6),
-        child: Column(
-          children: [
-            FittedBox(
-              fit: BoxFit.scaleDown,
-              child: Text(value, style: textTheme.titleLarge),
+    final text = context.text;
+    final colors = context.colors;
+    return SectionCard(
+      title: 'Alimentos identificados',
+      child: Column(
+        children: [
+          for (final (index, food) in estimate.foods.indexed) ...[
+            if (index > 0) const Divider(height: AppSpacing.xxl),
+            Row(
+              key: Key('meal_estimate_food_$index'),
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(food.name, style: text.titleSmall),
+                      const SizedBox(height: AppSpacing.xxs),
+                      Text(mealValuesText(food.values), style: text.bodySmall),
+                    ],
+                  ),
+                ),
+                if (food.grams case final grams?) ...[
+                  const SizedBox(width: AppSpacing.md),
+                  DecoratedBox(
+                    decoration: BoxDecoration(
+                      color: colors.surfaceContainerLow,
+                      borderRadius: AppRadius.pillAll,
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: AppSpacing.md,
+                        vertical: AppSpacing.xs,
+                      ),
+                      child: Text(
+                        '${formatAmount(grams)} g',
+                        style: text.labelLarge,
+                      ),
+                    ),
+                  ),
+                ],
+              ],
             ),
-            Text(label, style: textTheme.bodySmall),
           ],
-        ),
+        ],
       ),
     );
   }

@@ -3,8 +3,13 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import '../../../../app/routes.dart';
+import '../../../../core/presentation/theme/app_tokens.dart';
+import '../../../../core/presentation/theme/theme_context.dart';
+import '../../../../core/presentation/widgets/app_text_field.dart';
 import '../../../../core/presentation/widgets/error_banner.dart';
 import '../../../../core/presentation/widgets/password_field.dart';
+import '../../../../core/presentation/widgets/primary_button.dart';
+import '../widgets/auth_layout.dart';
 import 'login_view_model.dart';
 
 /// HU-02 — pantalla de inicio de sesión.
@@ -14,91 +19,66 @@ class LoginView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final viewModel = context.watch<LoginViewModel>();
-    final textTheme = Theme.of(context).textTheme;
+    final text = context.text;
 
     return Scaffold(
-      body: SafeArea(
-        child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(24),
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 420),
-              child: AutofillGroup(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Icon(
-                      Icons.fitness_center,
-                      size: 56,
-                      color: Theme.of(context).colorScheme.primary,
-                    ),
-                    const SizedBox(height: 12),
-                    Text(
-                      'MacroFit',
-                      style: textTheme.headlineMedium,
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      'Inicia sesión para continuar',
-                      style: textTheme.bodyLarge,
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 32),
-                    if (viewModel.generalError case final message?) ...[
-                      ErrorBanner(message: message),
-                      const SizedBox(height: 16),
-                    ],
-                    TextField(
-                      key: const Key('login_email'),
-                      keyboardType: TextInputType.emailAddress,
-                      autocorrect: false,
-                      autofillHints: const [AutofillHints.email],
-                      textInputAction: TextInputAction.next,
-                      onChanged: viewModel.setEmail,
-                      decoration: InputDecoration(
-                        labelText: 'Correo electrónico',
-                        errorText: viewModel.fieldError(
-                          LoginViewModel.emailField,
-                        ),
-                        border: const OutlineInputBorder(),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    PasswordField(
-                      key: const Key('login_password'),
-                      label: 'Contraseña',
-                      errorText: viewModel.fieldError(
-                        LoginViewModel.passwordField,
-                      ),
-                      onChanged: viewModel.setPassword,
-                      textInputAction: TextInputAction.done,
-                      onSubmitted: (_) => viewModel.submit(),
-                    ),
-                    const SizedBox(height: 24),
-                    FilledButton(
-                      key: const Key('login_submit'),
-                      onPressed: viewModel.isSubmitting
-                          ? null
-                          : viewModel.submit,
-                      child: viewModel.isSubmitting
-                          ? const SizedBox.square(
-                              dimension: 20,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : const Text('Iniciar sesión'),
-                    ),
-                    const SizedBox(height: 12),
-                    TextButton(
-                      onPressed: viewModel.isSubmitting
-                          ? null
-                          : () => context.push(AppRoutes.register),
-                      child: const Text('¿No tienes cuenta? Crea una'),
-                    ),
-                  ],
+      backgroundColor: context.appColors.hero,
+      body: AuthLayout(
+        tagline: 'Registra tus comidas con una foto y alcanza tu meta.',
+        child: AutofillGroup(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text('Bienvenido de nuevo', style: text.headlineSmall),
+              const SizedBox(height: AppSpacing.xs),
+              Text(
+                'Inicia sesión para continuar',
+                style: text.bodyMedium?.copyWith(
+                  color: context.colors.onSurfaceVariant,
                 ),
               ),
-            ),
+              const SizedBox(height: AppSpacing.xxl),
+              if (viewModel.generalError case final message?) ...[
+                ErrorBanner(message: message),
+                const SizedBox(height: AppSpacing.lg),
+              ],
+              AppTextField(
+                key: const Key('login_email'),
+                label: 'Correo electrónico',
+                icon: Icons.mail_outline_rounded,
+                keyboardType: TextInputType.emailAddress,
+                autocorrect: false,
+                autofillHints: const [AutofillHints.email],
+                textInputAction: TextInputAction.next,
+                onChanged: viewModel.setEmail,
+                errorText: viewModel.fieldError(LoginViewModel.emailField),
+              ),
+              const SizedBox(height: AppSpacing.md),
+              PasswordField(
+                key: const Key('login_password'),
+                label: 'Contraseña',
+                errorText: viewModel.fieldError(LoginViewModel.passwordField),
+                onChanged: viewModel.setPassword,
+                textInputAction: TextInputAction.done,
+                onSubmitted: (_) => viewModel.submit(),
+              ),
+              const SizedBox(height: AppSpacing.xxl),
+              PrimaryButton(
+                key: const Key('login_submit'),
+                label: 'Iniciar sesión',
+                icon: Icons.arrow_forward_rounded,
+                isLoading: viewModel.isSubmitting,
+                onPressed: viewModel.submit,
+              ),
+              const SizedBox(height: AppSpacing.md),
+              PrimaryButton(
+                label: '¿No tienes cuenta? Crea una',
+                variant: AppButtonVariant.ghost,
+                onPressed: viewModel.isSubmitting
+                    ? null
+                    : () => context.push(AppRoutes.register),
+              ),
+            ],
           ),
         ),
       ),

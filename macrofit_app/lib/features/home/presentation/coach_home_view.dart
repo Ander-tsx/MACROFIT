@@ -1,11 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:provider/provider.dart';
 
 import '../../../app/routes.dart';
-import 'home_view_model.dart';
+import '../../../core/presentation/theme/app_tokens.dart';
+import '../../../core/presentation/theme/theme_context.dart';
+import '../../../core/presentation/widgets/action_tile.dart';
+import '../../../core/presentation/widgets/fade_slide_in.dart';
+import '../../../core/presentation/widgets/surface_card.dart';
+import 'widgets/feature_card.dart';
+import 'widgets/home_dock.dart';
 import 'widgets/home_scaffold.dart';
-import 'widgets/welcome_message.dart';
 
 /// Pantalla principal del rol `coach`. Desde aquí se llega a su código de invitación (HU-12),
 /// a sus clientes (HU-24) y a sus rutinas (HU-18); desde el detalle de cada cliente, a sus
@@ -15,59 +19,96 @@ class CoachHomeView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final user = context.watch<HomeViewModel>().user;
-
     return HomeScaffold(
-      title: 'Panel de coach',
-      actions: [
-        IconButton(
-          key: const Key('invite_code_button'),
-          tooltip: 'Mi código de invitación',
-          icon: const Icon(Icons.person_add_alt_1),
-          onPressed: () => context.push(AppRoutes.coachInviteCode),
-        ),
-        IconButton(
-          key: const Key('clients_button'),
-          tooltip: 'Mis clientes',
-          icon: const Icon(Icons.groups),
-          onPressed: () => context.push(AppRoutes.coachClients),
-        ),
-        IconButton(
-          key: const Key('routines_button'),
-          tooltip: 'Mis rutinas',
-          icon: const Icon(Icons.fitness_center),
-          onPressed: () => context.push(AppRoutes.coachRoutines),
-        ),
-      ],
-      body: Center(
-        child: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              WelcomeMessage(
-                name: user?.name ?? '',
-                roleLabel: 'Coach',
-                icon: Icons.sports,
-                description:
-                    'Aquí verás a tus clientes, sus metas y sus rutinas.',
-              ),
-              FilledButton.tonalIcon(
-                key: const Key('invite_code_home_button'),
-                onPressed: () => context.push(AppRoutes.coachInviteCode),
-                icon: const Icon(Icons.person_add_alt_1),
-                label: const Text('Mi código de invitación'),
-              ),
-              const SizedBox(height: 12),
-              FilledButton.icon(
-                key: const Key('routines_home_button'),
-                onPressed: () => context.push(AppRoutes.coachRoutines),
-                icon: const Icon(Icons.fitness_center),
-                label: const Text('Mis rutinas'),
-              ),
-              const SizedBox(height: 24),
-            ],
+      subtitle: 'Panel de coach',
+      dock: HomeDock(
+        items: [
+          DockItem(
+            icon: Icons.home_rounded,
+            label: 'Inicio',
+            selected: true,
+            onTap: () {},
           ),
+          DockItem(
+            key: const Key('clients_button'),
+            icon: Icons.groups_rounded,
+            label: 'Clientes',
+            onTap: () => context.push(AppRoutes.coachClients),
+          ),
+          DockItem(
+            key: const Key('invite_code_button'),
+            icon: Icons.qr_code_rounded,
+            label: 'Mi código',
+            onTap: () => context.push(AppRoutes.coachInviteCode),
+          ),
+          DockItem(
+            key: const Key('routines_button'),
+            icon: Icons.fitness_center_rounded,
+            label: 'Rutinas',
+            onTap: () => context.push(AppRoutes.coachRoutines),
+          ),
+        ],
+      ),
+      body: ListView(
+        padding: const EdgeInsets.fromLTRB(
+          AppSpacing.screen,
+          AppSpacing.md,
+          AppSpacing.screen,
+          AppSpacing.bottomBarClearance,
         ),
+        children: [
+          FadeSlideIn(
+            child: IntrinsicHeight(
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Expanded(
+                    child: FeatureCard(
+                      key: const Key('invite_code_home_button'),
+                      icon: Icons.person_add_alt_1_rounded,
+                      title: 'Mi código de invitación',
+                      description: 'Compártelo para sumar clientes.',
+                      highlighted: true,
+                      onTap: () => context.push(AppRoutes.coachInviteCode),
+                    ),
+                  ),
+                  const SizedBox(width: AppSpacing.md),
+                  Expanded(
+                    child: FeatureCard(
+                      key: const Key('routines_home_button'),
+                      icon: Icons.fitness_center_rounded,
+                      title: 'Mis rutinas',
+                      description: 'Crea y edita rutinas.',
+                      onTap: () => context.push(AppRoutes.coachRoutines),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: AppSpacing.md),
+          FadeSlideIn(
+            index: 1,
+            child: SurfaceCard(
+              padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
+              child: ActionTile(
+                icon: Icons.groups_rounded,
+                title: 'Mis clientes',
+                subtitle: 'Sus metas, sus comidas y su progreso.',
+                onTap: () => context.push(AppRoutes.coachClients),
+              ),
+            ),
+          ),
+          const SizedBox(height: AppSpacing.xxl),
+          FadeSlideIn(
+            index: 2,
+            child: Text(
+              'Aquí verás a tus clientes, sus metas y sus rutinas.',
+              textAlign: TextAlign.center,
+              style: context.text.bodySmall,
+            ),
+          ),
+        ],
       ),
     );
   }

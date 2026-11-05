@@ -1,79 +1,134 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../../../core/presentation/theme/app_tokens.dart';
+import '../../../../core/presentation/theme/theme_context.dart';
+import '../../../../core/presentation/widgets/app_avatar.dart';
+import '../../../../core/presentation/widgets/confirm_dialog.dart';
+import '../../../../core/presentation/widgets/loading_state.dart';
 import '../home_view_model.dart';
 
-/// Estructura común de las pantallas principales: barra con cierre de sesión.
+/// Estructura común de las pantallas principales (guía visual, "Pantallas
+/// principales"): saludo con la fecha, contenido y barra inferior flotante.
 ///
 /// [T] es el ViewModel que la ruta inyecta (`HomeViewModel` o una subclase, como
 /// `UserHomeViewModel`); si no se indica, es `HomeViewModel`.
 class HomeScaffold<T extends HomeViewModel> extends StatelessWidget {
   const HomeScaffold({
-    required this.title,
+    required this.subtitle,
     required this.body,
-    this.actions = const [],
-    this.floatingActionButton,
+    this.onAvatarTap,
+    this.avatarKey,
+    this.avatarTooltip,
+    this.dock,
     super.key,
   });
 
-  final String title;
+  /// Texto bajo el saludo (p. ej. «Panel de coach»).
+  final String subtitle;
   final Widget body;
 
-  /// Acciones de la barra antes del botón de cerrar sesión.
-  final List<Widget> actions;
+  /// Si se indica, el avatar es un botón (p. ej. **Mi perfil**).
+  final VoidCallback? onAvatarTap;
+  final Key? avatarKey;
+  final String? avatarTooltip;
 
-  /// Acción principal de la pantalla (p. ej. "Registrar comida", HU-06).
-  final Widget? floatingActionButton;
+  /// Barra inferior con los accesos de la pantalla (`HomeDock`).
+  final Widget? dock;
 
   Future<void> _confirmLogout(BuildContext context) async {
     final viewModel = context.read<T>();
-    final confirmed = await showDialog<bool>(
+    final confirmed = await showConfirmDialog(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Cerrar sesión'),
-        content: const Text('¿Quieres cerrar tu sesión en este dispositivo?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text('Cancelar'),
-          ),
-          FilledButton(
-            key: const Key('logout_confirm'),
-            onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: const Text('Cerrar sesión'),
-          ),
-        ],
-      ),
+      title: 'Cerrar sesión',
+      message: '¿Quieres cerrar tu sesión en este dispositivo?',
+      confirmLabel: 'Cerrar sesión',
+      icon: Icons.logout_rounded,
+      confirmKey: const Key('logout_confirm'),
     );
-    if (confirmed ?? false) await viewModel.logout();
+    if (confirmed) await viewModel.logout();
   }
 
   @override
   Widget build(BuildContext context) {
     final viewModel = context.watch<T>();
+    final text = context.text;
+    final colors = context.colors;
+    final name = viewModel.user?.name ?? '';
+    final today = MaterialLocalizations.of(context)
+        .formatMediumDate(DateTime.now());
+
+    final avatar = AppAvatar(name: name);
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(title),
-        actions: [
-          ...actions,
-          IconButton(
-            key: const Key('logout_button'),
-            tooltip: 'Cerrar sesión',
-            icon: viewModel.isLoggingOut
-                ? const SizedBox.square(
-                    dimension: 20,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : const Icon(Icons.logout),
-            onPressed: viewModel.isLoggingOut
-                ? null
-                : () => _confirmLogout(context),
+      extendBody: true,
+      body: Column(
+        children: [
+          SafeArea(
+            bottom: false,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(
+                AppSpacing.screen,
+                AppSpacing.md,
+                AppSpacing.md,
+                AppSpacing.sm,
+              ),
+              child: Row(
+                children: [
+                  if (onAvatarTap case final onTap?)
+                    IconButton(
+                      key: avatarKey,
+                      tooltip: avatarTooltip,
+                      padding: EdgeInsets.zero,
+                      onPressed: onTap,
+                      icon: avatar,
+                    )
+                  else
+                    avatar,
+                  const SizedBox(width: AppSpacing.md),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Semantics(
+                          header: true,
+                          child: Text(
+                            'Hola, $name',
+                            style: text.titleLarge,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        Text(
+                          '$subtitle · $today',
+                          style: text.bodySmall,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ),
+                  ),
+                  IconButton(
+                    key: const Key('logout_button'),
+                    tooltip: 'Cerrar sesión',
+                    style: IconButton.styleFrom(
+                      backgroundColor: colors.surface,
+                    ),
+                    icon: viewModel.isLoggingOut
+                        ? const InlineSpinner()
+                        : const Icon(Icons.logout_rounded),
+                    onPressed: viewModel.isLoggingOut
+                        ? null
+                        : () => _confirmLogout(context),
+                  ),
+                ],
+              ),
+            ),
           ),
+          Expanded(child: body),
         ],
       ),
-      body: SafeArea(child: body),
-      floatingActionButton: floatingActionButton,
+      bottomNavigationBar: dock,
     );
   }
 }

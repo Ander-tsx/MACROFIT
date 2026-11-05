@@ -3,14 +3,22 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import '../../../app/routes.dart';
+import '../../../core/presentation/theme/app_tokens.dart';
+import '../../../core/presentation/widgets/fade_slide_in.dart';
+import '../../../core/presentation/widgets/primary_button.dart';
+import '../../../core/presentation/widgets/section_card.dart';
 import 'user_home_view_model.dart';
 import 'widgets/current_goal_card.dart';
 import 'widgets/daily_progress_card.dart';
+import 'widgets/home_dock.dart';
 import 'widgets/home_scaffold.dart';
+import 'widgets/quick_log_banner.dart';
 import 'widgets/refresh_on_return.dart';
 
-/// Pantalla principal del rol `user`: progreso del día (HU-10) y meta vigente (HU-26). Desde aquí se abren
-/// "Mi perfil" (HU-03), "Registrar comida" (HU-06) y "Mis comidas" (HU-09).
+/// Pantalla principal del rol `user`: progreso del día (HU-10) y meta vigente (HU-26).
+/// Desde aquí se abren "Mi perfil" (HU-03), "Registrar comida" (HU-06), "Mis comidas"
+/// (HU-09), el resumen semanal (HU-11), la vinculación con el coach (HU-13) y el
+/// registro de peso (HU-21).
 class UserHomeView extends StatelessWidget {
   const UserHomeView({super.key});
 
@@ -24,67 +32,100 @@ class UserHomeView extends StatelessWidget {
       path: AppRoutes.userHome,
       onReturn: viewModel.refresh,
       child: HomeScaffold<UserHomeViewModel>(
-        title: 'Inicio',
-        actions: [
-          IconButton(
-            key: const Key('weekly_summary_button'),
-            tooltip: 'Resumen semanal',
-            icon: const Icon(Icons.bar_chart),
-            onPressed: () => context.push(AppRoutes.weeklySummary),
-          ),
-          IconButton(
-            key: const Key('profile_button'),
-            tooltip: 'Mi perfil',
-            icon: const Icon(Icons.account_circle),
-            onPressed: () => context.push(AppRoutes.profileEdit),
-          ),
-        ],
-        floatingActionButton: FloatingActionButton.extended(
-          key: const Key('register_meal_button'),
-          onPressed: () => context.push(AppRoutes.mealPhoto),
-          icon: const Icon(Icons.add_a_photo),
-          label: const Text('Registrar comida'),
+        subtitle: 'Así va tu día',
+        avatarKey: const Key('profile_button'),
+        avatarTooltip: 'Mi perfil',
+        onAvatarTap: () => context.push(AppRoutes.profileEdit),
+        dock: HomeDock(
+          items: [
+            DockItem(
+              icon: Icons.home_rounded,
+              label: 'Inicio',
+              selected: true,
+              onTap: () {},
+            ),
+            DockItem(
+              key: const Key('meal_history_button'),
+              icon: Icons.restaurant_menu_rounded,
+              label: 'Comidas',
+              onTap: () => context.push(AppRoutes.mealHistory),
+            ),
+            DockItem(
+              key: const Key('register_meal_button'),
+              icon: Icons.add_a_photo_rounded,
+              label: 'Registrar comida',
+              primary: true,
+              onTap: () => context.push(AppRoutes.mealPhoto),
+            ),
+            DockItem(
+              key: const Key('weekly_summary_button'),
+              icon: Icons.bar_chart_rounded,
+              label: 'Resumen',
+              onTap: () => context.push(AppRoutes.weeklySummary),
+            ),
+            DockItem(
+              key: const Key('weights_button'),
+              icon: Icons.monitor_weight_outlined,
+              label: 'Peso',
+              onTap: () => context.push(AppRoutes.weights),
+            ),
+          ],
         ),
         body: RefreshIndicator(
           onRefresh: viewModel.refresh,
           child: ListView(
-            // Abajo deja espacio para el botón flotante de "Registrar comida".
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.screen,
+              AppSpacing.md,
+              AppSpacing.screen,
+              AppSpacing.bottomBarClearance,
+            ),
             children: [
-              Text(
-                'Hola, ${viewModel.user?.name ?? ''}',
-                style: Theme.of(context).textTheme.headlineSmall,
+              FadeSlideIn(
+                index: 0,
+                child: DailyProgressCard(
+                  summary: viewModel.daySummary,
+                  isLoading: viewModel.isLoadingSummary,
+                  hasNoSummary: viewModel.hasNoSummary,
+                  error: viewModel.summaryError,
+                  onRetry: viewModel.loadSummary,
+                ),
               ),
-              const SizedBox(height: 16),
-              DailyProgressCard(
-                summary: viewModel.daySummary,
-                isLoading: viewModel.isLoadingSummary,
-                hasNoSummary: viewModel.hasNoSummary,
-                error: viewModel.summaryError,
-                onRetry: viewModel.loadSummary,
+              const SizedBox(height: AppSpacing.md),
+              FadeSlideIn(
+                index: 1,
+                child: CurrentGoalCard(
+                  goal: viewModel.goal,
+                  isLoading: viewModel.isLoadingGoal,
+                  hasNoGoal: viewModel.hasNoGoal,
+                  error: viewModel.goalError,
+                  onRetry: viewModel.loadGoal,
+                ),
               ),
-              const SizedBox(height: 16),
-              CurrentGoalCard(
-                goal: viewModel.goal,
-                isLoading: viewModel.isLoadingGoal,
-                hasNoGoal: viewModel.hasNoGoal,
-                error: viewModel.goalError,
-                onRetry: viewModel.loadGoal,
+              const SizedBox(height: AppSpacing.md),
+              FadeSlideIn(
+                index: 2,
+                child: QuickLogBanner(
+                  onTap: () => context.push(AppRoutes.mealPhoto),
+                ),
               ),
-              const SizedBox(height: 16),
-              // HU-09: historial de comidas del día.
-              OutlinedButton.icon(
-                key: const Key('meal_history_button'),
-                onPressed: () => context.push(AppRoutes.mealHistory),
-                icon: const Icon(Icons.restaurant_menu),
-                label: const Text('Mis comidas'),
-              ),
-              const SizedBox(height: 8),
-              FilledButton.icon(
-                key: const Key('link_coach_nav_button'),
-                onPressed: () => context.push(AppRoutes.coachLink),
-                icon: const Icon(Icons.link),
-                label: const Text('Vincular con coach'),
+              const SizedBox(height: AppSpacing.md),
+              // HU-13: vinculación con el coach.
+              FadeSlideIn(
+                index: 3,
+                child: SectionCard(
+                  title: 'Tu coach',
+                  subtitle:
+                      'Vincúlate con el código de tu coach para que siga tu '
+                      'progreso y ajuste tu meta.',
+                  child: PrimaryButton(
+                    key: const Key('link_coach_nav_button'),
+                    label: 'Vincular con coach',
+                    icon: Icons.link_rounded,
+                    variant: AppButtonVariant.tonal,
+                    onPressed: () => context.push(AppRoutes.coachLink),
+                  ),
+                ),
               ),
             ],
           ),

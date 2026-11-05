@@ -1,6 +1,15 @@
 import 'package:flutter/material.dart';
 
+import '../../../../core/presentation/theme/app_tokens.dart';
+import '../../../../core/presentation/theme/macro_style.dart';
+import '../../../../core/presentation/theme/theme_context.dart';
+import '../../../../core/presentation/widgets/empty_state.dart';
 import '../../../../core/presentation/widgets/error_banner.dart';
+import '../../../../core/presentation/widgets/error_state.dart';
+import '../../../../core/presentation/widgets/loading_state.dart';
+import '../../../../core/presentation/widgets/metric_tile.dart';
+import '../../../../core/presentation/widgets/primary_button.dart';
+import '../../../../core/presentation/widgets/section_card.dart';
 import '../../../goals/domain/entities/nutritional_goal.dart';
 
 /// Origen de la meta (RN-06): `Calculada` o `Definida por tu coach`.
@@ -28,47 +37,41 @@ class CurrentGoalCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Tu meta diaria', style: theme.textTheme.titleMedium),
-            const SizedBox(height: 12),
-            ..._content(context),
-          ],
-        ),
+    final goal = this.goal;
+    return SectionCard(
+      title: 'Tu meta diaria',
+
+      trailing: goal == null ? null : _SourceTag(source: goal.source),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: _content(),
       ),
     );
   }
 
-  List<Widget> _content(BuildContext context) {
+  List<Widget> _content() {
     final goal = this.goal;
-    final retry = OutlinedButton(
-      key: const Key('home_goal_retry'),
-      onPressed: onRetry,
-      child: const Text('Reintentar'),
-    );
 
     if (goal == null) {
-      if (isLoading) {
-        return const [Center(child: CircularProgressIndicator())];
-      }
+      if (isLoading) return const [LoadingState(compact: true)];
       if (error case final message?) {
         return [
-          ErrorBanner(message: message),
-          const SizedBox(height: 12),
-          retry,
+          ErrorState(
+            compact: true,
+            message: message,
+            onRetry: onRetry,
+            retryKey: const Key('home_goal_retry'),
+          ),
         ];
       }
       if (hasNoGoal) {
         return const [
-          Text(
-            'Todavía no tienes una meta. Completa tu perfil o pide a tu '
-            'coach que te asigne una.',
+          EmptyState(
             key: Key('home_goal_empty'),
+            compact: true,
+            icon: Icons.flag_outlined,
+            title: 'Todavía no tienes una meta',
+            message: 'Completa tu perfil o pide a tu coach que te asigne una.',
           ),
         ];
       }
@@ -76,62 +79,90 @@ class CurrentGoalCard extends StatelessWidget {
     }
 
     return [
-      Wrap(
-        spacing: 24,
-        runSpacing: 12,
+      Row(
         children: [
-          _GoalValue(
-            key: const Key('home_goal_calories'),
-            label: 'Calorías',
-            value: '${goal.calories} kcal',
+          Expanded(
+            child: MetricTile(
+              key: const Key('home_goal_calories'),
+              label: Macro.calories.label,
+              macro: Macro.calories,
+              value: '${goal.calories} kcal',
+            ),
           ),
-          _GoalValue(
-            key: const Key('home_goal_protein'),
-            label: 'Proteína',
-            value: '${goal.proteinG} g',
+          Expanded(
+            child: MetricTile(
+              key: const Key('home_goal_protein'),
+              label: Macro.protein.label,
+              macro: Macro.protein,
+              value: '${goal.proteinG} g',
+            ),
           ),
-          _GoalValue(
-            key: const Key('home_goal_fat'),
-            label: 'Grasa',
-            value: '${goal.fatG} g',
+          Expanded(
+            child: MetricTile(
+              key: const Key('home_goal_fat'),
+              label: Macro.fat.label,
+              macro: Macro.fat,
+              value: '${goal.fatG} g',
+            ),
           ),
         ],
       ),
-      const SizedBox(height: 12),
-      Chip(
-        key: const Key('home_goal_source'),
-        avatar: Icon(
-          goal.source == GoalSource.coach ? Icons.sports : Icons.calculate,
-          size: 18,
-        ),
-        label: Text(goalSourceLabel(goal.source)),
-      ),
       // Falló una recarga: se conserva la última meta y se avisa.
       if (error case final message?) ...[
-        const SizedBox(height: 12),
+        const SizedBox(height: AppSpacing.md),
         ErrorBanner(message: message),
-        const SizedBox(height: 12),
-        retry,
+        const SizedBox(height: AppSpacing.md),
+        PrimaryButton(
+          key: const Key('home_goal_retry'),
+          label: 'Reintentar',
+          icon: Icons.refresh_rounded,
+          variant: AppButtonVariant.tonal,
+          compact: true,
+          onPressed: onRetry,
+        ),
       ],
     ];
   }
 }
 
-class _GoalValue extends StatelessWidget {
-  const _GoalValue({required this.label, required this.value, super.key});
+/// Etiqueta con el origen de la meta.
+class _SourceTag extends StatelessWidget {
+  const _SourceTag({required this.source});
 
-  final String label;
-  final String value;
+  final GoalSource source;
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(label, style: theme.textTheme.labelMedium),
-        Text(value, style: theme.textTheme.titleLarge),
-      ],
+    final app = context.appColors;
+    final isCoach = source == GoalSource.coach;
+    final background = isCoach ? app.infoContainer : app.successContainer;
+    final foreground = isCoach ? app.onInfoContainer : app.onSuccessContainer;
+
+    return Container(
+      key: const Key('home_goal_source'),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.sm,
+        vertical: AppSpacing.xs,
+      ),
+      decoration: BoxDecoration(
+        color: background,
+        borderRadius: AppRadius.pillAll,
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            isCoach ? Icons.sports_rounded : Icons.calculate_rounded,
+            size: AppSizes.iconXs,
+            color: foreground,
+          ),
+          const SizedBox(width: AppSpacing.xs),
+          Text(
+            goalSourceLabel(source),
+            style: context.text.labelMedium?.copyWith(color: foreground),
+          ),
+        ],
+      ),
     );
   }
 }

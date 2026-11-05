@@ -3,9 +3,20 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import '../../../../app/routes.dart';
+import '../../../../core/presentation/theme/app_tokens.dart';
+import '../../../../core/presentation/theme/theme_context.dart';
+import '../../../../core/presentation/widgets/app_header.dart';
+import '../../../../core/presentation/widgets/app_snack_bar.dart';
+import '../../../../core/presentation/widgets/app_text_field.dart';
+import '../../../../core/presentation/widgets/content_width.dart';
 import '../../../../core/presentation/widgets/error_banner.dart';
+import '../../../../core/presentation/widgets/field_error_text.dart';
 import '../../../../core/presentation/widgets/password_field.dart';
+import '../../../../core/presentation/widgets/primary_button.dart';
+import '../../../../core/presentation/widgets/section_card.dart';
+import '../../../../core/presentation/widgets/status_banner.dart';
 import '../../domain/entities/role.dart';
+import '../widgets/role_option.dart';
 import 'register_view_model.dart';
 
 /// HU-01 — pantalla de registro con elección de rol y aviso de privacidad.
@@ -21,12 +32,10 @@ class RegisterView extends StatelessWidget {
       return;
     }
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text(
-          'Tu cuenta se creó, pero no pudimos iniciar sesión. Inicia sesión con tus datos.',
-        ),
-      ),
+    showAppSnackBar(
+      ScaffoldMessenger.of(context),
+      'Tu cuenta se creó, pero no pudimos iniciar sesión. Inicia sesión con tus datos.',
+      tone: StatusTone.info,
     );
     context.go(AppRoutes.login);
   }
@@ -34,146 +43,153 @@ class RegisterView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final viewModel = context.watch<RegisterViewModel>();
-    final colors = Theme.of(context).colorScheme;
     final roleError = viewModel.fieldError(RegisterViewModel.roleField);
     final privacyError = viewModel.fieldError(RegisterViewModel.privacyField);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Crear cuenta')),
+      appBar: const AppHeader(title: 'Crear cuenta'),
       body: SafeArea(
-        child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(24),
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 420),
-              child: AutofillGroup(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    if (viewModel.generalError case final message?) ...[
-                      ErrorBanner(message: message),
-                      const SizedBox(height: 16),
-                    ],
-                    TextField(
-                      key: const Key('register_name'),
-                      textCapitalization: TextCapitalization.words,
-                      autofillHints: const [AutofillHints.name],
-                      textInputAction: TextInputAction.next,
-                      onChanged: viewModel.setName,
-                      decoration: InputDecoration(
-                        labelText: 'Nombre',
-                        errorText: viewModel.fieldError(
-                          RegisterViewModel.nameField,
+        // Desplazamiento simple (no una lista perezosa): el formulario completo
+        // existe siempre y llevar un campo a la vista no requiere reconstruir.
+        child: SingleChildScrollView(
+          padding: AppSpacing.screenPadding,
+          child: ContentWidth(
+            child: AutofillGroup(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text(
+                    'Tu cuenta te acompaña en cada comida y cada rutina.',
+                    style: context.text.bodyLarge?.copyWith(
+                      color: context.colors.onSurfaceVariant,
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.xl),
+                  if (viewModel.generalError case final message?) ...[
+                    ErrorBanner(message: message),
+                    const SizedBox(height: AppSpacing.lg),
+                  ],
+                  SectionCard(
+                    title: 'Tus datos',
+                    icon: Icons.badge_outlined,
+                    child: Column(
+                      children: [
+                        AppTextField(
+                          key: const Key('register_name'),
+                          label: 'Nombre',
+                          icon: Icons.person_outline_rounded,
+                          textCapitalization: TextCapitalization.words,
+                          autofillHints: const [AutofillHints.name],
+                          textInputAction: TextInputAction.next,
+                          onChanged: viewModel.setName,
+                          errorText: viewModel.fieldError(
+                            RegisterViewModel.nameField,
+                          ),
                         ),
-                        border: const OutlineInputBorder(),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    TextField(
-                      key: const Key('register_email'),
-                      keyboardType: TextInputType.emailAddress,
-                      autocorrect: false,
-                      autofillHints: const [AutofillHints.email],
-                      textInputAction: TextInputAction.next,
-                      onChanged: viewModel.setEmail,
-                      decoration: InputDecoration(
-                        labelText: 'Correo electrónico',
-                        errorText: viewModel.fieldError(
-                          RegisterViewModel.emailField,
+                        const SizedBox(height: AppSpacing.md),
+                        AppTextField(
+                          key: const Key('register_email'),
+                          label: 'Correo electrónico',
+                          icon: Icons.mail_outline_rounded,
+                          keyboardType: TextInputType.emailAddress,
+                          autocorrect: false,
+                          autofillHints: const [AutofillHints.email],
+                          textInputAction: TextInputAction.next,
+                          onChanged: viewModel.setEmail,
+                          errorText: viewModel.fieldError(
+                            RegisterViewModel.emailField,
+                          ),
                         ),
-                        border: const OutlineInputBorder(),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    PasswordField(
-                      key: const Key('register_password'),
-                      label: 'Contraseña (mínimo 8 caracteres)',
-                      autofillHints: const [AutofillHints.newPassword],
-                      errorText: viewModel.fieldError(
-                        RegisterViewModel.passwordField,
-                      ),
-                      onChanged: viewModel.setPassword,
-                    ),
-                    const SizedBox(height: 16),
-                    PasswordField(
-                      key: const Key('register_password_confirmation'),
-                      label: 'Confirmar contraseña',
-                      autofillHints: const [AutofillHints.newPassword],
-                      errorText: viewModel.fieldError(
-                        RegisterViewModel.passwordConfirmationField,
-                      ),
-                      onChanged: viewModel.setPasswordConfirmation,
-                      textInputAction: TextInputAction.done,
-                    ),
-                    const SizedBox(height: 24),
-                    Text(
-                      '¿Cómo usarás MacroFit?',
-                      style: Theme.of(context).textTheme.titleSmall,
-                    ),
-                    const SizedBox(height: 8),
-                    SegmentedButton<Role>(
-                      key: const Key('register_role'),
-                      emptySelectionAllowed: true,
-                      selected: {?viewModel.role},
-                      onSelectionChanged: (selection) => viewModel.setRole(
-                        selection.isEmpty ? null : selection.first,
-                      ),
-                      segments: const [
-                        ButtonSegment(
-                          value: Role.user,
-                          label: Text('Usuario'),
-                          icon: Icon(Icons.person),
+                        const SizedBox(height: AppSpacing.md),
+                        PasswordField(
+                          key: const Key('register_password'),
+                          label: 'Contraseña (mínimo 8 caracteres)',
+                          autofillHints: const [AutofillHints.newPassword],
+                          errorText: viewModel.fieldError(
+                            RegisterViewModel.passwordField,
+                          ),
+                          onChanged: viewModel.setPassword,
                         ),
-                        ButtonSegment(
-                          value: Role.coach,
-                          label: Text('Coach'),
-                          icon: Icon(Icons.sports),
+                        const SizedBox(height: AppSpacing.md),
+                        PasswordField(
+                          key: const Key('register_password_confirmation'),
+                          label: 'Confirmar contraseña',
+                          autofillHints: const [AutofillHints.newPassword],
+                          errorText: viewModel.fieldError(
+                            RegisterViewModel.passwordConfirmationField,
+                          ),
+                          onChanged: viewModel.setPasswordConfirmation,
+                          textInputAction: TextInputAction.done,
                         ),
                       ],
                     ),
-                    if (roleError != null) _FieldErrorText(roleError),
-                    const SizedBox(height: 16),
-                    CheckboxListTile(
-                      key: const Key('register_privacy'),
-                      value: viewModel.privacyAccepted,
-                      onChanged: (value) =>
-                          viewModel.setPrivacyAccepted(value ?? false),
-                      controlAffinity: ListTileControlAffinity.leading,
-                      contentPadding: EdgeInsets.zero,
-                      isError: privacyError != null,
-                      title: const Text(
-                        'He leído y acepto el aviso de privacidad',
-                      ),
-                      subtitle: Align(
-                        alignment: Alignment.centerLeft,
-                        child: TextButton(
-                          key: const Key('register_privacy_link'),
-                          style: TextButton.styleFrom(
-                            padding: EdgeInsets.zero,
-                            foregroundColor: colors.primary,
+                  ),
+                  const SizedBox(height: AppSpacing.lg),
+                  SectionCard(
+                    title: '¿Cómo usarás MacroFit?',
+                    icon: Icons.switch_account_outlined,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        IntrinsicHeight(
+                          child: Row(
+                            key: const Key('register_role'),
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              Expanded(
+                                child: RoleOption(
+                                  icon: Icons.person_rounded,
+                                  label: 'Usuario',
+                                  description:
+                                      'Registro mis comidas y sigo mi meta.',
+                                  selected: viewModel.role == Role.user,
+                                  hasError: roleError != null,
+                                  onTap: () => viewModel.setRole(
+                                    viewModel.role == Role.user
+                                        ? null
+                                        : Role.user,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: AppSpacing.md),
+                              Expanded(
+                                child: RoleOption(
+                                  icon: Icons.sports_rounded,
+                                  label: 'Coach',
+                                  description:
+                                      'Acompaño a mis clientes y sus metas.',
+                                  selected: viewModel.role == Role.coach,
+                                  hasError: roleError != null,
+                                  onTap: () => viewModel.setRole(
+                                    viewModel.role == Role.coach
+                                        ? null
+                                        : Role.coach,
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
-                          onPressed: () =>
-                              context.push(AppRoutes.privacyNotice),
-                          child: const Text('Leer el aviso de privacidad'),
                         ),
-                      ),
+                        FieldErrorText(roleError),
+                      ],
                     ),
-                    if (privacyError != null) _FieldErrorText(privacyError),
-                    const SizedBox(height: 24),
-                    FilledButton(
-                      key: const Key('register_submit'),
-                      onPressed: viewModel.isSubmitting
-                          ? null
-                          : () => _submit(context, viewModel),
-                      child: viewModel.isSubmitting
-                          ? const SizedBox.square(
-                              dimension: 20,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : const Text('Crear cuenta'),
-                    ),
-                  ],
-                ),
+                  ),
+                  const SizedBox(height: AppSpacing.lg),
+                  _PrivacyConsent(
+                    accepted: viewModel.privacyAccepted,
+                    hasError: privacyError != null,
+                    onChanged: viewModel.setPrivacyAccepted,
+                  ),
+                  FieldErrorText(privacyError),
+                  const SizedBox(height: AppSpacing.xxl),
+                  PrimaryButton(
+                    key: const Key('register_submit'),
+                    label: 'Crear cuenta',
+                    icon: Icons.arrow_forward_rounded,
+                    isLoading: viewModel.isSubmitting,
+                    onPressed: () => _submit(context, viewModel),
+                  ),
+                ],
               ),
             ),
           ),
@@ -183,21 +199,70 @@ class RegisterView extends StatelessWidget {
   }
 }
 
-/// Mensaje de error para controles que no son `TextField` (rol, aviso).
-class _FieldErrorText extends StatelessWidget {
-  const _FieldErrorText(this.message);
+/// Casilla del aviso de privacidad con el enlace para leerlo completo.
+class _PrivacyConsent extends StatelessWidget {
+  const _PrivacyConsent({
+    required this.accepted,
+    required this.hasError,
+    required this.onChanged,
+  });
 
-  final String message;
+  final bool accepted;
+  final bool hasError;
+  final ValueChanged<bool> onChanged;
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Padding(
-      padding: const EdgeInsets.only(top: 6, left: 12),
-      child: Text(
-        message,
-        style: theme.textTheme.bodySmall?.copyWith(
-          color: theme.colorScheme.error,
+    final colors = context.colors;
+    return Material(
+      color: colors.surface,
+      shape: RoundedRectangleBorder(
+        borderRadius: AppRadius.xlAll,
+        side: BorderSide(
+          color: hasError ? colors.error : colors.outlineVariant,
+        ),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        key: const Key('register_privacy'),
+        onTap: () => onChanged(!accepted),
+        child: Padding(
+          padding: const EdgeInsets.all(AppSpacing.sm),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Checkbox(
+                value: accepted,
+                isError: hasError,
+                onChanged: (value) => onChanged(value ?? false),
+              ),
+              const SizedBox(width: AppSpacing.xs),
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.only(top: AppSpacing.md),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'He leído y acepto el aviso de privacidad',
+                        style: context.text.bodyLarge,
+                      ),
+                      TextButton.icon(
+                        key: const Key('register_privacy_link'),
+                        style: TextButton.styleFrom(
+                          padding: EdgeInsets.zero,
+                          foregroundColor: colors.secondary,
+                        ),
+                        onPressed: () => context.push(AppRoutes.privacyNotice),
+                        icon: const Icon(Icons.description_outlined),
+                        label: const Text('Leer el aviso de privacidad'),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

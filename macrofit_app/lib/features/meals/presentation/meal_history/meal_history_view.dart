@@ -1,12 +1,25 @@
 import 'dart:async';
-import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import '../../../../app/routes.dart';
+import '../../../../core/presentation/theme/app_tokens.dart';
+import '../../../../core/presentation/widgets/app_header.dart';
+import '../../../../core/presentation/widgets/app_snack_bar.dart';
+import '../../../../core/presentation/widgets/async_photo.dart';
+import '../../../../core/presentation/widgets/confirm_dialog.dart';
+import '../../../../core/presentation/widgets/day_total_card.dart';
+import '../../../../core/presentation/widgets/empty_state.dart';
 import '../../../../core/presentation/widgets/error_banner.dart';
+import '../../../../core/presentation/widgets/error_state.dart';
+import '../../../../core/presentation/widgets/fade_slide_in.dart';
+import '../../../../core/presentation/widgets/loading_state.dart';
+import '../../../../core/presentation/widgets/meal_entry_card.dart';
+import '../../../../core/presentation/widgets/period_navigator.dart';
+import '../../../../core/presentation/widgets/press_scale.dart';
+import '../../../../core/presentation/widgets/primary_button.dart';
 import '../../domain/entities/meal.dart';
 import '../widgets/meal_texts.dart';
 import 'meal_history_view_model.dart';
@@ -21,61 +34,82 @@ class MealHistoryView extends StatelessWidget {
     final viewModel = context.watch<MealHistoryViewModel>();
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Mis comidas')),
-      floatingActionButton: FloatingActionButton.extended(
-        key: const Key('meal_history_add'),
-        onPressed: () => context.push(AppRoutes.mealPhoto),
-        icon: const Icon(Icons.add_a_photo),
-        label: const Text('Registrar comida'),
+      appBar: const AppHeader(title: 'Mis comidas'),
+      floatingActionButton: PressScale(
+        child: FloatingActionButton.extended(
+          key: const Key('meal_history_add'),
+          onPressed: withHaptic(() => context.push(AppRoutes.mealPhoto)),
+          icon: const Icon(Icons.add_a_photo_rounded),
+          label: const Text('Registrar comida'),
+        ),
       ),
       body: SafeArea(
         child: Column(
           children: [
-            _DayBar(viewModel: viewModel),
-            const Divider(height: 1),
-            Expanded(child: _body(context, viewModel)),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(
+                AppSpacing.screen,
+                AppSpacing.sm,
+                AppSpacing.screen,
+                AppSpacing.md,
+              ),
+              child: PeriodNavigator(
+                label: dayLabel(viewModel.date, now: viewModel.today),
+                previousKey: const Key('meal_history_prev'),
+                nextKey: const Key('meal_history_next'),
+                labelKey: const Key('meal_history_date'),
+                previousTooltip: 'Día anterior',
+                nextTooltip: 'Día siguiente',
+                onPrevious: viewModel.previousDay,
+                onNext: viewModel.canGoForward ? viewModel.nextDay : null,
+                onLabelTap: () => _pickDate(context, viewModel),
+              ),
+            ),
+            Expanded(
+              child: AnimatedSwitcher(
+                duration: AppDurations.normal,
+                child: KeyedSubtree(
+                  key: ValueKey(_stateOf(viewModel)),
+                  child: _body(context, viewModel),
+                ),
+              ),
+            ),
           ],
         ),
       ),
     );
   }
 
+  static String _stateOf(MealHistoryViewModel viewModel) {
+    if (viewModel.isLoading) return 'loading';
+    if (viewModel.error != null) return 'error';
+    if (viewModel.isEmptyDay) return 'empty';
+    return 'list-${viewModel.date}';
+  }
+
   Widget _body(BuildContext context, MealHistoryViewModel viewModel) {
-    if (viewModel.isLoading) {
-      return const Center(child: CircularProgressIndicator());
-    }
+    if (viewModel.isLoading) return const LoadingState();
     if (viewModel.error case final message?) {
-      return _Message(
-        children: [
-          ErrorBanner(message: message),
-          const SizedBox(height: 16),
-          FilledButton(
-            key: const Key('meal_history_retry'),
-            onPressed: viewModel.load,
-            child: const Text('Reintentar'),
-          ),
-        ],
+      return ErrorState(
+        message: message,
+        onRetry: viewModel.load,
+        retryKey: const Key('meal_history_retry'),
       );
     }
     if (viewModel.isEmptyDay) {
-      return _Message(
-        children: [
-          Icon(
-            Icons.no_meals_outlined,
-            size: 48,
-            color: Theme.of(context).colorScheme.primary,
-          ),
-          const SizedBox(height: 16),
-          const Text(
-            'No hay registros este día.',
-            key: Key('meal_history_empty'),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 16),
-          OutlinedButton(
+      return EmptyState(
+        key: const Key('meal_history_empty'),
+        icon: Icons.no_meals_outlined,
+        title: 'No hay registros este día.',
+        message: 'Registra una comida o revisa otro día.',
+        actions: [
+          PrimaryButton(
             key: const Key('meal_history_pick_date'),
+            label: 'Elige otra fecha',
+            icon: Icons.calendar_today_rounded,
+            variant: AppButtonVariant.outlined,
+            expand: false,
             onPressed: () => _pickDate(context, viewModel),
-            child: const Text('Elige otra fecha'),
           ),
         ],
       );
@@ -83,24 +117,34 @@ class MealHistoryView extends StatelessWidget {
     return RefreshIndicator(
       onRefresh: viewModel.load,
       child: ListView(
-        // Abajo deja espacio para el botón flotante.
-        padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
+        padding: const EdgeInsets.fromLTRB(
+          AppSpacing.screen,
+          0,
+          AppSpacing.screen,
+          AppSpacing.bottomBarClearance,
+        ),
         children: [
           if (viewModel.deleteError case final message?) ...[
             ErrorBanner(
               key: const Key('meal_history_delete_error'),
               message: message,
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: AppSpacing.md),
           ],
-          Text(
-            'Total del día: ${mealValuesText(viewModel.totals)}',
-            key: const Key('meal_history_totals'),
-            style: Theme.of(context).textTheme.titleSmall,
+          FadeSlideIn(
+            child: DayTotalCard(
+              key: const Key('meal_history_totals'),
+              values: mealValuesText(viewModel.totals),
+            ),
           ),
-          const SizedBox(height: 8),
-          for (final meal in viewModel.meals)
-            _MealCard(meal: meal, viewModel: viewModel),
+          const SizedBox(height: AppSpacing.md),
+          for (final (index, meal) in viewModel.meals.indexed) ...[
+            FadeSlideIn(
+              index: index + 1,
+              child: _MealCard(meal: meal, viewModel: viewModel),
+            ),
+            const SizedBox(height: AppSpacing.sm),
+          ],
         ],
       ),
     );
@@ -127,73 +171,26 @@ Future<void> _confirmDelete(
   MealHistoryViewModel viewModel,
   Meal meal,
 ) async {
-  final confirmed = await showDialog<bool>(
+  final confirmed = await showConfirmDialog(
     context: context,
-    builder: (context) => AlertDialog(
-      title: const Text('¿Eliminar este registro?'),
-      content: Text(
+    title: '¿Eliminar este registro?',
+    message:
         'Se eliminará la comida de las ${mealTimeText(meal.eatenAt)} '
         '(${mealValuesText(meal.values)})'
         '${meal.photoId == null ? '' : ' y su foto'}. No se puede deshacer.',
-      ),
-      actions: [
-        TextButton(
-          key: const Key('meal_delete_cancel'),
-          onPressed: () => Navigator.of(context).pop(false),
-          child: const Text('Cancelar'),
-        ),
-        FilledButton(
-          key: const Key('meal_delete_confirm'),
-          onPressed: () => Navigator.of(context).pop(true),
-          child: const Text('Eliminar'),
-        ),
-      ],
-    ),
+    confirmLabel: 'Eliminar',
+    icon: Icons.delete_outline_rounded,
+    destructive: true,
+    confirmKey: const Key('meal_delete_confirm'),
+    cancelKey: const Key('meal_delete_cancel'),
   );
-  if (confirmed != true || !context.mounted) return;
+  if (!confirmed || !context.mounted) return;
   // La tarjeta de [context] desaparece al eliminar o al recargar el día
   // (`MEAL_NOT_FOUND`): el aviso se muestra con el messenger de la pantalla.
   final messenger = ScaffoldMessenger.of(context);
   await viewModel.delete(meal);
   if (viewModel.takeNotice() case final notice?) {
-    messenger.showSnackBar(SnackBar(content: Text(notice)));
-  }
-}
-
-class _DayBar extends StatelessWidget {
-  const _DayBar({required this.viewModel});
-
-  final MealHistoryViewModel viewModel;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      child: Row(
-        children: [
-          IconButton(
-            key: const Key('meal_history_prev'),
-            tooltip: 'Día anterior',
-            icon: const Icon(Icons.chevron_left),
-            onPressed: viewModel.previousDay,
-          ),
-          Expanded(
-            child: TextButton.icon(
-              key: const Key('meal_history_date'),
-              icon: const Icon(Icons.calendar_today_outlined, size: 18),
-              label: Text(dayLabel(viewModel.date, now: viewModel.today)),
-              onPressed: () => _pickDate(context, viewModel),
-            ),
-          ),
-          IconButton(
-            key: const Key('meal_history_next'),
-            tooltip: 'Día siguiente',
-            icon: const Icon(Icons.chevron_right),
-            onPressed: viewModel.canGoForward ? viewModel.nextDay : null,
-          ),
-        ],
-      ),
-    );
+    showAppSnackBar(messenger, notice);
   }
 }
 
@@ -205,121 +202,25 @@ class _MealCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final textTheme = Theme.of(context).textTheme;
-    return Card(
+    return MealEntryCard(
       key: Key('meal_${meal.id}'),
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(12, 12, 4, 12),
-        child: Row(
-          children: [
-            SizedBox.square(
-              dimension: 72,
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(8),
-                child: switch (meal.photoId) {
-                  final photoId? => _MealPhoto(
-                    key: Key('meal_${meal.id}_photo'),
-                    photo: viewModel.photo(photoId),
-                  ),
-                  null => _NoPhoto(key: Key('meal_${meal.id}_manual')),
-                },
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    mealTimeText(meal.eatenAt),
-                    style: textTheme.titleMedium,
-                  ),
-                  const SizedBox(height: 4),
-                  Text(mealValuesText(meal.values)),
-                  if (meal.photoId == null)
-                    Text('Captura manual', style: textTheme.bodySmall),
-                ],
-              ),
-            ),
-            IconButton(
-              key: Key('meal_${meal.id}_delete'),
-              tooltip: 'Eliminar registro',
-              icon: const Icon(Icons.delete_outline),
-              onPressed: viewModel.deletingId == null
-                  ? () => _confirmDelete(context, viewModel, meal)
-                  : null,
-            ),
-          ],
+      time: mealTimeText(meal.eatenAt),
+      values: mealValuesText(meal.values),
+      isManual: meal.photoId == null,
+      photo: switch (meal.photoId) {
+        final photoId? => AsyncPhoto(
+          key: Key('meal_${meal.id}_photo'),
+          photo: viewModel.photo(photoId),
         ),
-      ),
-    );
-  }
-}
-
-class _MealPhoto extends StatelessWidget {
-  const _MealPhoto({required this.photo, super.key});
-
-  final Future<Uint8List> photo;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-    return FutureBuilder<Uint8List>(
-      future: photo,
-      builder: (context, snapshot) {
-        if (snapshot.data case final bytes?) {
-          return Image.memory(
-            bytes,
-            fit: BoxFit.cover,
-            semanticLabel: 'Foto de la comida',
-            errorBuilder: (_, _, _) =>
-                Icon(Icons.broken_image_outlined, color: colors.outline),
-          );
-        }
-        if (snapshot.hasError) {
-          return ColoredBox(
-            color: colors.surfaceContainerHighest,
-            child: Icon(Icons.broken_image_outlined, color: colors.outline),
-          );
-        }
-        return ColoredBox(
-          color: colors.surfaceContainerHighest,
-          child: const Center(
-            child: SizedBox.square(
-              dimension: 20,
-              child: CircularProgressIndicator(strokeWidth: 2),
-            ),
-          ),
-        );
+        null => PhotoPlaceholder(key: Key('meal_${meal.id}_manual')),
       },
-    );
-  }
-}
-
-class _NoPhoto extends StatelessWidget {
-  const _NoPhoto({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-    return ColoredBox(
-      color: colors.surfaceContainerHighest,
-      child: Icon(Icons.restaurant_outlined, color: colors.outline),
-    );
-  }
-}
-
-class _Message extends StatelessWidget {
-  const _Message({required this.children});
-
-  final List<Widget> children;
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(mainAxisSize: MainAxisSize.min, children: children),
+      trailing: IconButton(
+        key: Key('meal_${meal.id}_delete'),
+        tooltip: 'Eliminar registro',
+        icon: const Icon(Icons.delete_outline_rounded),
+        onPressed: viewModel.deletingId == null
+            ? () => _confirmDelete(context, viewModel, meal)
+            : null,
       ),
     );
   }
