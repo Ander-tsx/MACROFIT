@@ -2,6 +2,8 @@ import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:macrofit_app/features/auth/domain/entities/auth_state.dart';
+import 'package:macrofit_app/core/errors/api_exception.dart';
+import 'package:macrofit_app/features/coach_link/domain/entities/coach_link.dart';
 import 'package:macrofit_app/features/goals/domain/entities/nutritional_goal.dart';
 import 'package:macrofit_app/features/home/presentation/user_home_view_model.dart';
 import 'package:macrofit_app/features/summary/domain/entities/macro_values.dart';
@@ -12,11 +14,13 @@ void main() {
   UserHomeViewModel createViewModel(
     FakeGoalsRepository goals, {
     FakeSummaryRepository? summary,
+    FakeCoachLinkRepository? coachLinks,
     DateTime Function()? clock,
   }) => UserHomeViewModel(
     auth: FakeAuthRepository(initialState: const Authenticated(testUser)),
     goals: goals,
     summary: summary ?? FakeSummaryRepository(),
+    coachLinks: coachLinks ?? FakeCoachLinkRepository(),
     clock: clock ?? DateTime.now,
   );
 
@@ -295,6 +299,52 @@ void main() {
 
       expect(goals.currentCalls, 1);
       expect(summaries.dailyDates, hasLength(1));
+    });
+  });
+
+  group('coach vinculado (HU-13)', () {
+    const coach = CoachLink(
+      id: '1',
+      coachId: 'c1',
+      coachName: 'Laura',
+      coachEmail: 'laura@test.com',
+      status: 'active',
+    );
+
+    test('loadCoach expone el coach vinculado', () async {
+      final viewModel = createViewModel(
+        FakeGoalsRepository(),
+        coachLinks: FakeCoachLinkRepository(linkedCoach: coach),
+      );
+
+      await viewModel.loadCoach();
+
+      expect(viewModel.linkedCoach?.coachName, 'Laura');
+    });
+
+    test('sin vinculación deja linkedCoach en null', () async {
+      final viewModel = createViewModel(FakeGoalsRepository());
+
+      await viewModel.loadCoach();
+
+      expect(viewModel.linkedCoach, isNull);
+    });
+
+    test('si la consulta falla conserva el último coach conocido', () async {
+      final coaches = FakeCoachLinkRepository(linkedCoach: coach);
+      final viewModel = createViewModel(
+        FakeGoalsRepository(),
+        coachLinks: coaches,
+      );
+      await viewModel.loadCoach();
+
+      coaches.error = const ApiException(
+        code: ApiErrorCode.network,
+        message: 'Sin conexión',
+      );
+      await viewModel.loadCoach();
+
+      expect(viewModel.linkedCoach?.coachName, 'Laura');
     });
   });
 }

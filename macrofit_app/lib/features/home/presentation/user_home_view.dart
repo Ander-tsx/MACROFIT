@@ -84,15 +84,21 @@ class UserHomeView extends StatelessWidget {
                 index: 3,
                 child: HighlightCard(
                   title: 'Tu coach',
-                  description:
+                  description: switch (viewModel.linkedCoach) {
+                    final coach? =>
+                      '${coach.coachName} sigue tu progreso y ajusta tu meta.',
+                    null =>
                       'Vincúlate con su código para que siga tu progreso y '
-                      'ajuste tu meta.',
+                          'ajuste tu meta.',
+                  },
                   icon: LucideIcons.whistle,
                   image: AppImages.coach,
                   tone: HighlightTone.blue,
                   action: PrimaryButton(
                     key: const Key('link_coach_nav_button'),
-                    label: 'Vincular con coach',
+                    label: viewModel.linkedCoach == null
+                        ? 'Vincular con coach'
+                        : 'Ver mi coach (${viewModel.linkedCoach!.coachName})',
                     icon: LucideIcons.link,
                     variant: AppButtonVariant.onColor,
                     expand: false,

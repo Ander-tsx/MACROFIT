@@ -239,6 +239,22 @@ pub async fn link_with_invite_code(
     Ok((link, coach))
 }
 
+/// Consulta de la vinculación activa del usuario (la app la usa para mostrar a su coach).
+pub async fn find_active_link(
+    db: &Database,
+    user_id: ObjectId,
+) -> Result<(CoachLink, User), AppError> {
+    let link = links(db)
+        .find_one(doc! { "user_id": user_id, "status": "active" })
+        .await
+        .map_err(AppError::internal)?
+        .ok_or(AppError::UserNotLinked)?;
+    let coach = find_user_by_id(db, link.coach_id)
+        .await?
+        .ok_or(AppError::UserNotLinked)?;
+    Ok((link, coach))
+}
+
 /// HU-14 — desvincula al usuario de su coach activo.
 pub async fn unlink_coach(db: &Database, user_id: ObjectId) -> Result<(), AppError> {
     let now = DateTime::now();
