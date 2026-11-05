@@ -84,7 +84,11 @@ class UserHomeView extends StatelessWidget {
                 key: const Key('link_coach_nav_button'),
                 onPressed: () => context.push(AppRoutes.coachLink),
                 icon: const Icon(Icons.link),
-                label: const Text('Vincular con coach'),
+                label: Text(
+                  viewModel.linkedCoach == null
+                      ? 'Vincular con coach'
+                      : 'Ver mi coach (${viewModel.linkedCoach!.coachName})',
+                ),
               ),
             ],
           ),

@@ -192,6 +192,7 @@ El contrato completo (cuerpos, respuestas y códigos de error de cada endpoint) 
 | GET | `/coach/test` | Bearer (coach) | TEC-05 | Prueba de la regla de acceso por rol |
 | GET | `/coach/invite-code` | Bearer (coach) | HU-12 | Código de invitación del coach; se crea si no existe |
 | POST | `/coach/invite-code/regenerate` | Bearer (coach) | HU-12 | Genera un código nuevo; el anterior deja de ser válido |
+| GET | `/users/me/coach-link` | Bearer (user) | HU-13 | Coach con el que el usuario tiene vinculación activa (`404 USER_NOT_LINKED` si no tiene) |
 | POST | `/users/me/coach-link` | Bearer (user) | HU-13 | Vincula al usuario con un coach mediante su código de invitación |
 | DELETE | `/users/me/coach-link` | Bearer (user) | HU-14 | Desvincula al usuario de su coach activo |
 | POST | `/coach/routines` | Bearer (coach) | HU-18 | Crea una rutina personalizada con ejercicios del catálogo |

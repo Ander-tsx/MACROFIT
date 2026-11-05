@@ -1,5 +1,7 @@
 import '../../../core/errors/api_exception.dart';
 import '../../auth/domain/repositories/auth_repository.dart';
+import '../../coach_link/domain/entities/coach_link.dart';
+import '../../coach_link/domain/repositories/coach_link_repository.dart';
 import '../../goals/domain/entities/nutritional_goal.dart';
 import '../../goals/domain/repositories/goals_repository.dart';
 import '../../summary/domain/entities/day_summary.dart';
@@ -14,11 +16,13 @@ class UserHomeViewModel extends HomeViewModel {
     required AuthRepository auth,
     required this._goals,
     required this._summary,
+    required this._coachLinks,
     this._clock = DateTime.now,
   }) : super(auth);
 
   final GoalsRepository _goals;
   final SummaryRepository _summary;
+  final CoachLinkRepository _coachLinks;
   final DateTime Function() _clock;
 
   NutritionalGoal? _goal;
@@ -30,6 +34,11 @@ class UserHomeViewModel extends HomeViewModel {
   bool _isLoadingSummary = false;
   bool _hasNoSummary = false;
   String? _summaryError;
+
+  CoachLink? _linkedCoach;
+
+  /// Coach con vinculación activa (HU-13); `null` si no tiene o aún no se consulta.
+  CoachLink? get linkedCoach => _linkedCoach;
 
   /// Meta vigente; `null` mientras no se ha cargado o si el usuario no tiene meta.
   NutritionalGoal? get goal => _goal;
@@ -51,8 +60,19 @@ class UserHomeViewModel extends HomeViewModel {
   /// Error al consultar el resumen (p. ej. sin conexión); se puede reintentar.
   String? get summaryError => _summaryError;
 
-  /// Consulta de nuevo la meta (HU-26) y el resumen del día (HU-10).
-  Future<void> refresh() => Future.wait([loadGoal(), loadSummary()]);
+  /// Consulta de nuevo la meta (HU-26), el resumen del día (HU-10) y el coach (HU-13).
+  Future<void> refresh() =>
+      Future.wait([loadGoal(), loadSummary(), loadCoach()]);
+
+  /// HU-13 — consulta el coach vinculado. Si falla, conserva el último valor.
+  Future<void> loadCoach() async {
+    try {
+      _linkedCoach = await _coachLinks.getLinkedCoach();
+    } on Object {
+      // La tarjeta sigue mostrando el último estado conocido.
+    }
+    notifyListeners();
+  }
 
   /// HU-26 — consulta (o vuelve a consultar) la meta vigente. Si falla por red,
   /// conserva la última meta cargada.
