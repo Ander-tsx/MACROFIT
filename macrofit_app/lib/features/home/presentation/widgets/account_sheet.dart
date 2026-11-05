@@ -15,6 +15,8 @@ Future<void> showAccountSheet<T extends HomeViewModel>(BuildContext context) {
   final viewModel = context.read<T>();
   return showModalBottomSheet<void>(
     context: context,
+    // Se ajusta a su contenido (y se desplaza si la pantalla es baja).
+    isScrollControlled: true,
     builder: (sheetContext) => ChangeNotifierProvider<T>.value(
       value: viewModel,
       child: _AccountSheet<T>(),
@@ -47,50 +49,52 @@ class _AccountSheet<T extends HomeViewModel> extends StatelessWidget {
     final user = viewModel.user;
     final text = context.text;
     return SafeArea(
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(
-          AppSpacing.xxl,
-          0,
-          AppSpacing.xxl,
-          AppSpacing.xxl,
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            AppAvatar(email: user?.email ?? '', size: AppSizes.avatarLarge),
-            const SizedBox(height: AppSpacing.md),
-            Text(user?.name ?? '', style: text.headlineSmall),
-            Text(
-              user?.email ?? '',
-              style: text.bodyMedium?.copyWith(
-                color: context.colors.onSurfaceVariant,
+      child: SingleChildScrollView(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.xxl,
+            0,
+            AppSpacing.xxl,
+            AppSpacing.xxl,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              AppAvatar(email: user?.email ?? '', size: AppSizes.avatarLarge),
+              const SizedBox(height: AppSpacing.md),
+              Text(user?.name ?? '', style: text.headlineSmall),
+              Text(
+                user?.email ?? '',
+                style: text.bodyMedium?.copyWith(
+                  color: context.colors.onSurfaceVariant,
+                ),
               ),
-            ),
-            const SizedBox(height: AppSpacing.sm),
-            Container(
-              padding: const EdgeInsets.symmetric(
-                horizontal: AppSpacing.md,
-                vertical: AppSpacing.xs,
+              const SizedBox(height: AppSpacing.sm),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.md,
+                  vertical: AppSpacing.xs,
+                ),
+                decoration: BoxDecoration(
+                  color: context.colors.surfaceContainer,
+                  borderRadius: AppRadius.pillAll,
+                ),
+                child: Text(
+                  user?.role == Role.coach ? 'Coach' : 'Usuario',
+                  style: text.labelMedium,
+                ),
               ),
-              decoration: BoxDecoration(
-                color: context.colors.surfaceContainer,
-                borderRadius: AppRadius.pillAll,
+              const SizedBox(height: AppSpacing.xxl),
+              PrimaryButton(
+                key: const Key('logout_button'),
+                label: 'Cerrar sesión',
+                icon: LucideIcons.logOut,
+                variant: AppButtonVariant.outlined,
+                isLoading: viewModel.isLoggingOut,
+                onPressed: () => confirmLogout(context, viewModel.logout),
               ),
-              child: Text(
-                user?.role == Role.coach ? 'Coach' : 'Usuario',
-                style: text.labelMedium,
-              ),
-            ),
-            const SizedBox(height: AppSpacing.xxl),
-            PrimaryButton(
-              key: const Key('logout_button'),
-              label: 'Cerrar sesión',
-              icon: LucideIcons.logOut,
-              variant: AppButtonVariant.outlined,
-              isLoading: viewModel.isLoggingOut,
-              onPressed: () => confirmLogout(context, viewModel.logout),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

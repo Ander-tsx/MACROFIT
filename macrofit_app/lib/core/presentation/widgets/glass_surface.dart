@@ -40,7 +40,8 @@ class GlassSurface extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = context.theme.brightness == Brightness.dark;
-    final base = tint ?? context.colors.surface;
+    // Vidrio gris neutro: el tinte sale del contenedor del tema, no del blanco.
+    final base = tint ?? context.colors.surfaceContainerHigh;
     const light = AppPalette.white;
 
     return DecoratedBox(

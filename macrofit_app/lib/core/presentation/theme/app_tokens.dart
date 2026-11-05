@@ -91,8 +91,9 @@ abstract final class AppSizes {
   /// Cuadro redondeado con ícono de una fila de lista (referencia: "Log meal").
   static const double listTile = 56;
 
-  static const double avatar = 44;
-  static const double avatarLarge = 72;
+  static const double avatar = 48;
+  static const double avatarHeader = 60;
+  static const double avatarLarge = 96;
 
   static const double thumbnail = 72;
   static const double spinner = 20;
@@ -222,10 +223,10 @@ abstract final class AppOpacity {
   static const double art = 0.18;
 
   /// Imagen de fondo de las tarjetas destacadas (muy tenue bajo el color).
-  static const double featureImage = 0.32;
+  static const double featureImage = 0.5;
 
   /// Texto de los accesos no activos de la barra inferior.
   static const double dockLabel = 0.86;
-  static const double featureTintStrong = 0.92;
-  static const double featureTintSoft = 0.62;
+  static const double featureTintStrong = 0.86;
+  static const double featureTintSoft = 0.45;
 }

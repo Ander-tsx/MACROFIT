@@ -18,6 +18,7 @@ class ChoicePills<T> extends StatelessWidget {
     this.allowDeselect = true,
     this.expand = false,
     this.hasError = false,
+    this.circular = false,
     super.key,
   });
 
@@ -36,6 +37,9 @@ class ChoicePills<T> extends StatelessWidget {
   /// Dibuja el contorno en color de error.
   final bool hasError;
 
+  /// Opciones circulares de tamaño fijo (números cortos como los días).
+  final bool circular;
+
   void _onTap(T option) {
     Haptics.select();
     if (option == selected) {
@@ -52,6 +56,7 @@ class ChoicePills<T> extends StatelessWidget {
       label: labelOf(option),
       selected: option == selected,
       hasError: hasError,
+      circular: circular,
       onTap: () => _onTap(option),
     );
 
@@ -60,7 +65,9 @@ class ChoicePills<T> extends StatelessWidget {
         children: [
           for (final (index, option) in options.indexed) ...[
             if (index > 0) const SizedBox(width: AppSpacing.sm),
-            Expanded(child: pill(option)),
+            Expanded(
+              child: circular ? Center(child: pill(option)) : pill(option),
+            ),
           ],
         ],
       );
@@ -79,12 +86,14 @@ class _Pill extends StatelessWidget {
     required this.selected,
     required this.hasError,
     required this.onTap,
+    this.circular = false,
     super.key,
   });
 
   final String label;
   final bool selected;
   final bool hasError;
+  final bool circular;
   final VoidCallback onTap;
 
   @override
@@ -103,21 +112,30 @@ class _Pill extends StatelessWidget {
       child: PressScale(
         child: Material(
           color: selected ? colors.primary : colors.surface,
-          shape: StadiumBorder(side: BorderSide(color: border)),
+          shape: circular
+              ? CircleBorder(side: BorderSide(color: border))
+              : StadiumBorder(side: BorderSide(color: border)),
           clipBehavior: Clip.antiAlias,
           child: InkWell(
             onTap: onTap,
             child: AnimatedContainer(
               duration: AppDurations.normal,
               curve: Curves.easeOutCubic,
-              constraints: const BoxConstraints(
-                minHeight: AppSizes.controlCompact,
-                minWidth: AppSizes.controlCompact,
-              ),
-              padding: const EdgeInsets.symmetric(
-                horizontal: AppSpacing.lg,
-                vertical: AppSpacing.sm,
-              ),
+              constraints: circular
+                  ? const BoxConstraints.tightFor(
+                      width: AppSizes.controlCompact,
+                      height: AppSizes.controlCompact,
+                    )
+                  : const BoxConstraints(
+                      minHeight: AppSizes.controlCompact,
+                      minWidth: AppSizes.controlCompact,
+                    ),
+              padding: circular
+                  ? EdgeInsets.zero
+                  : const EdgeInsets.symmetric(
+                      horizontal: AppSpacing.lg,
+                      vertical: AppSpacing.sm,
+                    ),
               // Center con factores: la píldora mide lo que su texto y el
               // texto queda centrado aunque el alto mínimo sea mayor.
               child: Center(

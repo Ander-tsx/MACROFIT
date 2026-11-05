@@ -108,7 +108,7 @@ class HomeScaffold<T extends HomeViewModel> extends StatelessWidget {
                             ),
                             child: AppAvatar(
                               email: user?.email ?? '',
-                              size: AppSizes.avatar + AppSpacing.sm,
+                              size: AppSizes.avatarHeader,
                             ),
                           ),
                         ),

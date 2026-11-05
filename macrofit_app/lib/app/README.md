@@ -110,7 +110,7 @@ el tamaño del texto, el color de los macros y el espacio.
 | **Grasa** | `#8338D6` | `#B76CFF` | `appColors.fat` (+ `fatTrack`) |
 | Error | `#D3303B` | `#FF6B6B` | `colors.error` / `errorContainer` |
 | Advertencia (exceso de la meta) | `#9A5F00` | `#FFC24D` | `appColors.warning` |
-| Acento de marca | `#8BD448` | `#8BD448` | botón circular de la barra inferior |
+| Acento de marca | `#8BD448` | `#8BD448` | resaltados puntuales (no en la barra inferior) |
 | Tarjetas destacadas | verde `#0E6B52→#13795E`, azul `#145DB8→#1A6FC8` | igual | `HighlightCard` (texto blanco) |
 
 Contraste: el texto normal sobre su fondo cumple WCAG AA (≥ 4.5:1) en ambos temas; los colores claros de los macros se
@@ -153,7 +153,8 @@ MacroFit no tiene logotipo: la marca es el nombre en Inter y, como ilustración,
 ### Avatares e imágenes
 
 - **Avatar**: [Blobatar](https://pub.dev/packages/blobatar) generado a partir del **correo** de la persona
-  (`AppAvatar(email: …)`): el mismo correo da siempre el mismo avatar, sin subir fotos ni guardar nada.
+  (`AppAvatar(email: …)`), sin fondo: la figura flota sobre la superficie. El mismo correo da siempre el mismo avatar,
+  sin subir fotos ni guardar nada.
 - **Tarjetas destacadas** (`HighlightCard`): color de marca sobre una foto muy tenue (`AppImages`, `assets/images/`):
   comida en «¿Qué comiste?», entrenamiento en «Mis rutinas», coach con cliente en «Tu coach» y el código de invitación.
 
@@ -166,7 +167,7 @@ MacroFit no tiene logotipo: la marca es el nombre en Inter y, como ilustración,
 | Cambiar de estado | Carga → datos / vacío / error con fundido y ajuste de alto (`StateSwitcher`) |
 | Datos | Anillos y barras se llenan desde 0; las cifras cuentan hasta su valor (`CountUp`) |
 | Navegación | Transición *fade forwards* en Android y la nativa en iOS |
-| Barra inferior | Vidrio líquido (`GlassSurface`): desenfoque 22 + saturación 1.7, brillo especular y contorno de luz. La lente se desliza con rebote hacia el acceso que se presiona |
+| Barra inferior | Vidrio líquido gris (`GlassSurface`, también el botón circular de escanear): desenfoque 22 + saturación 1.7, brillo especular y contorno de luz. La lente se desliza con rebote hacia el acceso que se presiona |
 
 Todas las animaciones son finitas (sin temporizadores), así que `pumpAndSettle` funciona en las pruebas.
 

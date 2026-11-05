@@ -228,8 +228,7 @@ class _DockButton extends StatelessWidget {
   }
 }
 
-/// Botón circular de la acción principal: degradado de marca con brillo de
-/// vidrio encima.
+/// Botón circular de la acción principal: el mismo vidrio gris de la barra.
 class _ActionButton extends StatelessWidget {
   const _ActionButton({required this.item});
 
@@ -237,7 +236,6 @@ class _ActionButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final app = context.appColors;
     return Tooltip(
       message: item.label,
       child: Semantics(
@@ -245,65 +243,20 @@ class _ActionButton extends StatelessWidget {
         label: item.label,
         excludeSemantics: true,
         child: PressScale(
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              boxShadow: [
-                BoxShadow(
-                  color: app.accent.withValues(alpha: AppOpacity.track * 2),
-                  blurRadius: AppElevation.floatingBlur,
-                  offset: const Offset(0, AppElevation.softOffset),
-                ),
-              ],
-            ),
+          child: GlassSurface(
+            borderRadius: AppRadius.pillAll,
             child: Material(
-              shape: const CircleBorder(),
-              clipBehavior: Clip.antiAlias,
-              child: Ink(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [app.accent, app.calories],
-                  ),
-                ),
-                child: InkWell(
-                  key: item.key,
-                  onTap: withHaptic(item.onTap),
-                  child: SizedBox.square(
-                    dimension: AppSizes.dockAction,
-                    child: Stack(
-                      alignment: Alignment.center,
-                      children: [
-                        // Brillo especular superior.
-                        Positioned(
-                          top: AppSpacing.xs,
-                          left: AppSpacing.md,
-                          right: AppSpacing.md,
-                          height: AppSizes.dockAction / 2.4,
-                          child: DecoratedBox(
-                            decoration: BoxDecoration(
-                              borderRadius: AppRadius.pillAll,
-                              gradient: LinearGradient(
-                                begin: Alignment.topCenter,
-                                end: Alignment.bottomCenter,
-                                colors: [
-                                  AppPalette.white.withValues(
-                                    alpha: AppGlass.highlight,
-                                  ),
-                                  AppPalette.white.withValues(alpha: 0),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ),
-                        Icon(
-                          item.icon,
-                          color: app.onAccent,
-                          size: AppSizes.iconLg,
-                        ),
-                      ],
-                    ),
+              type: MaterialType.transparency,
+              child: InkWell(
+                key: item.key,
+                customBorder: const CircleBorder(),
+                onTap: withHaptic(item.onTap),
+                child: SizedBox.square(
+                  dimension: AppSizes.dockAction,
+                  child: Icon(
+                    item.icon,
+                    color: context.colors.onSurface,
+                    size: AppSizes.iconMd,
                   ),
                 ),
               ),

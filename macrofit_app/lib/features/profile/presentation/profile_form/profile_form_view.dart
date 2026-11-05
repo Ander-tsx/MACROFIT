@@ -171,6 +171,7 @@ class ProfileFormView extends StatelessWidget {
                       labelOf: (days) => '$days',
                       keyOf: (days) => Key('profile_training_days_$days'),
                       expand: true,
+                      circular: true,
                       hasError: _hasError(
                         viewModel,
                         ProfileFormViewModel.trainingDaysField,

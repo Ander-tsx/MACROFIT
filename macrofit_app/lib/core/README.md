@@ -35,14 +35,14 @@ Código que usan varias features. No contiene lógica de ninguna historia en par
 | `ErrorState` / `ErrorBanner` / `StatusBanner` | Error de pantalla o tarjeta con **Reintentar**; mensajes en línea de error, éxito, información o advertencia |
 | `showConfirmDialog` / `showAppSnackBar` | Diálogo de confirmación (destructivo opcional) y aviso inferior con ícono |
 | `AppTextField` / `PasswordField` / `DateField` / `FieldErrorText` | Campos con ícono, unidad y ayuda; contraseña; fecha; error de controles que no son campos |
-| `ChoicePills` | Selección única en píldoras |
+| `ChoicePills` | Selección única en píldoras (o círculos con `circular`, p. ej. los días de entrenamiento) |
 | `PeriodNavigator` | Píldora «Hoy» / semana con anterior y siguiente |
 | `StatTile` / `MetricTile` / `LeaderRow` | Mosaico con contorno (cifra + unidad + pie), dato simple y renglón «etiqueta ···· valor» |
 | `MacroRings` / `MacroBadge` / `ProgressRing` | Anillos concéntricos de los tres macros, ícono de un macro con su anillo, anillo simple |
 | `HighlightCard` | Tarjeta destacada: color de marca sobre una foto tenue (`AppImages`) y su ícono |
 | `ListRow` / `ActionTile` | Fila con cuadro, título y acción separada; fila de navegación (`ListTile`) |
 | `MealEntryCard` / `DayTotalCard` / `AsyncPhoto` | Registro de comida, total del día y foto que se descarga aparte (meals y clients) |
-| `AppAvatar` / `IconBubble` | Avatar Blobatar generado del correo (con aro de los macros) e ícono en círculo |
+| `AppAvatar` / `IconBubble` | Avatar Blobatar generado del correo, sin fondo, e ícono en círculo |
 | `GlassSurface` | Vidrio líquido (barra inferior) |
 | `PressScale` / `withHaptic` / `FadeSlideIn` / `StateSwitcher` / `CountUp` | Retroalimentación al presionar, vibración, entrada escalonada, transición entre estados y cifras que cuentan |
 | `ContentWidth` | Limita el ancho en tabletas |

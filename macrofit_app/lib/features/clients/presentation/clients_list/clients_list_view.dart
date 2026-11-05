@@ -225,10 +225,7 @@ class _ClientRow extends StatelessWidget {
           ),
           child: Row(
             children: [
-              AppAvatar(
-                email: client.email,
-                size: AppSizes.avatar + AppSpacing.xs,
-              ),
+              AppAvatar(email: client.email, size: AppSizes.avatar),
               const SizedBox(width: AppSpacing.lg),
               Expanded(
                 child: Column(
