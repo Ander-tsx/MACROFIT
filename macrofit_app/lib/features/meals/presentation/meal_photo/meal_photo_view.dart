@@ -16,6 +16,7 @@ import '../../domain/entities/meal_photo.dart';
 import '../widgets/scan_frame.dart';
 import 'meal_photo_view_model.dart';
 import '../../../../core/presentation/theme/lucide_icons.dart';
+import '../../../../core/presentation/widgets/card_edge_clip.dart';
 
 /// HU-06 — "Registrar comida": tomar o elegir la foto, ver la vista previa y subirla.
 class MealPhotoView extends StatelessWidget {
@@ -44,72 +45,74 @@ class MealPhotoView extends StatelessWidget {
       body: SafeArea(
         // Todo el contenido se construye de una vez (pantalla corta): los
         // botones existen aunque estén fuera de la vista.
-        child: SingleChildScrollView(
-          padding: AppSpacing.screenPadding,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              FadeSlideIn(child: _Preview(photo: photo)),
-              const SizedBox(height: AppSpacing.xl),
-              if (viewModel.error case final message?) ...[
-                FadeSlideIn(
-                  child: ErrorBanner(
-                    key: const Key('meal_photo_error'),
-                    message: message,
-                  ),
-                ),
-                const SizedBox(height: AppSpacing.lg),
-              ],
-              if (viewModel.uploaded != null)
-                const FadeSlideIn(
-                  child: StatusBanner(
-                    key: Key('meal_photo_uploaded'),
-                    tone: StatusTone.success,
-                    message: 'Foto subida. En el siguiente paso verás la estimación nutricional.',
-                  ),
-                )
-              else ...[
-                if (photo != null) ...[
-                  PrimaryButton(
-                    key: const Key('meal_photo_upload'),
-                    label: viewModel.isUploading
-                        ? 'Subiendo foto…'
-                        : 'Usar esta foto',
-                    icon: LucideIcons.arrowUp,
-                    isLoading: viewModel.isUploading,
-                    onPressed: viewModel.isBusy
-                        ? null
-                        : () => _upload(context, viewModel),
-                  ),
-                  const SizedBox(height: AppSpacing.xxl),
-                  Text(
-                    'Cambiar foto',
-                    style: context.text.titleSmall?.copyWith(
-                      color: context.colors.onSurfaceVariant,
+        child: CardEdgeClip(
+          child: SingleChildScrollView(
+            padding: AppSpacing.screenPadding,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                FadeSlideIn(child: _Preview(photo: photo)),
+                const SizedBox(height: AppSpacing.xl),
+                if (viewModel.error case final message?) ...[
+                  FadeSlideIn(
+                    child: ErrorBanner(
+                      key: const Key('meal_photo_error'),
+                      message: message,
                     ),
                   ),
-                  const SizedBox(height: AppSpacing.md),
+                  const SizedBox(height: AppSpacing.lg),
                 ],
-                FadeSlideIn(
-                  index: 1,
-                  child: _SourceButtons(viewModel: viewModel),
-                ),
-                const SizedBox(height: AppSpacing.md),
-                // HU-08: captura manual sin foto (formulario vacío, sin photo_id).
-                PrimaryButton(
-                  key: const Key('meal_photo_manual'),
-                  label: 'Capturar sin foto',
-                  icon: LucideIcons.notebookPen,
-                  variant: AppButtonVariant.ghost,
-                  onPressed: viewModel.isBusy
-                      ? null
-                      : () => context.push(
-                          AppRoutes.mealForm,
-                          extra: const MealDraft(),
-                        ),
-                ),
+                if (viewModel.uploaded != null)
+                  const FadeSlideIn(
+                    child: StatusBanner(
+                      key: Key('meal_photo_uploaded'),
+                      tone: StatusTone.success,
+                      message: 'Foto subida. En el siguiente paso verás la estimación nutricional.',
+                    ),
+                  )
+                else ...[
+                  if (photo != null) ...[
+                    PrimaryButton(
+                      key: const Key('meal_photo_upload'),
+                      label: viewModel.isUploading
+                          ? 'Subiendo foto…'
+                          : 'Usar esta foto',
+                      icon: LucideIcons.arrowUp,
+                      isLoading: viewModel.isUploading,
+                      onPressed: viewModel.isBusy
+                          ? null
+                          : () => _upload(context, viewModel),
+                    ),
+                    const SizedBox(height: AppSpacing.xxl),
+                    Text(
+                      'Cambiar foto',
+                      style: context.text.titleSmall?.copyWith(
+                        color: context.colors.onSurfaceVariant,
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.md),
+                  ],
+                  FadeSlideIn(
+                    index: 1,
+                    child: _SourceButtons(viewModel: viewModel),
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+                  // HU-08: captura manual sin foto (formulario vacío, sin photo_id).
+                  PrimaryButton(
+                    key: const Key('meal_photo_manual'),
+                    label: 'Capturar sin foto',
+                    icon: LucideIcons.notebookPen,
+                    variant: AppButtonVariant.ghost,
+                    onPressed: viewModel.isBusy
+                        ? null
+                        : () => context.push(
+                            AppRoutes.mealForm,
+                            extra: const MealDraft(),
+                          ),
+                  ),
+                ],
               ],
-            ],
+            ),
           ),
         ),
       ),

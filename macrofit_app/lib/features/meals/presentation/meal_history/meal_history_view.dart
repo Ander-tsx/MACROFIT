@@ -1,10 +1,8 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
-import '../../../../app/routes.dart';
 import '../../../../core/presentation/theme/app_tokens.dart';
 import '../../../../core/presentation/widgets/app_header.dart';
 import '../../../../core/presentation/widgets/app_snack_bar.dart';
@@ -18,13 +16,13 @@ import '../../../../core/presentation/widgets/fade_slide_in.dart';
 import '../../../../core/presentation/widgets/loading_state.dart';
 import '../../../../core/presentation/widgets/meal_entry_card.dart';
 import '../../../../core/presentation/widgets/period_navigator.dart';
-import '../../../../core/presentation/widgets/press_scale.dart';
 import '../../../../core/presentation/widgets/primary_button.dart';
 import '../../../../core/presentation/widgets/section_card.dart';
 import '../../domain/entities/meal.dart';
 import '../widgets/meal_texts.dart';
 import 'meal_history_view_model.dart';
 import '../../../../core/presentation/theme/lucide_icons.dart';
+import '../../../../core/presentation/widgets/card_edge_clip.dart';
 
 /// HU-09 — "Mis comidas": registros del día con hora, foto y valores, cambio de
 /// día y eliminación con confirmación (RF-08).
@@ -37,14 +35,6 @@ class MealHistoryView extends StatelessWidget {
 
     return Scaffold(
       appBar: const AppHeader(title: 'Mis comidas'),
-      floatingActionButton: PressScale(
-        child: FloatingActionButton.extended(
-          key: const Key('meal_history_add'),
-          onPressed: withHaptic(() => context.push(AppRoutes.mealPhoto)),
-          icon: const Icon(LucideIcons.scan),
-          label: const Text('Registrar comida'),
-        ),
-      ),
       body: SafeArea(
         child: Column(
           children: [
@@ -67,7 +57,7 @@ class MealHistoryView extends StatelessWidget {
                 onLabelTap: () => _pickDate(context, viewModel),
               ),
             ),
-            Expanded(child: _body(context, viewModel)),
+            Expanded(child: CardEdgeClip(child: _body(context, viewModel))),
           ],
         ),
       ),

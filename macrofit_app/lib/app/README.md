@@ -6,6 +6,7 @@
 | `dependencies.dart` | `AppDependencies.create`: **raíz de composición**. Único lugar que instancia implementaciones de datos |
 | `router.dart` | `createRouter` (rutas y ViewModel por ruta) y `resolveRedirect` (guard de sesión, función pura) |
 | `routes.dart` | Constantes de rutas (`AppRoutes`) y conjunto de rutas públicas |
+| `navigation/` | Barra inferior persistente (`AppShell` + `AppDock`), transición lateral entre pestañas (`TabTransitions`, `tabPage`) y `PopupRouteObserver` |
 | `theme.dart` | `AppTheme.light` / `AppTheme.dark`: `ColorScheme` propio, `TextTheme` (Inter) y temas de componentes. Ver **Guía visual** abajo |
 
 ## Dependencias (`dependencies.dart`)
@@ -64,6 +65,22 @@ Consecuencias:
   `push` desde la estimación o desde "Registrar comida".
 - HU-09: `/user/meals` ("Mis comidas") es subruta de `/user` y puede recibir el día en `extra` (`DateTime`). Al guardar un
   registro (desde la estimación o el formulario) se abre con `go`: el inicio queda debajo y atrás regresa a él.
+
+### Barra inferior y pestañas (TEC-17)
+
+- `MaterialApp.router(builder:)` envuelve el navegador con `AppShell`, que dibuja **una sola** `AppDock` encima de
+  todas las pantallas: no se mueve al cambiar de pantalla.
+- Pestañas del usuario: Inicio (`/user`), Comidas (`/user/meals`), Semana (`/user/summary`) y Peso (`/user/weights`);
+  acción principal: escanear (`/user/meals/photo`). Del coach: Inicio (`/coach`), Clientes (`/coach/clients`) y
+  Rutinas (`/coach/routines`); acción principal: código de invitación.
+- Las pestañas son **subrutas del inicio de su rol** (mismos URL de siempre): la barra las abre con `go`, el inicio queda
+  debajo y atrás regresa a él (igual que antes con "Mis comidas", HU-09). La acción principal usa `push`.
+- Al cambiar de pestaña desde la barra, la pantalla nueva entra desde la derecha o la izquierda según el orden de las
+  pestañas y la anterior sale hacia el otro lado (`tabPage` + `TabTransitions`).
+- La barra se oculta en la captura de comida (foto, estimación, formulario), en el constructor de rutinas y el selector
+  de ejercicios, mientras hay un diálogo u hoja abierta (`PopupRouteObserver`) y con el teclado visible. Mientras la
+  ruta la muestra, `AppShell` suma su alto al margen inferior seguro (`MediaQuery.padding`) para que el contenido y los
+  avisos queden por encima.
 
 ### Agregar una ruta
 
@@ -166,8 +183,9 @@ MacroFit no tiene logotipo: la marca es el nombre en Inter y, como ilustración,
 | Entrar a una pantalla | Las tarjetas aparecen y suben 18 px, escalonadas 60 ms (`FadeSlideIn`) |
 | Cambiar de estado | Carga → datos / vacío / error con fundido y ajuste de alto (`StateSwitcher`) |
 | Datos | Anillos y barras se llenan desde 0; las cifras cuentan hasta su valor (`CountUp`) |
-| Navegación | Transición *fade forwards* en Android y la nativa en iOS |
-| Barra inferior | Vidrio líquido gris (`GlassSurface`, también el botón circular de escanear): desenfoque 22 + saturación 1.7, brillo especular y contorno de luz. La lente se desliza con rebote hacia el acceso que se presiona |
+| Navegación | Transición *fade forwards* en Android y la nativa en iOS; entre pestañas, deslizamiento lateral |
+| Bordes al desplazar | El contenido que pasa bajo el encabezado se recorta con la curva de las tarjetas (`CardEdgeClip`) |
+| Barra inferior | Vidrio gris casi opaco (`GlassSurface`, también el botón circular de escanear): desenfoque 22 + saturación 1.7, brillo especular y contorno de luz. La lente se desliza con rebote hacia el acceso que se presiona |
 
 Todas las animaciones son finitas (sin temporizadores), así que `pumpAndSettle` funciona en las pruebas.
 

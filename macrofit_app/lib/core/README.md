@@ -46,5 +46,6 @@ Código que usan varias features. No contiene lógica de ninguna historia en par
 | `GlassSurface` | Vidrio líquido (barra inferior) |
 | `PressScale` / `withHaptic` / `FadeSlideIn` / `StateSwitcher` / `CountUp` | Retroalimentación al presionar, vibración, entrada escalonada, transición entre estados y cifras que cuentan |
 | `ContentWidth` | Limita el ancho en tabletas |
+| `CardEdgeClip` | Recorta el contenido desplazable bajo el encabezado con la curva de las tarjetas |
 
 Pruebas de widget en `test/core/presentation/shared_widgets_test.dart`.

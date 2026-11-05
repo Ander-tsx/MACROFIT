@@ -24,6 +24,7 @@ import 'weekly_calories_chart.dart';
 import 'weekly_summary_texts.dart';
 import 'weekly_summary_view_model.dart';
 import '../../../../core/presentation/theme/lucide_icons.dart';
+import '../../../../core/presentation/widgets/card_edge_clip.dart';
 
 /// HU-11 — resumen semanal (RF-10): calorías de los 7 días contra la meta de cada día,
 /// promedio diario y días con la meta cumplida, con cambio a la semana anterior o siguiente.
@@ -36,29 +37,31 @@ class WeeklySummaryView extends StatelessWidget {
 
     return Scaffold(
       appBar: const AppHeader(title: 'Resumen semanal'),
-      body: RefreshIndicator(
-        onRefresh: viewModel.load,
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(
-            AppSpacing.screen,
-            0,
-            AppSpacing.screen,
-            AppSpacing.huge,
-          ),
-          children: [
-            PeriodNavigator(
-              label: weekRange(viewModel.start, viewModel.end),
-              previousKey: const Key('weekly_previous'),
-              nextKey: const Key('weekly_next'),
-              labelKey: const Key('weekly_range'),
-              previousTooltip: 'Semana anterior',
-              nextTooltip: 'Semana siguiente',
-              onPrevious: viewModel.previousWeek,
-              onNext: viewModel.canGoForward ? viewModel.nextWeek : null,
+      body: CardEdgeClip(
+        child: RefreshIndicator(
+          onRefresh: viewModel.load,
+          child: ListView(
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.screen,
+              0,
+              AppSpacing.screen,
+              AppSpacing.huge,
             ),
-            const SizedBox(height: AppSpacing.md),
-            ..._content(viewModel),
-          ],
+            children: [
+              PeriodNavigator(
+                label: weekRange(viewModel.start, viewModel.end),
+                previousKey: const Key('weekly_previous'),
+                nextKey: const Key('weekly_next'),
+                labelKey: const Key('weekly_range'),
+                previousTooltip: 'Semana anterior',
+                nextTooltip: 'Semana siguiente',
+                onPrevious: viewModel.previousWeek,
+                onNext: viewModel.canGoForward ? viewModel.nextWeek : null,
+              ),
+              const SizedBox(height: AppSpacing.md),
+              ..._content(viewModel),
+            ],
+          ),
         ),
       ),
     );

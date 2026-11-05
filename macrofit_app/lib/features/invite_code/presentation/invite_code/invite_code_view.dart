@@ -16,6 +16,7 @@ import '../../../../core/presentation/widgets/primary_button.dart';
 import '../../../../core/presentation/widgets/section_card.dart';
 import 'invite_code_view_model.dart';
 import '../../../../core/presentation/theme/lucide_icons.dart';
+import '../../../../core/presentation/widgets/card_edge_clip.dart';
 
 /// HU-12 — código de invitación del coach con copiar, compartir y regenerar.
 class InviteCodeView extends StatelessWidget {
@@ -46,116 +47,118 @@ class InviteCodeView extends StatelessWidget {
 
     final text = context.text;
     final colors = context.colors;
-    return SingleChildScrollView(
-      padding: AppSpacing.screenPadding,
-      child: ContentWidth(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            FadeSlideIn(
-              child: SectionCard(
-                child: Column(
-                  children: [
-                    Text(
-                      'Comparte este código con tus clientes para que se vinculen contigo '
-                      'desde su app.',
-                      textAlign: TextAlign.center,
-                      style: text.bodyMedium?.copyWith(
-                        color: colors.onSurfaceVariant,
-                      ),
-                    ),
-                    const SizedBox(height: AppSpacing.xxl),
-                    Text('Tu código', style: text.labelLarge),
-                    const SizedBox(height: AppSpacing.sm),
-                    AnimatedSwitcher(
-                      duration: AppDurations.normal,
-                      child: SelectableText(
-                        code,
-                        key: const Key('invite_code_value'),
+    return CardEdgeClip(
+      child: SingleChildScrollView(
+        padding: AppSpacing.screenPadding,
+        child: ContentWidth(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              FadeSlideIn(
+                child: SectionCard(
+                  child: Column(
+                    children: [
+                      Text(
+                        'Comparte este código con tus clientes para que se vinculen contigo '
+                        'desde su app.',
                         textAlign: TextAlign.center,
-                        style: text.displayMedium
-                            ?.merge(AppText.numeric)
-                            .copyWith(letterSpacing: AppSpacing.sm),
-                      ),
-                    ),
-                    const SizedBox(height: AppSpacing.md),
-                    // Solo existe mientras se regenera: un indicador infinito
-                    // invisible seguiría consumiendo cuadros.
-                    AnimatedSize(
-                      duration: AppDurations.normal,
-                      child: viewModel.isRegenerating
-                          ? const LinearProgressIndicator(
-                              minHeight: AppSizes.progressBarThin,
-                            )
-                          : const SizedBox(width: double.infinity),
-                    ),
-                    const SizedBox(height: AppSpacing.lg),
-                    if (viewModel.regenerateError case final message?) ...[
-                      ErrorBanner(message: message),
-                      const SizedBox(height: AppSpacing.lg),
-                    ],
-                    Row(
-                      children: [
-                        Expanded(
-                          child: PrimaryButton(
-                            key: const Key('invite_code_copy'),
-                            label: 'Copiar',
-                            icon: LucideIcons.copy,
-                            variant: AppButtonVariant.outlined,
-                            onPressed: viewModel.canUseCode
-                                ? () => _copy(context, viewModel)
-                                : null,
-                          ),
+                        style: text.bodyMedium?.copyWith(
+                          color: colors.onSurfaceVariant,
                         ),
-                        const SizedBox(width: AppSpacing.md),
-                        Expanded(
-                          // Builder: el contexto del botón da el área donde anclar la hoja en iPad.
-                          child: Builder(
-                            builder: (buttonContext) => PrimaryButton(
-                              key: const Key('invite_code_share'),
-                              label: 'Compartir',
-                              icon: LucideIcons.share2,
+                      ),
+                      const SizedBox(height: AppSpacing.xxl),
+                      Text('Tu código', style: text.labelLarge),
+                      const SizedBox(height: AppSpacing.sm),
+                      AnimatedSwitcher(
+                        duration: AppDurations.normal,
+                        child: SelectableText(
+                          code,
+                          key: const Key('invite_code_value'),
+                          textAlign: TextAlign.center,
+                          style: text.displayMedium
+                              ?.merge(AppText.numeric)
+                              .copyWith(letterSpacing: AppSpacing.sm),
+                        ),
+                      ),
+                      const SizedBox(height: AppSpacing.md),
+                      // Solo existe mientras se regenera: un indicador infinito
+                      // invisible seguiría consumiendo cuadros.
+                      AnimatedSize(
+                        duration: AppDurations.normal,
+                        child: viewModel.isRegenerating
+                            ? const LinearProgressIndicator(
+                                minHeight: AppSizes.progressBarThin,
+                              )
+                            : const SizedBox(width: double.infinity),
+                      ),
+                      const SizedBox(height: AppSpacing.lg),
+                      if (viewModel.regenerateError case final message?) ...[
+                        ErrorBanner(message: message),
+                        const SizedBox(height: AppSpacing.lg),
+                      ],
+                      Row(
+                        children: [
+                          Expanded(
+                            child: PrimaryButton(
+                              key: const Key('invite_code_copy'),
+                              label: 'Copiar',
+                              icon: LucideIcons.copy,
+                              variant: AppButtonVariant.outlined,
                               onPressed: viewModel.canUseCode
-                                  ? () => viewModel.share(
-                                      origin: _originOf(buttonContext),
-                                    )
+                                  ? () => _copy(context, viewModel)
                                   : null,
                             ),
                           ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(height: AppSpacing.cardGap),
-            FadeSlideIn(
-              index: 2,
-              child: SectionCard(
-                title: 'Regenerar código',
-                subtitle:
-                    'Si regeneras el código, el anterior deja de funcionar. Tus clientes '
-                    'ya vinculados no se ven afectados.',
-                child: Align(
-                  alignment: Alignment.centerLeft,
-                  child: PrimaryButton(
-                    key: const Key('invite_code_regenerate'),
-                    label: 'Regenerar código',
-                    icon: LucideIcons.refreshCw,
-                    variant: AppButtonVariant.tonal,
-                    expand: false,
-                    compact: true,
-                    onPressed: viewModel.canUseCode
-                        ? () => _regenerate(context, viewModel)
-                        : null,
+                          const SizedBox(width: AppSpacing.md),
+                          Expanded(
+                            // Builder: el contexto del botón da el área donde anclar la hoja en iPad.
+                            child: Builder(
+                              builder: (buttonContext) => PrimaryButton(
+                                key: const Key('invite_code_share'),
+                                label: 'Compartir',
+                                icon: LucideIcons.share2,
+                                onPressed: viewModel.canUseCode
+                                    ? () => viewModel.share(
+                                        origin: _originOf(buttonContext),
+                                      )
+                                    : null,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
                   ),
                 ),
               ),
-            ),
-            const SizedBox(height: AppSpacing.cardGap),
-            const FadeSlideIn(index: 1, child: _HowItWorks()),
-          ],
+              const SizedBox(height: AppSpacing.cardGap),
+              FadeSlideIn(
+                index: 2,
+                child: SectionCard(
+                  title: 'Regenerar código',
+                  subtitle:
+                      'Si regeneras el código, el anterior deja de funcionar. Tus clientes '
+                      'ya vinculados no se ven afectados.',
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: PrimaryButton(
+                      key: const Key('invite_code_regenerate'),
+                      label: 'Regenerar código',
+                      icon: LucideIcons.refreshCw,
+                      variant: AppButtonVariant.tonal,
+                      expand: false,
+                      compact: true,
+                      onPressed: viewModel.canUseCode
+                          ? () => _regenerate(context, viewModel)
+                          : null,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: AppSpacing.cardGap),
+              const FadeSlideIn(index: 1, child: _HowItWorks()),
+            ],
+          ),
         ),
       ),
     );

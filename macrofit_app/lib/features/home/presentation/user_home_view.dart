@@ -10,7 +10,6 @@ import '../../../core/presentation/widgets/primary_button.dart';
 import 'user_home_view_model.dart';
 import 'widgets/current_goal_card.dart';
 import 'widgets/daily_progress_card.dart';
-import 'widgets/home_dock.dart';
 import 'widgets/home_scaffold.dart';
 import 'widgets/refresh_on_return.dart';
 import '../../../core/presentation/theme/lucide_icons.dart';
@@ -38,44 +37,6 @@ class UserHomeView extends StatelessWidget {
         avatarKey: const Key('profile_button'),
         avatarTooltip: 'Mi perfil',
         onAvatarTap: () => context.push(AppRoutes.profileEdit),
-        dock: HomeDock(
-          items: [
-            DockItem(
-              icon: LucideIcons.house,
-              selectedIcon: LucideIcons.house,
-              label: 'Inicio',
-              selected: true,
-              onTap: () {},
-            ),
-            DockItem(
-              key: const Key('meal_history_button'),
-              icon: LucideIcons.utensils,
-              selectedIcon: LucideIcons.utensils,
-              label: 'Comidas',
-              onTap: () => context.push(AppRoutes.mealHistory),
-            ),
-            DockItem(
-              key: const Key('weekly_summary_button'),
-              icon: LucideIcons.chartColumn,
-              selectedIcon: LucideIcons.chartColumn,
-              label: 'Semana',
-              onTap: () => context.push(AppRoutes.weeklySummary),
-            ),
-            DockItem(
-              key: const Key('weights_button'),
-              icon: LucideIcons.weight,
-              selectedIcon: LucideIcons.weight,
-              label: 'Peso',
-              onTap: () => context.push(AppRoutes.weights),
-            ),
-          ],
-          action: DockItem(
-            key: const Key('register_meal_button'),
-            icon: LucideIcons.scan,
-            label: 'Registrar comida',
-            onTap: openMealPhoto,
-          ),
-        ),
         body: RefreshIndicator(
           onRefresh: viewModel.refresh,
           child: ListView(

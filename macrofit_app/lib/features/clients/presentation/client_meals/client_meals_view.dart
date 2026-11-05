@@ -21,6 +21,7 @@ import '../../domain/entities/client_meal.dart';
 import '../widgets/client_meal_texts.dart';
 import 'client_meals_view_model.dart';
 import '../../../../core/presentation/theme/lucide_icons.dart';
+import '../../../../core/presentation/widgets/card_edge_clip.dart';
 
 /// HU-25 — registro diario de comidas de un cliente. Solo lectura (RN-07): no hay
 /// opciones para crear, editar ni eliminar registros.
@@ -79,7 +80,9 @@ class ClientMealsView extends StatelessWidget {
                       onLabelTap: () => _pickDate(context, viewModel),
                     ),
                   ),
-                  Expanded(child: _body(context, viewModel)),
+                  Expanded(
+                    child: CardEdgeClip(child: _body(context, viewModel)),
+                  ),
                 ],
               ),
       ),

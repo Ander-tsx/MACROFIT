@@ -23,6 +23,7 @@ import '../../domain/entities/profile.dart';
 import '../../domain/validators/profile_validators.dart';
 import 'profile_form_view_model.dart';
 import '../../../../core/presentation/theme/lucide_icons.dart';
+import '../../../../core/presentation/widgets/card_edge_clip.dart';
 
 /// HU-03 — perfil inicial (alta obligatoria tras el primer inicio de sesión) y edición ("Mi perfil").
 class ProfileFormView extends StatelessWidget {
@@ -95,191 +96,187 @@ class ProfileFormView extends StatelessWidget {
       );
     }
 
-    final colors = context.colors;
-    return SingleChildScrollView(
-      padding: AppSpacing.screenPadding,
-      child: ContentWidth(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            if (!viewModel.isEditing) ...[
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
-                child: Text(
-                  'Cuéntanos sobre ti para calcular tu meta y recomendarte rutinas.',
-                  style: context.text.bodyLarge?.copyWith(
-                    color: colors.onSurfaceVariant,
+    return CardEdgeClip(
+      child: SingleChildScrollView(
+        padding: AppSpacing.screenPadding,
+        child: ContentWidth(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              FadeSlideIn(child: _ProfileHero(viewModel: viewModel)),
+              const SizedBox(height: AppSpacing.xl),
+              if (viewModel.generalError case final message?) ...[
+                FadeSlideIn(child: ErrorBanner(message: message)),
+                const SizedBox(height: AppSpacing.md),
+              ],
+              FadeSlideIn(
+                child: SectionCard(
+                  title: 'Tu objetivo',
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      const _Label('Objetivo'),
+                      ChoicePills<Objective>(
+                        key: const Key('profile_objective'),
+                        options: Objective.values,
+                        selected: viewModel.objective,
+                        labelOf: (objective) => objective.label,
+                        hasError: _hasError(
+                          viewModel,
+                          ProfileFormViewModel.objectiveField,
+                        ),
+                        onChanged: viewModel.setObjective,
+                      ),
+                      FieldErrorText(
+                        viewModel.fieldError(
+                          ProfileFormViewModel.objectiveField,
+                        ),
+                      ),
+                      const SizedBox(height: AppSpacing.xl),
+                      const _Label('Nivel'),
+                      ChoicePills<ExperienceLevel>(
+                        key: const Key('profile_level'),
+
+                        options: ExperienceLevel.values,
+                        selected: viewModel.level,
+                        labelOf: (level) => level.label,
+                        hasError: _hasError(
+                          viewModel,
+                          ProfileFormViewModel.levelField,
+                        ),
+                        onChanged: viewModel.setLevel,
+                      ),
+                      FieldErrorText(
+                        viewModel.fieldError(ProfileFormViewModel.levelField),
+                      ),
+                      const SizedBox(height: AppSpacing.xl),
+                      const _Label('Días de entrenamiento por semana'),
+                      ChoicePills<int>(
+                        options: [
+                          for (
+                            var days = ProfileValidators.trainingDaysMin;
+                            days <= ProfileValidators.trainingDaysMax;
+                            days++
+                          )
+                            days,
+                        ],
+                        selected: viewModel.trainingDays,
+                        labelOf: (days) => '$days',
+                        keyOf: (days) => Key('profile_training_days_$days'),
+                        expand: true,
+                        circular: true,
+                        hasError: _hasError(
+                          viewModel,
+                          ProfileFormViewModel.trainingDaysField,
+                        ),
+                        onChanged: viewModel.setTrainingDays,
+                      ),
+                      FieldErrorText(
+                        viewModel.fieldError(
+                          ProfileFormViewModel.trainingDaysField,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ),
-              const SizedBox(height: AppSpacing.lg),
-            ],
-            if (viewModel.generalError case final message?) ...[
-              FadeSlideIn(child: ErrorBanner(message: message)),
-              const SizedBox(height: AppSpacing.md),
-            ],
-            FadeSlideIn(
-              child: SectionCard(
-                title: 'Tu objetivo',
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    const _Label('Objetivo'),
-                    ChoicePills<Objective>(
-                      key: const Key('profile_objective'),
-                      options: Objective.values,
-                      selected: viewModel.objective,
-                      labelOf: (objective) => objective.label,
-                      hasError: _hasError(
-                        viewModel,
-                        ProfileFormViewModel.objectiveField,
+              const SizedBox(height: AppSpacing.cardGap),
+              FadeSlideIn(
+                index: 1,
+                child: SectionCard(
+                  title: 'Sobre ti',
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      AppTextField(
+                        key: const Key('profile_weight'),
+                        label: 'Peso',
+                        icon: LucideIcons.weight,
+                        initialValue: viewModel.weight,
+                        keyboardType: const TextInputType.numberWithOptions(
+                          decimal: true,
+                        ),
+                        textInputAction: TextInputAction.next,
+                        onChanged: viewModel.setWeight,
+                        suffixText: 'kg',
+                        helperText:
+                            'Entre ${ProfileValidators.weightMinKg} y ${ProfileValidators.weightMaxKg} kg',
+                        errorText: viewModel.fieldError(
+                          ProfileFormViewModel.weightField,
+                        ),
                       ),
-                      onChanged: viewModel.setObjective,
-                    ),
-                    FieldErrorText(
-                      viewModel.fieldError(ProfileFormViewModel.objectiveField),
-                    ),
-                    const SizedBox(height: AppSpacing.xl),
-                    const _Label('Nivel'),
-                    ChoicePills<ExperienceLevel>(
-                      key: const Key('profile_level'),
-
-                      options: ExperienceLevel.values,
-                      selected: viewModel.level,
-                      labelOf: (level) => level.label,
-                      hasError: _hasError(
-                        viewModel,
-                        ProfileFormViewModel.levelField,
+                      const SizedBox(height: AppSpacing.md),
+                      AppTextField(
+                        key: const Key('profile_height'),
+                        label: 'Estatura',
+                        icon: LucideIcons.ruler,
+                        initialValue: viewModel.height,
+                        keyboardType: const TextInputType.numberWithOptions(
+                          decimal: true,
+                        ),
+                        textInputAction: TextInputAction.done,
+                        onChanged: viewModel.setHeight,
+                        suffixText: 'cm',
+                        helperText:
+                            'Entre ${ProfileValidators.heightMinCm} y ${ProfileValidators.heightMaxCm} cm',
+                        errorText: viewModel.fieldError(
+                          ProfileFormViewModel.heightField,
+                        ),
                       ),
-                      onChanged: viewModel.setLevel,
-                    ),
-                    FieldErrorText(
-                      viewModel.fieldError(ProfileFormViewModel.levelField),
-                    ),
-                    const SizedBox(height: AppSpacing.xl),
-                    const _Label('Días de entrenamiento por semana'),
-                    ChoicePills<int>(
-                      options: [
-                        for (
-                          var days = ProfileValidators.trainingDaysMin;
-                          days <= ProfileValidators.trainingDaysMax;
-                          days++
-                        )
-                          days,
-                      ],
-                      selected: viewModel.trainingDays,
-                      labelOf: (days) => '$days',
-                      keyOf: (days) => Key('profile_training_days_$days'),
-                      expand: true,
-                      circular: true,
-                      hasError: _hasError(
-                        viewModel,
-                        ProfileFormViewModel.trainingDaysField,
+                      const SizedBox(height: AppSpacing.md),
+                      DateField(
+                        key: const Key('profile_birth_date'),
+                        label: 'Fecha de nacimiento',
+                        value: switch (viewModel.birthDate) {
+                          final date? => _formatDate(date),
+                          null => null,
+                        },
+                        errorText: viewModel.fieldError(
+                          ProfileFormViewModel.birthDateField,
+                        ),
+                        onTap: () => _pickBirthDate(context, viewModel),
                       ),
-                      onChanged: viewModel.setTrainingDays,
-                    ),
-                    FieldErrorText(
-                      viewModel.fieldError(
-                        ProfileFormViewModel.trainingDaysField,
+                      const SizedBox(height: AppSpacing.xl),
+                      const _Label('Sexo'),
+                      ChoicePills<Gender>(
+                        key: const Key('profile_gender'),
+                        expand: true,
+                        options: Gender.values,
+                        selected: viewModel.gender,
+                        labelOf: (gender) => gender.label,
+                        hasError: _hasError(
+                          viewModel,
+                          ProfileFormViewModel.genderField,
+                        ),
+                        onChanged: viewModel.setGender,
                       ),
-                    ),
-                  ],
+                      FieldErrorText(
+                        viewModel.fieldError(ProfileFormViewModel.genderField),
+                      ),
+                    ],
+                  ),
                 ),
               ),
-            ),
-            const SizedBox(height: AppSpacing.cardGap),
-            FadeSlideIn(
-              index: 1,
-              child: SectionCard(
-                title: 'Sobre ti',
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    AppTextField(
-                      key: const Key('profile_weight'),
-                      label: 'Peso',
-                      icon: LucideIcons.weight,
-                      initialValue: viewModel.weight,
-                      keyboardType: const TextInputType.numberWithOptions(
-                        decimal: true,
-                      ),
-                      textInputAction: TextInputAction.next,
-                      onChanged: viewModel.setWeight,
-                      suffixText: 'kg',
-                      helperText:
-                          'Entre ${ProfileValidators.weightMinKg} y ${ProfileValidators.weightMaxKg} kg',
-                      errorText: viewModel.fieldError(
-                        ProfileFormViewModel.weightField,
-                      ),
-                    ),
-                    const SizedBox(height: AppSpacing.md),
-                    AppTextField(
-                      key: const Key('profile_height'),
-                      label: 'Estatura',
-                      icon: LucideIcons.ruler,
-                      initialValue: viewModel.height,
-                      keyboardType: const TextInputType.numberWithOptions(
-                        decimal: true,
-                      ),
-                      textInputAction: TextInputAction.done,
-                      onChanged: viewModel.setHeight,
-                      suffixText: 'cm',
-                      helperText:
-                          'Entre ${ProfileValidators.heightMinCm} y ${ProfileValidators.heightMaxCm} cm',
-                      errorText: viewModel.fieldError(
-                        ProfileFormViewModel.heightField,
-                      ),
-                    ),
-                    const SizedBox(height: AppSpacing.md),
-                    DateField(
-                      key: const Key('profile_birth_date'),
-                      label: 'Fecha de nacimiento',
-                      value: switch (viewModel.birthDate) {
-                        final date? => _formatDate(date),
-                        null => null,
-                      },
-                      errorText: viewModel.fieldError(
-                        ProfileFormViewModel.birthDateField,
-                      ),
-                      onTap: () => _pickBirthDate(context, viewModel),
-                    ),
-                    const SizedBox(height: AppSpacing.xl),
-                    const _Label('Sexo'),
-                    ChoicePills<Gender>(
-                      key: const Key('profile_gender'),
-                      expand: true,
-                      options: Gender.values,
-                      selected: viewModel.gender,
-                      labelOf: (gender) => gender.label,
-                      hasError: _hasError(
-                        viewModel,
-                        ProfileFormViewModel.genderField,
-                      ),
-                      onChanged: viewModel.setGender,
-                    ),
-                    FieldErrorText(
-                      viewModel.fieldError(ProfileFormViewModel.genderField),
-                    ),
-                  ],
-                ),
+              const SizedBox(height: AppSpacing.xxl),
+              PrimaryButton(
+                key: const Key('profile_submit'),
+                label: viewModel.isEditing
+                    ? 'Guardar cambios'
+                    : 'Guardar y continuar',
+                icon: LucideIcons.check,
+                isLoading: viewModel.isSubmitting,
+                onPressed: () => _submit(context, viewModel),
               ),
-            ),
-            const SizedBox(height: AppSpacing.xxl),
-            PrimaryButton(
-              key: const Key('profile_submit'),
-              label: viewModel.isEditing
-                  ? 'Guardar cambios'
-                  : 'Guardar y continuar',
-              icon: LucideIcons.check,
-              isLoading: viewModel.isSubmitting,
-              onPressed: () => _submit(context, viewModel),
-            ),
-            if (viewModel.isEditing) ...[
-              const SizedBox(height: AppSpacing.xxxl),
-              FadeSlideIn(index: 2, child: _AccountCard(viewModel: viewModel)),
+              if (viewModel.isEditing) ...[
+                const SizedBox(height: AppSpacing.xxxl),
+                FadeSlideIn(
+                  index: 2,
+                  child: _AccountCard(viewModel: viewModel),
+                ),
+              ],
+              const SizedBox(height: AppSpacing.xxl),
             ],
-            const SizedBox(height: AppSpacing.xxl),
-          ],
+          ),
         ),
       ),
     );
@@ -313,7 +310,7 @@ class _Label extends StatelessWidget {
   );
 }
 
-/// Cuenta de la sesión al final de "Mi perfil": avatar, correo y **Cerrar sesión**.
+/// **Cerrar sesión** al final de "Mi perfil" (los datos de la cuenta están arriba).
 class _AccountCard extends StatelessWidget {
   const _AccountCard({required this.viewModel});
 
@@ -334,42 +331,110 @@ class _AccountCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    return PrimaryButton(
+      key: const Key('logout_button'),
+      label: 'Cerrar sesión',
+      icon: LucideIcons.logOut,
+      variant: AppButtonVariant.outlined,
+      isLoading: viewModel.isLoggingOut,
+      onPressed: () => _confirmLogout(context),
+    );
+  }
+}
+
+/// Encabezado del perfil: el blobatar del correo en grande, el nombre, el correo
+/// y un resumen de los datos (se actualiza al editar los campos).
+class _ProfileHero extends StatelessWidget {
+  const _ProfileHero({required this.viewModel});
+
+  final ProfileFormViewModel viewModel;
+
+  @override
+  Widget build(BuildContext context) {
     final text = context.text;
-    return SectionCard(
-      title: 'Cuenta',
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Row(
-            children: [
-              AppAvatar(email: viewModel.email),
-              const SizedBox(width: AppSpacing.md),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(viewModel.name, style: text.titleMedium),
-                    Text(
-                      viewModel.email,
-                      style: text.bodySmall,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
-                ),
-              ),
-            ],
+    final colors = context.colors;
+    final app = context.appColors;
+    final objective = viewModel.objective;
+    final chips = <String>[
+      ?objective?.label,
+      if (viewModel.weight.trim().isNotEmpty) '${viewModel.weight.trim()} kg',
+      if (viewModel.height.trim().isNotEmpty) '${viewModel.height.trim()} cm',
+      if (viewModel.trainingDays case final days?) '$days días/sem',
+    ];
+
+    return Column(
+      children: [
+        const SizedBox(height: AppSpacing.md),
+        // Halo suave con los colores de los macros detrás del avatar.
+        Container(
+          width: AppSizes.profileHalo,
+          height: AppSizes.profileHalo,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            gradient: RadialGradient(
+              colors: [
+                app.protein.withValues(alpha: AppOpacity.track),
+                app.calories.withValues(alpha: AppOpacity.glass / 2),
+                colors.surface.withValues(alpha: 0),
+              ],
+            ),
           ),
-          const SizedBox(height: AppSpacing.xl),
-          PrimaryButton(
-            key: const Key('logout_button'),
-            label: 'Cerrar sesión',
-            icon: LucideIcons.logOut,
-            variant: AppButtonVariant.outlined,
-            isLoading: viewModel.isLoggingOut,
-            onPressed: () => _confirmLogout(context),
+          child: AppAvatar(
+            email: viewModel.email,
+            size: AppSizes.profileAvatar,
+          ),
+        ),
+        const SizedBox(height: AppSpacing.md),
+        Text(
+          viewModel.isEditing ? viewModel.name : 'Hola, ${viewModel.name}',
+          textAlign: TextAlign.center,
+          style: text.headlineMedium,
+        ),
+        const SizedBox(height: AppSpacing.xxs),
+        Text(
+          viewModel.email,
+          textAlign: TextAlign.center,
+          style: text.bodyMedium?.copyWith(color: colors.onSurfaceVariant),
+        ),
+        if (!viewModel.isEditing) ...[
+          const SizedBox(height: AppSpacing.md),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xxl),
+            child: Text(
+              'Cuéntanos sobre ti para calcular tu meta y recomendarte rutinas.',
+              textAlign: TextAlign.center,
+              style: text.bodyMedium?.copyWith(color: colors.onSurfaceVariant),
+            ),
           ),
         ],
-      ),
+        if (chips.isNotEmpty) ...[
+          const SizedBox(height: AppSpacing.lg),
+          Wrap(
+            alignment: WrapAlignment.center,
+            spacing: AppSpacing.sm,
+            runSpacing: AppSpacing.sm,
+            children: [
+              for (final chip in chips)
+                AnimatedSwitcher(
+                  duration: AppDurations.normal,
+                  child: Container(
+                    key: ValueKey(chip),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AppSpacing.md,
+                      vertical: AppSpacing.xs,
+                    ),
+                    decoration: BoxDecoration(
+                      color: colors.surface,
+                      borderRadius: AppRadius.pillAll,
+                    ),
+                    child: Text(chip, style: text.labelLarge),
+                  ),
+                ),
+            ],
+          ),
+        ],
+      ],
     );
   }
 }

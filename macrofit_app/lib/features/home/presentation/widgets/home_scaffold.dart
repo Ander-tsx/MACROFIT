@@ -7,10 +7,11 @@ import '../../../../core/presentation/widgets/app_avatar.dart';
 import '../../../../core/presentation/widgets/press_scale.dart';
 import '../home_view_model.dart';
 import 'account_sheet.dart';
+import '../../../../core/presentation/widgets/card_edge_clip.dart';
 
 /// Estructura común de las pantallas principales (guía visual, "Pantallas
-/// principales"): fondo con resplandor superior, saludo con el avatar, contenido
-/// y barra inferior flotante.
+/// principales"): fondo con resplandor superior, saludo con el avatar y
+/// contenido. La barra inferior es global (`AppDock`, `lib/app/navigation`).
 ///
 /// El avatar abre el perfil: en el usuario, **Mi perfil** ([onAvatarTap]); en el
 /// coach, la hoja de su cuenta. **Cerrar sesión** vive dentro de ese perfil.
@@ -24,7 +25,6 @@ class HomeScaffold<T extends HomeViewModel> extends StatelessWidget {
     this.onAvatarTap,
     this.avatarKey,
     this.avatarTooltip = 'Mi cuenta',
-    this.dock,
     super.key,
   });
 
@@ -37,9 +37,6 @@ class HomeScaffold<T extends HomeViewModel> extends StatelessWidget {
   final Key? avatarKey;
   final String avatarTooltip;
 
-  /// Barra inferior con los accesos de la pantalla (`HomeDock`).
-  final Widget? dock;
-
   @override
   Widget build(BuildContext context) {
     final viewModel = context.watch<T>();
@@ -47,7 +44,6 @@ class HomeScaffold<T extends HomeViewModel> extends StatelessWidget {
     final user = viewModel.user;
 
     return Scaffold(
-      extendBody: true,
       body: DecoratedBox(
         decoration: BoxDecoration(
           gradient: LinearGradient(
@@ -79,7 +75,7 @@ class HomeScaffold<T extends HomeViewModel> extends StatelessWidget {
                           Semantics(
                             header: true,
                             child: Text(
-                              'Hola, ${user?.name ?? ''}',
+                              'Hola, ${firstName(user?.name ?? '')}',
                               style: text.headlineMedium,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
@@ -118,11 +114,17 @@ class HomeScaffold<T extends HomeViewModel> extends StatelessWidget {
                 ),
               ),
             ),
-            Expanded(child: body),
+            Expanded(child: CardEdgeClip(child: body)),
           ],
         ),
       ),
-      bottomNavigationBar: dock,
     );
   }
+}
+
+/// Primer nombre para el saludo («Andres García López» → «Andres»), para que el
+/// saludo no se corte.
+String firstName(String name) {
+  final parts = name.trim().split(RegExp(r'\s+'));
+  return parts.isEmpty ? '' : parts.first;
 }

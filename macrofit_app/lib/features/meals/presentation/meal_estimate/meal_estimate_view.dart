@@ -21,6 +21,7 @@ import '../widgets/meal_navigation.dart';
 import '../widgets/meal_texts.dart';
 import 'meal_estimate_view_model.dart';
 import '../../../../core/presentation/theme/lucide_icons.dart';
+import '../../../../core/presentation/widgets/card_edge_clip.dart';
 
 /// HU-07 — "Estimación": carga, alimentos identificados y totales, o las
 /// opciones ante un error (reintentar o capturar a mano).
@@ -53,91 +54,93 @@ class MealEstimateView extends StatelessWidget {
       body: SafeArea(
         // Todo el contenido se construye de una vez (pantalla corta): los
         // botones existen aunque estén fuera de la vista.
-        child: SingleChildScrollView(
-          padding: AppSpacing.screenPadding,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              ClipRRect(
-                borderRadius: AppRadius.xlAll,
-                child: Image.memory(
-                  viewModel.upload.photo.bytes,
-                  key: const Key('meal_estimate_photo'),
-                  height: AppSizes.photoHeader,
-                  fit: BoxFit.cover,
-                  gaplessPlayback: true,
-                  semanticLabel: 'Foto de tu comida',
-                ),
-              ),
-              const SizedBox(height: AppSpacing.xxl),
-              if (viewModel.isLoading)
-                const LoadingState(
-                  key: Key('meal_estimate_loading'),
-                  message: 'Estimando calorías, proteína y grasa…',
-                )
-              else if (estimate != null) ...[
-                FadeSlideIn(child: _Totals(estimate: estimate)),
-                const SizedBox(height: AppSpacing.md),
-                FadeSlideIn(index: 1, child: _Foods(estimate: estimate)),
-                const SizedBox(height: AppSpacing.md),
-                const FadeSlideIn(
-                  index: 2,
-                  child: StatusBanner(
-                    key: Key('meal_estimate_disclaimer'),
-                    message: MealEstimateViewModel.disclaimer,
+        child: CardEdgeClip(
+          child: SingleChildScrollView(
+            padding: AppSpacing.screenPadding,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                ClipRRect(
+                  borderRadius: AppRadius.xlAll,
+                  child: Image.memory(
+                    viewModel.upload.photo.bytes,
+                    key: const Key('meal_estimate_photo'),
+                    height: AppSizes.photoHeader,
+                    fit: BoxFit.cover,
+                    gaplessPlayback: true,
+                    semanticLabel: 'Foto de tu comida',
                   ),
                 ),
                 const SizedBox(height: AppSpacing.xxl),
-                if (viewModel.saveError case final message?) ...[
-                  ErrorBanner(
-                    key: const Key('meal_estimate_save_error'),
-                    message: message,
+                if (viewModel.isLoading)
+                  const LoadingState(
+                    key: Key('meal_estimate_loading'),
+                    message: 'Estimando calorías, proteína y grasa…',
+                  )
+                else if (estimate != null) ...[
+                  FadeSlideIn(child: _Totals(estimate: estimate)),
+                  const SizedBox(height: AppSpacing.md),
+                  FadeSlideIn(index: 1, child: _Foods(estimate: estimate)),
+                  const SizedBox(height: AppSpacing.md),
+                  const FadeSlideIn(
+                    index: 2,
+                    child: StatusBanner(
+                      key: Key('meal_estimate_disclaimer'),
+                      message: MealEstimateViewModel.disclaimer,
+                    ),
                   ),
-                  const SizedBox(height: AppSpacing.lg),
-                ],
-                PrimaryButton(
-                  key: const Key('meal_estimate_save'),
-                  label: 'Guardar',
-                  icon: LucideIcons.check,
-                  isLoading: viewModel.isSaving,
-                  onPressed: () => _save(context, viewModel),
-                ),
-                const SizedBox(height: AppSpacing.md),
-                PrimaryButton(
-                  key: const Key('meal_estimate_correct'),
-                  label: 'Corregir valores',
-                  icon: LucideIcons.slidersHorizontal,
-                  variant: AppButtonVariant.outlined,
-                  onPressed: viewModel.isSaving
-                      ? null
-                      : () => _openForm(context, viewModel),
-                ),
-              ] else if (viewModel.error case final message?) ...[
-                FadeSlideIn(
-                  child: ErrorBanner(
-                    key: const Key('meal_estimate_error'),
-                    message: message,
-                  ),
-                ),
-                const SizedBox(height: AppSpacing.xxl),
-                if (viewModel.canRetry) ...[
+                  const SizedBox(height: AppSpacing.xxl),
+                  if (viewModel.saveError case final message?) ...[
+                    ErrorBanner(
+                      key: const Key('meal_estimate_save_error'),
+                      message: message,
+                    ),
+                    const SizedBox(height: AppSpacing.lg),
+                  ],
                   PrimaryButton(
-                    key: const Key('meal_estimate_retry'),
-                    label: 'Reintentar',
-                    icon: LucideIcons.refreshCw,
-                    onPressed: viewModel.retry,
+                    key: const Key('meal_estimate_save'),
+                    label: 'Guardar',
+                    icon: LucideIcons.check,
+                    isLoading: viewModel.isSaving,
+                    onPressed: () => _save(context, viewModel),
                   ),
                   const SizedBox(height: AppSpacing.md),
+                  PrimaryButton(
+                    key: const Key('meal_estimate_correct'),
+                    label: 'Corregir valores',
+                    icon: LucideIcons.slidersHorizontal,
+                    variant: AppButtonVariant.outlined,
+                    onPressed: viewModel.isSaving
+                        ? null
+                        : () => _openForm(context, viewModel),
+                  ),
+                ] else if (viewModel.error case final message?) ...[
+                  FadeSlideIn(
+                    child: ErrorBanner(
+                      key: const Key('meal_estimate_error'),
+                      message: message,
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.xxl),
+                  if (viewModel.canRetry) ...[
+                    PrimaryButton(
+                      key: const Key('meal_estimate_retry'),
+                      label: 'Reintentar',
+                      icon: LucideIcons.refreshCw,
+                      onPressed: viewModel.retry,
+                    ),
+                    const SizedBox(height: AppSpacing.md),
+                  ],
+                  PrimaryButton(
+                    key: const Key('meal_estimate_manual'),
+                    label: 'Capturar a mano',
+                    icon: LucideIcons.notebookPen,
+                    variant: AppButtonVariant.outlined,
+                    onPressed: () => _openForm(context, viewModel),
+                  ),
                 ],
-                PrimaryButton(
-                  key: const Key('meal_estimate_manual'),
-                  label: 'Capturar a mano',
-                  icon: LucideIcons.notebookPen,
-                  variant: AppButtonVariant.outlined,
-                  onPressed: () => _openForm(context, viewModel),
-                ),
               ],
-            ],
+            ),
           ),
         ),
       ),

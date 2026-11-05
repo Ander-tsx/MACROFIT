@@ -14,6 +14,7 @@ import '../../../../core/presentation/widgets/section_card.dart';
 import '../widgets/meal_navigation.dart';
 import 'meal_form_view_model.dart';
 import '../../../../core/presentation/theme/lucide_icons.dart';
+import '../../../../core/presentation/widgets/card_edge_clip.dart';
 
 /// HU-08 — "Revisar valores" (precargado con la estimación) o "Captura manual"
 /// (vacío): calorías, proteína y grasa editables y **Guardar**.
@@ -41,104 +42,111 @@ class MealFormView extends StatelessWidget {
       body: SafeArea(
         // Todo el contenido se construye de una vez (pantalla corta): los
         // botones existen aunque estén fuera de la vista.
-        child: SingleChildScrollView(
-          padding: AppSpacing.screenPadding,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              ContentWidth(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    if (photo != null) ...[
-                      ClipRRect(
-                        borderRadius: AppRadius.xlAll,
-                        child: Image.memory(
-                          photo.photo.bytes,
-                          key: const Key('meal_form_photo'),
-                          height: AppSizes.photoBanner,
-                          fit: BoxFit.cover,
-                          gaplessPlayback: true,
-                          semanticLabel: 'Foto de tu comida',
+        child: CardEdgeClip(
+          child: SingleChildScrollView(
+            padding: AppSpacing.screenPadding,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                ContentWidth(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      if (photo != null) ...[
+                        ClipRRect(
+                          borderRadius: AppRadius.xlAll,
+                          child: Image.memory(
+                            photo.photo.bytes,
+                            key: const Key('meal_form_photo'),
+                            height: AppSizes.photoBanner,
+                            fit: BoxFit.cover,
+                            gaplessPlayback: true,
+                            semanticLabel: 'Foto de tu comida',
+                          ),
+                        ),
+                        const SizedBox(height: AppSpacing.xl),
+                      ],
+                      Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: AppSpacing.md,
+                        ),
+                        child: Text(
+                          viewModel.isManual
+                              ? 'Captura las calorías, proteína y grasa de tu comida.'
+                              : 'Revisa los valores estimados y corrígelos si hace falta.',
+                          style: context.text.bodyLarge?.copyWith(
+                            color: context.colors.onSurfaceVariant,
+                          ),
                         ),
                       ),
                       const SizedBox(height: AppSpacing.xl),
-                    ],
-                    Text(
-                      viewModel.isManual
-                          ? 'Captura las calorías, proteína y grasa de tu comida.'
-                          : 'Revisa los valores estimados y corrígelos si hace falta.',
-                      style: context.text.bodyLarge?.copyWith(
-                        color: context.colors.onSurfaceVariant,
-                      ),
-                    ),
-                    const SizedBox(height: AppSpacing.xl),
-                    if (viewModel.generalError case final message?) ...[
+                      if (viewModel.generalError case final message?) ...[
+                        FadeSlideIn(
+                          child: ErrorBanner(
+                            key: const Key('meal_form_error'),
+                            message: message,
+                          ),
+                        ),
+                        const SizedBox(height: AppSpacing.lg),
+                      ],
                       FadeSlideIn(
-                        child: ErrorBanner(
-                          key: const Key('meal_form_error'),
-                          message: message,
+                        child: SectionCard(
+                          title: 'Valores nutricionales',
+                          child: Column(
+                            children: [
+                              _AmountField(
+                                fieldKey: const Key('meal_form_calories_kcal'),
+                                macro: Macro.calories,
+                                suffix: 'kcal',
+                                helper: 'De 0 a 10 000',
+                                initialValue: viewModel.calories,
+                                error: viewModel.errorFor(
+                                  MealFormViewModel.caloriesField,
+                                ),
+                                onChanged: viewModel.setCalories,
+                              ),
+                              const SizedBox(height: AppSpacing.md),
+                              _AmountField(
+                                fieldKey: const Key('meal_form_protein_g'),
+                                macro: Macro.protein,
+                                suffix: 'g',
+                                helper: 'De 0 a 1 000',
+                                initialValue: viewModel.protein,
+                                error: viewModel.errorFor(
+                                  MealFormViewModel.proteinField,
+                                ),
+                                onChanged: viewModel.setProtein,
+                              ),
+                              const SizedBox(height: AppSpacing.md),
+                              _AmountField(
+                                fieldKey: const Key('meal_form_fat_g'),
+                                macro: Macro.fat,
+                                suffix: 'g',
+                                helper: 'De 0 a 1 000',
+                                initialValue: viewModel.fat,
+                                error: viewModel.errorFor(
+                                  MealFormViewModel.fatField,
+                                ),
+                                onChanged: viewModel.setFat,
+                                last: true,
+                              ),
+                            ],
+                          ),
                         ),
                       ),
-                      const SizedBox(height: AppSpacing.lg),
+                      const SizedBox(height: AppSpacing.xxl),
+                      PrimaryButton(
+                        key: const Key('meal_form_submit'),
+                        label: 'Guardar',
+                        icon: LucideIcons.check,
+                        isLoading: viewModel.isSubmitting,
+                        onPressed: () => _submit(context, viewModel),
+                      ),
                     ],
-                    FadeSlideIn(
-                      child: SectionCard(
-                        title: 'Valores nutricionales',
-                        child: Column(
-                          children: [
-                            _AmountField(
-                              fieldKey: const Key('meal_form_calories_kcal'),
-                              macro: Macro.calories,
-                              suffix: 'kcal',
-                              helper: 'De 0 a 10 000',
-                              initialValue: viewModel.calories,
-                              error: viewModel.errorFor(
-                                MealFormViewModel.caloriesField,
-                              ),
-                              onChanged: viewModel.setCalories,
-                            ),
-                            const SizedBox(height: AppSpacing.md),
-                            _AmountField(
-                              fieldKey: const Key('meal_form_protein_g'),
-                              macro: Macro.protein,
-                              suffix: 'g',
-                              helper: 'De 0 a 1 000',
-                              initialValue: viewModel.protein,
-                              error: viewModel.errorFor(
-                                MealFormViewModel.proteinField,
-                              ),
-                              onChanged: viewModel.setProtein,
-                            ),
-                            const SizedBox(height: AppSpacing.md),
-                            _AmountField(
-                              fieldKey: const Key('meal_form_fat_g'),
-                              macro: Macro.fat,
-                              suffix: 'g',
-                              helper: 'De 0 a 1 000',
-                              initialValue: viewModel.fat,
-                              error: viewModel.errorFor(
-                                MealFormViewModel.fatField,
-                              ),
-                              onChanged: viewModel.setFat,
-                              last: true,
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: AppSpacing.xxl),
-                    PrimaryButton(
-                      key: const Key('meal_form_submit'),
-                      label: 'Guardar',
-                      icon: LucideIcons.check,
-                      isLoading: viewModel.isSubmitting,
-                      onPressed: () => _submit(context, viewModel),
-                    ),
-                  ],
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),

@@ -1,8 +1,8 @@
 # `features/home/` — pantallas principales por rol
 
 Pantallas a las que el router lleva tras iniciar sesión (HU-02). La del usuario muestra su progreso del día (HU-10) y su meta vigente (HU-26); la del
-coach, accesos a su código, rutinas y clientes. Ambas usan la guía visual (TEC-17): saludo con avatar, tarjetas y una
-barra inferior flotante de vidrio líquido (`HomeDock`) con un botón circular para la acción principal.
+coach, accesos a su código, rutinas y clientes. Ambas usan la guía visual (TEC-17): saludo con el primer nombre y el avatar, y tarjetas. La barra inferior es global
+(`lib/app/navigation/app_dock.dart`) y está en todas las pantallas del rol.
 
 | Archivo | Contenido |
 |---|---|
@@ -15,7 +15,7 @@ barra inferior flotante de vidrio líquido (`HomeDock`) con un botón circular p
 | `presentation/widgets/account_sheet.dart` | Hoja de la cuenta del coach: avatar, nombre, correo, rol y **Cerrar sesión** (`logout_button`, con confirmación `logout_confirm`) |
 | `presentation/widgets/daily_progress_card.dart` | Tarjeta del progreso del día (HU-10): anillos concéntricos de los tres macros; por macro, consumido / meta y lo que falta o el exceso; barra de calorías |
 | `presentation/widgets/current_goal_card.dart` | Tarjeta de la meta: calorías, proteína, grasa y origen («Calculada» / «Definida por tu coach») |
-| `presentation/widgets/home_dock.dart` | `HomeDock`: barra inferior de vidrio líquido. Usuario: Inicio, **Comidas** (`meal_history_button`), **Semana** (`weekly_summary_button`), **Peso** (`weights_button`, HU-21) y el botón circular **Registrar comida** (`register_meal_button`). Coach: Inicio, **Clientes**, **Rutinas** y el botón circular **Mi código de invitación**. Los accesos abren las pantallas con `push`; no cambian las rutas |
+| (barra inferior) | Ya no vive aquí: es global (`AppDock`, `lib/app/navigation`, ver `lib/app/README.md`). Claves: `home_tab`, `meal_history_button`, `weekly_summary_button`, `weights_button`, `register_meal_button` (usuario) y `clients_button`, `routines_button`, `invite_code_button` (coach) |
 
 - No tiene capas de datos ni dominio propias todavía; cuando una historia necesite datos de inicio, se agregan aquí
   siguiendo la plantilla de `lib/features/README.md`.

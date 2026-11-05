@@ -15,6 +15,7 @@ import '../../../../core/presentation/widgets/surface_card.dart';
 import '../widgets/client_summary_texts.dart';
 import 'client_detail_view_model.dart';
 import '../../../../core/presentation/theme/lucide_icons.dart';
+import '../../../../core/presentation/widgets/card_edge_clip.dart';
 
 /// HU-24 — detalle de un cliente: su resumen y el acceso a sus metas (HU-05)
 /// y a sus comidas (HU-25).
@@ -32,137 +33,145 @@ class ClientDetailView extends StatelessWidget {
     return Scaffold(
       appBar: AppHeader(title: client.name),
       body: SafeArea(
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(
-            AppSpacing.screen,
-            0,
-            AppSpacing.screen,
-            AppSpacing.huge,
-          ),
-          children: [
-            AnimatedSize(
-              duration: AppDurations.normal,
-              child: viewModel.isRefreshing
-                  ? const Padding(
-                      padding: EdgeInsets.only(bottom: AppSpacing.md),
-                      child: LinearProgressIndicator(
-                        minHeight: AppSizes.progressBarThin,
-                      ),
-                    )
-                  : const SizedBox(width: double.infinity),
+        child: CardEdgeClip(
+          child: ListView(
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.screen,
+              0,
+              AppSpacing.screen,
+              AppSpacing.huge,
             ),
-            if (viewModel.isUnlinked) ...[
-              const ErrorBanner(
-                key: Key('client_detail_unlinked'),
-                message: 'Este cliente ya no está vinculado contigo.',
+            children: [
+              AnimatedSize(
+                duration: AppDurations.normal,
+                child: viewModel.isRefreshing
+                    ? const Padding(
+                        padding: EdgeInsets.only(bottom: AppSpacing.md),
+                        child: LinearProgressIndicator(
+                          minHeight: AppSizes.progressBarThin,
+                        ),
+                      )
+                    : const SizedBox(width: double.infinity),
               ),
-              const SizedBox(height: AppSpacing.md),
-            ],
-            if (viewModel.error case final message?) ...[
-              ErrorBanner(message: message),
-              const SizedBox(height: AppSpacing.md),
-            ],
-            FadeSlideIn(
-              child: SurfaceCard(
-                child: Column(
-                  children: [
-                    AppAvatar(email: client.email, size: AppSizes.avatarLarge),
-                    const SizedBox(height: AppSpacing.md),
-                    Text(client.name, style: text.headlineSmall),
-                    const SizedBox(height: AppSpacing.xxs),
-                    Text(
-                      client.email,
-                      style: text.bodyMedium?.copyWith(
-                        color: colors.onSurfaceVariant,
-                      ),
-                    ),
-                  ],
+              if (viewModel.isUnlinked) ...[
+                const ErrorBanner(
+                  key: Key('client_detail_unlinked'),
+                  message: 'Este cliente ya no está vinculado contigo.',
                 ),
-              ),
-            ),
-            const SizedBox(height: AppSpacing.cardGap),
-            FadeSlideIn(
-              index: 1,
-              child: SectionCard(
-                title: 'Meta vigente',
-                trailing: goal == null
-                    ? null
-                    : _Tag(label: goalSourceText(goal)),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(goalSummaryText(goal), style: text.titleLarge),
-                    const SizedBox(height: AppSpacing.md),
-                    Row(
-                      children: [
-                        Icon(
-                          LucideIcons.clock,
-                          size: AppSizes.iconSm,
+                const SizedBox(height: AppSpacing.md),
+              ],
+              if (viewModel.error case final message?) ...[
+                ErrorBanner(message: message),
+                const SizedBox(height: AppSpacing.md),
+              ],
+              FadeSlideIn(
+                child: SurfaceCard(
+                  child: Column(
+                    children: [
+                      AppAvatar(
+                        email: client.email,
+                        size: AppSizes.avatarLarge,
+                      ),
+                      const SizedBox(height: AppSpacing.md),
+                      Text(client.name, style: text.headlineSmall),
+                      const SizedBox(height: AppSpacing.xxs),
+                      Text(
+                        client.email,
+                        style: text.bodyMedium?.copyWith(
                           color: colors.onSurfaceVariant,
                         ),
-                        const SizedBox(width: AppSpacing.sm),
-                        Text(
-                          lastMealText(client.lastMealAt, now: DateTime.now()),
-                          style: text.bodyMedium?.copyWith(
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: AppSpacing.cardGap),
+              FadeSlideIn(
+                index: 1,
+                child: SectionCard(
+                  title: 'Meta vigente',
+                  trailing: goal == null
+                      ? null
+                      : _Tag(label: goalSourceText(goal)),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(goalSummaryText(goal), style: text.titleLarge),
+                      const SizedBox(height: AppSpacing.md),
+                      Row(
+                        children: [
+                          Icon(
+                            LucideIcons.clock,
+                            size: AppSizes.iconSm,
                             color: colors.onSurfaceVariant,
                           ),
-                        ),
-                      ],
-                    ),
-                  ],
+                          const SizedBox(width: AppSpacing.sm),
+                          Text(
+                            lastMealText(
+                              client.lastMealAt,
+                              now: DateTime.now(),
+                            ),
+                            style: text.bodyMedium?.copyWith(
+                              color: colors.onSurfaceVariant,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
               ),
-            ),
-            const SizedBox(height: AppSpacing.cardGap),
-            FadeSlideIn(
-              index: 2,
-              child: SurfaceCard(
-                padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
-                child: Column(
-                  children: [
-                    ActionTile(
-                      key: const Key('client_detail_goals'),
-                      icon: LucideIcons.flag,
-                      title: 'Metas',
-                      subtitle: 'Define y ajusta sus calorías y macros',
-                      enabled: !viewModel.isUnlinked,
-                      onTap: () async {
-                        await context.push(
-                          AppRoutes.coachClientGoals(client.id),
-                          extra: client,
-                        );
-                        // Al regresar se recarga por si le fijó una meta nueva.
-                        await viewModel.refresh();
-                      },
-                    ),
-                    const Divider(
-                      height: AppSpacing.xs,
-                      indent: AppSpacing.dividerInset,
-                    ),
-                    ActionTile(
-                      key: const Key('client_detail_meals'),
-                      icon: LucideIcons.utensils,
-                      title: 'Comidas',
-                      subtitle: 'Su registro diario de comidas',
-                      enabled: !viewModel.isUnlinked,
-                      onTap: () async {
-                        final unlinked = await context.push<bool>(
-                          AppRoutes.coachClientMeals(client.id),
-                          extra: client,
-                        );
-                        if (unlinked == true) {
-                          // Ya no está vinculado (HU-25): se regresa a la lista, que se recarga.
-                          if (context.mounted) context.pop();
-                        } else {
+              const SizedBox(height: AppSpacing.cardGap),
+              FadeSlideIn(
+                index: 2,
+                child: SurfaceCard(
+                  padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
+                  child: Column(
+                    children: [
+                      ActionTile(
+                        key: const Key('client_detail_goals'),
+                        icon: LucideIcons.flag,
+                        title: 'Metas',
+                        subtitle: 'Define y ajusta sus calorías y macros',
+                        enabled: !viewModel.isUnlinked,
+                        onTap: () async {
+                          await context.push(
+                            AppRoutes.coachClientGoals(client.id),
+                            extra: client,
+                          );
+                          // Al regresar se recarga por si le fijó una meta nueva.
                           await viewModel.refresh();
-                        }
-                      },
-                    ),
-                  ],
+                        },
+                      ),
+                      const Divider(
+                        height: AppSpacing.xs,
+                        indent: AppSpacing.dividerInset,
+                      ),
+                      ActionTile(
+                        key: const Key('client_detail_meals'),
+                        icon: LucideIcons.utensils,
+                        title: 'Comidas',
+                        subtitle: 'Su registro diario de comidas',
+                        enabled: !viewModel.isUnlinked,
+                        onTap: () async {
+                          final unlinked = await context.push<bool>(
+                            AppRoutes.coachClientMeals(client.id),
+                            extra: client,
+                          );
+                          if (unlinked == true) {
+                            // Ya no está vinculado (HU-25): se regresa a la lista, que se recarga.
+                            if (context.mounted) context.pop();
+                          } else {
+                            await viewModel.refresh();
+                          }
+                        },
+                      ),
+                    ],
+                  ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

@@ -20,6 +20,7 @@ import '../widgets/weight_trend_chart.dart';
 import '../widgets/weights_texts.dart';
 import 'weights_view_model.dart';
 import '../../../../core/presentation/theme/lucide_icons.dart';
+import '../../../../core/presentation/widgets/card_edge_clip.dart';
 
 /// HU-21 — formulario de registro e historial de peso.
 class WeightsView extends StatelessWidget {
@@ -32,51 +33,53 @@ class WeightsView extends StatelessWidget {
     return Scaffold(
       appBar: const AppHeader(title: 'Registro de peso'),
       body: SafeArea(
-        child: SingleChildScrollView(
-          padding: AppSpacing.screenPadding,
-          child: ContentWidth(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                FadeSlideIn(child: _History(viewModel: viewModel)),
-                const SizedBox(height: AppSpacing.cardGap),
-                FadeSlideIn(
-                  index: 1,
-                  child: SectionCard(
-                    title: 'Registrar nuevo peso',
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        if (viewModel.generalError case final message?) ...[
-                          ErrorBanner(message: message),
-                          const SizedBox(height: AppSpacing.md),
-                        ],
-                        AppTextField(
-                          key: const Key('weight_input'),
-                          label: 'Peso (kg)',
-                          hint: 'Ej. 75.5',
-                          icon: LucideIcons.weight,
-                          suffixText: 'kg',
-                          errorText: viewModel.fieldError('weight_kg'),
-                          keyboardType: const TextInputType.numberWithOptions(
-                            decimal: true,
+        child: CardEdgeClip(
+          child: SingleChildScrollView(
+            padding: AppSpacing.screenPadding,
+            child: ContentWidth(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  FadeSlideIn(child: _History(viewModel: viewModel)),
+                  const SizedBox(height: AppSpacing.cardGap),
+                  FadeSlideIn(
+                    index: 1,
+                    child: SectionCard(
+                      title: 'Registrar nuevo peso',
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          if (viewModel.generalError case final message?) ...[
+                            ErrorBanner(message: message),
+                            const SizedBox(height: AppSpacing.md),
+                          ],
+                          AppTextField(
+                            key: const Key('weight_input'),
+                            label: 'Peso (kg)',
+                            hint: 'Ej. 75.5',
+                            icon: LucideIcons.weight,
+                            suffixText: 'kg',
+                            errorText: viewModel.fieldError('weight_kg'),
+                            keyboardType: const TextInputType.numberWithOptions(
+                              decimal: true,
+                            ),
+                            onChanged: viewModel.setWeightInput,
+                            enabled: !viewModel.isSubmitting,
                           ),
-                          onChanged: viewModel.setWeightInput,
-                          enabled: !viewModel.isSubmitting,
-                        ),
-                        const SizedBox(height: AppSpacing.lg),
-                        PrimaryButton(
-                          key: const Key('submit_weight'),
-                          label: 'Registrar peso',
-                          icon: LucideIcons.plus,
-                          isLoading: viewModel.isSubmitting,
-                          onPressed: () => _submit(context, viewModel),
-                        ),
-                      ],
+                          const SizedBox(height: AppSpacing.lg),
+                          PrimaryButton(
+                            key: const Key('submit_weight'),
+                            label: 'Registrar peso',
+                            icon: LucideIcons.plus,
+                            isLoading: viewModel.isSubmitting,
+                            onPressed: () => _submit(context, viewModel),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),

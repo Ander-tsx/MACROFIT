@@ -20,6 +20,7 @@ import '../../domain/entities/nutritional_goal.dart';
 import '../../domain/validators/coach_goal_validators.dart';
 import 'coach_goal_form_view_model.dart';
 import '../../../../core/presentation/theme/lucide_icons.dart';
+import '../../../../core/presentation/widgets/card_edge_clip.dart';
 
 /// HU-05 — meta de un cliente vinculado: formulario e historial.
 class CoachGoalFormView extends StatelessWidget {
@@ -57,104 +58,108 @@ class CoachGoalFormView extends StatelessWidget {
     return Scaffold(
       appBar: AppHeader(title: viewModel.client.name),
       body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(
-            AppSpacing.screen,
-            0,
-            AppSpacing.screen,
-            AppSpacing.huge,
-          ),
-          child: ContentWidth(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                FadeSlideIn(
-                  child: SectionCard(
-                    title: 'Nueva meta diaria',
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        if (viewModel.generalError case final message?) ...[
-                          ErrorBanner(message: message),
+        child: CardEdgeClip(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.screen,
+              0,
+              AppSpacing.screen,
+              AppSpacing.huge,
+            ),
+            child: ContentWidth(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  FadeSlideIn(
+                    child: SectionCard(
+                      title: 'Nueva meta diaria',
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          if (viewModel.generalError case final message?) ...[
+                            ErrorBanner(message: message),
+                            const SizedBox(height: AppSpacing.md),
+                          ],
+                          _GoalField(
+                            fieldKey: const Key('goal_calories'),
+                            macro: Macro.calories,
+                            suffix: 'kcal',
+                            helper:
+                                'Entre 1 y ${CoachGoalValidators.caloriesMax}',
+                            initialValue: viewModel.calories,
+                            error: viewModel.fieldError(
+                              CoachGoalFormViewModel.caloriesField,
+                            ),
+                            onChanged: viewModel.setCalories,
+                          ),
                           const SizedBox(height: AppSpacing.md),
+                          _GoalField(
+                            fieldKey: const Key('goal_protein'),
+                            macro: Macro.protein,
+                            suffix: 'g',
+                            helper:
+                                'Entre 1 y ${CoachGoalValidators.macroMaxG}',
+                            initialValue: viewModel.protein,
+                            error: viewModel.fieldError(
+                              CoachGoalFormViewModel.proteinField,
+                            ),
+                            onChanged: viewModel.setProtein,
+                          ),
+                          const SizedBox(height: AppSpacing.md),
+                          _GoalField(
+                            fieldKey: const Key('goal_fat'),
+                            macro: Macro.fat,
+                            suffix: 'g',
+                            helper:
+                                'Entre 1 y ${CoachGoalValidators.macroMaxG}',
+                            initialValue: viewModel.fat,
+                            error: viewModel.fieldError(
+                              CoachGoalFormViewModel.fatField,
+                            ),
+                            onChanged: viewModel.setFat,
+                            last: true,
+                          ),
+                          const SizedBox(height: AppSpacing.md),
+                          DateField(
+                            key: const Key('goal_effective_from'),
+                            label: 'Vigente desde',
+                            value: _formatDate(viewModel.effectiveFrom),
+                            errorText: viewModel.fieldError(
+                              CoachGoalFormViewModel.effectiveFromField,
+                            ),
+                            onTap: () => _pickDate(context, viewModel),
+                          ),
+                          const SizedBox(height: AppSpacing.xl),
+                          PrimaryButton(
+                            key: const Key('goal_submit'),
+                            label: 'Guardar meta',
+                            icon: LucideIcons.check,
+                            isLoading: viewModel.isSubmitting,
+                            onPressed: () => _submit(context, viewModel),
+                          ),
                         ],
-                        _GoalField(
-                          fieldKey: const Key('goal_calories'),
-                          macro: Macro.calories,
-                          suffix: 'kcal',
-                          helper:
-                              'Entre 1 y ${CoachGoalValidators.caloriesMax}',
-                          initialValue: viewModel.calories,
-                          error: viewModel.fieldError(
-                            CoachGoalFormViewModel.caloriesField,
-                          ),
-                          onChanged: viewModel.setCalories,
-                        ),
-                        const SizedBox(height: AppSpacing.md),
-                        _GoalField(
-                          fieldKey: const Key('goal_protein'),
-                          macro: Macro.protein,
-                          suffix: 'g',
-                          helper: 'Entre 1 y ${CoachGoalValidators.macroMaxG}',
-                          initialValue: viewModel.protein,
-                          error: viewModel.fieldError(
-                            CoachGoalFormViewModel.proteinField,
-                          ),
-                          onChanged: viewModel.setProtein,
-                        ),
-                        const SizedBox(height: AppSpacing.md),
-                        _GoalField(
-                          fieldKey: const Key('goal_fat'),
-                          macro: Macro.fat,
-                          suffix: 'g',
-                          helper: 'Entre 1 y ${CoachGoalValidators.macroMaxG}',
-                          initialValue: viewModel.fat,
-                          error: viewModel.fieldError(
-                            CoachGoalFormViewModel.fatField,
-                          ),
-                          onChanged: viewModel.setFat,
-                          last: true,
-                        ),
-                        const SizedBox(height: AppSpacing.md),
-                        DateField(
-                          key: const Key('goal_effective_from'),
-                          label: 'Vigente desde',
-                          value: _formatDate(viewModel.effectiveFrom),
-                          errorText: viewModel.fieldError(
-                            CoachGoalFormViewModel.effectiveFromField,
-                          ),
-                          onTap: () => _pickDate(context, viewModel),
-                        ),
-                        const SizedBox(height: AppSpacing.xl),
-                        PrimaryButton(
-                          key: const Key('goal_submit'),
-                          label: 'Guardar meta',
-                          icon: LucideIcons.check,
-                          isLoading: viewModel.isSubmitting,
-                          onPressed: () => _submit(context, viewModel),
-                        ),
-                      ],
+                      ),
                     ),
                   ),
-                ),
-                const SizedBox(height: AppSpacing.cardGap),
-                FadeSlideIn(
-                  index: 1,
-                  child: SectionCard(
-                    title: 'Historial',
-                    child: StateSwitcher(
-                      stateKey: viewModel.isLoading
-                          ? 'loading'
-                          : viewModel.loadError != null
-                          ? 'error'
-                          : viewModel.history.isEmpty
-                          ? 'empty'
-                          : 'data-${viewModel.history.length}',
-                      child: _history(viewModel),
+                  const SizedBox(height: AppSpacing.cardGap),
+                  FadeSlideIn(
+                    index: 1,
+                    child: SectionCard(
+                      title: 'Historial',
+                      child: StateSwitcher(
+                        stateKey: viewModel.isLoading
+                            ? 'loading'
+                            : viewModel.loadError != null
+                            ? 'error'
+                            : viewModel.history.isEmpty
+                            ? 'empty'
+                            : 'data-${viewModel.history.length}',
+                        child: _history(viewModel),
+                      ),
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),

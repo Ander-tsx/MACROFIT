@@ -19,6 +19,7 @@ import '../../domain/entities/client_summary.dart';
 import '../widgets/client_summary_texts.dart';
 import 'clients_list_view_model.dart';
 import '../../../../core/presentation/theme/lucide_icons.dart';
+import '../../../../core/presentation/widgets/card_edge_clip.dart';
 
 /// HU-24 — clientes vinculados del coach con búsqueda por nombre.
 class ClientsListView extends StatelessWidget {
@@ -94,70 +95,72 @@ class ClientsListView extends StatelessWidget {
             child: ErrorBanner(message: message),
           ),
         Expanded(
-          child: RefreshIndicator(
-            onRefresh: viewModel.load,
-            child: ListView(
-              padding: const EdgeInsets.fromLTRB(
-                AppSpacing.screen,
-                0,
-                AppSpacing.screen,
-                AppSpacing.huge,
-              ),
-              children: [
-                if (viewModel.hasNoMatches)
-                  const EmptyState(
-                    icon: LucideIcons.userRoundSearch,
-                    title: 'Sin resultados',
-                    message: 'Ningún cliente coincide con la búsqueda.',
-                  )
-                else ...[
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(
-                      AppSpacing.md,
-                      0,
-                      AppSpacing.md,
-                      AppSpacing.sm,
-                    ),
-                    child: Text(
-                      visible.length == 1
-                          ? '1 cliente'
-                          : '${visible.length} clientes',
-                      style: context.text.labelLarge?.copyWith(
-                        color: context.colors.onSurfaceVariant,
+          child: CardEdgeClip(
+            child: RefreshIndicator(
+              onRefresh: viewModel.load,
+              child: ListView(
+                padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.screen,
+                  AppSpacing.sm,
+                  AppSpacing.screen,
+                  AppSpacing.huge,
+                ),
+                children: [
+                  if (viewModel.hasNoMatches)
+                    const EmptyState(
+                      icon: LucideIcons.userRoundSearch,
+                      title: 'Sin resultados',
+                      message: 'Ningún cliente coincide con la búsqueda.',
+                    )
+                  else ...[
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(
+                        AppSpacing.md,
+                        0,
+                        AppSpacing.md,
+                        AppSpacing.sm,
+                      ),
+                      child: Text(
+                        visible.length == 1
+                            ? '1 cliente'
+                            : '${visible.length} clientes',
+                        style: context.text.labelLarge?.copyWith(
+                          color: context.colors.onSurfaceVariant,
+                        ),
                       ),
                     ),
-                  ),
-                  FadeSlideIn(
-                    child: SurfaceCard(
-                      padding: const EdgeInsets.symmetric(
-                        vertical: AppSpacing.sm,
-                      ),
-                      child: Column(
-                        children: [
-                          for (final (index, client) in visible.indexed) ...[
-                            if (index > 0)
-                              const Divider(
-                                height: AppSpacing.xxs,
-                                indent: AppSpacing.dividerInset,
+                    FadeSlideIn(
+                      child: SurfaceCard(
+                        padding: const EdgeInsets.symmetric(
+                          vertical: AppSpacing.sm,
+                        ),
+                        child: Column(
+                          children: [
+                            for (final (index, client) in visible.indexed) ...[
+                              if (index > 0)
+                                const Divider(
+                                  height: AppSpacing.xxs,
+                                  indent: AppSpacing.dividerInset,
+                                ),
+                              _ClientRow(
+                                client: client,
+                                onTap: () async {
+                                  await context.push(
+                                    AppRoutes.coachClientDetail(client.id),
+                                    extra: client,
+                                  );
+                                  // Al regresar se recarga por si cambió su meta.
+                                  await viewModel.load();
+                                },
                               ),
-                            _ClientRow(
-                              client: client,
-                              onTap: () async {
-                                await context.push(
-                                  AppRoutes.coachClientDetail(client.id),
-                                  extra: client,
-                                );
-                                // Al regresar se recarga por si cambió su meta.
-                                await viewModel.load();
-                              },
-                            ),
+                            ],
                           ],
-                        ],
+                        ),
                       ),
                     ),
-                  ),
+                  ],
                 ],
-              ],
+              ),
             ),
           ),
         ),

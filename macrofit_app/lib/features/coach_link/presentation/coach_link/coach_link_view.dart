@@ -20,6 +20,7 @@ import '../../domain/entities/coach_link.dart';
 import 'coach_link_view_model.dart';
 import '../../../../core/presentation/theme/lucide_icons.dart';
 import '../../../../core/presentation/theme/app_images.dart';
+import '../../../../core/presentation/widgets/card_edge_clip.dart';
 
 /// HU-13 / HU-14 — pantalla para vincularse y desvincularse de un coach.
 class CoachLinkView extends StatelessWidget {
@@ -34,70 +35,74 @@ class CoachLinkView extends StatelessWidget {
       body: SafeArea(
         child: viewModel.isLoading && viewModel.linkedCoach == null
             ? const LoadingState()
-            : SingleChildScrollView(
-                padding: AppSpacing.screenPadding,
-                child: ContentWidth(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      if (viewModel.linkedCoach case final coach?)
-                        FadeSlideIn(
-                          child: _LinkedCoach(
-                            coach: coach,
-                            isBusy: viewModel.isLoading,
-                            onUnlink: () => _confirmUnlink(context, viewModel),
-                          ),
-                        )
-                      else ...[
-                        const FadeSlideIn(
-                          child: HighlightCard(
-                            title: 'Entrena con seguimiento',
-                            description: 'Ingresa el código de invitación que te proporcionó tu coach para recibir seguimiento.',
-                            icon: LucideIcons.link,
-                            image: AppImages.coach,
-                            tone: HighlightTone.blue,
-                          ),
-                        ),
-                        const SizedBox(height: AppSpacing.cardGap),
-                        FadeSlideIn(
-                          index: 1,
-                          child: SectionCard(
-                            title: 'Código de invitación',
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.stretch,
-                              children: [
-                                AppTextField(
-                                  key: const Key('invite_code_input'),
-                                  label: 'Código de invitación',
-                                  hint: 'Ej. K7P2QX',
-                                  icon: LucideIcons.qrCode,
-                                  textCapitalization:
-                                      TextCapitalization.characters,
-                                  autocorrect: false,
-                                  onChanged: viewModel.updateInviteCode,
-                                  enabled: !viewModel.isLoading,
-                                ),
-                                if (viewModel.errorMessage
-                                    case final message?) ...[
-                                  const SizedBox(height: AppSpacing.md),
-                                  FadeSlideIn(
-                                    child: ErrorBanner(message: message),
-                                  ),
-                                ],
-                                const SizedBox(height: AppSpacing.xl),
-                                PrimaryButton(
-                                  key: const Key('submit_coach_link'),
-                                  label: 'Vincular coach',
-                                  icon: LucideIcons.link,
-                                  isLoading: viewModel.isLoading,
-                                  onPressed: () => _submit(context, viewModel),
-                                ),
-                              ],
+            : CardEdgeClip(
+                child: SingleChildScrollView(
+                  padding: AppSpacing.screenPadding,
+                  child: ContentWidth(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        if (viewModel.linkedCoach case final coach?)
+                          FadeSlideIn(
+                            child: _LinkedCoach(
+                              coach: coach,
+                              isBusy: viewModel.isLoading,
+                              onUnlink: () =>
+                                  _confirmUnlink(context, viewModel),
+                            ),
+                          )
+                        else ...[
+                          const FadeSlideIn(
+                            child: HighlightCard(
+                              title: 'Entrena con seguimiento',
+                              description: 'Ingresa el código de invitación que te proporcionó tu coach para recibir seguimiento.',
+                              icon: LucideIcons.link,
+                              image: AppImages.coach,
+                              tone: HighlightTone.blue,
                             ),
                           ),
-                        ),
+                          const SizedBox(height: AppSpacing.cardGap),
+                          FadeSlideIn(
+                            index: 1,
+                            child: SectionCard(
+                              title: 'Código de invitación',
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                  AppTextField(
+                                    key: const Key('invite_code_input'),
+                                    label: 'Código de invitación',
+                                    hint: 'Ej. K7P2QX',
+                                    icon: LucideIcons.qrCode,
+                                    textCapitalization:
+                                        TextCapitalization.characters,
+                                    autocorrect: false,
+                                    onChanged: viewModel.updateInviteCode,
+                                    enabled: !viewModel.isLoading,
+                                  ),
+                                  if (viewModel.errorMessage
+                                      case final message?) ...[
+                                    const SizedBox(height: AppSpacing.md),
+                                    FadeSlideIn(
+                                      child: ErrorBanner(message: message),
+                                    ),
+                                  ],
+                                  const SizedBox(height: AppSpacing.xl),
+                                  PrimaryButton(
+                                    key: const Key('submit_coach_link'),
+                                    label: 'Vincular coach',
+                                    icon: LucideIcons.link,
+                                    isLoading: viewModel.isLoading,
+                                    onPressed: () =>
+                                        _submit(context, viewModel),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
                       ],
-                    ],
+                    ),
                   ),
                 ),
               ),

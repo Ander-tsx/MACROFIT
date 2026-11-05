@@ -28,3 +28,4 @@ comida son ilustraciones generadas. Las capturas en un teléfono físico quedan 
 | 20 | Metas de un cliente | coach |
 | 21 | Mis rutinas (HU-18, solo hereda el tema) | coach |
 | 22 | Sin clientes (estado vacío) | coach |
+| 23 | Inicio desplazado (recorte con la curva de las tarjetas) | usuario |

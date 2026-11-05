@@ -95,6 +95,10 @@ abstract final class AppSizes {
   static const double avatarHeader = 60;
   static const double avatarLarge = 96;
 
+  /// Encabezado del perfil: avatar y halo de color detrás.
+  static const double profileAvatar = 128;
+  static const double profileHalo = 188;
+
   static const double thumbnail = 72;
   static const double spinner = 20;
   static const double spinnerStroke = 2.5;
@@ -165,8 +169,8 @@ abstract final class AppGlass {
   static const double saturation = 1.7;
 
   /// Opacidad del tinte en claro y en oscuro.
-  static const double tintLight = 0.78;
-  static const double tintDark = 0.42;
+  static const double tintLight = 0.9;
+  static const double tintDark = 0.82;
 
   /// Brillo especular de la esquina superior.
   static const double highlight = 0.38;
@@ -186,6 +190,7 @@ abstract final class AppDurations {
   static const Duration slow = Duration(milliseconds: 700);
   static const Duration rings = Duration(milliseconds: 1100);
   static const Duration lens = Duration(milliseconds: 520);
+  static const Duration page = Duration(milliseconds: 380);
 }
 
 /// Sombras suaves (solo en el tema claro).

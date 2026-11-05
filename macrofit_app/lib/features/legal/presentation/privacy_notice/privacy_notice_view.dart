@@ -8,6 +8,7 @@ import '../../../../core/presentation/widgets/app_header.dart';
 import '../../../../core/presentation/widgets/error_state.dart';
 import '../../../../core/presentation/widgets/loading_state.dart';
 import 'privacy_notice_view_model.dart';
+import '../../../../core/presentation/widgets/card_edge_clip.dart';
 
 /// Aviso de privacidad completo (se abre desde el registro).
 class PrivacyNoticeView extends StatelessWidget {
@@ -21,27 +22,29 @@ class PrivacyNoticeView extends StatelessWidget {
     return Scaffold(
       appBar: const AppHeader(title: 'Aviso de privacidad'),
       body: SafeArea(
-        child: switch ((viewModel.isLoading, notice, viewModel.error)) {
-          (true, _, _) => const LoadingState(
-            message: 'Cargando el aviso de privacidad…',
-          ),
-          (_, final notice?, _) => Markdown(
-            key: const Key('privacy_notice_content'),
-            data: notice.content,
-            padding: const EdgeInsets.fromLTRB(
-              AppSpacing.screen,
-              AppSpacing.sm,
-              AppSpacing.screen,
-              AppSpacing.huge,
+        child: CardEdgeClip(
+          child: switch ((viewModel.isLoading, notice, viewModel.error)) {
+            (true, _, _) => const LoadingState(
+              message: 'Cargando el aviso de privacidad…',
             ),
-            styleSheet: _styleSheet(context),
-          ),
-          (_, _, final error?) => ErrorState(
-            message: error,
-            onRetry: viewModel.load,
-          ),
-          _ => const SizedBox.shrink(),
-        },
+            (_, final notice?, _) => Markdown(
+              key: const Key('privacy_notice_content'),
+              data: notice.content,
+              padding: const EdgeInsets.fromLTRB(
+                AppSpacing.xxl,
+                AppSpacing.sm,
+                AppSpacing.xxl,
+                AppSpacing.huge,
+              ),
+              styleSheet: _styleSheet(context),
+            ),
+            (_, _, final error?) => ErrorState(
+              message: error,
+              onRetry: viewModel.load,
+            ),
+            _ => const SizedBox.shrink(),
+          },
+        ),
       ),
     );
   }
