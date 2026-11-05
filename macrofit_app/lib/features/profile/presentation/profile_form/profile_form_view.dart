@@ -4,7 +4,9 @@ import 'package:provider/provider.dart';
 
 import '../../../../core/presentation/theme/app_tokens.dart';
 import '../../../../core/presentation/theme/theme_context.dart';
+import '../../../../core/presentation/widgets/app_avatar.dart';
 import '../../../../core/presentation/widgets/app_header.dart';
+import '../../../../core/presentation/widgets/confirm_dialog.dart';
 import '../../../../core/presentation/widgets/app_snack_bar.dart';
 import '../../../../core/presentation/widgets/app_text_field.dart';
 import '../../../../core/presentation/widgets/choice_pills.dart';
@@ -20,6 +22,7 @@ import '../../../../core/presentation/widgets/section_card.dart';
 import '../../domain/entities/profile.dart';
 import '../../domain/validators/profile_validators.dart';
 import 'profile_form_view_model.dart';
+import '../../../../core/presentation/theme/lucide_icons.dart';
 
 /// HU-03 — perfil inicial (alta obligatoria tras el primer inicio de sesión) y edición ("Mi perfil").
 class ProfileFormView extends StatelessWidget {
@@ -73,7 +76,7 @@ class ProfileFormView extends StatelessWidget {
               tooltip: 'Cerrar sesión',
               icon: viewModel.isLoggingOut
                   ? const InlineSpinner()
-                  : const Icon(Icons.logout_rounded),
+                  : const Icon(LucideIcons.logOut),
               onPressed: viewModel.isLoggingOut ? null : viewModel.logout,
             ),
         ],
@@ -140,7 +143,7 @@ class ProfileFormView extends StatelessWidget {
                     const _Label('Nivel'),
                     ChoicePills<ExperienceLevel>(
                       key: const Key('profile_level'),
-                      expand: true,
+
                       options: ExperienceLevel.values,
                       selected: viewModel.level,
                       labelOf: (level) => level.label,
@@ -194,7 +197,7 @@ class ProfileFormView extends StatelessWidget {
                     AppTextField(
                       key: const Key('profile_weight'),
                       label: 'Peso',
-                      icon: Icons.monitor_weight_outlined,
+                      icon: LucideIcons.weight,
                       initialValue: viewModel.weight,
                       keyboardType: const TextInputType.numberWithOptions(
                         decimal: true,
@@ -212,7 +215,7 @@ class ProfileFormView extends StatelessWidget {
                     AppTextField(
                       key: const Key('profile_height'),
                       label: 'Estatura',
-                      icon: Icons.height_rounded,
+                      icon: LucideIcons.ruler,
                       initialValue: viewModel.height,
                       keyboardType: const TextInputType.numberWithOptions(
                         decimal: true,
@@ -266,10 +269,14 @@ class ProfileFormView extends StatelessWidget {
               label: viewModel.isEditing
                   ? 'Guardar cambios'
                   : 'Guardar y continuar',
-              icon: Icons.check_rounded,
+              icon: LucideIcons.check,
               isLoading: viewModel.isSubmitting,
               onPressed: () => _submit(context, viewModel),
             ),
+            if (viewModel.isEditing) ...[
+              const SizedBox(height: AppSpacing.xxxl),
+              FadeSlideIn(index: 2, child: _AccountCard(viewModel: viewModel)),
+            ],
             const SizedBox(height: AppSpacing.xxl),
           ],
         ),
@@ -303,4 +310,65 @@ class _Label extends StatelessWidget {
       ),
     ),
   );
+}
+
+/// Cuenta de la sesión al final de "Mi perfil": avatar, correo y **Cerrar sesión**.
+class _AccountCard extends StatelessWidget {
+  const _AccountCard({required this.viewModel});
+
+  final ProfileFormViewModel viewModel;
+
+  Future<void> _confirmLogout(BuildContext context) async {
+    final confirmed = await showConfirmDialog(
+      context: context,
+      title: 'Cerrar sesión',
+      message: '¿Quieres cerrar tu sesión en este dispositivo?',
+      confirmLabel: 'Cerrar sesión',
+      icon: LucideIcons.logOut,
+      destructive: true,
+      confirmKey: const Key('logout_confirm'),
+    );
+    if (confirmed) await viewModel.logout();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final text = context.text;
+    return SectionCard(
+      title: 'Cuenta',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              AppAvatar(email: viewModel.email),
+              const SizedBox(width: AppSpacing.md),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(viewModel.name, style: text.titleMedium),
+                    Text(
+                      viewModel.email,
+                      style: text.bodySmall,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.xl),
+          PrimaryButton(
+            key: const Key('logout_button'),
+            label: 'Cerrar sesión',
+            icon: LucideIcons.logOut,
+            variant: AppButtonVariant.outlined,
+            isLoading: viewModel.isLoggingOut,
+            onPressed: () => _confirmLogout(context),
+          ),
+        ],
+      ),
+    );
+  }
 }

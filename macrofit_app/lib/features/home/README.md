@@ -11,7 +11,8 @@ barra inferior flotante de vidrio líquido (`HomeDock`) con un botón circular p
 | `presentation/user_home_view_model.dart` | `UserHomeViewModel extends HomeViewModel`: sesión + `loadGoal()` (`GoalsRepository` del dominio de `goals`) + `loadSummary()` (`SummaryRepository` del dominio de `summary`); `refresh()` hace ambas |
 | `presentation/coach_home_view.dart` | `/coach` — rol `coach`. Botón **Mi código de invitación** (`/coach/invite-code`, HU-12; en el cuerpo y en la barra), **Mis clientes** (`/coach/clients`, HU-24) y **Mis rutinas** (`/coach/routines`, HU-18; en el cuerpo y en la barra). |
 | `presentation/home_view_model.dart` | Usuario actual y `logout()` (usa el `AuthRepository` del dominio de `auth`) |
-| `presentation/widgets/home_scaffold.dart` | Saludo, avatar (en el usuario abre **Mi perfil**, `profile_button`), **Cerrar sesión** con confirmación, contenido y barra inferior; común a ambas |
+| `presentation/widgets/home_scaffold.dart` | Saludo, avatar Blobatar del correo (en el usuario abre **Mi perfil**, `profile_button`; en el coach, la hoja de su cuenta, `account_button`), contenido y barra inferior; común a ambas |
+| `presentation/widgets/account_sheet.dart` | Hoja de la cuenta del coach: avatar, nombre, correo, rol y **Cerrar sesión** (`logout_button`, con confirmación `logout_confirm`) |
 | `presentation/widgets/daily_progress_card.dart` | Tarjeta del progreso del día (HU-10): anillos concéntricos de los tres macros; por macro, consumido / meta y lo que falta o el exceso; barra de calorías |
 | `presentation/widgets/current_goal_card.dart` | Tarjeta de la meta: calorías, proteína, grasa y origen («Calculada» / «Definida por tu coach») |
 | `presentation/widgets/home_dock.dart` | `HomeDock`: barra inferior de vidrio líquido. Usuario: Inicio, **Comidas** (`meal_history_button`), **Semana** (`weekly_summary_button`), **Peso** (`weights_button`, HU-21) y el botón circular **Registrar comida** (`register_meal_button`). Coach: Inicio, **Clientes**, **Rutinas** y el botón circular **Mi código de invitación**. Los accesos abren las pantallas con `push`; no cambian las rutas |
@@ -24,6 +25,8 @@ barra inferior flotante de vidrio líquido (`HomeDock`) con un botón circular p
   en la del usuario).
 - `HomeScaffold` recibe el subtítulo, el contenido, la acción del avatar y la barra inferior (`HomeDock`).
 - El registro de peso (HU-21, `/user/weights`) no tenía acceso desde la app; ahora se abre desde **Peso** en la barra.
+- **Cerrar sesión** (HU-02) ya no está en el inicio: el usuario lo encuentra al final de **Mi perfil** y el coach en la
+  hoja de su cuenta (al tocar su avatar). Ambos piden confirmación.
 
 ## Meta vigente (HU-26)
 

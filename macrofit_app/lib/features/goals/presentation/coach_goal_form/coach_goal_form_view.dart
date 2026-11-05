@@ -19,6 +19,7 @@ import '../../../../core/presentation/widgets/section_card.dart';
 import '../../domain/entities/nutritional_goal.dart';
 import '../../domain/validators/coach_goal_validators.dart';
 import 'coach_goal_form_view_model.dart';
+import '../../../../core/presentation/theme/lucide_icons.dart';
 
 /// HU-05 — meta de un cliente vinculado: formulario e historial.
 class CoachGoalFormView extends StatelessWidget {
@@ -128,7 +129,7 @@ class CoachGoalFormView extends StatelessWidget {
                         PrimaryButton(
                           key: const Key('goal_submit'),
                           label: 'Guardar meta',
-                          icon: Icons.check_rounded,
+                          icon: LucideIcons.check,
                           isLoading: viewModel.isSubmitting,
                           onPressed: () => _submit(context, viewModel),
                         ),
@@ -174,7 +175,7 @@ class CoachGoalFormView extends StatelessWidget {
     if (viewModel.history.isEmpty) {
       return const EmptyState(
         compact: true,
-        icon: Icons.history_rounded,
+        icon: LucideIcons.history,
         title: 'Sin metas todavía',
         message: 'Este cliente todavía no tiene metas.',
       );
@@ -282,9 +283,7 @@ class _GoalTimelineRow extends StatelessWidget {
                   Row(
                     children: [
                       Icon(
-                        isCoach
-                            ? Icons.sports_rounded
-                            : Icons.auto_awesome_rounded,
+                        isCoach ? LucideIcons.whistle : LucideIcons.sparkles,
                         size: AppSizes.iconXs,
                         color: colors.onSurfaceVariant,
                       ),

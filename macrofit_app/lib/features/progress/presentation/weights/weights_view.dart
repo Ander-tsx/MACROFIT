@@ -19,6 +19,7 @@ import '../../domain/entities/weight_entry.dart';
 import '../widgets/weight_trend_chart.dart';
 import '../widgets/weights_texts.dart';
 import 'weights_view_model.dart';
+import '../../../../core/presentation/theme/lucide_icons.dart';
 
 /// HU-21 — formulario de registro e historial de peso.
 class WeightsView extends StatelessWidget {
@@ -54,7 +55,7 @@ class WeightsView extends StatelessWidget {
                           key: const Key('weight_input'),
                           label: 'Peso (kg)',
                           hint: 'Ej. 75.5',
-                          icon: Icons.monitor_weight_outlined,
+                          icon: LucideIcons.weight,
                           suffixText: 'kg',
                           errorText: viewModel.fieldError('weight_kg'),
                           keyboardType: const TextInputType.numberWithOptions(
@@ -67,7 +68,7 @@ class WeightsView extends StatelessWidget {
                         PrimaryButton(
                           key: const Key('submit_weight'),
                           label: 'Registrar peso',
-                          icon: Icons.add_rounded,
+                          icon: LucideIcons.plus,
                           isLoading: viewModel.isSubmitting,
                           onPressed: () => _submit(context, viewModel),
                         ),
@@ -129,7 +130,7 @@ class _History extends StatelessWidget {
     if (weights.isEmpty) {
       return const EmptyState(
         compact: true,
-        icon: Icons.monitor_weight_outlined,
+        icon: LucideIcons.weight,
         title: 'Aún no tienes registros de peso.',
         message: 'Registra tu peso para ver cómo cambia con el tiempo.',
       );

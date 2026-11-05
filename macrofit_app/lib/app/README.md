@@ -90,6 +90,8 @@ el tamaño del texto, el color de los macros y el espacio.
 | `core/presentation/theme/app_tokens.dart` | **Único archivo de medidas**: `AppSpacing`, `AppRadius`, `AppSizes`, `AppGlass`, `AppDurations`, `AppElevation`, `AppMotion`, `AppOpacity` |
 | `core/presentation/theme/macro_style.dart` | `Macro` (calorías, proteína, grasa): nombre, ícono y color de cada macro |
 | `core/presentation/theme/app_text.dart` | `AppText.numeric` (cifras tabulares) |
+| `core/presentation/theme/lucide_icons.dart` | `LucideIcons`: íconos de la app |
+| `core/presentation/theme/app_images.dart` | `AppImages`: fondos de las tarjetas destacadas |
 | `core/presentation/theme/theme_context.dart` | Atajos `context.colors`, `context.text`, `context.appColors` |
 | `app/theme.dart` | `AppTheme`: `ColorScheme` claro y oscuro, `TextTheme` y temas de botones, campos, tarjetas, `AppBar`, `NavigationBar`, diálogos, `SnackBar`, selector de fecha, transiciones… |
 
@@ -108,7 +110,7 @@ el tamaño del texto, el color de los macros y el espacio.
 | **Grasa** | `#8338D6` | `#B76CFF` | `appColors.fat` (+ `fatTrack`) |
 | Error | `#D3303B` | `#FF6B6B` | `colors.error` / `errorContainer` |
 | Advertencia (exceso de la meta) | `#9A5F00` | `#FFC24D` | `appColors.warning` |
-| Acento de marca | `#8BD448` | `#8BD448` | botón principal de la barra inferior |
+| Acento de marca | `#8BD448` | `#8BD448` | botón circular de la barra inferior |
 | Tarjetas destacadas | verde `#0E6B52→#13795E`, azul `#145DB8→#1A6FC8` | igual | `HighlightCard` (texto blanco) |
 
 Contraste: el texto normal sobre su fondo cumple WCAG AA (≥ 4.5:1) en ambos temas; los colores claros de los macros se
@@ -139,9 +141,21 @@ Inter (SIL OFL, `assets/fonts/inter`), pesos 400/500/600/700. Cifras con `AppTex
 
 ### Iconografía
 
-Material Icons en su variante *rounded*; contorno (`*_outlined`) cuando el acceso no está activo y relleno cuando sí
-(barra inferior). Cada macro tiene siempre su ícono (`Macro.icon`): 🔥 calorías, huevo proteína, gota grasa.
-La marca es un anillo de tres segmentos (los tres macros) con un punto lima al centro (`BrandMark`).
+[Lucide](https://lucide.dev) (licencia ISC) desde la fuente local `assets/fonts/lucide/lucide.ttf` (paquete
+`lucide-static` 1.68.0), con las constantes de `core/presentation/theme/lucide_icons.dart` (`LucideIcons.scan`, …).
+Trazo uniforme de 2 px; el acceso activo se distingue por color y por la lente de la barra, no por un ícono relleno.
+Cada macro tiene siempre su ícono (`Macro.icon`): `flame` calorías, `egg` proteína, `droplet` grasa. Registrar comida
+usa `scan`. Para agregar uno, toma su nombre de `codepoints.json` de `lucide-static` y suma la constante. Las rutinas
+(HU-18, en curso) siguen con Material Icons hasta su ajuste.
+
+MacroFit no tiene logotipo: la marca es el nombre en Inter y, como ilustración, los anillos de los tres macros.
+
+### Avatares e imágenes
+
+- **Avatar**: [Blobatar](https://pub.dev/packages/blobatar) generado a partir del **correo** de la persona
+  (`AppAvatar(email: …)`): el mismo correo da siempre el mismo avatar, sin subir fotos ni guardar nada.
+- **Tarjetas destacadas** (`HighlightCard`): color de marca sobre una foto muy tenue (`AppImages`, `assets/images/`):
+  comida en «¿Qué comiste?», entrenamiento en «Mis rutinas», coach con cliente en «Tu coach» y el código de invitación.
 
 ### Movimiento y retroalimentación
 

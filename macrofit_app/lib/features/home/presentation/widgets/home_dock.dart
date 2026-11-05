@@ -181,7 +181,7 @@ class _DockButton extends StatelessWidget {
     final colors = context.colors;
     final color = highlighted
         ? colors.onSurface
-        : colors.onSurface.withValues(alpha: AppOpacity.muted);
+        : colors.onSurface.withValues(alpha: AppOpacity.dockLabel);
     return Semantics(
       button: true,
       selected: item.selected,
@@ -204,13 +204,13 @@ class _DockButton extends StatelessWidget {
                   highlighted ? (item.selectedIcon ?? item.icon) : item.icon,
                   key: ValueKey(highlighted),
                   color: color,
-                  size: AppSizes.iconMd,
+                  size: AppSizes.dockIcon,
                 ),
               ),
-              const SizedBox(height: AppSpacing.xxs),
               AnimatedDefaultTextStyle(
                 duration: AppDurations.normal,
-                style: context.text.labelMedium!.copyWith(
+                style: context.text.labelSmall!.copyWith(
+                  letterSpacing: 0,
                   color: color,
                   fontWeight: highlighted ? FontWeight.w700 : FontWeight.w500,
                 ),

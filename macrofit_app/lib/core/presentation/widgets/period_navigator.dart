@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../theme/app_tokens.dart';
 import '../theme/theme_context.dart';
 import 'press_scale.dart';
+import '../theme/lucide_icons.dart';
 
 /// Cambio de periodo (día o semana) con la píldora central de la referencia:
 /// flecha anterior, «Hoy» y flecha siguiente. Si se pasa [onLabelTap], la
@@ -65,7 +66,7 @@ class PeriodNavigator extends StatelessWidget {
           key: previousKey,
           tooltip: previousTooltip,
           color: colors.onSurfaceVariant,
-          icon: const Icon(Icons.chevron_left_rounded),
+          icon: const Icon(LucideIcons.chevronLeft),
           onPressed: withHaptic(onPrevious, selection: true),
         ),
         Expanded(
@@ -94,7 +95,7 @@ class PeriodNavigator extends StatelessWidget {
           key: nextKey,
           tooltip: nextTooltip,
           color: colors.onSurfaceVariant,
-          icon: const Icon(Icons.chevron_right_rounded),
+          icon: const Icon(LucideIcons.chevronRight),
           onPressed: withHaptic(onNext, selection: true),
         ),
       ],

@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 
 import '../../../../core/presentation/theme/app_tokens.dart';
 import '../../../../core/presentation/theme/theme_context.dart';
-import '../../../../core/presentation/widgets/brand_mark.dart';
 import '../../../../core/presentation/widgets/fade_slide_in.dart';
 import '../../../../core/presentation/widgets/macro_rings.dart';
 
@@ -50,13 +49,7 @@ class AuthLayout extends StatelessWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Row(
-                            children: [
-                              const BrandMark(size: AppSizes.iconXl),
-                              const SizedBox(width: AppSpacing.md),
-                              Text('MacroFit', style: text.headlineMedium),
-                            ],
-                          ),
+                          Text('MacroFit', style: text.headlineLarge),
                           const SizedBox(height: AppSpacing.md),
                           Text(
                             tagline,

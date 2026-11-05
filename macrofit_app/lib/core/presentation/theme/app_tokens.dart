@@ -129,8 +129,9 @@ abstract final class AppSizes {
   static const double tileBorder = 1.8;
 
   /// Barra inferior flotante.
-  static const double dockHeight = 64;
-  static const double dockAction = 64;
+  static const double dockHeight = 54;
+  static const double dockAction = 54;
+  static const double dockIcon = 20;
 
   /// Selector de periodo ("Hoy").
   static const double periodPill = 52;
@@ -219,4 +220,12 @@ abstract final class AppOpacity {
   static const double hairline = 0.6;
   static const double track = 0.22;
   static const double art = 0.18;
+
+  /// Imagen de fondo de las tarjetas destacadas (muy tenue bajo el color).
+  static const double featureImage = 0.32;
+
+  /// Texto de los accesos no activos de la barra inferior.
+  static const double dockLabel = 0.86;
+  static const double featureTintStrong = 0.92;
+  static const double featureTintSoft = 0.62;
 }

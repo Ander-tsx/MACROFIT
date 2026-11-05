@@ -15,6 +15,7 @@ import '../../../../core/presentation/widgets/loading_state.dart';
 import '../../../../core/presentation/widgets/primary_button.dart';
 import '../../../../core/presentation/widgets/section_card.dart';
 import 'invite_code_view_model.dart';
+import '../../../../core/presentation/theme/lucide_icons.dart';
 
 /// HU-12 — código de invitación del coach con copiar, compartir y regenerar.
 class InviteCodeView extends StatelessWidget {
@@ -99,7 +100,7 @@ class InviteCodeView extends StatelessWidget {
                           child: PrimaryButton(
                             key: const Key('invite_code_copy'),
                             label: 'Copiar',
-                            icon: Icons.copy_rounded,
+                            icon: LucideIcons.copy,
                             variant: AppButtonVariant.outlined,
                             onPressed: viewModel.canUseCode
                                 ? () => _copy(context, viewModel)
@@ -113,7 +114,7 @@ class InviteCodeView extends StatelessWidget {
                             builder: (buttonContext) => PrimaryButton(
                               key: const Key('invite_code_share'),
                               label: 'Compartir',
-                              icon: Icons.ios_share_rounded,
+                              icon: LucideIcons.share2,
                               onPressed: viewModel.canUseCode
                                   ? () => viewModel.share(
                                       origin: _originOf(buttonContext),
@@ -141,7 +142,7 @@ class InviteCodeView extends StatelessWidget {
                   child: PrimaryButton(
                     key: const Key('invite_code_regenerate'),
                     label: 'Regenerar código',
-                    icon: Icons.refresh_rounded,
+                    icon: LucideIcons.refreshCw,
                     variant: AppButtonVariant.tonal,
                     expand: false,
                     compact: true,
@@ -201,7 +202,7 @@ class InviteCodeView extends StatelessWidget {
         'Se generará un código nuevo y el actual ($code) dejará de funcionar. '
         'Quien aún no se haya vinculado necesitará el código nuevo.',
     confirmLabel: 'Regenerar',
-    icon: Icons.refresh_rounded,
+    icon: LucideIcons.refreshCw,
     confirmKey: const Key('invite_code_regenerate_confirm'),
     cancelKey: const Key('invite_code_regenerate_cancel'),
   );

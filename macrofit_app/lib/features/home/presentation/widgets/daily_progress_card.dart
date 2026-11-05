@@ -15,6 +15,7 @@ import '../../../../core/presentation/widgets/macro_rings.dart';
 import '../../../../core/presentation/widgets/primary_button.dart';
 import '../../../../core/presentation/widgets/section_card.dart';
 import '../../../summary/domain/entities/day_summary.dart';
+import '../../../../core/presentation/theme/lucide_icons.dart';
 
 /// Texto de lo que falta o del exceso: «Te faltan 120 kcal» / «Te pasaste por 150 kcal».
 String remainingText(double remaining, String unit) {
@@ -83,7 +84,7 @@ class DailyProgressCard extends StatelessWidget {
       return const EmptyState(
         key: Key('home_summary_empty'),
         compact: true,
-        icon: Icons.donut_large_rounded,
+        icon: LucideIcons.chartPie,
         title: 'Aún no hay progreso que mostrar',
         message: 'Cuando tengas una meta verás aquí lo que has consumido hoy.',
       );
@@ -160,7 +161,7 @@ class DailyProgressCard extends StatelessWidget {
           PrimaryButton(
             key: const Key('home_summary_retry'),
             label: 'Reintentar',
-            icon: Icons.refresh_rounded,
+            icon: LucideIcons.refreshCw,
             variant: AppButtonVariant.tonal,
             compact: true,
             onPressed: onRetry,

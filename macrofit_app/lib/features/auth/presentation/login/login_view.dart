@@ -11,6 +11,7 @@ import '../../../../core/presentation/widgets/password_field.dart';
 import '../../../../core/presentation/widgets/primary_button.dart';
 import '../widgets/auth_layout.dart';
 import 'login_view_model.dart';
+import '../../../../core/presentation/theme/lucide_icons.dart';
 
 /// HU-02 — pantalla de inicio de sesión.
 class LoginView extends StatelessWidget {
@@ -44,7 +45,7 @@ class LoginView extends StatelessWidget {
               AppTextField(
                 key: const Key('login_email'),
                 label: 'Correo electrónico',
-                icon: Icons.mail_outline_rounded,
+                icon: LucideIcons.mail,
                 keyboardType: TextInputType.emailAddress,
                 autocorrect: false,
                 autofillHints: const [AutofillHints.email],
@@ -65,7 +66,6 @@ class LoginView extends StatelessWidget {
               PrimaryButton(
                 key: const Key('login_submit'),
                 label: 'Iniciar sesión',
-                icon: Icons.arrow_forward_rounded,
                 isLoading: viewModel.isSubmitting,
                 onPressed: viewModel.submit,
               ),

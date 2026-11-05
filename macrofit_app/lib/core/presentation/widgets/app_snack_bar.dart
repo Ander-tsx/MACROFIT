@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../theme/app_tokens.dart';
 import '../theme/theme_context.dart';
 import 'status_banner.dart';
+import '../theme/lucide_icons.dart';
 
 /// Aviso breve al pie de la pantalla (éxito, información o error) con el ícono
 /// de su tono. Recibe el `ScaffoldMessengerState` para poder usarse después de
@@ -33,10 +34,10 @@ class _SnackContent extends StatelessWidget {
   Widget build(BuildContext context) {
     final app = context.appColors;
     final (icon, color) = switch (tone) {
-      StatusTone.success => (Icons.check_circle_rounded, app.accent),
-      StatusTone.info => (Icons.info_rounded, app.onHeroMuted),
-      StatusTone.warning => (Icons.warning_rounded, app.warning),
-      StatusTone.error => (Icons.error_rounded, context.colors.error),
+      StatusTone.success => (LucideIcons.circleCheck, app.accent),
+      StatusTone.info => (LucideIcons.info, app.onHeroMuted),
+      StatusTone.warning => (LucideIcons.triangleAlert, app.warning),
+      StatusTone.error => (LucideIcons.circleAlert, context.colors.error),
     };
     return Row(
       children: [

@@ -8,6 +8,7 @@ import '../../../../core/presentation/theme/theme_context.dart';
 import '../../domain/entities/day_summary.dart';
 import '../../domain/usecases/app_day.dart';
 import 'weekly_summary_texts.dart';
+import '../../../../core/presentation/theme/lucide_icons.dart';
 
 /// Calorías consumidas de cada día (barra) contra la meta de ese día (raya), con
 /// una línea punteada del promedio. Sobre cada barra va una marca que no depende
@@ -47,7 +48,7 @@ class WeeklyCaloriesChart extends StatelessWidget {
             for (final day in days)
               Expanded(
                 child: Icon(
-                  day.goalMet ? Icons.check_circle : Icons.cancel_outlined,
+                  day.goalMet ? LucideIcons.circleCheck : LucideIcons.circleX,
                   key: Key('weekly_mark_${day.date}'),
                   size: AppSizes.iconSm,
                   semanticLabel: day.goalMet

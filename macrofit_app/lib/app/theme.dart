@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 
 import '../core/presentation/theme/app_colors.dart';
 import '../core/presentation/theme/app_tokens.dart';
+import '../core/presentation/theme/lucide_icons.dart';
 
 /// Tema de MacroFit (claro y oscuro) construido a partir de la guía visual
 /// documentada en `lib/app/README.md`.
@@ -181,8 +182,7 @@ abstract final class AppTheme {
       ),
       iconTheme: IconThemeData(color: scheme.onSurface, size: AppSizes.iconMd),
       actionIconTheme: ActionIconThemeData(
-        backButtonIconBuilder: (_) =>
-            const Icon(Icons.arrow_back_ios_new_rounded),
+        backButtonIconBuilder: (_) => const Icon(LucideIcons.chevronLeft),
       ),
       appBarTheme: AppBarTheme(
         backgroundColor: background,

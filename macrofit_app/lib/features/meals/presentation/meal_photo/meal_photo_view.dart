@@ -15,6 +15,7 @@ import '../../domain/entities/meal.dart';
 import '../../domain/entities/meal_photo.dart';
 import '../widgets/scan_frame.dart';
 import 'meal_photo_view_model.dart';
+import '../../../../core/presentation/theme/lucide_icons.dart';
 
 /// HU-06 — "Registrar comida": tomar o elegir la foto, ver la vista previa y subirla.
 class MealPhotoView extends StatelessWidget {
@@ -74,7 +75,7 @@ class MealPhotoView extends StatelessWidget {
                     label: viewModel.isUploading
                         ? 'Subiendo foto…'
                         : 'Usar esta foto',
-                    icon: Icons.arrow_upward_rounded,
+                    icon: LucideIcons.arrowUp,
                     isLoading: viewModel.isUploading,
                     onPressed: viewModel.isBusy
                         ? null
@@ -98,7 +99,7 @@ class MealPhotoView extends StatelessWidget {
                 PrimaryButton(
                   key: const Key('meal_photo_manual'),
                   label: 'Capturar sin foto',
-                  icon: Icons.edit_note_rounded,
+                  icon: LucideIcons.notebookPen,
                   variant: AppButtonVariant.ghost,
                   onPressed: viewModel.isBusy
                       ? null
@@ -145,7 +146,7 @@ class _Preview extends StatelessWidget {
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               Icon(
-                                Icons.restaurant_rounded,
+                                LucideIcons.utensils,
                                 size: AppSizes.iconXl,
                                 color: app.onHero,
                               ),
@@ -197,7 +198,7 @@ class _SourceButtons extends StatelessWidget {
         Expanded(
           child: _SourceTile(
             key: const Key('meal_photo_camera'),
-            icon: Icons.photo_camera_rounded,
+            icon: LucideIcons.scan,
             label: 'Tomar foto',
             highlighted: true,
             onTap: enabled ? () => viewModel.pick(PhotoSource.camera) : null,
@@ -207,7 +208,7 @@ class _SourceButtons extends StatelessWidget {
         Expanded(
           child: _SourceTile(
             key: const Key('meal_photo_gallery'),
-            icon: Icons.photo_library_rounded,
+            icon: LucideIcons.images,
             label: 'Elegir de la galería',
             onTap: enabled ? () => viewModel.pick(PhotoSource.gallery) : null,
           ),

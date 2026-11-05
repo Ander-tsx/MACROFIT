@@ -13,6 +13,7 @@ import '../../../../core/presentation/widgets/primary_button.dart';
 import '../../../../core/presentation/widgets/section_card.dart';
 import '../widgets/meal_navigation.dart';
 import 'meal_form_view_model.dart';
+import '../../../../core/presentation/theme/lucide_icons.dart';
 
 /// HU-08 — "Revisar valores" (precargado con la estimación) o "Captura manual"
 /// (vacío): calorías, proteína y grasa editables y **Guardar**.
@@ -130,7 +131,7 @@ class MealFormView extends StatelessWidget {
                     PrimaryButton(
                       key: const Key('meal_form_submit'),
                       label: 'Guardar',
-                      icon: Icons.check_rounded,
+                      icon: LucideIcons.check,
                       isLoading: viewModel.isSubmitting,
                       onPressed: () => _submit(context, viewModel),
                     ),

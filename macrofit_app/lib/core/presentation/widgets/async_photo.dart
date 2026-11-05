@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../theme/app_tokens.dart';
 import '../theme/theme_context.dart';
 import 'loading_state.dart';
+import '../theme/lucide_icons.dart';
 
 /// Foto que se descarga aparte (historial de comidas): muestra un indicador
 /// mientras llega y un ícono si no se pudo cargar.
@@ -30,11 +31,11 @@ class AsyncPhoto extends StatelessWidget {
             gaplessPlayback: true,
             semanticLabel: semanticLabel,
             errorBuilder: (_, _, _) =>
-                const PhotoPlaceholder(icon: Icons.broken_image_outlined),
+                const PhotoPlaceholder(icon: LucideIcons.imageOff),
           );
         }
         if (snapshot.hasError) {
-          return const PhotoPlaceholder(icon: Icons.broken_image_outlined);
+          return const PhotoPlaceholder(icon: LucideIcons.imageOff);
         }
         return const PhotoPlaceholder(child: InlineSpinner());
       },
@@ -58,7 +59,7 @@ class PhotoPlaceholder extends StatelessWidget {
         child:
             child ??
             Icon(
-              icon ?? Icons.restaurant_rounded,
+              icon ?? LucideIcons.utensils,
               color: colors.onSurfaceVariant,
               size: AppSizes.iconLg,
             ),

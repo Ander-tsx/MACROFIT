@@ -20,6 +20,7 @@ import '../../../../core/presentation/widgets/section_card.dart';
 import '../../domain/entities/client_meal.dart';
 import '../widgets/client_meal_texts.dart';
 import 'client_meals_view_model.dart';
+import '../../../../core/presentation/theme/lucide_icons.dart';
 
 /// HU-25 — registro diario de comidas de un cliente. Solo lectura (RN-07): no hay
 /// opciones para crear, editar ni eliminar registros.
@@ -50,7 +51,7 @@ class ClientMealsView extends StatelessWidget {
                       PrimaryButton(
                         key: const Key('client_meals_back'),
                         label: 'Volver a mis clientes',
-                        icon: Icons.arrow_back_rounded,
+                        icon: LucideIcons.arrowLeft,
                         onPressed: () => context.pop(true),
                       ),
                     ],
@@ -96,14 +97,14 @@ class ClientMealsView extends StatelessWidget {
     }
     if (viewModel.isEmptyDay) {
       return EmptyState(
-        icon: Icons.no_meals_outlined,
+        icon: LucideIcons.utensilsCrossed,
         title: 'No hay registros este día.',
         message: 'Tu cliente no registró comidas en esta fecha.',
         actions: [
           PrimaryButton(
             key: const Key('client_meals_pick_date'),
             label: 'Elige otra fecha',
-            icon: Icons.calendar_today_rounded,
+            icon: LucideIcons.calendar,
             variant: AppButtonVariant.outlined,
             expand: false,
             onPressed: () => _pickDate(context, viewModel),

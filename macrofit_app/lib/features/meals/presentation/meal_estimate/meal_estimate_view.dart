@@ -20,6 +20,7 @@ import '../../../../core/presentation/widgets/stat_tile.dart';
 import '../widgets/meal_navigation.dart';
 import '../widgets/meal_texts.dart';
 import 'meal_estimate_view_model.dart';
+import '../../../../core/presentation/theme/lucide_icons.dart';
 
 /// HU-07 — "Estimación": carga, alimentos identificados y totales, o las
 /// opciones ante un error (reintentar o capturar a mano).
@@ -97,7 +98,7 @@ class MealEstimateView extends StatelessWidget {
                 PrimaryButton(
                   key: const Key('meal_estimate_save'),
                   label: 'Guardar',
-                  icon: Icons.check_rounded,
+                  icon: LucideIcons.check,
                   isLoading: viewModel.isSaving,
                   onPressed: () => _save(context, viewModel),
                 ),
@@ -105,7 +106,7 @@ class MealEstimateView extends StatelessWidget {
                 PrimaryButton(
                   key: const Key('meal_estimate_correct'),
                   label: 'Corregir valores',
-                  icon: Icons.tune_rounded,
+                  icon: LucideIcons.slidersHorizontal,
                   variant: AppButtonVariant.outlined,
                   onPressed: viewModel.isSaving
                       ? null
@@ -123,7 +124,7 @@ class MealEstimateView extends StatelessWidget {
                   PrimaryButton(
                     key: const Key('meal_estimate_retry'),
                     label: 'Reintentar',
-                    icon: Icons.refresh_rounded,
+                    icon: LucideIcons.refreshCw,
                     onPressed: viewModel.retry,
                   ),
                   const SizedBox(height: AppSpacing.md),
@@ -131,7 +132,7 @@ class MealEstimateView extends StatelessWidget {
                 PrimaryButton(
                   key: const Key('meal_estimate_manual'),
                   label: 'Capturar a mano',
-                  icon: Icons.edit_note_rounded,
+                  icon: LucideIcons.notebookPen,
                   variant: AppButtonVariant.outlined,
                   onPressed: () => _openForm(context, viewModel),
                 ),

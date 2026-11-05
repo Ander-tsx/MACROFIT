@@ -23,6 +23,7 @@ import '../../domain/entities/week_summary.dart';
 import 'weekly_calories_chart.dart';
 import 'weekly_summary_texts.dart';
 import 'weekly_summary_view_model.dart';
+import '../../../../core/presentation/theme/lucide_icons.dart';
 
 /// HU-11 — resumen semanal (RF-10): calorías de los 7 días contra la meta de cada día,
 /// promedio diario y días con la meta cumplida, con cambio a la semana anterior o siguiente.
@@ -80,7 +81,7 @@ class WeeklySummaryView extends StatelessWidget {
         return const [
           EmptyState(
             key: Key('weekly_empty'),
-            icon: Icons.bar_chart_rounded,
+            icon: LucideIcons.chartColumn,
             title: 'Aún no hay resumen',
             message:
                 'Cuando tengas una meta verás aquí tu resumen de la semana.',
@@ -97,7 +98,7 @@ class WeeklySummaryView extends StatelessWidget {
         PrimaryButton(
           key: const Key('weekly_retry'),
           label: 'Reintentar',
-          icon: Icons.refresh_rounded,
+          icon: LucideIcons.refreshCw,
           variant: AppButtonVariant.tonal,
           compact: true,
           onPressed: viewModel.load,
@@ -323,7 +324,7 @@ class _DaysCard extends StatelessWidget {
               key: Key('weekly_row_${day.date}'),
               children: [
                 Icon(
-                  day.goalMet ? Icons.check_circle : Icons.cancel_outlined,
+                  day.goalMet ? LucideIcons.circleCheck : LucideIcons.circleX,
                   color: day.goalMet ? app.calories : colors.outline,
                 ),
                 const SizedBox(width: AppSpacing.md),

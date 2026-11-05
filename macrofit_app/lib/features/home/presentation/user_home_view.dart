@@ -13,6 +13,8 @@ import 'widgets/daily_progress_card.dart';
 import 'widgets/home_dock.dart';
 import 'widgets/home_scaffold.dart';
 import 'widgets/refresh_on_return.dart';
+import '../../../core/presentation/theme/lucide_icons.dart';
+import '../../../core/presentation/theme/app_images.dart';
 
 /// Pantalla principal del rol `user`: progreso del día (HU-10) y meta vigente (HU-26).
 /// Desde aquí se abren "Mi perfil" (HU-03), "Registrar comida" (HU-06), "Mis comidas"
@@ -39,37 +41,37 @@ class UserHomeView extends StatelessWidget {
         dock: HomeDock(
           items: [
             DockItem(
-              icon: Icons.home_outlined,
-              selectedIcon: Icons.home_rounded,
+              icon: LucideIcons.house,
+              selectedIcon: LucideIcons.house,
               label: 'Inicio',
               selected: true,
               onTap: () {},
             ),
             DockItem(
               key: const Key('meal_history_button'),
-              icon: Icons.restaurant_outlined,
-              selectedIcon: Icons.restaurant_rounded,
+              icon: LucideIcons.utensils,
+              selectedIcon: LucideIcons.utensils,
               label: 'Comidas',
               onTap: () => context.push(AppRoutes.mealHistory),
             ),
             DockItem(
               key: const Key('weekly_summary_button'),
-              icon: Icons.insert_chart_outlined_rounded,
-              selectedIcon: Icons.insert_chart_rounded,
+              icon: LucideIcons.chartColumn,
+              selectedIcon: LucideIcons.chartColumn,
               label: 'Semana',
               onTap: () => context.push(AppRoutes.weeklySummary),
             ),
             DockItem(
               key: const Key('weights_button'),
-              icon: Icons.monitor_weight_outlined,
-              selectedIcon: Icons.monitor_weight_rounded,
+              icon: LucideIcons.weight,
+              selectedIcon: LucideIcons.weight,
               label: 'Peso',
               onTap: () => context.push(AppRoutes.weights),
             ),
           ],
           action: DockItem(
             key: const Key('register_meal_button'),
-            icon: Icons.add_a_photo_rounded,
+            icon: LucideIcons.scan,
             label: 'Registrar comida',
             onTap: openMealPhoto,
           ),
@@ -110,7 +112,8 @@ class UserHomeView extends StatelessWidget {
                 child: HighlightCard(
                   title: '¿Qué comiste?',
                   description: 'Tómale una foto y estimamos sus macros.',
-                  icon: Icons.photo_camera_rounded,
+                  icon: LucideIcons.scan,
+                  image: AppImages.food,
                   onTap: openMealPhoto,
                 ),
               ),
@@ -123,12 +126,13 @@ class UserHomeView extends StatelessWidget {
                   description:
                       'Vincúlate con su código para que siga tu progreso y '
                       'ajuste tu meta.',
-                  icon: Icons.sports_rounded,
+                  icon: LucideIcons.whistle,
+                  image: AppImages.coach,
                   tone: HighlightTone.blue,
                   action: PrimaryButton(
                     key: const Key('link_coach_nav_button'),
                     label: 'Vincular con coach',
-                    icon: Icons.link_rounded,
+                    icon: LucideIcons.link,
                     variant: AppButtonVariant.onColor,
                     expand: false,
                     onPressed: () => context.push(AppRoutes.coachLink),

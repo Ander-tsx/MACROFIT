@@ -24,6 +24,7 @@ import '../../../../core/presentation/widgets/section_card.dart';
 import '../../domain/entities/meal.dart';
 import '../widgets/meal_texts.dart';
 import 'meal_history_view_model.dart';
+import '../../../../core/presentation/theme/lucide_icons.dart';
 
 /// HU-09 — "Mis comidas": registros del día con hora, foto y valores, cambio de
 /// día y eliminación con confirmación (RF-08).
@@ -40,7 +41,7 @@ class MealHistoryView extends StatelessWidget {
         child: FloatingActionButton.extended(
           key: const Key('meal_history_add'),
           onPressed: withHaptic(() => context.push(AppRoutes.mealPhoto)),
-          icon: const Icon(Icons.add_a_photo_rounded),
+          icon: const Icon(LucideIcons.scan),
           label: const Text('Registrar comida'),
         ),
       ),
@@ -85,14 +86,14 @@ class MealHistoryView extends StatelessWidget {
     if (viewModel.isEmptyDay) {
       return EmptyState(
         key: const Key('meal_history_empty'),
-        icon: Icons.no_meals_outlined,
+        icon: LucideIcons.utensilsCrossed,
         title: 'No hay registros este día.',
         message: 'Registra una comida o revisa otro día.',
         actions: [
           PrimaryButton(
             key: const Key('meal_history_pick_date'),
             label: 'Elige otra fecha',
-            icon: Icons.calendar_today_rounded,
+            icon: LucideIcons.calendar,
             variant: AppButtonVariant.outlined,
             expand: false,
             onPressed: () => _pickDate(context, viewModel),
@@ -173,7 +174,7 @@ Future<void> _confirmDelete(
         '(${mealValuesText(meal.values)})'
         '${meal.photoId == null ? '' : ' y su foto'}. No se puede deshacer.',
     confirmLabel: 'Eliminar',
-    icon: Icons.delete_outline_rounded,
+    icon: LucideIcons.trash2,
     destructive: true,
     confirmKey: const Key('meal_delete_confirm'),
     cancelKey: const Key('meal_delete_cancel'),
@@ -211,7 +212,7 @@ class _MealCard extends StatelessWidget {
       trailing: IconButton(
         key: Key('meal_${meal.id}_delete'),
         tooltip: 'Eliminar registro',
-        icon: const Icon(Icons.delete_outline_rounded),
+        icon: const Icon(LucideIcons.trash2),
         onPressed: viewModel.deletingId == null
             ? () => _confirmDelete(context, viewModel, meal)
             : null,

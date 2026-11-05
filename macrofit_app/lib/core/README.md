@@ -39,10 +39,10 @@ Código que usan varias features. No contiene lógica de ninguna historia en par
 | `PeriodNavigator` | Píldora «Hoy» / semana con anterior y siguiente |
 | `StatTile` / `MetricTile` / `LeaderRow` | Mosaico con contorno (cifra + unidad + pie), dato simple y renglón «etiqueta ···· valor» |
 | `MacroRings` / `MacroBadge` / `ProgressRing` | Anillos concéntricos de los tres macros, ícono de un macro con su anillo, anillo simple |
-| `HighlightCard` | Tarjeta destacada de color con ilustración |
+| `HighlightCard` | Tarjeta destacada: color de marca sobre una foto tenue (`AppImages`) y su ícono |
 | `ListRow` / `ActionTile` | Fila con cuadro, título y acción separada; fila de navegación (`ListTile`) |
 | `MealEntryCard` / `DayTotalCard` / `AsyncPhoto` | Registro de comida, total del día y foto que se descarga aparte (meals y clients) |
-| `AppAvatar` / `BrandMark` / `IconBubble` | Avatar con aro de los macros, marca de MacroFit, ícono en círculo |
+| `AppAvatar` / `IconBubble` | Avatar Blobatar generado del correo (con aro de los macros) e ícono en círculo |
 | `GlassSurface` | Vidrio líquido (barra inferior) |
 | `PressScale` / `withHaptic` / `FadeSlideIn` / `StateSwitcher` / `CountUp` | Retroalimentación al presionar, vibración, entrada escalonada, transición entre estados y cifras que cuentan |
 | `ContentWidth` | Limita el ancho en tabletas |

@@ -18,6 +18,7 @@ import '../../../../core/presentation/widgets/surface_card.dart';
 import '../../domain/entities/client_summary.dart';
 import '../widgets/client_summary_texts.dart';
 import 'clients_list_view_model.dart';
+import '../../../../core/presentation/theme/lucide_icons.dart';
 
 /// HU-24 — clientes vinculados del coach con búsqueda por nombre.
 class ClientsListView extends StatelessWidget {
@@ -46,7 +47,7 @@ class ClientsListView extends StatelessWidget {
       if (viewModel.hasNoClients) {
         return EmptyState(
           key: const Key('clients_empty'),
-          icon: Icons.group_add_rounded,
+          icon: LucideIcons.userPlus,
           title: 'Todavía no tienes clientes vinculados.',
           message:
               'Comparte tu código de invitación para que tus clientes se '
@@ -55,13 +56,13 @@ class ClientsListView extends StatelessWidget {
             PrimaryButton(
               key: const Key('clients_invite_code'),
               label: 'Ver mi código de invitación',
-              icon: Icons.qr_code_2_rounded,
+              icon: LucideIcons.qrCode,
               onPressed: () => context.push(AppRoutes.coachInviteCode),
             ),
             PrimaryButton(
               key: const Key('clients_reload'),
               label: 'Actualizar',
-              icon: Icons.refresh_rounded,
+              icon: LucideIcons.refreshCw,
               variant: AppButtonVariant.ghost,
               onPressed: viewModel.load,
             ),
@@ -105,7 +106,7 @@ class ClientsListView extends StatelessWidget {
               children: [
                 if (viewModel.hasNoMatches)
                   const EmptyState(
-                    icon: Icons.person_search_rounded,
+                    icon: LucideIcons.userRoundSearch,
                     title: 'Sin resultados',
                     message: 'Ningún cliente coincide con la búsqueda.',
                   )
@@ -178,7 +179,7 @@ class _SearchField extends StatelessWidget {
       onChanged: onChanged,
       textInputAction: TextInputAction.search,
       decoration: InputDecoration(
-        prefixIcon: const Icon(Icons.search_rounded),
+        prefixIcon: const Icon(LucideIcons.search),
         hintText: 'Buscar por nombre',
         fillColor: context.colors.surfaceContainerHigh,
         border: const OutlineInputBorder(
@@ -225,7 +226,7 @@ class _ClientRow extends StatelessWidget {
           child: Row(
             children: [
               AppAvatar(
-                name: client.name,
+                email: client.email,
                 size: AppSizes.avatar + AppSpacing.xs,
               ),
               const SizedBox(width: AppSpacing.lg),
@@ -245,7 +246,7 @@ class _ClientRow extends StatelessWidget {
                   ],
                 ),
               ),
-              Icon(Icons.chevron_right_rounded, color: colors.onSurfaceVariant),
+              Icon(LucideIcons.chevronRight, color: colors.onSurfaceVariant),
             ],
           ),
         ),

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../theme/app_tokens.dart';
 import '../theme/theme_context.dart';
+import '../theme/lucide_icons.dart';
 
 /// Tono de un mensaje de estado.
 enum StatusTone { error, success, info, warning }
@@ -33,22 +34,22 @@ class StatusBanner extends StatelessWidget {
       StatusTone.error => (
         colors.errorContainer,
         colors.onErrorContainer,
-        Icons.error_outline_rounded,
+        LucideIcons.circleAlert,
       ),
       StatusTone.success => (
         app.successContainer,
         app.onSuccessContainer,
-        Icons.check_circle_outline_rounded,
+        LucideIcons.circleCheck,
       ),
       StatusTone.info => (
         app.infoContainer,
         app.onInfoContainer,
-        Icons.info_outline_rounded,
+        LucideIcons.info,
       ),
       StatusTone.warning => (
         app.warningContainer,
         app.onWarningContainer,
-        Icons.warning_amber_rounded,
+        LucideIcons.triangleAlert,
       ),
     };
     final title = this.title;

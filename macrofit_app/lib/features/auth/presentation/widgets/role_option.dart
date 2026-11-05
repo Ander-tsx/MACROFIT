@@ -4,6 +4,7 @@ import '../../../../core/presentation/theme/app_tokens.dart';
 import '../../../../core/presentation/theme/theme_context.dart';
 import '../../../../core/presentation/widgets/icon_bubble.dart';
 import '../../../../core/presentation/widgets/press_scale.dart';
+import '../../../../core/presentation/theme/lucide_icons.dart';
 
 /// Tarjeta seleccionable para elegir el rol en el registro (HU-01).
 class RoleOption extends StatelessWidget {
@@ -68,7 +69,7 @@ class RoleOption extends StatelessWidget {
                         opacity: selected ? 1 : 0,
                         duration: AppDurations.fast,
                         child: Icon(
-                          Icons.check_circle_rounded,
+                          LucideIcons.circleCheck,
                           color: foreground,
                           size: AppSizes.iconMd,
                         ),

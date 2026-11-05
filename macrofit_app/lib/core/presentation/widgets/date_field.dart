@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../theme/app_tokens.dart';
 import '../theme/theme_context.dart';
 import 'press_scale.dart';
+import '../theme/lucide_icons.dart';
 
 /// Campo de fecha: se ve como un campo de texto y abre el selector al tocarlo.
 /// La clave del widget identifica al campo en las pruebas.
@@ -38,13 +39,13 @@ class DateField extends StatelessWidget {
                 start: AppSpacing.lg,
                 end: AppSpacing.sm,
               ),
-              child: Icon(Icons.calendar_today_rounded, size: AppSizes.iconMd),
+              child: Icon(LucideIcons.calendar, size: AppSizes.iconMd),
             ),
             prefixIconConstraints: const BoxConstraints(
               minWidth: AppSizes.control,
               minHeight: AppSizes.control,
             ),
-            suffixIcon: const Icon(Icons.expand_more_rounded),
+            suffixIcon: const Icon(LucideIcons.chevronDown),
             errorText: errorText,
             errorMaxLines: 2,
           ),

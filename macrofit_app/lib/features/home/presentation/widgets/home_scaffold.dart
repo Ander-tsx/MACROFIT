@@ -4,13 +4,16 @@ import 'package:provider/provider.dart';
 import '../../../../core/presentation/theme/app_tokens.dart';
 import '../../../../core/presentation/theme/theme_context.dart';
 import '../../../../core/presentation/widgets/app_avatar.dart';
-import '../../../../core/presentation/widgets/confirm_dialog.dart';
-import '../../../../core/presentation/widgets/loading_state.dart';
+import '../../../../core/presentation/widgets/press_scale.dart';
 import '../home_view_model.dart';
+import 'account_sheet.dart';
 
 /// Estructura común de las pantallas principales (guía visual, "Pantallas
-/// principales"): fondo con resplandor superior, saludo con avatar y cierre de
-/// sesión, contenido y barra inferior flotante.
+/// principales"): fondo con resplandor superior, saludo con el avatar, contenido
+/// y barra inferior flotante.
+///
+/// El avatar abre el perfil: en el usuario, **Mi perfil** ([onAvatarTap]); en el
+/// coach, la hoja de su cuenta. **Cerrar sesión** vive dentro de ese perfil.
 ///
 /// [T] es el ViewModel que la ruta inyecta (`HomeViewModel` o una subclase, como
 /// `UserHomeViewModel`); si no se indica, es `HomeViewModel`.
@@ -20,7 +23,7 @@ class HomeScaffold<T extends HomeViewModel> extends StatelessWidget {
     required this.body,
     this.onAvatarTap,
     this.avatarKey,
-    this.avatarTooltip,
+    this.avatarTooltip = 'Mi cuenta',
     this.dock,
     super.key,
   });
@@ -29,33 +32,19 @@ class HomeScaffold<T extends HomeViewModel> extends StatelessWidget {
   final String subtitle;
   final Widget body;
 
-  /// Si se indica, el avatar es un botón (p. ej. **Mi perfil**).
+  /// Acción del avatar; si no se indica, abre la hoja de la cuenta.
   final VoidCallback? onAvatarTap;
   final Key? avatarKey;
-  final String? avatarTooltip;
+  final String avatarTooltip;
 
   /// Barra inferior con los accesos de la pantalla (`HomeDock`).
   final Widget? dock;
-
-  Future<void> _confirmLogout(BuildContext context) async {
-    final viewModel = context.read<T>();
-    final confirmed = await showConfirmDialog(
-      context: context,
-      title: 'Cerrar sesión',
-      message: '¿Quieres cerrar tu sesión en este dispositivo?',
-      confirmLabel: 'Cerrar sesión',
-      icon: Icons.logout_rounded,
-      confirmKey: const Key('logout_confirm'),
-    );
-    if (confirmed) await viewModel.logout();
-  }
 
   @override
   Widget build(BuildContext context) {
     final viewModel = context.watch<T>();
     final text = context.text;
-    final name = viewModel.user?.name ?? '';
-    final avatar = AppAvatar(name: name);
+    final user = viewModel.user;
 
     return Scaffold(
       extendBody: true,
@@ -78,7 +67,7 @@ class HomeScaffold<T extends HomeViewModel> extends StatelessWidget {
                 padding: const EdgeInsets.fromLTRB(
                   AppSpacing.xxl,
                   AppSpacing.lg,
-                  AppSpacing.sm,
+                  AppSpacing.lg,
                   AppSpacing.md,
                 ),
                 child: Row(
@@ -90,7 +79,7 @@ class HomeScaffold<T extends HomeViewModel> extends StatelessWidget {
                           Semantics(
                             header: true,
                             child: Text(
-                              'Hola, $name',
+                              'Hola, ${user?.name ?? ''}',
                               style: text.headlineMedium,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
@@ -105,25 +94,25 @@ class HomeScaffold<T extends HomeViewModel> extends StatelessWidget {
                         ],
                       ),
                     ),
-                    if (onAvatarTap case final onTap?)
-                      IconButton(
-                        key: avatarKey,
-                        tooltip: avatarTooltip,
-                        padding: EdgeInsets.zero,
-                        onPressed: onTap,
-                        icon: avatar,
-                      )
-                    else
-                      avatar,
-                    IconButton(
-                      key: const Key('logout_button'),
-                      tooltip: 'Cerrar sesión',
-                      icon: viewModel.isLoggingOut
-                          ? const InlineSpinner()
-                          : const Icon(Icons.logout_rounded),
-                      onPressed: viewModel.isLoggingOut
-                          ? null
-                          : () => _confirmLogout(context),
+                    Tooltip(
+                      message: avatarTooltip,
+                      child: Semantics(
+                        button: true,
+                        label: avatarTooltip,
+                        child: PressScale(
+                          child: InkResponse(
+                            key: avatarKey,
+                            radius: AppSizes.avatar,
+                            onTap: withHaptic(
+                              onAvatarTap ?? () => showAccountSheet<T>(context),
+                            ),
+                            child: AppAvatar(
+                              email: user?.email ?? '',
+                              size: AppSizes.avatar + AppSpacing.sm,
+                            ),
+                          ),
+                        ),
+                      ),
                     ),
                   ],
                 ),

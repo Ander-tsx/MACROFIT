@@ -9,6 +9,7 @@ import 'package:macrofit_app/features/auth/presentation/login/login_view.dart';
 import 'package:macrofit_app/features/auth/presentation/register/register_view.dart';
 import 'package:macrofit_app/features/auth/presentation/splash/splash_view.dart';
 import 'package:macrofit_app/core/errors/api_exception.dart';
+import 'package:macrofit_app/core/presentation/theme/lucide_icons.dart';
 import 'package:macrofit_app/features/clients/domain/entities/client_meal.dart';
 import 'package:macrofit_app/features/clients/domain/entities/client_summary.dart';
 import 'package:macrofit_app/features/clients/presentation/client_detail/client_detail_view.dart';
@@ -177,12 +178,39 @@ void main() {
     expect(find.textContaining('Aviso de privacidad integral'), findsOneWidget);
   });
 
+  testWidgets('el coach cierra sesión desde la hoja de su cuenta', (
+    tester,
+  ) async {
+    await pumpApp(tester, state: const Authenticated(testCoach));
+
+    await tester.tap(find.byKey(const Key('account_button')));
+    await tester.pumpAndSettle();
+    expect(find.text(testCoach.email), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('logout_button')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('logout_confirm')));
+    await tester.pumpAndSettle();
+
+    expect(auth.logoutCalls, 1);
+    expect(find.byType(LoginView), findsOneWidget);
+  });
+
   testWidgets('cerrar sesión vuelve al login y atrás no regresa', (
     tester,
   ) async {
-    await pumpApp(tester, state: const Authenticated(testUser));
+    await pumpApp(
+      tester,
+      state: const Authenticated(testUser),
+      storedProfile: testProfile,
+    );
     expect(find.byType(UserHomeView), findsOneWidget);
 
+    // TEC-17: cerrar sesión vive al final de "Mi perfil".
+    await tester.tap(find.byKey(const Key('profile_button')));
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.byKey(const Key('logout_button')));
+    await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('logout_button')));
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('logout_confirm')));
@@ -1746,8 +1774,8 @@ void main() {
 
         expect(find.text('Meta cumplida'), findsNWidgets(5));
         expect(find.text('Meta no cumplida'), findsNWidgets(2));
-        expect(find.byIcon(Icons.check_circle), findsNWidgets(10));
-        expect(find.byIcon(Icons.cancel_outlined), findsNWidgets(4));
+        expect(find.byIcon(LucideIcons.circleCheck), findsNWidgets(10));
+        expect(find.byIcon(LucideIcons.circleX), findsNWidgets(4));
       });
 
       testWidgets('cambia a la semana anterior y regresa a la siguiente', (

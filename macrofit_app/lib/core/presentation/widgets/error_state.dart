@@ -4,6 +4,7 @@ import '../theme/app_tokens.dart';
 import '../theme/theme_context.dart';
 import 'icon_bubble.dart';
 import 'primary_button.dart';
+import '../theme/lucide_icons.dart';
 
 /// Estado de error de una pantalla o una sección que no se pudo cargar: explica
 /// qué pasó y ofrece **Reintentar** sin cerrar la app (RNF-11).
@@ -38,7 +39,7 @@ class ErrorState extends StatelessWidget {
     final retry = PrimaryButton(
       key: retryKey,
       label: retryLabel,
-      icon: Icons.refresh_rounded,
+      icon: LucideIcons.refreshCw,
       onPressed: onRetry,
       variant: compact ? AppButtonVariant.tonal : AppButtonVariant.filled,
       expand: false,
@@ -67,7 +68,7 @@ class ErrorState extends StatelessWidget {
                 Row(
                   children: [
                     Icon(
-                      Icons.cloud_off_rounded,
+                      LucideIcons.wifiOff,
                       size: AppSizes.iconSm,
                       color: colors.error,
                     ),
@@ -90,7 +91,7 @@ class ErrorState extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         IconBubble(
-          icon: Icons.cloud_off_rounded,
+          icon: LucideIcons.wifiOff,
           size: AppSizes.iconBubbleLarge,
           color: colors.onErrorContainer,
           background: colors.errorContainer,

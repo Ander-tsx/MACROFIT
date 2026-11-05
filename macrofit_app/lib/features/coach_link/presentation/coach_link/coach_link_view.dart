@@ -18,6 +18,8 @@ import '../../../../core/presentation/widgets/primary_button.dart';
 import '../../../../core/presentation/widgets/section_card.dart';
 import '../../domain/entities/coach_link.dart';
 import 'coach_link_view_model.dart';
+import '../../../../core/presentation/theme/lucide_icons.dart';
+import '../../../../core/presentation/theme/app_images.dart';
 
 /// HU-13 / HU-14 — pantalla para vincularse y desvincularse de un coach.
 class CoachLinkView extends StatelessWidget {
@@ -51,7 +53,8 @@ class CoachLinkView extends StatelessWidget {
                           child: HighlightCard(
                             title: 'Entrena con seguimiento',
                             description: 'Ingresa el código de invitación que te proporcionó tu coach para recibir seguimiento.',
-                            icon: Icons.link_rounded,
+                            icon: LucideIcons.link,
+                            image: AppImages.coach,
                             tone: HighlightTone.blue,
                           ),
                         ),
@@ -67,7 +70,7 @@ class CoachLinkView extends StatelessWidget {
                                   key: const Key('invite_code_input'),
                                   label: 'Código de invitación',
                                   hint: 'Ej. K7P2QX',
-                                  icon: Icons.qr_code_2_rounded,
+                                  icon: LucideIcons.qrCode,
                                   textCapitalization:
                                       TextCapitalization.characters,
                                   autocorrect: false,
@@ -85,7 +88,7 @@ class CoachLinkView extends StatelessWidget {
                                 PrimaryButton(
                                   key: const Key('submit_coach_link'),
                                   label: 'Vincular coach',
-                                  icon: Icons.link_rounded,
+                                  icon: LucideIcons.link,
                                   isLoading: viewModel.isLoading,
                                   onPressed: () => _submit(context, viewModel),
                                 ),
@@ -122,7 +125,7 @@ class CoachLinkView extends StatelessWidget {
       title: 'Desvincularme',
       message: '¿Estás seguro de que deseas desvincularte de tu coach? El coach dejará de ver tus datos.',
       confirmLabel: 'Desvincularme',
-      icon: Icons.link_off_rounded,
+      icon: LucideIcons.unlink,
       destructive: true,
     );
 
@@ -159,12 +162,12 @@ class _LinkedCoach extends StatelessWidget {
           Stack(
             clipBehavior: Clip.none,
             children: [
-              AppAvatar(name: coach.coachName, size: AppSizes.avatarLarge),
+              AppAvatar(email: coach.coachEmail, size: AppSizes.avatarLarge),
               Positioned(
                 right: -AppSpacing.xs,
                 bottom: -AppSpacing.xs,
                 child: Icon(
-                  Icons.check_circle_rounded,
+                  LucideIcons.circleCheck,
                   color: app.success,
                   size: AppSizes.iconLg,
                 ),
@@ -195,7 +198,7 @@ class _LinkedCoach extends StatelessWidget {
           PrimaryButton(
             key: const Key('unlink_coach_button'),
             label: 'Desvincularme',
-            icon: Icons.link_off_rounded,
+            icon: LucideIcons.unlink,
             variant: AppButtonVariant.outlined,
             onPressed: isBusy ? null : onUnlink,
           ),

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:macrofit_app/app/theme.dart';
 import 'package:macrofit_app/core/presentation/theme/app_colors.dart';
+import 'package:macrofit_app/core/presentation/widgets/app_avatar.dart';
 import 'package:macrofit_app/core/presentation/widgets/app_header.dart';
 import 'package:macrofit_app/core/presentation/widgets/app_snack_bar.dart';
 import 'package:macrofit_app/core/presentation/widgets/choice_pills.dart';
@@ -271,6 +272,20 @@ void main() {
       );
       expect(find.text('2200 kcal'), findsOneWidget);
       expect(find.text('al día'), findsOneWidget);
+    });
+
+    testWidgets('AppAvatar dibuja el blobatar del correo en ambos temas', (
+      tester,
+    ) async {
+      for (final theme in [AppTheme.light, AppTheme.dark]) {
+        await pumpThemed(
+          tester,
+          const AppAvatar(email: 'ana@macrofit.test'),
+          theme: theme,
+        );
+        expect(find.byType(AppAvatar), findsOneWidget);
+        expect(tester.takeException(), isNull);
+      }
     });
 
     testWidgets('CountUp termina exactamente en el valor', (tester) async {

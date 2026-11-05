@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../theme/app_tokens.dart';
 import 'icon_bubble.dart';
+import '../theme/lucide_icons.dart';
 
 /// Fila de navegación: ícono en círculo, título, descripción y flecha.
 ///
@@ -27,7 +28,7 @@ class ActionTile extends ListTile {
          ),
          title: Text(title),
          subtitle: subtitle == null ? null : Text(subtitle),
-         trailing: trailing ?? const Icon(Icons.chevron_right_rounded),
+         trailing: trailing ?? const Icon(LucideIcons.chevronRight),
          minVerticalPadding: AppSpacing.md,
        );
 }

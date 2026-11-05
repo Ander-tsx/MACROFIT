@@ -14,6 +14,7 @@ import '../../../../core/presentation/widgets/section_card.dart';
 import '../../../../core/presentation/widgets/surface_card.dart';
 import '../widgets/client_summary_texts.dart';
 import 'client_detail_view_model.dart';
+import '../../../../core/presentation/theme/lucide_icons.dart';
 
 /// HU-24 — detalle de un cliente: su resumen y el acceso a sus metas (HU-05)
 /// y a sus comidas (HU-25).
@@ -65,7 +66,7 @@ class ClientDetailView extends StatelessWidget {
               child: SurfaceCard(
                 child: Column(
                   children: [
-                    AppAvatar(name: client.name, size: AppSizes.avatarLarge),
+                    AppAvatar(email: client.email, size: AppSizes.avatarLarge),
                     const SizedBox(height: AppSpacing.md),
                     Text(client.name, style: text.headlineSmall),
                     const SizedBox(height: AppSpacing.xxs),
@@ -95,7 +96,7 @@ class ClientDetailView extends StatelessWidget {
                     Row(
                       children: [
                         Icon(
-                          Icons.schedule_rounded,
+                          LucideIcons.clock,
                           size: AppSizes.iconSm,
                           color: colors.onSurfaceVariant,
                         ),
@@ -121,7 +122,7 @@ class ClientDetailView extends StatelessWidget {
                   children: [
                     ActionTile(
                       key: const Key('client_detail_goals'),
-                      icon: Icons.flag_rounded,
+                      icon: LucideIcons.flag,
                       title: 'Metas',
                       subtitle: 'Define y ajusta sus calorías y macros',
                       enabled: !viewModel.isUnlinked,
@@ -140,7 +141,7 @@ class ClientDetailView extends StatelessWidget {
                     ),
                     ActionTile(
                       key: const Key('client_detail_meals'),
-                      icon: Icons.restaurant_rounded,
+                      icon: LucideIcons.utensils,
                       title: 'Comidas',
                       subtitle: 'Su registro diario de comidas',
                       enabled: !viewModel.isUnlinked,

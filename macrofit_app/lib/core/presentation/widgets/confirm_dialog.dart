@@ -4,6 +4,7 @@ import '../theme/app_tokens.dart';
 import '../theme/theme_context.dart';
 import 'icon_bubble.dart';
 import 'primary_button.dart';
+import '../theme/lucide_icons.dart';
 
 /// Diálogo de confirmación de la guía visual. Devuelve `true` solo si la persona
 /// confirma; cerrar el diálogo o **Cancelar** devuelven `false`.
@@ -15,7 +16,7 @@ Future<bool> showConfirmDialog({
   required String message,
   required String confirmLabel,
   String cancelLabel = 'Cancelar',
-  IconData icon = Icons.help_outline_rounded,
+  IconData icon = LucideIcons.circleQuestionMark,
   bool destructive = false,
   Key? confirmKey,
   Key? cancelKey,

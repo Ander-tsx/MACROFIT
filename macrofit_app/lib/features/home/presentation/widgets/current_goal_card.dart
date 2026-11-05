@@ -12,6 +12,7 @@ import '../../../../core/presentation/widgets/primary_button.dart';
 import '../../../../core/presentation/widgets/section_card.dart';
 import '../../../../core/presentation/widgets/stat_tile.dart';
 import '../../../goals/domain/entities/nutritional_goal.dart';
+import '../../../../core/presentation/theme/lucide_icons.dart';
 
 /// Origen de la meta (RN-06): `Calculada` o `Definida por tu coach`.
 String goalSourceLabel(GoalSource source) => switch (source) {
@@ -69,7 +70,7 @@ class CurrentGoalCard extends StatelessWidget {
       return const EmptyState(
         key: Key('home_goal_empty'),
         compact: true,
-        icon: Icons.flag_outlined,
+        icon: LucideIcons.flag,
         title: 'Todavía no tienes una meta',
         message: 'Completa tu perfil o pide a tu coach que te asigne una.',
       );
@@ -129,7 +130,7 @@ class CurrentGoalCard extends StatelessWidget {
           PrimaryButton(
             key: const Key('home_goal_retry'),
             label: 'Reintentar',
-            icon: Icons.refresh_rounded,
+            icon: LucideIcons.refreshCw,
             variant: AppButtonVariant.tonal,
             compact: true,
             onPressed: onRetry,
@@ -164,7 +165,7 @@ class _SourceTag extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(
-            isCoach ? Icons.sports_rounded : Icons.auto_awesome_rounded,
+            isCoach ? LucideIcons.whistle : LucideIcons.sparkles,
             size: AppSizes.iconXs,
             color: colors.onSurfaceVariant,
           ),

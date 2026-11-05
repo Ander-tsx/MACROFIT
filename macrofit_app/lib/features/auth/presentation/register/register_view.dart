@@ -18,6 +18,7 @@ import '../../../../core/presentation/widgets/status_banner.dart';
 import '../../domain/entities/role.dart';
 import '../widgets/role_option.dart';
 import 'register_view_model.dart';
+import '../../../../core/presentation/theme/lucide_icons.dart';
 
 /// HU-01 — pantalla de registro con elección de rol y aviso de privacidad.
 class RegisterView extends StatelessWidget {
@@ -71,13 +72,13 @@ class RegisterView extends StatelessWidget {
                   ],
                   SectionCard(
                     title: 'Tus datos',
-                    icon: Icons.badge_outlined,
+                    icon: LucideIcons.idCard,
                     child: Column(
                       children: [
                         AppTextField(
                           key: const Key('register_name'),
                           label: 'Nombre',
-                          icon: Icons.person_outline_rounded,
+                          icon: LucideIcons.user,
                           textCapitalization: TextCapitalization.words,
                           autofillHints: const [AutofillHints.name],
                           textInputAction: TextInputAction.next,
@@ -90,7 +91,7 @@ class RegisterView extends StatelessWidget {
                         AppTextField(
                           key: const Key('register_email'),
                           label: 'Correo electrónico',
-                          icon: Icons.mail_outline_rounded,
+                          icon: LucideIcons.mail,
                           keyboardType: TextInputType.emailAddress,
                           autocorrect: false,
                           autofillHints: const [AutofillHints.email],
@@ -127,7 +128,7 @@ class RegisterView extends StatelessWidget {
                   const SizedBox(height: AppSpacing.lg),
                   SectionCard(
                     title: '¿Cómo usarás MacroFit?',
-                    icon: Icons.switch_account_outlined,
+                    icon: LucideIcons.users,
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
@@ -138,7 +139,7 @@ class RegisterView extends StatelessWidget {
                             children: [
                               Expanded(
                                 child: RoleOption(
-                                  icon: Icons.person_rounded,
+                                  icon: LucideIcons.user,
                                   label: 'Usuario',
                                   description:
                                       'Registro mis comidas y sigo mi meta.',
@@ -154,7 +155,7 @@ class RegisterView extends StatelessWidget {
                               const SizedBox(width: AppSpacing.md),
                               Expanded(
                                 child: RoleOption(
-                                  icon: Icons.sports_rounded,
+                                  icon: LucideIcons.whistle,
                                   label: 'Coach',
                                   description:
                                       'Acompaño a mis clientes y sus metas.',
@@ -185,7 +186,7 @@ class RegisterView extends StatelessWidget {
                   PrimaryButton(
                     key: const Key('register_submit'),
                     label: 'Crear cuenta',
-                    icon: Icons.arrow_forward_rounded,
+                    icon: LucideIcons.arrowRight,
                     isLoading: viewModel.isSubmitting,
                     onPressed: () => _submit(context, viewModel),
                   ),
@@ -254,7 +255,7 @@ class _PrivacyConsent extends StatelessWidget {
                           foregroundColor: colors.secondary,
                         ),
                         onPressed: () => context.push(AppRoutes.privacyNotice),
-                        icon: const Icon(Icons.description_outlined),
+                        icon: const Icon(LucideIcons.fileText),
                         label: const Text('Leer el aviso de privacidad'),
                       ),
                     ],
