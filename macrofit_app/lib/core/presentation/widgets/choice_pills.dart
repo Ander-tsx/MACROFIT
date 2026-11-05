@@ -118,12 +118,17 @@ class _Pill extends StatelessWidget {
                 horizontal: AppSpacing.lg,
                 vertical: AppSpacing.sm,
               ),
-              alignment: Alignment.center,
-              child: Text(
-                label,
-                textAlign: TextAlign.center,
-                style: context.text.labelLarge?.copyWith(
-                  color: selected ? colors.onPrimary : colors.onSurface,
+              // Center con factores: la píldora mide lo que su texto y el
+              // texto queda centrado aunque el alto mínimo sea mayor.
+              child: Center(
+                widthFactor: 1,
+                heightFactor: 1,
+                child: Text(
+                  label,
+                  textAlign: TextAlign.center,
+                  style: context.text.labelLarge?.copyWith(
+                    color: selected ? colors.onPrimary : colors.onSurface,
+                  ),
                 ),
               ),
             ),

@@ -32,7 +32,7 @@ abstract final class AppPalette {
 
   // Calorías: verde.
   static const green300 = Color(0xFF8BD448);
-  static const green700 = Color(0xFF3B8A10);
+  static const green700 = Color(0xFF2F750B);
   static const greenDeep = Color(0xFF24381A);
   static const greenSoft = Color(0xFFE3F3D6);
 
@@ -62,11 +62,9 @@ abstract final class AppPalette {
 
   // Tarjetas destacadas (degradados).
   static const forest600 = Color(0xFF0E6B52);
-  static const forest400 = Color(0xFF16896B);
+  static const forest400 = Color(0xFF13795E);
   static const ocean600 = Color(0xFF145DB8);
-  static const ocean400 = Color(0xFF1F7BD8);
-  static const ember600 = Color(0xFFCB5A33);
-  static const ember400 = Color(0xFFE47E4C);
+  static const ocean400 = Color(0xFF1A6FC8);
 
   // Fondo del inicio: resplandor azul noche arriba.
   static const navyGlow = Color(0xFF0F2347);
@@ -109,8 +107,6 @@ class AppColors extends ThemeExtension<AppColors> {
     required this.featureGreenLight,
     required this.featureBlue,
     required this.featureBlueLight,
-    required this.featureEmber,
-    required this.featureEmberLight,
     required this.onFeature,
     required this.glow,
     required this.shadow,
@@ -150,8 +146,6 @@ class AppColors extends ThemeExtension<AppColors> {
   final Color featureGreenLight;
   final Color featureBlue;
   final Color featureBlueLight;
-  final Color featureEmber;
-  final Color featureEmberLight;
   final Color onFeature;
 
   /// Resplandor superior del fondo del inicio.
@@ -184,8 +178,6 @@ class AppColors extends ThemeExtension<AppColors> {
     featureGreenLight: AppPalette.forest400,
     featureBlue: AppPalette.ocean600,
     featureBlueLight: AppPalette.ocean400,
-    featureEmber: AppPalette.ember600,
-    featureEmberLight: AppPalette.ember400,
     onFeature: AppPalette.white,
     glow: AppPalette.skyGlow,
     shadow: AppPalette.shadow,
@@ -217,8 +209,6 @@ class AppColors extends ThemeExtension<AppColors> {
     featureGreenLight: AppPalette.forest400,
     featureBlue: AppPalette.ocean600,
     featureBlueLight: AppPalette.ocean400,
-    featureEmber: AppPalette.ember600,
-    featureEmberLight: AppPalette.ember400,
     onFeature: AppPalette.white,
     glow: AppPalette.navyGlow,
     shadow: AppPalette.shadow,
@@ -251,8 +241,6 @@ class AppColors extends ThemeExtension<AppColors> {
     Color? featureGreenLight,
     Color? featureBlue,
     Color? featureBlueLight,
-    Color? featureEmber,
-    Color? featureEmberLight,
     Color? onFeature,
     Color? glow,
     Color? shadow,
@@ -282,8 +270,6 @@ class AppColors extends ThemeExtension<AppColors> {
     featureGreenLight: featureGreenLight ?? this.featureGreenLight,
     featureBlue: featureBlue ?? this.featureBlue,
     featureBlueLight: featureBlueLight ?? this.featureBlueLight,
-    featureEmber: featureEmber ?? this.featureEmber,
-    featureEmberLight: featureEmberLight ?? this.featureEmberLight,
     onFeature: onFeature ?? this.onFeature,
     glow: glow ?? this.glow,
     shadow: shadow ?? this.shadow,
@@ -319,8 +305,6 @@ class AppColors extends ThemeExtension<AppColors> {
       featureGreenLight: mix(featureGreenLight, other.featureGreenLight),
       featureBlue: mix(featureBlue, other.featureBlue),
       featureBlueLight: mix(featureBlueLight, other.featureBlueLight),
-      featureEmber: mix(featureEmber, other.featureEmber),
-      featureEmberLight: mix(featureEmberLight, other.featureEmberLight),
       onFeature: mix(onFeature, other.onFeature),
       glow: mix(glow, other.glow),
       shadow: mix(shadow, other.shadow),

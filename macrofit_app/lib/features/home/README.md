@@ -1,7 +1,8 @@
 # `features/home/` — pantallas principales por rol
 
 Pantallas a las que el router lleva tras iniciar sesión (HU-02). La del usuario muestra su progreso del día (HU-10) y su meta vigente (HU-26); la del
-coach todavía es provisional.
+coach, accesos a su código, rutinas y clientes. Ambas usan la guía visual (TEC-17): saludo con avatar, tarjetas y una
+barra inferior flotante de vidrio líquido (`HomeDock`) con un botón circular para la acción principal.
 
 | Archivo | Contenido |
 |---|---|
@@ -10,11 +11,10 @@ coach todavía es provisional.
 | `presentation/user_home_view_model.dart` | `UserHomeViewModel extends HomeViewModel`: sesión + `loadGoal()` (`GoalsRepository` del dominio de `goals`) + `loadSummary()` (`SummaryRepository` del dominio de `summary`); `refresh()` hace ambas |
 | `presentation/coach_home_view.dart` | `/coach` — rol `coach`. Botón **Mi código de invitación** (`/coach/invite-code`, HU-12; en el cuerpo y en la barra), **Mis clientes** (`/coach/clients`, HU-24) y **Mis rutinas** (`/coach/routines`, HU-18; en el cuerpo y en la barra). |
 | `presentation/home_view_model.dart` | Usuario actual y `logout()` (usa el `AuthRepository` del dominio de `auth`) |
-| `presentation/widgets/home_scaffold.dart` | Barra con el botón **Cerrar sesión** (con confirmación) común a ambas |
-| (`user_home_view.dart`, HU-11) | Botón de barras de la barra superior (`weekly_summary_button`, **Resumen semanal**) que abre `/user/summary` (`features/summary`) |
-| `presentation/widgets/daily_progress_card.dart` | Tarjeta del progreso del día (HU-10): una barra por calorías, proteína y grasa con consumido / meta y lo que falta o el exceso |
+| `presentation/widgets/home_scaffold.dart` | Saludo, avatar (en el usuario abre **Mi perfil**, `profile_button`), **Cerrar sesión** con confirmación, contenido y barra inferior; común a ambas |
+| `presentation/widgets/daily_progress_card.dart` | Tarjeta del progreso del día (HU-10): anillos concéntricos de los tres macros; por macro, consumido / meta y lo que falta o el exceso; barra de calorías |
 | `presentation/widgets/current_goal_card.dart` | Tarjeta de la meta: calorías, proteína, grasa y origen («Calculada» / «Definida por tu coach») |
-| `presentation/widgets/welcome_message.dart` | Contenido provisional (coach) |
+| `presentation/widgets/home_dock.dart` | `HomeDock`: barra inferior de vidrio líquido. Usuario: Inicio, **Comidas** (`meal_history_button`), **Semana** (`weekly_summary_button`), **Peso** (`weights_button`, HU-21) y el botón circular **Registrar comida** (`register_meal_button`). Coach: Inicio, **Clientes**, **Rutinas** y el botón circular **Mi código de invitación**. Los accesos abren las pantallas con `push`; no cambian las rutas |
 
 - No tiene capas de datos ni dominio propias todavía; cuando una historia necesite datos de inicio, se agregan aquí
   siguiendo la plantilla de `lib/features/README.md`.
@@ -22,8 +22,8 @@ coach todavía es provisional.
   `resolveRedirect` (`lib/app/router.dart`), no en estas vistas.
 - `HomeScaffold<T extends HomeViewModel>` lee el ViewModel de la ruta (`HomeViewModel` por omisión, `UserHomeViewModel`
   en la del usuario).
-- `HomeScaffold` acepta `actions` extra para la barra (p. ej. **Mi perfil**), antes del botón de cerrar sesión, y un
-  `floatingActionButton` opcional (p. ej. **Registrar comida**).
+- `HomeScaffold` recibe el subtítulo, el contenido, la acción del avatar y la barra inferior (`HomeDock`).
+- El registro de peso (HU-21, `/user/weights`) no tenía acceso desde la app; ahora se abre desde **Peso** en la barra.
 
 ## Meta vigente (HU-26)
 
@@ -37,7 +37,7 @@ coach todavía es provisional.
 
 1. Al entrar a `/user` se consulta `GET /users/me/summary/daily?date=` con el día de hoy en hora de México (`appDay`).
 2. La tarjeta muestra una barra por calorías, proteína y grasa con `consumido / meta` y *Te faltan X*. Si el restante es
-   negativo la barra queda llena, en color de error, y dice *Te pasaste por X*. Un día sin registros muestra consumo en 0.
+   negativo la barra queda llena, en color de advertencia, y dice *Te pasaste por X*. Un día sin registros muestra consumo en 0.
 3. `404 PROFILE_NOT_FOUND` muestra un mensaje, no un error. Otro error (p. ej. sin conexión) muestra el mensaje con
    **Reintentar**; si ya había un resumen cargado, se conserva.
 4. Se vuelve a consultar al regresar de **Registrar comida** y de **Mi perfil**, y al deslizar hacia abajo.

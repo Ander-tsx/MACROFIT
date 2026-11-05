@@ -137,6 +137,7 @@ class ClientMealsView extends StatelessWidget {
             index: 1,
             child: SectionCard(
               title: 'Registros',
+              padding: AppSpacing.cardPadding,
               child: Column(
                 children: [
                   for (final (index, meal) in viewModel.meals.indexed) ...[

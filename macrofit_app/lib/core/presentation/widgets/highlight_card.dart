@@ -5,7 +5,7 @@ import '../theme/theme_context.dart';
 import 'surface_card.dart';
 
 /// Tono de una tarjeta destacada.
-enum HighlightTone { green, blue, ember }
+enum HighlightTone { green, blue }
 
 /// Tarjeta destacada de color (referencia: "Workouts this week"): degradado,
 /// título arriba, descripción abajo y una ilustración abstracta a la derecha
@@ -37,7 +37,6 @@ class HighlightCard extends StatelessWidget {
     final (dark, light) = switch (tone) {
       HighlightTone.green => (app.featureGreen, app.featureGreenLight),
       HighlightTone.blue => (app.featureBlue, app.featureBlueLight),
-      HighlightTone.ember => (app.featureEmber, app.featureEmberLight),
     };
     final description = this.description;
 

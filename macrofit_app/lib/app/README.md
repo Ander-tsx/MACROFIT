@@ -6,7 +6,7 @@
 | `dependencies.dart` | `AppDependencies.create`: **raíz de composición**. Único lugar que instancia implementaciones de datos |
 | `router.dart` | `createRouter` (rutas y ViewModel por ruta) y `resolveRedirect` (guard de sesión, función pura) |
 | `routes.dart` | Constantes de rutas (`AppRoutes`) y conjunto de rutas públicas |
-| `theme.dart` | Tema claro/oscuro (color semilla provisional) |
+| `theme.dart` | `AppTheme.light` / `AppTheme.dark`: `ColorScheme` propio, `TextTheme` (Inter) y temas de componentes. Ver **Guía visual** abajo |
 
 ## Dependencias (`dependencies.dart`)
 
@@ -71,3 +71,102 @@ Consecuencias:
 2. `GoRoute` en `createRouter` con su `ChangeNotifierProvider(create: (context) => XViewModel(context.read<Repo>()))`.
 3. Si es pública, agrégala a `AppRoutes.public`. Si cuelga de un rol, ajusta `resolveRedirect` y su prueba en
    `test/app/router_test.dart`.
+
+## Guía visual (TEC-17)
+
+Sistema de diseño de la app. Toda pantalla nueva (Sprint 4 en adelante) se construye **solo** con estos tokens, el
+tema y los widgets de `core/presentation/widgets`; no se escriben colores, tamaños de letra ni espaciados a mano.
+
+**Dirección:** inspirada en One UI (Samsung Health) con identidad propia. Superficies muy redondeadas sobre negro puro
+(oscuro) o gris claro (claro), tipografía protagonista con cifras grandes, tres colores vivos solo para los
+macronutrientes, y una barra inferior de vidrio líquido. Pocas líneas y pocos íconos decorativos: la jerarquía la dan
+el tamaño del texto, el color de los macros y el espacio.
+
+### Dónde vive cada cosa
+
+| Archivo | Contenido |
+|---|---|
+| `core/presentation/theme/app_colors.dart` | `AppPalette` (único lugar con valores de color), `AppColors` (extensión del tema: macros, estados, tarjetas destacadas, vidrio) y `AppShadows` |
+| `core/presentation/theme/app_tokens.dart` | **Único archivo de medidas**: `AppSpacing`, `AppRadius`, `AppSizes`, `AppGlass`, `AppDurations`, `AppElevation`, `AppMotion`, `AppOpacity` |
+| `core/presentation/theme/macro_style.dart` | `Macro` (calorías, proteína, grasa): nombre, ícono y color de cada macro |
+| `core/presentation/theme/app_text.dart` | `AppText.numeric` (cifras tabulares) |
+| `core/presentation/theme/theme_context.dart` | Atajos `context.colors`, `context.text`, `context.appColors` |
+| `app/theme.dart` | `AppTheme`: `ColorScheme` claro y oscuro, `TextTheme` y temas de botones, campos, tarjetas, `AppBar`, `NavigationBar`, diálogos, `SnackBar`, selector de fecha, transiciones… |
+
+### Paleta
+
+| Rol | Claro | Oscuro | Uso |
+|---|---|---|---|
+| Fondo | `#F2F2F5` | `#000000` | `scaffoldBackgroundColor` |
+| Superficie (tarjetas) | `#FFFFFF` | `#17171B` | `colors.surface`, `SurfaceCard` |
+| Contenedor | `#EBEBF0` | `#222327` | rellenos, píldora «Hoy», etiquetas |
+| Texto | `#111114` | `#F4F4F6` | `onSurface` |
+| Texto secundario | `#66666E` | `#9C9CA3` | `onSurfaceVariant` |
+| Acción principal | `#111114` (texto blanco) | `#F4F4F6` (texto negro) | `primary`: botones rellenos |
+| **Calorías** | `#2F750B` | `#8BD448` | `appColors.calories` (+ `caloriesTrack`) |
+| **Proteína** | `#0A7FAA` | `#2CC6EE` | `appColors.protein` (+ `proteinTrack`) |
+| **Grasa** | `#8338D6` | `#B76CFF` | `appColors.fat` (+ `fatTrack`) |
+| Error | `#D3303B` | `#FF6B6B` | `colors.error` / `errorContainer` |
+| Advertencia (exceso de la meta) | `#9A5F00` | `#FFC24D` | `appColors.warning` |
+| Acento de marca | `#8BD448` | `#8BD448` | botón principal de la barra inferior |
+| Tarjetas destacadas | verde `#0E6B52→#13795E`, azul `#145DB8→#1A6FC8` | igual | `HighlightCard` (texto blanco) |
+
+Contraste: el texto normal sobre su fondo cumple WCAG AA (≥ 4.5:1) en ambos temas; los colores claros de los macros se
+usan para anillos, barras y etiquetas grandes en oscuro, y sus versiones oscuras para texto en claro. Ningún dato
+depende solo del color: el resumen semanal marca ✓/✗ y lo repite en texto.
+
+### Tipografía
+
+Inter (SIL OFL, `assets/fonts/inter`), pesos 400/500/600/700. Cifras con `AppText.numeric` (ancho fijo).
+
+| Estilo | Tamaño / peso | Uso |
+|---|---|---|
+| `displayMedium` / `displaySmall` | 52 / 40, 700 | cifra protagonista (peso, código de invitación) |
+| `headlineMedium` / `headlineSmall` | 28 / 24, 700 | saludo, títulos de pantalla, cifras de progreso |
+| `titleLarge` / `titleMedium` / `titleSmall` | 20 / 17 / 14 | títulos de tarjeta y de fila |
+| `bodyLarge` / `bodyMedium` / `bodySmall` | 16 / 14 / 12.5 | texto, descripciones, ayudas |
+| `labelLarge` / `labelMedium` / `labelSmall` | 15 / 13 / 11 | botones, etiquetas, ejes |
+
+### Espaciado, radios y elevación
+
+- Escala de 4: `xxs 2 · xs 4 · sm 8 · md 12 · lg 16 · xl 20 · xxl 24 · xxxl 32 · huge 48`.
+- Margen de pantalla `12` y separación entre tarjetas `12` (las tarjetas casi tocan el borde, como One UI);
+  relleno interior de tarjeta `20–24`.
+- Radios: tarjetas `30`, píldoras (botones, selector de día, barra inferior) totalmente redondas, campos `22`,
+  mosaicos `22`, fotos `30`.
+- Sin bordes en tarjetas: en claro una sombra suave (`AppShadows.soft`); en oscuro se distinguen por su color.
+- Controles de 56 px de alto (mínimo táctil 48).
+
+### Iconografía
+
+Material Icons en su variante *rounded*; contorno (`*_outlined`) cuando el acceso no está activo y relleno cuando sí
+(barra inferior). Cada macro tiene siempre su ícono (`Macro.icon`): 🔥 calorías, huevo proteína, gota grasa.
+La marca es un anillo de tres segmentos (los tres macros) con un punto lima al centro (`BrandMark`).
+
+### Movimiento y retroalimentación
+
+| Qué | Cómo |
+|---|---|
+| Presionar | Todo lo tocable se encoge a 0.97 (`PressScale`) y vibra ligeramente (`withHaptic`) |
+| Entrar a una pantalla | Las tarjetas aparecen y suben 18 px, escalonadas 60 ms (`FadeSlideIn`) |
+| Cambiar de estado | Carga → datos / vacío / error con fundido y ajuste de alto (`StateSwitcher`) |
+| Datos | Anillos y barras se llenan desde 0; las cifras cuentan hasta su valor (`CountUp`) |
+| Navegación | Transición *fade forwards* en Android y la nativa en iOS |
+| Barra inferior | Vidrio líquido (`GlassSurface`): desenfoque 22 + saturación 1.7, brillo especular y contorno de luz. La lente se desliza con rebote hacia el acceso que se presiona |
+
+Todas las animaciones son finitas (sin temporizadores), así que `pumpAndSettle` funciona en las pruebas.
+
+### Estados
+
+| Estado | Widget | Regla |
+|---|---|---|
+| Carga | `LoadingState` (indicador + qué se está haciendo) | Con datos previos no se reemplazan: se muestran y se actualizan |
+| Vacío | `EmptyState` (ilustración, título, explicación y acción) | Dice por qué está vacío y cómo llenarlo |
+| Error | `ErrorState` (pantalla o tarjeta) / `ErrorBanner` | Mensaje en español y **Reintentar**; nunca cierra la app (RNF-11) |
+| Éxito | `showAppSnackBar` (aviso con ícono) / `StatusBanner` | Confirma la acción y lleva al siguiente paso |
+
+### Componentes compartidos
+
+Ver la tabla de `lib/core/README.md`. Los principales: `PrimaryButton` (botón principal y sus variantes),
+`AppHeader` (encabezado), `SectionCard`/`SurfaceCard` (tarjetas), `EmptyState`, `LoadingState`, `ErrorState`,
+`AppTextField`, `ChoicePills`, `PeriodNavigator`, `StatTile`, `MacroRings`, `HighlightCard`, `GlassSurface`.

@@ -89,7 +89,7 @@ abstract final class AppSizes {
   static const double iconBubbleLarge = 64;
 
   /// Cuadro redondeado con ícono de una fila de lista (referencia: "Log meal").
-  static const double listTile = 64;
+  static const double listTile = 56;
 
   static const double avatar = 44;
   static const double avatarLarge = 72;

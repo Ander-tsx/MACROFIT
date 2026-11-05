@@ -13,6 +13,9 @@ import '../../../../core/presentation/widgets/fade_slide_in.dart';
 import '../../../../core/presentation/widgets/loading_state.dart';
 import '../../../../core/presentation/widgets/period_navigator.dart';
 import '../../../../core/presentation/widgets/primary_button.dart';
+import '../../../../core/presentation/widgets/progress_ring.dart';
+import '../../../../core/presentation/widgets/surface_card.dart';
+import '../../domain/usecases/app_day.dart';
 import '../../../../core/presentation/widgets/section_card.dart';
 import '../../../../core/presentation/widgets/stat_tile.dart';
 import '../../domain/entities/day_summary.dart';
@@ -101,12 +104,82 @@ class WeeklySummaryView extends StatelessWidget {
         ),
         const SizedBox(height: AppSpacing.cardGap),
       ],
-      FadeSlideIn(child: _ChartCard(summary: summary)),
+      FadeSlideIn(child: _WeekStrip(days: summary.days)),
       const SizedBox(height: AppSpacing.cardGap),
-      FadeSlideIn(index: 1, child: _StatsCard(summary: summary)),
+      FadeSlideIn(index: 1, child: _ChartCard(summary: summary)),
       const SizedBox(height: AppSpacing.cardGap),
-      FadeSlideIn(index: 2, child: _DaysCard(days: summary.days)),
+      FadeSlideIn(index: 2, child: _StatsCard(summary: summary)),
+      const SizedBox(height: AppSpacing.cardGap),
+      FadeSlideIn(index: 3, child: _DaysCard(days: summary.days)),
     ];
+  }
+}
+
+/// Tira de la semana (referencia: anillos diarios): por cada día, su inicial y
+/// un anillo con las calorías consumidas contra la meta.
+class _WeekStrip extends StatelessWidget {
+  const _WeekStrip({required this.days});
+
+  final List<DaySummary> days;
+
+  @override
+  Widget build(BuildContext context) {
+    final text = context.text;
+    final colors = context.colors;
+    final app = context.appColors;
+    return SurfaceCard(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.md,
+        vertical: AppSpacing.lg,
+      ),
+      child: Row(
+        children: [
+          for (final (index, day) in days.indexed)
+            Expanded(
+              child: Semantics(
+                label:
+                    '${weekdayShort(day.date)} ${dayMonth(day.date)}: '
+                    '${number(day.consumed.caloriesKcal)} de '
+                    '${number(day.goal.caloriesKcal)} kcal',
+                excludeSemantics: true,
+                child: Column(
+                  children: [
+                    Text(
+                      weekdayShort(day.date).substring(0, 1).toUpperCase(),
+                      style: text.labelLarge?.copyWith(
+                        color: colors.onSurfaceVariant,
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.sm),
+                    FadeSlideIn(
+                      index: index,
+                      child: ProgressRing(
+                        value: day.goal.caloriesKcal <= 0
+                            ? 0
+                            : day.consumed.caloriesKcal / day.goal.caloriesKcal,
+                        color: day.goalMet
+                            ? app.calories
+                            : Macro.calories
+                                  .color(app)
+                                  .withValues(alpha: AppOpacity.muted),
+                        trackColor: Macro.calories.track(app),
+                        size: AppSizes.macroRingsSmall,
+                        strokeWidth: AppSizes.macroRingsStrokeSmall,
+                        child: Text(
+                          '${dayOfMonth(day.date)}',
+                          style: text.labelMedium
+                              ?.merge(AppText.numeric)
+                              .copyWith(color: colors.onSurface),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
   }
 }
 

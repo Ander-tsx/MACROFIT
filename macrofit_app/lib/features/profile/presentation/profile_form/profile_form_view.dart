@@ -140,6 +140,7 @@ class ProfileFormView extends StatelessWidget {
                     const _Label('Nivel'),
                     ChoicePills<ExperienceLevel>(
                       key: const Key('profile_level'),
+                      expand: true,
                       options: ExperienceLevel.values,
                       selected: viewModel.level,
                       labelOf: (level) => level.label,
@@ -166,6 +167,7 @@ class ProfileFormView extends StatelessWidget {
                       selected: viewModel.trainingDays,
                       labelOf: (days) => '$days',
                       keyOf: (days) => Key('profile_training_days_$days'),
+                      expand: true,
                       hasError: _hasError(
                         viewModel,
                         ProfileFormViewModel.trainingDaysField,
@@ -241,6 +243,7 @@ class ProfileFormView extends StatelessWidget {
                     const _Label('Sexo'),
                     ChoicePills<Gender>(
                       key: const Key('profile_gender'),
+                      expand: true,
                       options: Gender.values,
                       selected: viewModel.gender,
                       labelOf: (gender) => gender.label,
