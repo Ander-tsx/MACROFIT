@@ -57,6 +57,7 @@ responder `500 INTERNAL_ERROR` ante un error inesperado.";
         goals::set_client_goal_handler,
         coach_invite_codes::get_invite_code_handler,
         coach_invite_codes::regenerate_invite_code_handler,
+        coach_links::get_coach_link_handler,
         coach_links::link_coach_handler,
         coach_links::unlink_coach_handler,
         meals::upload_photo_handler,
@@ -222,6 +223,7 @@ mod tests {
             User,
             &[201, 400, 401, 403, 404, 409],
         ),
+        ("get", "/users/me/coach-link", User, &[200, 401, 403, 404]),
         (
             "delete",
             "/users/me/coach-link",

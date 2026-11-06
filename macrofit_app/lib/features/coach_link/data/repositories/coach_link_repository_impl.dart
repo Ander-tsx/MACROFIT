@@ -18,6 +18,24 @@ class CoachLinkRepositoryImpl implements CoachLinkRepository {
 
   @override
   Future<CoachLink?> getLinkedCoach() async {
+    try {
+      final model = await _remoteDataSource.getLinkedCoach();
+      await _storage.write(
+        key: _activeCoachKey,
+        value: jsonEncode(model.toJson()),
+      );
+      return model.toEntity();
+    } on ApiException catch (e) {
+      if (e.code == ApiErrorCode.userNotLinked) {
+        await _storage.delete(key: _activeCoachKey);
+        return null;
+      }
+      // Sin conexión u otro fallo: se usa la última vinculación guardada.
+      return _readCached();
+    }
+  }
+
+  Future<CoachLink?> _readCached() async {
     final jsonStr = await _storage.read(key: _activeCoachKey);
     if (jsonStr == null) return null;
     try {

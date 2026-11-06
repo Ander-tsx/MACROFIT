@@ -122,6 +122,7 @@ GoRouter createRouter(
             auth: context.read<AuthRepository>(),
             goals: context.read<GoalsRepository>(),
             summary: context.read<SummaryRepository>(),
+            coachLinks: context.read<CoachLinkRepository>(),
           )..refresh(),
           child: const UserHomeView(),
         ),

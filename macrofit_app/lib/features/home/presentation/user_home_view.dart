@@ -92,7 +92,9 @@ class UserHomeView extends StatelessWidget {
                   tone: HighlightTone.blue,
                   action: PrimaryButton(
                     key: const Key('link_coach_nav_button'),
-                    label: 'Vincular con coach',
+                    label: viewModel.linkedCoach == null
+                        ? 'Vincular con coach'
+                        : 'Ver mi coach (${viewModel.linkedCoach!.coachName})',
                     icon: LucideIcons.link,
                     variant: AppButtonVariant.onColor,
                     expand: false,
