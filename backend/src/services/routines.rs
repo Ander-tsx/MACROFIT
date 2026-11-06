@@ -358,8 +358,8 @@ pub async fn update_routine(
         .ok_or(AppError::RoutineNotFound)
 }
 
-/// HU-18 — elimina una rutina del coach.
-// TODO(HU-19): cuando existan asignaciones a clientes, decidir qué pasa con ellas al eliminar la rutina.
+/// HU-18 — elimina una rutina del coach. HU-19: sus asignaciones activas pasan a `removed` (el cliente deja de verla
+/// y se conserva el historial).
 pub async fn delete_routine(
     db: &Database,
     coach_id: ObjectId,
@@ -373,6 +373,7 @@ pub async fn delete_routine(
     if result.deleted_count == 0 {
         return Err(AppError::RoutineNotFound);
     }
+    crate::services::routine_assignments::retire_routine_assignments(db, routine_id).await?;
     Ok(())
 }
 

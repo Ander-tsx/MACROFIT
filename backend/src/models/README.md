@@ -186,6 +186,31 @@ con `DELETE /coach/routines/{id}`.
 
 **Índices:** `coach_id_updated_at` → `{ coach_id: 1, updated_at: -1 }` (rutinas de un coach, la editada más recientemente primero).
 
+Al eliminar una rutina, sus asignaciones activas pasan a `removed` (HU-19).
+
+## Colección `routine_assignments` (`routine_assignment.rs`)
+
+Rutina de un coach asignada a un cliente (HU-19, RF-23). Se crea con `POST /coach/routines/{id}/assignments`.
+**Forma compartida** con HU-16-API (rutinas del usuario, recomendadas y asignadas) y HU-17-API (sesiones completadas).
+
+| Campo | Tipo | Notas |
+|---|---|---|
+| `_id` | ObjectId | Se expone como `id` (hex) |
+| `routine_id` | ObjectId | → `routines._id` |
+| `coach_id` | ObjectId | Dueño de la rutina (`users._id`, rol `coach`); no se expone |
+| `client_id` | ObjectId | → `users._id` (rol `user`) con vinculación activa al asignar (RN-04) |
+| `status` | `"active"` \| `"removed"` | `active`: el cliente la sigue. `removed`: retirada (HU-20) o rutina eliminada (HU-18); se conserva como historial |
+| `assigned_at` | ISODate | Momento de la asignación; asignar de nuevo una activa no lo cambia |
+| `updated_at` | ISODate | Último cambio de la asignación |
+| `removed_at` | ISODate \| ausente | Solo si `status` es `removed` |
+
+Reasignar una rutina retirada crea un documento nuevo (la retirada queda como historial).
+
+**Índices:**
+- `routine_id_client_id_active_unique` → `{ routine_id: 1, client_id: 1 }`, único **parcial** (`{ status: "active" }`):
+  una sola asignación activa por rutina y cliente; las retiradas no cuentan.
+- `client_id_status` → `{ client_id: 1, status: 1 }` (rutinas asignadas a un usuario, HU-16).
+
 ## Colección `exercises` (`exercise.rs`)
 
 Catálogo base de ejercicios precargados (TEC-09) para las rutinas recomendadas del motor de reglas (TEC-10 / RF-14)

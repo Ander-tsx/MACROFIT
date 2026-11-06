@@ -23,6 +23,8 @@ Instrucciones para Claude Code al trabajar en `backend/`. Las reglas generales d
   HU-24 (lista completa de clientes: `GET /coach/clients` con meta vigente y último registro de comida),
   HU-25 (comidas de un cliente: `GET /coach/clients/{clientId}/meals?date=`, solo lectura, y `GET /meals/photos/{id}` para dueño o coach vinculado),
   HU-18 (rutinas personalizadas del coach: CRUD en `/coach/routines`, PUT reemplaza la rutina, `ROUTINE_NOT_FOUND`),
+  HU-19 (asignación de rutinas: `POST/GET /coach/routines/{id}/assignments`, colección `routine_assignments` compartida con HU-16/HU-17,
+  todo o nada con `CLIENT_NOT_LINKED` por `client_ids[i]`; eliminar una rutina retira sus asignaciones),
   TEC-10 (motor de reglas de rutinas recomendadas: `services/routine_engine.rs`, función pura sin endpoint; lo expone HU-15-API),
   TEC-14 (contrato OpenAPI con utoipa en `/api/v1/docs`; todo endpoint nuevo se documenta ahí, ver
   `src/routes/README.md`).

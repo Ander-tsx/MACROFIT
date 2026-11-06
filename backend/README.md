@@ -199,7 +199,9 @@ El contrato completo (cuerpos, respuestas y códigos de error de cada endpoint) 
 | GET | `/coach/routines` | Bearer (coach) | HU-18 | Rutinas del coach de la sesión (la editada más recientemente primero) |
 | GET | `/coach/routines/{id}` | Bearer (coach) | HU-18 | Detalle de una rutina propia |
 | PUT | `/coach/routines/{id}` | Bearer (coach) | HU-18 | Reemplaza nombre y ejercicios de una rutina propia |
-| DELETE | `/coach/routines/{id}` | Bearer (coach) | HU-18 | Elimina una rutina propia |
+| DELETE | `/coach/routines/{id}` | Bearer (coach) | HU-18, HU-19 | Elimina una rutina propia (y retira sus asignaciones) |
+| POST | `/coach/routines/{id}/assignments` | Bearer (coach) | HU-19 | Asigna una rutina propia a uno o varios clientes vinculados |
+| GET | `/coach/routines/{id}/assignments` | Bearer (coach) | HU-19 | Clientes vinculados con la rutina asignada |
 
 ### Contrato OpenAPI (TEC-14)
 
@@ -820,6 +822,49 @@ más recientemente primero; DELETE `204` sin cuerpo):
 **Errores:** `400 VALIDATION_ERROR` / `INVALID_BODY` (POST y PUT), `401 UNAUTHORIZED` / `TOKEN_REVOKED`,
 `403 FORBIDDEN_ROLE`, `404 ROUTINE_NOT_FOUND` (rutas con `{id}`).
 
+Al **eliminar** una rutina, sus asignaciones activas (HU-19) pasan a `removed`: el cliente deja de verla y se conserva el
+historial.
+
+### Asignación de rutinas — `/coach/routines/{id}/assignments` (HU-19)
+
+Cabecera `Authorization: Bearer <access_token>`. **Solo rol `coach`**. Asigna una rutina **propia** a uno o varios
+clientes con vinculación **activa** (RN-04, CU-04 pasos 5 y 6). Colección `routine_assignments`
+([esquema](src/models/README.md#colección-routine_assignments-routine_assignmentrs)), compartida con HU-16 y HU-17.
+
+**POST** recibe:
+
+```json
+{ "client_ids": ["6ad0a1b2c3d4e5f6a7b8c9d0", "6ad0a1b2c3d4e5f6a7b8c9d1"] }
+```
+
+| Caso | Respuesta |
+|---|---|
+| Todos vinculados | `201` con la asignación activa de **cada cliente pedido**, en el orden de `client_ids` |
+| Cliente que ya tenía la rutina activa | No se duplica: aparece con su `assigned_at` original |
+| Ids repetidos en la lista | Se toman una vez |
+| `client_ids` ausente, vacío, no es lista o con más de 50 | `400 VALIDATION_ERROR` en `client_ids` |
+| `client_ids[i]` que no es texto o no es un id válido | `400 VALIDATION_ERROR` en cada `client_ids[i]` |
+| Algún cliente sin vinculación activa (inexistente, de otro coach o desvinculado) | `403 CLIENT_NOT_LINKED` con `fields: { "client_ids[i]": "El cliente no está vinculado contigo" }`; **no se asigna a ninguno** |
+| Rutina ajena, inexistente o con id mal formado | `404 ROUTINE_NOT_FOUND`, antes de validar el cuerpo |
+
+**GET** → `200` con las asignaciones activas de clientes que **siguen vinculados** (un cliente desvinculado no aparece;
+si se vuelve a vincular, reaparece), la más reciente primero. Sin asignaciones, `[]`.
+
+Respuesta (cada elemento, POST y GET):
+
+```json
+{
+  "id": "6b10...",
+  "routine_id": "6b01...",
+  "client_id": "6ad0...",
+  "client_name": "Ana",
+  "assigned_at": "2026-11-05T18:00:00Z"
+}
+```
+
+**Errores:** `400 VALIDATION_ERROR` / `INVALID_BODY` (POST), `401 UNAUTHORIZED` / `TOKEN_REVOKED`,
+`403 FORBIDDEN_ROLE` / `CLIENT_NOT_LINKED` (POST), `404 ROUTINE_NOT_FOUND`.
+
 ### POST `/dev/seed/exercises` (TEC-09)
 
 Solo existe con `APP_ENV=development`; en cualquier otro ambiente la ruta no se monta (`404`). Sin autenticación.
@@ -957,7 +1002,7 @@ Todas las respuestas de error tienen la misma forma. `fields` siempre es un obje
 | `INVALID_REFRESH_TOKEN` | 401 | Refresh token desconocido, expirado o de otra sesión |
 | `TOKEN_REVOKED` | 401 | La sesión fue cerrada o revocada (logout, token rotado o reuso) |
 | `FORBIDDEN_ROLE` | 403 | La función es exclusiva de otro rol (p. ej. el perfil, solo para `user`; las metas por coach, solo para `coach`) |
-| `CLIENT_NOT_LINKED` | 403 | El coach no tiene una vinculación activa con el cliente |
+| `CLIENT_NOT_LINKED` | 403 | El coach no tiene una vinculación activa con el cliente. En HU-19, `fields` señala cada `client_ids[i]` sin vinculación |
 | `PROFILE_NOT_FOUND` | 404 | El usuario aún no tiene perfil |
 | `INVITE_CODE_NOT_FOUND` | 404 | El código de invitación no existe o ya no está vigente |
 | `PHOTO_NOT_FOUND` | 404 | La foto no existe o la cuenta no puede verla (no se distingue) |
