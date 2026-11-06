@@ -39,6 +39,7 @@ import 'package:macrofit_app/features/summary/domain/usecases/app_day.dart';
 import 'package:macrofit_app/features/summary/presentation/weekly_summary/weekly_summary_view.dart';
 import 'package:macrofit_app/features/progress/presentation/progress_charts/progress_view.dart';
 import 'package:macrofit_app/features/progress/presentation/weights/weights_view.dart';
+import 'package:macrofit_app/features/routines/presentation/assign_routine/assign_routine_view.dart';
 import 'package:macrofit_app/features/routines/presentation/exercise_picker/exercise_picker_view.dart';
 import 'package:macrofit_app/features/routines/presentation/routine_builder/routine_builder_view.dart';
 import 'package:macrofit_app/features/routines/presentation/routines_list/routines_list_view.dart';
@@ -1806,6 +1807,127 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.byType(RoutinesListView), findsOneWidget);
       expect(routines.created, isEmpty);
+    });
+  });
+
+  group('asignar rutina a clientes (HU-19)', () {
+    Future<void> openAssign(WidgetTester tester) async {
+      await pumpApp(tester, state: const Authenticated(testCoach));
+      await tester.tap(find.byKey(const Key('routines_home_button')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(Key('routine_menu_${testRoutine.id}')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('routine_menu_assign')));
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets(
+      'desde el menú de la rutina se eligen clientes, se confirma y se regresa con el aviso',
+      (tester) async {
+        await pumpApp(tester, state: const Authenticated(testCoach));
+        routines.assignments = {
+          testRoutine.id: [
+            testAssignment(clientId: testClientSummary.id, clientName: 'Ana'),
+          ],
+        };
+        await tester.tap(find.byKey(const Key('routines_home_button')));
+        await tester.pumpAndSettle();
+        await tester.tap(find.byKey(Key('routine_menu_${testRoutine.id}')));
+        await tester.pumpAndSettle();
+        await tester.tap(find.byKey(const Key('routine_menu_assign')));
+        await tester.pumpAndSettle();
+
+        expect(find.byType(AssignRoutineView), findsOneWidget);
+        expect(find.byKey(const Key('assign_routine_name')), findsOneWidget);
+        expect(find.text('Ana'), findsOneWidget);
+        expect(find.text('José Pérez'), findsOneWidget);
+        // Ana ya la tiene: marcada y bloqueada.
+        expect(
+          find.byKey(Key('assign_client_assigned_${testClientSummary.id}')),
+          findsOneWidget,
+        );
+        await tester.tap(
+          find.byKey(Key('assign_client_${testClientSummary.id}')),
+        );
+        await tester.pump();
+        expect(find.text('Asignar'), findsOneWidget);
+
+        await tester.tap(
+          find.byKey(Key('assign_client_${testClientWithoutData.id}')),
+        );
+        await tester.pump();
+        expect(find.text('Asignar (1)'), findsOneWidget);
+
+        await tester.tap(find.byKey(const Key('assign_routine_submit')));
+        await tester.pumpAndSettle();
+        expect(
+          find.textContaining('«Torso A» se asignará a 1 cliente'),
+          findsOneWidget,
+        );
+        expect(find.textContaining('• José Pérez'), findsOneWidget);
+
+        await tester.tap(find.byKey(const Key('assign_routine_confirm')));
+        await tester.pumpAndSettle();
+
+        expect(routines.assignCalls.single.clientIds, [
+          testClientWithoutData.id,
+        ]);
+        expect(find.byType(RoutinesListView), findsOneWidget);
+        expect(find.text('«Torso A» se asignó a 1 cliente.'), findsOneWidget);
+      },
+    );
+
+    testWidgets('cancelar el resumen no asigna', (tester) async {
+      await openAssign(tester);
+      await tester.tap(
+        find.byKey(Key('assign_client_${testClientSummary.id}')),
+      );
+      await tester.pump();
+      await tester.tap(find.byKey(const Key('assign_routine_submit')));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const Key('assign_routine_cancel')));
+      await tester.pumpAndSettle();
+
+      expect(routines.assignCalls, isEmpty);
+      expect(find.byType(AssignRoutineView), findsOneWidget);
+    });
+
+    testWidgets('sin clientes explica que primero debe vincularlos', (
+      tester,
+    ) async {
+      await pumpApp(tester, state: const Authenticated(testCoach));
+      clients.clients = [];
+      await tester.tap(find.byKey(const Key('routines_home_button')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(Key('routine_menu_${testRoutine.id}')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('routine_menu_assign')));
+      await tester.pumpAndSettle();
+
+      expect(
+        find.byKey(const Key('assign_routine_no_clients')),
+        findsOneWidget,
+      );
+      expect(find.byKey(const Key('assign_routine_submit')), findsNothing);
+      expect(
+        find.byKey(const Key('assign_routine_invite_code')),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('salir sin asignar conserva la rutina (CU-04 5a)', (
+      tester,
+    ) async {
+      await openAssign(tester);
+
+      await tester.tap(find.byType(BackButton));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(RoutinesListView), findsOneWidget);
+      expect(find.text('Torso A'), findsOneWidget);
+      expect(routines.assignCalls, isEmpty);
+      expect(routines.deleted, isEmpty);
     });
   });
 
