@@ -10,6 +10,7 @@ pub mod meals;
 pub mod photos;
 pub mod profile;
 pub mod progress;
+pub mod routine_assignments;
 pub mod routine_engine;
 pub mod routines;
 pub mod session;

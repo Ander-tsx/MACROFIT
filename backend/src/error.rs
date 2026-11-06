@@ -68,6 +68,9 @@ pub enum AppError {
     ForbiddenRole(&'static str),
     /// 403 — el coach no tiene una vinculación activa con el cliente.
     ClientNotLinked,
+    /// 403 — uno o más clientes de una lista no tienen vinculación activa con el coach (HU-19). Mismo código que
+    /// `ClientNotLinked`, pero `fields` señala cuáles (`client_ids[i]`).
+    ClientsNotLinked(FieldErrors),
     /// 404 — el usuario aún no tiene perfil.
     ProfileNotFound,
     /// 409 — el usuario ya tiene un perfil.
@@ -181,6 +184,12 @@ impl IntoResponse for AppError {
                 "CLIENT_NOT_LINKED",
                 "No tienes una vinculación activa con este cliente".to_string(),
                 FieldErrors::new(),
+            ),
+            Self::ClientsNotLinked(fields) => (
+                StatusCode::FORBIDDEN,
+                "CLIENT_NOT_LINKED",
+                "Uno o más clientes no están vinculados contigo".to_string(),
+                fields,
             ),
             Self::ProfileNotFound => (
                 StatusCode::NOT_FOUND,
@@ -374,5 +383,24 @@ mod tests {
             assert_eq!(body["error"]["code"], code);
             assert_eq!(body["error"]["fields"], serde_json::json!({}));
         }
+    }
+
+    #[tokio::test]
+    async fn clientes_no_vinculados_de_una_lista_se_senalan_en_fields() {
+        let response = AppError::ClientsNotLinked(FieldErrors::from([(
+            "client_ids[1]".to_string(),
+            "El cliente no está vinculado contigo".to_string(),
+        )]))
+        .into_response();
+        assert_eq!(response.status(), StatusCode::FORBIDDEN);
+        let bytes = axum::body::to_bytes(response.into_body(), usize::MAX)
+            .await
+            .expect("cuerpo");
+        let body: serde_json::Value = serde_json::from_slice(&bytes).expect("JSON");
+        assert_eq!(body["error"]["code"], "CLIENT_NOT_LINKED");
+        assert_eq!(
+            body["error"]["fields"],
+            serde_json::json!({ "client_ids[1]": "El cliente no está vinculado contigo" })
+        );
     }
 }

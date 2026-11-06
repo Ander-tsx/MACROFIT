@@ -17,6 +17,7 @@ use crate::models::meal_photo::{MEAL_PHOTOS_CHUNKS_COLLECTION, MEAL_PHOTOS_FILES
 use crate::models::profile::{PROFILES_COLLECTION, UserProfile};
 use crate::models::refresh_token::{REFRESH_TOKENS_COLLECTION, RefreshToken};
 use crate::models::routine::{ROUTINES_COLLECTION, Routine};
+use crate::models::routine_assignment::{ROUTINE_ASSIGNMENTS_COLLECTION, RoutineAssignment};
 use crate::models::user::{USERS_COLLECTION, User};
 use crate::models::weight_entry::{WEIGHTS_COLLECTION, WeightEntry};
 
@@ -282,4 +283,31 @@ async fn ensure_indexes(db: &Database) {
         .create_index(routines_by_coach)
         .await
         .expect("No se pudo crear el índice de routines");
+
+    // HU-19: una sola asignación activa por rutina y cliente (las retiradas quedan como historial), y las rutinas
+    // asignadas a un cliente (HU-16).
+    let assignment_indexes = [
+        IndexModel::builder()
+            .keys(doc! { "routine_id": 1, "client_id": 1 })
+            .options(
+                IndexOptions::builder()
+                    .unique(true)
+                    .partial_filter_expression(doc! { "status": "active" })
+                    .name("routine_id_client_id_active_unique".to_string())
+                    .build(),
+            )
+            .build(),
+        IndexModel::builder()
+            .keys(doc! { "client_id": 1, "status": 1 })
+            .options(
+                IndexOptions::builder()
+                    .name("client_id_status".to_string())
+                    .build(),
+            )
+            .build(),
+    ];
+    db.collection::<RoutineAssignment>(ROUTINE_ASSIGNMENTS_COLLECTION)
+        .create_indexes(assignment_indexes)
+        .await
+        .expect("No se pudieron crear los índices de routine_assignments (¿hay asignaciones activas repetidas?)");
 }

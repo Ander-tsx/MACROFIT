@@ -76,6 +76,8 @@ responder `500 INTERNAL_ERROR` ante un error inesperado.";
         routines::get_routine_handler,
         routines::update_routine_handler,
         routines::delete_routine_handler,
+        routines::assign_routine_handler,
+        routines::list_assignments_handler,
         auth::coach_only_handler,
     ),
     modifiers(&BearerAuth),
@@ -88,7 +90,7 @@ responder `500 INTERNAL_ERROR` ante un error inesperado.";
         (name = "Coach", description = "Clientes, metas por coach (HU-05), código de invitación (HU-12) y comidas de un cliente (HU-25)"),
         (name = "Resumen", description = "Resumen diario contra la meta (HU-10) y resumen semanal (HU-11)"),
         (name = "Comidas", description = "Foto de la comida (HU-06 y HU-25), estimación nutricional (HU-07) y registros de comida (HU-09)"),
-        (name = "Rutinas", description = "Rutinas personalizadas del coach con ejercicios del catálogo (HU-18)"),
+        (name = "Rutinas", description = "Rutinas personalizadas del coach con ejercicios del catálogo (HU-18) y su asignación a clientes (HU-19)"),
     )
 )]
 struct ApiDoc;
@@ -286,6 +288,18 @@ mod tests {
             Coach,
             &[204, 401, 403, 404],
         ),
+        (
+            "post",
+            "/coach/routines/{id}/assignments",
+            Coach,
+            &[201, 400, 401, 403, 404],
+        ),
+        (
+            "get",
+            "/coach/routines/{id}/assignments",
+            Coach,
+            &[200, 401, 403, 404],
+        ),
     ];
 
     /// Rutas que solo existen con `APP_ENV=development`.
@@ -393,6 +407,7 @@ mod tests {
             ("post", "/meals"),
             ("post", "/coach/routines"),
             ("put", "/coach/routines/{id}"),
+            ("post", "/coach/routines/{id}/assignments"),
         ];
         let with_multipart = [("post", "/meals/photos")];
         for (method, path) in operations(&spec) {
