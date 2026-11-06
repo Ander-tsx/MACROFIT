@@ -1,7 +1,21 @@
 import 'package:flutter/material.dart';
 
+import '../../../../core/presentation/theme/app_text.dart';
+import '../../../../core/presentation/theme/app_tokens.dart';
+import '../../../../core/presentation/theme/macro_style.dart';
+import '../../../../core/presentation/theme/theme_context.dart';
+import '../../../../core/presentation/widgets/count_up_text.dart';
+import '../../../../core/presentation/widgets/empty_state.dart';
 import '../../../../core/presentation/widgets/error_banner.dart';
+import '../../../../core/presentation/widgets/error_state.dart';
+import '../../../../core/presentation/widgets/fade_slide_in.dart';
+import '../../../../core/presentation/widgets/loading_state.dart';
+import '../../../../core/presentation/widgets/macro_badge.dart';
+import '../../../../core/presentation/widgets/macro_rings.dart';
+import '../../../../core/presentation/widgets/primary_button.dart';
+import '../../../../core/presentation/widgets/section_card.dart';
 import '../../../summary/domain/entities/day_summary.dart';
+import '../../../../core/presentation/theme/lucide_icons.dart';
 
 /// Texto de lo que falta o del exceso: «Te faltan 120 kcal» / «Te pasaste por 150 kcal».
 String remainingText(double remaining, String unit) {
@@ -20,7 +34,8 @@ double progressFraction(double consumed, double goal) {
   return (consumed / goal).clamp(0, 1).toDouble();
 }
 
-/// HU-10 — progreso del día: calorías, proteína y grasa contra la meta.
+/// HU-10 — progreso del día: calorías, proteína y grasa contra la meta, con
+/// los anillos concéntricos de la guía visual.
 class DailyProgressCard extends StatelessWidget {
   const DailyProgressCard({
     required this.summary,
@@ -39,143 +54,242 @@ class DailyProgressCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Tu progreso de hoy', style: theme.textTheme.titleMedium),
-            const SizedBox(height: 12),
-            ..._content(context),
-          ],
-        ),
+    final summary = this.summary;
+    return SectionCard(
+      title: 'Tu progreso de hoy',
+      child: StateSwitcher(
+        stateKey: summary != null
+            ? 'data'
+            : isLoading
+            ? 'loading'
+            : error != null
+            ? 'error'
+            : 'empty',
+        child: summary != null ? _content(summary) : _state(),
       ),
     );
   }
 
-  List<Widget> _content(BuildContext context) {
-    final summary = this.summary;
-    final retry = OutlinedButton(
-      key: const Key('home_summary_retry'),
-      onPressed: onRetry,
-      child: const Text('Reintentar'),
-    );
-
-    if (summary == null) {
-      if (isLoading) {
-        return const [Center(child: CircularProgressIndicator())];
-      }
-      if (error case final message?) {
-        return [
-          ErrorBanner(message: message),
-          const SizedBox(height: 12),
-          retry,
-        ];
-      }
-      if (hasNoSummary) {
-        return const [
-          Text(
-            'Cuando tengas una meta verás aquí lo que has consumido hoy.',
-            key: Key('home_summary_empty'),
-          ),
-        ];
-      }
-      return const [];
+  Widget _state() {
+    if (isLoading) return const LoadingState(compact: true);
+    if (error case final message?) {
+      return ErrorState(
+        compact: true,
+        message: message,
+        onRetry: onRetry,
+        retryKey: const Key('home_summary_retry'),
+      );
     }
+    if (hasNoSummary) {
+      return const EmptyState(
+        key: Key('home_summary_empty'),
+        compact: true,
+        icon: LucideIcons.chartPie,
+        title: 'Aún no hay progreso que mostrar',
+        message: 'Cuando tengas una meta verás aquí lo que has consumido hoy.',
+      );
+    }
+    return const SizedBox.shrink();
+  }
 
-    return [
-      _MacroProgress(
-        keyPrefix: 'home_summary_calories',
-        label: 'Calorías',
-        unit: 'kcal',
-        consumed: summary.consumed.caloriesKcal,
-        goal: summary.goal.caloriesKcal,
-        remaining: summary.remaining.caloriesKcal,
-      ),
-      const SizedBox(height: 16),
-      _MacroProgress(
-        keyPrefix: 'home_summary_protein',
-        label: 'Proteína',
-        unit: 'g',
-        consumed: summary.consumed.proteinG,
-        goal: summary.goal.proteinG,
-        remaining: summary.remaining.proteinG,
-      ),
-      const SizedBox(height: 16),
-      _MacroProgress(
-        keyPrefix: 'home_summary_fat',
-        label: 'Grasa',
-        unit: 'g',
-        consumed: summary.consumed.fatG,
-        goal: summary.goal.fatG,
-        remaining: summary.remaining.fatG,
-      ),
-      // Falló una recarga: se conserva el último resumen y se avisa.
-      if (error case final message?) ...[
-        const SizedBox(height: 12),
-        ErrorBanner(message: message),
-        const SizedBox(height: 12),
-        retry,
+  Widget _content(DaySummary summary) {
+    final consumed = summary.consumed;
+    final goal = summary.goal;
+    final remaining = summary.remaining;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _MacroLine(
+                    keyPrefix: 'home_summary_calories',
+                    macro: Macro.calories,
+                    unit: 'kcal',
+                    consumed: consumed.caloriesKcal,
+                    goal: goal.caloriesKcal,
+                    remaining: remaining.caloriesKcal,
+                    badgeKey: false,
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+                  _MacroLine(
+                    keyPrefix: 'home_summary_protein',
+                    macro: Macro.protein,
+                    unit: 'g',
+                    consumed: consumed.proteinG,
+                    goal: goal.proteinG,
+                    remaining: remaining.proteinG,
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+                  _MacroLine(
+                    keyPrefix: 'home_summary_fat',
+                    macro: Macro.fat,
+                    unit: 'g',
+                    consumed: consumed.fatG,
+                    goal: goal.fatG,
+                    remaining: remaining.fatG,
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: AppSpacing.md),
+            MacroRings(
+              calories: progressFraction(
+                consumed.caloriesKcal,
+                goal.caloriesKcal,
+              ),
+              protein: progressFraction(consumed.proteinG, goal.proteinG),
+              fat: progressFraction(consumed.fatG, goal.fatG),
+              semanticLabel: 'Avance de calorías, proteína y grasa',
+            ),
+          ],
+        ),
+        const SizedBox(height: AppSpacing.xl),
+        _CaloriesBar(
+          consumed: consumed.caloriesKcal,
+          goal: goal.caloriesKcal,
+          exceeded: remaining.caloriesKcal < 0,
+        ),
+        // Falló una recarga: se conserva el último resumen y se avisa.
+        if (error case final message?) ...[
+          const SizedBox(height: AppSpacing.lg),
+          FadeSlideIn(child: ErrorBanner(message: message)),
+          const SizedBox(height: AppSpacing.sm),
+          PrimaryButton(
+            key: const Key('home_summary_retry'),
+            label: 'Reintentar',
+            icon: LucideIcons.refreshCw,
+            variant: AppButtonVariant.tonal,
+            compact: true,
+            onPressed: onRetry,
+          ),
+        ],
       ],
-    ];
+    );
   }
 }
 
-class _MacroProgress extends StatelessWidget {
-  const _MacroProgress({
+/// Un macro: anillo con su ícono, «consumido / meta» y lo que falta.
+class _MacroLine extends StatelessWidget {
+  const _MacroLine({
     required this.keyPrefix,
-    required this.label,
+    required this.macro,
     required this.unit,
     required this.consumed,
     required this.goal,
     required this.remaining,
+    this.badgeKey = true,
   });
 
   final String keyPrefix;
-  final String label;
+  final Macro macro;
   final String unit;
   final double consumed;
   final double goal;
   final double remaining;
 
+  /// La barra de calorías va aparte; proteína y grasa usan el anillo.
+  final bool badgeKey;
+
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final text = context.text;
+    final colors = context.colors;
+    final warning = context.appColors.warning;
     final exceeded = remaining < 0;
-    final color = exceeded
-        ? theme.colorScheme.error
-        : theme.colorScheme.primary;
-    return Column(
+
+    return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        MacroBadge(
+          key: badgeKey ? Key('${keyPrefix}_bar') : null,
+          macro: macro,
+          value: progressFraction(consumed, goal),
+          color: exceeded ? warning : null,
+        ),
+        const SizedBox(width: AppSpacing.md),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.centerLeft,
+                child: CountUp(
+                  value: consumed,
+                  builder: (context, value) => Text.rich(
+                    TextSpan(
+                      text: _format(value),
+                      style: text.headlineSmall?.merge(AppText.numeric),
+                      children: [
+                        TextSpan(
+                          text: ' / ${_format(goal)} $unit',
+                          style: text.bodyMedium?.copyWith(
+                            color: colors.onSurfaceVariant,
+                          ),
+                        ),
+                      ],
+                    ),
+                    key: Key('${keyPrefix}_values'),
+                  ),
+                ),
+              ),
+              Text(
+                remainingText(remaining, unit),
+                key: Key('${keyPrefix}_remaining'),
+                style: text.bodySmall?.copyWith(
+                  color: exceeded ? warning : null,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// Barra de calorías del día con la escala de 0 a la meta (referencia: "Food").
+class _CaloriesBar extends StatelessWidget {
+  const _CaloriesBar({
+    required this.consumed,
+    required this.goal,
+    required this.exceeded,
+  });
+
+  final double consumed;
+  final double goal;
+  final bool exceeded;
+
+  @override
+  Widget build(BuildContext context) {
+    final app = context.appColors;
+    final text = context.text;
+    return Column(
+      children: [
+        TweenAnimationBuilder<double>(
+          tween: Tween(begin: 0, end: progressFraction(consumed, goal)),
+          duration: AppDurations.rings,
+          curve: Curves.easeOutCubic,
+          builder: (context, value, _) => LinearProgressIndicator(
+            key: const Key('home_summary_calories_bar'),
+            value: value,
+            color: exceeded ? app.warning : Macro.calories.color(app),
+            backgroundColor: context.colors.surfaceContainer,
+            minHeight: AppSizes.progressBarThin,
+            semanticsLabel: 'Calorías consumidas contra la meta',
+          ),
+        ),
+        const SizedBox(height: AppSpacing.xs),
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(label, style: theme.textTheme.labelLarge),
-            Text(
-              '${_format(consumed)} / ${_format(goal)} $unit',
-              key: Key('${keyPrefix}_values'),
-              style: theme.textTheme.bodyMedium,
-            ),
+            Text('0', style: text.bodySmall),
+            Text('Meta ${_format(goal)} kcal', style: text.bodySmall),
           ],
-        ),
-        const SizedBox(height: 6),
-        LinearProgressIndicator(
-          key: Key('${keyPrefix}_bar'),
-          value: progressFraction(consumed, goal),
-          minHeight: 10,
-          borderRadius: BorderRadius.circular(5),
-          color: color,
-        ),
-        const SizedBox(height: 4),
-        Text(
-          remainingText(remaining, unit),
-          key: Key('${keyPrefix}_remaining'),
-          style: theme.textTheme.bodySmall?.copyWith(
-            color: exceeded ? theme.colorScheme.error : null,
-          ),
         ),
       ],
     );

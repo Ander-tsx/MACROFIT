@@ -3,10 +3,20 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import '../../../../app/routes.dart';
+import '../../../../core/presentation/theme/app_tokens.dart';
+import '../../../../core/presentation/theme/theme_context.dart';
+import '../../../../core/presentation/widgets/app_header.dart';
 import '../../../../core/presentation/widgets/error_banner.dart';
+import '../../../../core/presentation/widgets/fade_slide_in.dart';
+import '../../../../core/presentation/widgets/primary_button.dart';
+import '../../../../core/presentation/widgets/status_banner.dart';
+import '../../../../core/presentation/widgets/surface_card.dart';
 import '../../domain/entities/meal.dart';
 import '../../domain/entities/meal_photo.dart';
+import '../widgets/scan_frame.dart';
 import 'meal_photo_view_model.dart';
+import '../../../../core/presentation/theme/lucide_icons.dart';
+import '../../../../core/presentation/widgets/card_edge_clip.dart';
 
 /// HU-06 — "Registrar comida": tomar o elegir la foto, ver la vista previa y subirla.
 class MealPhotoView extends StatelessWidget {
@@ -31,59 +41,79 @@ class MealPhotoView extends StatelessWidget {
     final photo = viewModel.photo;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Registrar comida')),
+      appBar: const AppHeader(title: 'Registrar comida'),
       body: SafeArea(
-        child: ListView(
-          padding: const EdgeInsets.all(24),
-          children: [
-            _Preview(photo: photo),
-            const SizedBox(height: 16),
-            if (viewModel.error case final message?) ...[
-              ErrorBanner(key: const Key('meal_photo_error'), message: message),
-              const SizedBox(height: 16),
-            ],
-            if (viewModel.uploaded != null)
-              const _UploadedMessage()
-            else ...[
-              if (photo != null) ...[
-                FilledButton.icon(
-                  key: const Key('meal_photo_upload'),
-                  onPressed: viewModel.isBusy
-                      ? null
-                      : () => _upload(context, viewModel),
-                  icon: viewModel.isUploading
-                      ? const SizedBox.square(
-                          dimension: 18,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Icon(Icons.cloud_upload),
-                  label: Text(
-                    viewModel.isUploading ? 'Subiendo foto…' : 'Usar esta foto',
+        // Todo el contenido se construye de una vez (pantalla corta): los
+        // botones existen aunque estén fuera de la vista.
+        child: CardEdgeClip(
+          child: SingleChildScrollView(
+            padding: AppSpacing.screenPadding,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                FadeSlideIn(child: _Preview(photo: photo)),
+                const SizedBox(height: AppSpacing.xl),
+                if (viewModel.error case final message?) ...[
+                  FadeSlideIn(
+                    child: ErrorBanner(
+                      key: const Key('meal_photo_error'),
+                      message: message,
+                    ),
                   ),
-                ),
-                const SizedBox(height: 24),
-                Text(
-                  'Cambiar foto',
-                  style: Theme.of(context).textTheme.titleSmall,
-                ),
-                const SizedBox(height: 8),
-              ],
-              _SourceButtons(viewModel: viewModel),
-              const SizedBox(height: 12),
-              // HU-08: captura manual sin foto (formulario vacío, sin photo_id).
-              TextButton.icon(
-                key: const Key('meal_photo_manual'),
-                onPressed: viewModel.isBusy
-                    ? null
-                    : () => context.push(
-                        AppRoutes.mealForm,
-                        extra: const MealDraft(),
+                  const SizedBox(height: AppSpacing.lg),
+                ],
+                if (viewModel.uploaded != null)
+                  const FadeSlideIn(
+                    child: StatusBanner(
+                      key: Key('meal_photo_uploaded'),
+                      tone: StatusTone.success,
+                      message: 'Foto subida. En el siguiente paso verás la estimación nutricional.',
+                    ),
+                  )
+                else ...[
+                  if (photo != null) ...[
+                    PrimaryButton(
+                      key: const Key('meal_photo_upload'),
+                      label: viewModel.isUploading
+                          ? 'Subiendo foto…'
+                          : 'Usar esta foto',
+                      icon: LucideIcons.arrowUp,
+                      isLoading: viewModel.isUploading,
+                      onPressed: viewModel.isBusy
+                          ? null
+                          : () => _upload(context, viewModel),
+                    ),
+                    const SizedBox(height: AppSpacing.xxl),
+                    Text(
+                      'Cambiar foto',
+                      style: context.text.titleSmall?.copyWith(
+                        color: context.colors.onSurfaceVariant,
                       ),
-                icon: const Icon(Icons.edit),
-                label: const Text('Capturar sin foto'),
-              ),
-            ],
-          ],
+                    ),
+                    const SizedBox(height: AppSpacing.md),
+                  ],
+                  FadeSlideIn(
+                    index: 1,
+                    child: _SourceButtons(viewModel: viewModel),
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+                  // HU-08: captura manual sin foto (formulario vacío, sin photo_id).
+                  PrimaryButton(
+                    key: const Key('meal_photo_manual'),
+                    label: 'Capturar sin foto',
+                    icon: LucideIcons.notebookPen,
+                    variant: AppButtonVariant.ghost,
+                    onPressed: viewModel.isBusy
+                        ? null
+                        : () => context.push(
+                            AppRoutes.mealForm,
+                            extra: const MealDraft(),
+                          ),
+                  ),
+                ],
+              ],
+            ),
+          ),
         ),
       ),
     );
@@ -97,42 +127,62 @@ class _Preview extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
+    final app = context.appColors;
     final photo = this.photo;
     return SizedBox(
-      height: 280,
+      height: AppSizes.photoPreview,
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(12),
-        child: photo == null
-            ? ColoredBox(
-                color: colors.surfaceContainerHighest,
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                      Icons.restaurant,
-                      size: 64,
-                      color: colors.onSurfaceVariant,
-                    ),
-                    const SizedBox(height: 12),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 24),
-                      child: Text(
-                        'Toma una foto de tu comida o elige una de tu galería.',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(color: colors.onSurfaceVariant),
+        borderRadius: AppRadius.xlAll,
+        child: AnimatedSwitcher(
+          duration: AppDurations.normal,
+          child: photo == null
+              ? ColoredBox(
+                  key: const ValueKey('placeholder'),
+                  color: app.hero,
+                  child: Stack(
+                    children: [
+                      ScanFrame(color: app.accent),
+                      Center(
+                        child: Padding(
+                          padding: const EdgeInsets.all(AppSpacing.huge),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                LucideIcons.utensils,
+                                size: AppSizes.iconXl,
+                                color: app.onHero,
+                              ),
+                              const SizedBox(height: AppSpacing.md),
+                              Text(
+                                'Toma una foto de tu comida o elige una de tu galería.',
+                                textAlign: TextAlign.center,
+                                style: context.text.bodyMedium?.copyWith(
+                                  color: app.onHeroMuted,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
                       ),
+                    ],
+                  ),
+                )
+              : Stack(
+                  key: ValueKey(photo),
+                  fit: StackFit.expand,
+                  children: [
+                    Image.memory(
+                      photo.bytes,
+                      key: const Key('meal_photo_preview'),
+                      fit: BoxFit.cover,
+                      gaplessPlayback: true,
+                      semanticLabel: 'Vista previa de la foto de tu comida',
                     ),
+                    ScanFrame(color: app.onHero),
                   ],
                 ),
-              )
-            : Image.memory(
-                photo.bytes,
-                key: const Key('meal_photo_preview'),
-                fit: BoxFit.cover,
-                gaplessPlayback: true,
-                semanticLabel: 'Vista previa de la foto de tu comida',
-              ),
+        ),
       ),
     );
   }
@@ -146,51 +196,86 @@ class _SourceButtons extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final enabled = !viewModel.isBusy;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
+    return Row(
       children: [
-        OutlinedButton.icon(
-          key: const Key('meal_photo_camera'),
-          onPressed: enabled ? () => viewModel.pick(PhotoSource.camera) : null,
-          icon: const Icon(Icons.photo_camera),
-          label: const Text('Tomar foto'),
+        Expanded(
+          child: _SourceTile(
+            key: const Key('meal_photo_camera'),
+            icon: LucideIcons.scan,
+            label: 'Tomar foto',
+            highlighted: true,
+            onTap: enabled ? () => viewModel.pick(PhotoSource.camera) : null,
+          ),
         ),
-        const SizedBox(height: 12),
-        OutlinedButton.icon(
-          key: const Key('meal_photo_gallery'),
-          onPressed: enabled ? () => viewModel.pick(PhotoSource.gallery) : null,
-          icon: const Icon(Icons.photo_library),
-          label: const Text('Elegir de la galería'),
+        const SizedBox(width: AppSpacing.md),
+        Expanded(
+          child: _SourceTile(
+            key: const Key('meal_photo_gallery'),
+            icon: LucideIcons.images,
+            label: 'Elegir de la galería',
+            onTap: enabled ? () => viewModel.pick(PhotoSource.gallery) : null,
+          ),
         ),
       ],
     );
   }
 }
 
-class _UploadedMessage extends StatelessWidget {
-  const _UploadedMessage();
+/// Origen de la foto: tarjeta con ícono y texto.
+class _SourceTile extends StatelessWidget {
+  const _SourceTile({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+    this.highlighted = false,
+    super.key,
+  });
+
+  final IconData icon;
+  final String label;
+  final VoidCallback? onTap;
+  final bool highlighted;
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-    return Container(
-      key: const Key('meal_photo_uploaded'),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: colors.primaryContainer,
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Row(
-        children: [
-          Icon(Icons.check_circle, color: colors.onPrimaryContainer),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              'Foto subida. En el siguiente paso verás la estimación nutricional.',
-              style: TextStyle(color: colors.onPrimaryContainer),
-            ),
+    final app = context.appColors;
+    final colors = context.colors;
+    final foreground = highlighted ? app.onHero : colors.onSurface;
+    return AnimatedOpacity(
+      opacity: onTap == null ? AppOpacity.disabled : 1,
+      duration: AppDurations.fast,
+      child: Semantics(
+        button: true,
+        enabled: onTap != null,
+        child: SurfaceCard(
+          color: highlighted ? app.hero : null,
+          padding: AppSpacing.cardPadding,
+          onTap: onTap,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: AppSizes.iconBubble,
+                height: AppSizes.iconBubble,
+                decoration: BoxDecoration(
+                  color: highlighted ? app.accent : colors.surfaceContainer,
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  icon,
+                  size: AppSizes.iconSm,
+                  color: highlighted ? app.onAccent : colors.onSurface,
+                ),
+              ),
+              const SizedBox(height: AppSpacing.xl),
+              Text(
+                label,
+                maxLines: 2,
+                style: context.text.titleSmall?.copyWith(color: foreground),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }

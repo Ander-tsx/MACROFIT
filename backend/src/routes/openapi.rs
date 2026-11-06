@@ -12,7 +12,8 @@ use utoipa::{Modify, OpenApi};
 use utoipa_swagger_ui::SwaggerUi;
 
 use super::{
-    auth, coach_invite_codes, coach_links, dev, goals, legal, meals, profile, routines, summary,
+    auth, coach_invite_codes, coach_links, dev, goals, legal, meals, profile, progress, routines,
+    summary,
 };
 
 /// Ruta de la especificación en JSON.
@@ -68,6 +69,8 @@ responder `500 INTERNAL_ERROR` ante un error inesperado.";
         meals::list_client_meals_handler,
         summary::get_daily_summary_handler,
         summary::get_weekly_summary_handler,
+        progress::get_my_progress_handler,
+        progress::get_client_progress_handler,
         routines::create_routine_handler,
         routines::list_routines_handler,
         routines::get_routine_handler,
@@ -260,6 +263,13 @@ mod tests {
             "/users/me/summary/weekly",
             User,
             &[200, 400, 401, 403, 404],
+        ),
+        ("get", "/users/me/progress", User, &[200, 400, 401, 403]),
+        (
+            "get",
+            "/coach/clients/{clientId}/progress",
+            Coach,
+            &[200, 400, 401, 403],
         ),
         ("post", "/coach/routines", Coach, &[201, 400, 401, 403]),
         ("get", "/coach/routines", Coach, &[200, 401, 403]),

@@ -1,3 +1,4 @@
+import 'package:flutter/widgets.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
@@ -66,6 +67,7 @@ import '../features/routines/presentation/routine_builder/routine_builder_view_m
 import '../features/routines/presentation/routines_list/routines_list_view.dart';
 import '../features/routines/presentation/routines_list/routines_list_view_model.dart';
 import 'routes.dart';
+import 'navigation/tab_transitions.dart';
 
 /// Crea el router. Escucha al [AuthRepository]: cada cambio de sesión vuelve a
 /// evaluar [resolveRedirect], así que login, logout y sesión expirada navegan solos.
@@ -75,9 +77,11 @@ import 'routes.dart';
 GoRouter createRouter(
   AuthRepository auth, {
   required MealPhotoRepository mealPhotos,
+  List<NavigatorObserver> observers = const [],
 }) {
   return GoRouter(
     initialLocation: AppRoutes.splash,
+    observers: observers,
     refreshListenable: auth,
     redirect: (context, state) =>
         resolveRedirect(auth.state, state.matchedLocation),
@@ -124,6 +128,18 @@ GoRouter createRouter(
         ),
         routes: [
           GoRoute(
+            path: AppRoutes.weightsChild,
+            pageBuilder: (context, state) => tabPage(
+              state,
+              ChangeNotifierProvider(
+                create: (context) => WeightsViewModel(
+                  repository: context.read<WeightsRepository>(),
+                )..load(),
+                child: const WeightsView(),
+              ),
+            ),
+          ),
+          GoRoute(
             path: AppRoutes.mealPhotoChild,
             builder: (context, _) => ChangeNotifierProvider(
               create: (context) =>
@@ -147,11 +163,14 @@ GoRouter createRouter(
           ),
           GoRoute(
             path: AppRoutes.weeklySummaryChild,
-            builder: (context, _) => ChangeNotifierProvider(
-              create: (context) => WeeklySummaryViewModel(
-                repository: context.read<SummaryRepository>(),
-              )..load(),
-              child: const WeeklySummaryView(),
+            pageBuilder: (context, state) => tabPage(
+              state,
+              ChangeNotifierProvider(
+                create: (context) => WeeklySummaryViewModel(
+                  repository: context.read<SummaryRepository>(),
+                )..load(),
+                child: const WeeklySummaryView(),
+              ),
             ),
           ),
           GoRoute(
@@ -169,14 +188,17 @@ GoRouter createRouter(
           ),
           GoRoute(
             path: AppRoutes.mealHistoryChild,
-            builder: (context, state) => ChangeNotifierProvider(
-              create: (context) => MealHistoryViewModel(
-                repository: context.read<MealsRepository>(),
-                initialDate: state.extra is DateTime
-                    ? state.extra! as DateTime
-                    : null,
-              )..load(),
-              child: const MealHistoryView(),
+            pageBuilder: (context, state) => tabPage(
+              state,
+              ChangeNotifierProvider(
+                create: (context) => MealHistoryViewModel(
+                  repository: context.read<MealsRepository>(),
+                  initialDate: state.extra is DateTime
+                      ? state.extra! as DateTime
+                      : null,
+                )..load(),
+                child: const MealHistoryView(),
+              ),
             ),
           ),
         ],
@@ -209,6 +231,34 @@ GoRouter createRouter(
           create: (context) => HomeViewModel(context.read<AuthRepository>()),
           child: const CoachHomeView(),
         ),
+        // Pestañas de la barra inferior (TEC-17). Las pantallas que cuelgan de
+        // ellas (detalle, constructor) siguen como rutas de primer nivel.
+        routes: [
+          GoRoute(
+            path: AppRoutes.coachClientsChild,
+            pageBuilder: (context, state) => tabPage(
+              state,
+              ChangeNotifierProvider(
+                create: (context) =>
+                    ClientsListViewModel(context.read<ClientsRepository>())
+                      ..load(),
+                child: const ClientsListView(),
+              ),
+            ),
+          ),
+          GoRoute(
+            path: AppRoutes.coachRoutinesChild,
+            pageBuilder: (context, state) => tabPage(
+              state,
+              ChangeNotifierProvider(
+                create: (context) =>
+                    RoutinesListViewModel(context.read<RoutinesRepository>())
+                      ..load(),
+                child: const RoutinesListView(),
+              ),
+            ),
+          ),
+        ],
       ),
       GoRoute(
         path: AppRoutes.coachInviteCode,
@@ -227,31 +277,6 @@ GoRouter createRouter(
             repository: context.read<CoachLinkRepository>(),
           )..load(),
           child: const CoachLinkView(),
-        ),
-      ),
-      GoRoute(
-        path: AppRoutes.weights,
-        builder: (context, _) => ChangeNotifierProvider(
-          create: (context) =>
-              WeightsViewModel(repository: context.read<WeightsRepository>())
-                ..load(),
-          child: const WeightsView(),
-        ),
-      ),
-      GoRoute(
-        path: AppRoutes.coachClients,
-        builder: (context, _) => ChangeNotifierProvider(
-          create: (context) =>
-              ClientsListViewModel(context.read<ClientsRepository>())..load(),
-          child: const ClientsListView(),
-        ),
-      ),
-      GoRoute(
-        path: AppRoutes.coachRoutines,
-        builder: (context, _) => ChangeNotifierProvider(
-          create: (context) =>
-              RoutinesListViewModel(context.read<RoutinesRepository>())..load(),
-          child: const RoutinesListView(),
         ),
       ),
       GoRoute(

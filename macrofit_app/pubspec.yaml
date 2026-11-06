@@ -23,6 +23,7 @@ dependencies:
   flutter_markdown_plus: ^1.0.12
   image_picker: ^1.2.4
   share_plus: ^13.3.1
+  blobatar: ^0.1.0
 
 dev_dependencies:
   flutter_test:
@@ -33,5 +34,24 @@ dev_dependencies:
 flutter:
   uses-material-design: true
 
-  # assets:
-  #   - assets/images/
+  # Fondos de las tarjetas destacadas (se muestran tenues bajo el color).
+  assets:
+    - assets/images/
+
+  # Tipografía de la guía visual (lib/app/README.md). Inter, licencia SIL OFL 1.1
+  # (assets/fonts/inter/OFL.txt).
+  fonts:
+    - family: Inter
+      fonts:
+        - asset: assets/fonts/inter/Inter-Regular.ttf
+          weight: 400
+        - asset: assets/fonts/inter/Inter-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/inter/Inter-SemiBold.ttf
+          weight: 600
+        - asset: assets/fonts/inter/Inter-Bold.ttf
+          weight: 700
+    # Íconos de Lucide (licencia ISC, assets/fonts/lucide/LICENSE.txt).
+    - family: Lucide
+      fonts:
+        - asset: assets/fonts/lucide/lucide.ttf

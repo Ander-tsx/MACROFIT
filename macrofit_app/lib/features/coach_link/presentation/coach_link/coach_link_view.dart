@@ -1,8 +1,26 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../../../core/presentation/theme/app_tokens.dart';
+import '../../../../core/presentation/theme/theme_context.dart';
+import '../../../../core/presentation/widgets/app_avatar.dart';
+import '../../../../core/presentation/widgets/app_header.dart';
+import '../../../../core/presentation/widgets/app_snack_bar.dart';
+import '../../../../core/presentation/widgets/app_text_field.dart';
+import '../../../../core/presentation/widgets/confirm_dialog.dart';
+import '../../../../core/presentation/widgets/content_width.dart';
 import '../../../../core/presentation/widgets/error_banner.dart';
+import '../../../../core/presentation/widgets/fade_slide_in.dart';
+import '../../../../core/presentation/widgets/highlight_card.dart';
+import '../../../../core/presentation/widgets/leader_row.dart';
+import '../../../../core/presentation/widgets/loading_state.dart';
+import '../../../../core/presentation/widgets/primary_button.dart';
+import '../../../../core/presentation/widgets/section_card.dart';
+import '../../domain/entities/coach_link.dart';
 import 'coach_link_view_model.dart';
+import '../../../../core/presentation/theme/lucide_icons.dart';
+import '../../../../core/presentation/theme/app_images.dart';
+import '../../../../core/presentation/widgets/card_edge_clip.dart';
 
 /// HU-13 / HU-14 — pantalla para vincularse y desvincularse de un coach.
 class CoachLinkView extends StatelessWidget {
@@ -11,91 +29,82 @@ class CoachLinkView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final viewModel = context.watch<CoachLinkViewModel>();
-    final theme = Theme.of(context);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Vincular con coach')),
+      appBar: const AppHeader(title: 'Vincular con coach'),
       body: SafeArea(
         child: viewModel.isLoading && viewModel.linkedCoach == null
-            ? const Center(child: CircularProgressIndicator())
-            : ListView(
-                padding: const EdgeInsets.all(24),
-                children: [
-                  const Text(
-                    'Ingresa el código de invitación que te proporcionó tu coach para recibir seguimiento.',
-                    textAlign: TextAlign.center,
+            ? const LoadingState()
+            : CardEdgeClip(
+                child: SingleChildScrollView(
+                  padding: AppSpacing.screenPadding,
+                  child: ContentWidth(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        if (viewModel.linkedCoach case final coach?)
+                          FadeSlideIn(
+                            child: _LinkedCoach(
+                              coach: coach,
+                              isBusy: viewModel.isLoading,
+                              onUnlink: () =>
+                                  _confirmUnlink(context, viewModel),
+                            ),
+                          )
+                        else ...[
+                          const FadeSlideIn(
+                            child: HighlightCard(
+                              title: 'Entrena con seguimiento',
+                              description: 'Ingresa el código de invitación que te proporcionó tu coach para recibir seguimiento.',
+                              icon: LucideIcons.link,
+                              image: AppImages.coach,
+                              tone: HighlightTone.blue,
+                            ),
+                          ),
+                          const SizedBox(height: AppSpacing.cardGap),
+                          FadeSlideIn(
+                            index: 1,
+                            child: SectionCard(
+                              title: 'Código de invitación',
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                  AppTextField(
+                                    key: const Key('invite_code_input'),
+                                    label: 'Código de invitación',
+                                    hint: 'Ej. K7P2QX',
+                                    icon: LucideIcons.qrCode,
+                                    textCapitalization:
+                                        TextCapitalization.characters,
+                                    autocorrect: false,
+                                    onChanged: viewModel.updateInviteCode,
+                                    enabled: !viewModel.isLoading,
+                                  ),
+                                  if (viewModel.errorMessage
+                                      case final message?) ...[
+                                    const SizedBox(height: AppSpacing.md),
+                                    FadeSlideIn(
+                                      child: ErrorBanner(message: message),
+                                    ),
+                                  ],
+                                  const SizedBox(height: AppSpacing.xl),
+                                  PrimaryButton(
+                                    key: const Key('submit_coach_link'),
+                                    label: 'Vincular coach',
+                                    icon: LucideIcons.link,
+                                    isLoading: viewModel.isLoading,
+                                    onPressed: () =>
+                                        _submit(context, viewModel),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
                   ),
-                  const SizedBox(height: 24),
-                  if (viewModel.linkedCoach case final coach?) ...[
-                    Card(
-                      child: Padding(
-                        padding: const EdgeInsets.all(20),
-                        child: Column(
-                          children: [
-                            Icon(
-                              Icons.check_circle,
-                              color: theme.colorScheme.primary,
-                              size: 48,
-                            ),
-                            const SizedBox(height: 12),
-                            Text(
-                              '¡Vinculado con éxito!',
-                              style: theme.textTheme.titleMedium,
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              'Coach: ${coach.coachName}',
-                              style: theme.textTheme.bodyLarge,
-                            ),
-                            Text(
-                              'Correo: ${coach.coachEmail}',
-                              style: theme.textTheme.bodyMedium,
-                            ),
-                            const SizedBox(height: 16),
-                            OutlinedButton.icon(
-                              key: const Key('unlink_coach_button'),
-                              onPressed: viewModel.isLoading
-                                  ? null
-                                  : () => _confirmUnlink(context, viewModel),
-                              icon: const Icon(Icons.link_off),
-                              label: const Text('Desvincularme'),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ] else ...[
-                    TextField(
-                      key: const Key('invite_code_input'),
-                      decoration: const InputDecoration(
-                        labelText: 'Código de invitación',
-                        hintText: 'Ej. K7P2QX',
-                        border: OutlineInputBorder(),
-                      ),
-                      textCapitalization: TextCapitalization.characters,
-                      onChanged: viewModel.updateInviteCode,
-                      enabled: !viewModel.isLoading,
-                    ),
-                    const SizedBox(height: 16),
-                    if (viewModel.errorMessage case final message?) ...[
-                      ErrorBanner(message: message),
-                      const SizedBox(height: 16),
-                    ],
-                    FilledButton(
-                      key: const Key('submit_coach_link'),
-                      onPressed: viewModel.isLoading
-                          ? null
-                          : () => _submit(context, viewModel),
-                      child: viewModel.isLoading
-                          ? const SizedBox(
-                              height: 20,
-                              width: 20,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : const Text('Vincular coach'),
-                    ),
-                  ],
-                ],
+                ),
               ),
       ),
     );
@@ -108,9 +117,7 @@ class CoachLinkView extends StatelessWidget {
     final messenger = ScaffoldMessenger.of(context);
     final success = await viewModel.linkCoach();
     if (success) {
-      messenger.showSnackBar(
-        const SnackBar(content: Text('¡Vinculación exitosa con el coach!')),
-      );
+      showAppSnackBar(messenger, '¡Vinculación exitosa con el coach!');
     }
   }
 
@@ -118,34 +125,90 @@ class CoachLinkView extends StatelessWidget {
     BuildContext context,
     CoachLinkViewModel viewModel,
   ) async {
-    final confirmed = await showDialog<bool>(
+    final confirmed = await showConfirmDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Desvincularme'),
-        content: const Text(
-          '¿Estás seguro de que deseas desvincularte de tu coach? El coach dejará de ver tus datos.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancelar'),
+      title: 'Desvincularme',
+      message: '¿Estás seguro de que deseas desvincularte de tu coach? El coach dejará de ver tus datos.',
+      confirmLabel: 'Desvincularme',
+      icon: LucideIcons.unlink,
+      destructive: true,
+    );
+
+    if (confirmed && context.mounted) {
+      final messenger = ScaffoldMessenger.of(context);
+      final success = await viewModel.unlinkCoach();
+      if (success) {
+        showAppSnackBar(messenger, 'Te has desvinculado del coach.');
+      }
+    }
+  }
+}
+
+/// Coach vinculado: sus datos y la opción de desvincularse (HU-14).
+class _LinkedCoach extends StatelessWidget {
+  const _LinkedCoach({
+    required this.coach,
+    required this.isBusy,
+    required this.onUnlink,
+  });
+
+  final CoachLink coach;
+  final bool isBusy;
+  final VoidCallback onUnlink;
+
+  @override
+  Widget build(BuildContext context) {
+    final text = context.text;
+    final app = context.appColors;
+    return SectionCard(
+      child: Column(
+        children: [
+          const SizedBox(height: AppSpacing.md),
+          Stack(
+            clipBehavior: Clip.none,
+            children: [
+              AppAvatar(email: coach.coachEmail, size: AppSizes.avatarLarge),
+              Positioned(
+                right: -AppSpacing.xs,
+                bottom: -AppSpacing.xs,
+                child: Icon(
+                  LucideIcons.circleCheck,
+                  color: app.success,
+                  size: AppSizes.iconLg,
+                ),
+              ),
+            ],
           ),
-          FilledButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Desvincularme'),
+          const SizedBox(height: AppSpacing.lg),
+          Text('¡Vinculado con éxito!', style: text.headlineSmall),
+          const SizedBox(height: AppSpacing.xs),
+          Text(
+            'Tu coach ya puede ver tu progreso.',
+            style: text.bodyMedium?.copyWith(
+              color: context.colors.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(height: AppSpacing.xl),
+          Semantics(
+            label: 'Coach: ${coach.coachName}',
+            excludeSemantics: true,
+            child: LeaderRow(label: 'Coach', value: coach.coachName),
+          ),
+          Semantics(
+            label: 'Correo: ${coach.coachEmail}',
+            excludeSemantics: true,
+            child: LeaderRow(label: 'Correo', value: coach.coachEmail),
+          ),
+          const SizedBox(height: AppSpacing.xl),
+          PrimaryButton(
+            key: const Key('unlink_coach_button'),
+            label: 'Desvincularme',
+            icon: LucideIcons.unlink,
+            variant: AppButtonVariant.outlined,
+            onPressed: isBusy ? null : onUnlink,
           ),
         ],
       ),
     );
-
-    if (confirmed == true && context.mounted) {
-      final messenger = ScaffoldMessenger.of(context);
-      final success = await viewModel.unlinkCoach();
-      if (success) {
-        messenger.showSnackBar(
-          const SnackBar(content: Text('Te has desvinculado del coach.')),
-        );
-      }
-    }
   }
 }
