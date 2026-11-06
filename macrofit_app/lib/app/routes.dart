@@ -67,6 +67,11 @@ abstract final class AppRoutes {
   static String coachClientMeals(String clientId) =>
       '/coach/clients/$clientId/meals';
 
+  /// HU-23: progreso histórico de un cliente (solo lectura).
+  static const coachClientProgressPattern = '/coach/clients/:clientId/progress';
+  static String coachClientProgress(String clientId) =>
+      '/coach/clients/$clientId/progress';
+
   /// HU-05: meta e historial de un cliente.
   static const coachClientGoalsPattern = '/coach/clients/:clientId/goals';
   static String coachClientGoals(String clientId) =>

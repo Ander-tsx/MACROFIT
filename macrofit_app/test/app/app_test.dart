@@ -14,6 +14,7 @@ import 'package:macrofit_app/features/clients/domain/entities/client_meal.dart';
 import 'package:macrofit_app/features/clients/domain/entities/client_summary.dart';
 import 'package:macrofit_app/features/clients/presentation/client_detail/client_detail_view.dart';
 import 'package:macrofit_app/features/clients/presentation/client_meals/client_meals_view.dart';
+import 'package:macrofit_app/features/clients/presentation/client_progress/client_progress_view.dart';
 import 'package:macrofit_app/features/clients/presentation/clients_list/clients_list_view.dart';
 import 'package:macrofit_app/features/goals/domain/entities/nutritional_goal.dart';
 import 'package:macrofit_app/features/goals/presentation/coach_goal_form/coach_goal_form_view.dart';
@@ -1361,6 +1362,130 @@ void main() {
       await tester.tap(find.byKey(const Key('client_meals_retry')));
       await tester.pumpAndSettle();
       expect(find.text('19:30'), findsOneWidget);
+    });
+  });
+
+  group('progreso de un cliente (HU-23)', () {
+    Future<void> openProgress(
+      WidgetTester tester, {
+      ApiException? progressError,
+      bool withData = true,
+    }) async {
+      await pumpApp(tester, state: const Authenticated(testCoach));
+      progress
+        ..error = progressError
+        ..withData = withData;
+      await tester.tap(find.byKey(const Key('clients_button')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(Key('client_${testClientSummary.id}')));
+      await tester.pumpAndSettle();
+      // TEC-17: la barra inferior ocupa el pie de la pantalla; se lleva a la vista.
+      await tester.ensureVisible(
+        find.byKey(const Key('client_detail_progress')),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('client_detail_progress')));
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('desde el detalle se abre el progreso semanal del cliente', (
+      tester,
+    ) async {
+      await openProgress(tester);
+
+      expect(find.byType(ClientProgressView), findsOneWidget);
+      expect(
+        find.text('Progreso de ${testClientSummary.name}'),
+        findsOneWidget,
+      );
+      expect(progress.clientRequests, [testClientSummary.id]);
+      expect(find.byKey(const Key('client_progress_weight')), findsOneWidget);
+      expect(
+        find.byKey(const Key('client_progress_weight_chart')),
+        findsOneWidget,
+      );
+      // La lista se construye bajo demanda: se desplaza hasta las demás tarjetas.
+      final list = find.descendant(
+        of: find.byType(ClientProgressView),
+        matching: find.byType(ListView),
+      );
+      await tester.dragUntilVisible(
+        find.byKey(const Key('client_progress_chart_calories')),
+        list,
+        const Offset(0, -200),
+      );
+      await tester.dragUntilVisible(
+        find.byKey(const Key('client_progress_compliance_chart')),
+        list,
+        const Offset(0, -200),
+      );
+      await tester.pumpAndSettle();
+    });
+
+    testWidgets('es de solo lectura: sin botón para registrar peso', (
+      tester,
+    ) async {
+      await openProgress(tester);
+
+      expect(
+        find.byKey(const Key('client_progress_register_weight')),
+        findsNothing,
+      );
+      expect(find.byKey(const Key('progress_register_weight')), findsNothing);
+      expect(find.byType(FloatingActionButton), findsNothing);
+    });
+
+    testWidgets('cambia a mes', (tester) async {
+      await openProgress(tester);
+
+      await tester.tap(find.byKey(const Key('client_progress_range_month')));
+      await tester.pumpAndSettle();
+
+      final today = appDay(DateTime.now());
+      expect(progress.requests.last, '${today.substring(0, 8)}01..$today');
+      expect(progress.clientRequests.toSet(), {testClientSummary.id});
+    });
+
+    testWidgets('un periodo sin datos lo indica con textos para el coach', (
+      tester,
+    ) async {
+      await openProgress(tester, withData: false);
+
+      expect(
+        find.text(
+          'Tu cliente necesita al menos dos registros de peso en este periodo '
+          'para ver su tendencia.',
+        ),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('un cliente desvinculado lo indica y regresa a la lista', (
+      tester,
+    ) async {
+      await openProgress(
+        tester,
+        progressError: apiError(ApiErrorCode.clientNotLinked, status: 403),
+      );
+
+      expect(find.byKey(const Key('client_progress_unlinked')), findsOneWidget);
+      await tester.tap(find.byKey(const Key('client_progress_back')));
+      await tester.pumpAndSettle();
+      expect(find.byType(ClientsListView), findsOneWidget);
+      expect(find.byType(ClientDetailView), findsNothing);
+    });
+
+    testWidgets('sin conexión muestra el error y permite reintentar', (
+      tester,
+    ) async {
+      await openProgress(tester, progressError: networkError);
+      expect(find.text(networkError.message), findsOneWidget);
+
+      progress.error = null;
+      await tester.tap(find.byKey(const Key('client_progress_retry')));
+      await tester.pumpAndSettle();
+      expect(find.text(networkError.message), findsNothing);
+      expect(find.byKey(const Key('client_progress_weight')), findsOneWidget);
     });
   });
 

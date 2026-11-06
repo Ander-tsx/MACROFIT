@@ -11,5 +11,19 @@ class ProgressRepositoryImpl implements ProgressRepository {
   Future<ProgressReport> getProgress({
     required String from,
     required String to,
-  }) async => (await _remote.getProgress(from: from, to: to)).toEntity();
+  }) async => (await _remote.getProgress(
+    from: from,
+    to: to,
+  )).toEntity(from: from, to: to);
+
+  @override
+  Future<ProgressReport> getClientProgress({
+    required String clientId,
+    required String from,
+    required String to,
+  }) async => (await _remote.getClientProgress(
+    clientId: clientId,
+    from: from,
+    to: to,
+  )).toEntity(from: from, to: to);
 }

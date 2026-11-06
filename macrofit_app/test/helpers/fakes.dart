@@ -1267,4 +1267,18 @@ class FakeProgressRepository implements ProgressRepository {
     if (error case final error?) throw error;
     return testProgressReport(from: from, to: to, withData: withData);
   }
+
+  /// Clientes pedidos en `GET /coach/clients/{id}/progress` (HU-23), en orden;
+  /// el periodo de cada uno queda en [requests].
+  final clientRequests = <String>[];
+
+  @override
+  Future<ProgressReport> getClientProgress({
+    required String clientId,
+    required String from,
+    required String to,
+  }) {
+    clientRequests.add(clientId);
+    return getProgress(from: from, to: to);
+  }
 }

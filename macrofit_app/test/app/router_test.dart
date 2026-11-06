@@ -344,6 +344,28 @@ void main() {
     });
   });
 
+  group('progreso de un cliente (HU-23)', () {
+    test('un coach abre el progreso de un cliente', () {
+      expect(
+        resolveRedirect(
+          const Authenticated(testCoach),
+          AppRoutes.coachClientProgress('abc'),
+        ),
+        isNull,
+      );
+    });
+
+    test('un usuario no accede al progreso de un cliente', () {
+      expect(
+        resolveRedirect(
+          const Authenticated(testUser),
+          AppRoutes.coachClientProgress('abc'),
+        ),
+        AppRoutes.userHome,
+      );
+    });
+  });
+
   group('perfil inicial (HU-03)', () {
     test('un usuario sin perfil solo puede abrir el formulario de perfil', () {
       const state = Authenticated(testNewUser);

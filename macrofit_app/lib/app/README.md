@@ -20,6 +20,7 @@ sessionDio + AuthInterceptor ── SessionRemoteDataSource (me, logout)
                              ├─ MealPhotosRemoteDataSource (foto de comida, HU-06)
                              ├─ MealsRemoteDataSource (estimación HU-07, guardar HU-08, historial, eliminar y fotos HU-09)
                              └─ ClientsRemoteDataSource (lista de clientes HU-24, comidas y fotos HU-25)
+                             └─ ProgressRemoteDataSource (progreso del usuario HU-22 y de un cliente HU-23)
 SessionLocalDataSource (flutter_secure_storage)
 PhotoPickerDataSource (image_picker: cámara y galería, HU-06)
         ↓

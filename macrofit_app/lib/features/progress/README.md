@@ -3,6 +3,7 @@
 | Historia | Qué hace |
 |---|---|
 | HU-21 | Registro e historial de peso (`/user/weights`) |
+| HU-23 | El mismo contenido para el coach, desde el detalle del cliente (`features/clients/presentation/client_progress/`) |
 | HU-22 | "Mi progreso" (`/user/progress`, pestaña **Progreso** de la barra inferior): gráficas de peso, consumo por día contra la meta y cumplimiento de entrenamiento, por semana o por mes (RF-18) |
 
 ## Archivos
@@ -12,17 +13,21 @@
 | `domain/entities/weight_entry.dart` | Registro de peso (HU-21) |
 | `domain/entities/progress_report.dart` | `ProgressReport` (HU-22): `weights`, `days` (consumo contra la meta de cada día) y `compliance` (sesiones por semana), con `hasWeightTrend`, `hasMeals` y `hasCompliance` |
 | `domain/entities/progress_period.dart` | `ProgressPeriod` y `ProgressRange` (semana / mes): periodo actual, anterior y siguiente sin pasar de hoy |
-| `domain/repositories/` | `WeightsRepository` (HU-21) y `ProgressRepository` (HU-22) |
-| `data/datasources/progress_remote_data_source.dart` | `GET /users/me/progress?from=&to=` con el cliente con sesión |
-| `data/models/progress_model.dart` | JSON → `ProgressReport` (`goal: null` = día sin meta todavía; listas ausentes = vacías) |
+| `domain/repositories/` | `WeightsRepository` (HU-21) y `ProgressRepository` (`getProgress` HU-22, `getClientProgress` HU-23) |
+| `domain/usecases/goal_rules.dart` | `withinGoal`: entre el 90 % y el 110 % de la meta (la regla de `goal_met` del backend) |
+| `data/datasources/progress_remote_data_source.dart` | `GET /users/me/progress` y `GET /coach/clients/{id}/progress` (`?from=&to=`) con el cliente con sesión |
+| `data/models/progress_model.dart` | `ProgressResponse` → `ProgressReport` (contrato abajo; acepta también las claves del contrato provisional) |
 | `presentation/weights/` | Pantalla y ViewModel del registro de peso (HU-21) |
-| `presentation/progress_charts/progress_view_model.dart` | `ProgressViewModel`: periodo, reporte, carga, error, macro elegido; descarta respuestas de un periodo que ya no se ve |
-| `presentation/progress_charts/progress_view.dart` | Selector semana/mes, píldora del periodo y tres tarjetas: **Peso**, **Consumo por día** y **Entrenamiento** |
-| `presentation/progress_charts/progress_texts.dart` | Etiquetas de periodo y ejes, cambio de peso y regla "dentro de la meta" para proteína y grasa |
+| `presentation/shared/progress_charts_view_model.dart` | `ProgressChartsViewModel` (abstracto): periodo, reporte, carga, error y macro elegido; descarta respuestas de un periodo que ya no se ve. Cada pantalla implementa `fetch` y, si lo necesita, `handleError` |
+| `presentation/shared/progress_charts.dart` | `ProgressCharts`: selector semana/mes, píldora del periodo y tres tarjetas (**Peso**, **Consumo por día**, **Entrenamiento**). Recibe `ProgressCopy` (`self` / `client`), `keyPrefix` y `onRegisterWeight` (sin él, la tarjeta de peso es de solo lectura) |
+| `presentation/shared/progress_texts.dart` | Etiquetas de periodo y ejes y cambio de peso |
+| `presentation/progress_charts/` | `ProgressViewModel` (`fetch` = `getProgress`) y `ProgressView` (HU-22) |
 
 Las gráficas son widgets **sin estado** de `core/presentation/widgets/charts/` (`TrendLineChart`, `TargetBarChart`,
-`RatioBars`) que reciben sus datos por parámetro: HU-23-APP (progreso del cliente para el coach) las reutiliza sin
-modificarlas, convirtiendo sus entidades a `ChartPoint`, `TargetBar` y `RatioItem`.
+`RatioBars`) que reciben sus datos por parámetro: Las tarjetas que las usan y el estado del periodo están en
+`presentation/shared/` y los reutiliza HU-23 (progreso del cliente para el coach) desde `features/clients`. Es una
+**excepción documentada** a la regla "una feature solo usa el dominio de otra" (AGENTS.md §3), aprobada para no
+duplicar las gráficas; nada fuera de `shared/` debe importarse desde otra feature.
 
 ## Flujo (HU-22)
 
@@ -38,32 +43,36 @@ modificarlas, convirtiendo sus entidades a `ChartPoint`, `TargetBar` y `RatioIte
    entrenamiento, un mensaje.
 6. Sin conexión (RNF-11): sin datos previos, el error con **Reintentar**; si ya había un reporte, se conserva y se avisa.
 
-## Contrato de `GET /users/me/progress` (provisional)
+## Contrato (`ProgressResponse`)
 
-> HU-22-API todavía no está publicada. La app sigue el contrato descrito en su tarjeta de Praxis; cuando el endpoint se
-> documente en `backend/README.md` hay que revisar esta sección y `ProgressModel`.
+Lo arma `backend/src/services/progress.rs` y lo devuelven los dos endpoints (rango de hasta 93 días, `from` ≤ `to`):
 
-`GET /api/v1/users/me/progress?from=YYYY-MM-DD&to=YYYY-MM-DD` (solo rol `user`, rango de hasta 93 días).
+- HU-22: `GET /api/v1/users/me/progress?from=YYYY-MM-DD&to=YYYY-MM-DD` (solo rol `user`).
+- HU-23: `GET /api/v1/coach/clients/{clientId}/progress?from=&to=` (solo rol `coach`, vinculación activa).
 
 ```json
 {
-  "from": "2026-10-30",
-  "to": "2026-11-05",
-  "weights": [{ "weight_kg": 73.1, "recorded_at": "2026-10-30T15:00:00Z" }],
-  "days": [
+  "weights": [{ "id": "…", "user_id": "…", "weight_kg": 73.1, "recorded_at": "2026-10-30T15:00:00Z" }],
+  "daily": [
     {
       "date": "2026-10-30",
-      "goal": { "source": "system", "calories_kcal": 2000, "protein_g": 150, "fat_g": 60 },
+      "goal": { "source": "system", "totals": { "calories_kcal": 2000, "protein_g": 150, "fat_g": 60 } },
       "consumed": { "calories_kcal": 1900, "protein_g": 140, "fat_g": 55 },
-      "goal_met": true
+      "remaining": { "calories_kcal": 100, "protein_g": 10, "fat_g": 5 }
     }
   ],
   "compliance": [
-    { "week_start": "2026-10-30", "week_end": "2026-11-05", "completed_sessions": 2, "planned_sessions": 4 }
+    { "start": "2026-10-30", "end": "2026-11-05", "training_days": 3, "completed_sessions": 0 }
   ]
 }
 ```
 
-- `weights` en orden cronológico; `days` con todos los días del rango (los días sin registros con consumo en 0).
-- `compliance`: sesiones completadas (`routine_sessions`, HU-17) contra los días de entrenamiento del perfil.
-- Errores: `400 VALIDATION_ERROR` (fechas mal formadas, `from` > `to` o más de 93 días), `401`, `403 FORBIDDEN_ROLE`.
+- `weights` en orden cronológico; `daily` con todos los días del rango (sin registros, consumo en 0).
+- La respuesta no trae `from`/`to` ni `goal_met`: `ProgressModel` usa el periodo pedido y calcula el cumplimiento
+  de calorías con `withinGoal` (90 %–110 %, la misma regla que `goal_met` de HU-11).
+- `compliance`: `training_days` = sesiones planeadas de la semana (días de entrenamiento del perfil; 3 sin perfil).
+  Hoy el backend devuelve `completed_sessions` siempre en 0.
+- Errores: `400 VALIDATION_ERROR` (fechas, `from` > `to` o más de 93 días), `401`, `403 FORBIDDEN_ROLE` y, en HU-23,
+  `403 CLIENT_NOT_LINKED`.
+- `ProgressModel` también acepta las claves del contrato provisional que usó HU-22 antes de publicarse la API
+  (`from`, `to`, `days`, meta plana o `null`, `goal_met`, `week_start`, `week_end`, `planned_sessions`).

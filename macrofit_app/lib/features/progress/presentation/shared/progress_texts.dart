@@ -47,12 +47,3 @@ String weightChangeText(double first, double last) {
   final sign = delta > 0 ? '+' : '−';
   return '$sign${delta.abs().toStringAsFixed(1)} kg en el periodo';
 }
-
-/// Un macro está dentro de la meta si queda entre el 90 % y el 110 % (la misma
-/// regla que usa la app para las calorías, HU-11).
-bool withinGoal(double consumed, double? goal) =>
-    goal != null &&
-    goal > 0 &&
-    consumed > 0 &&
-    consumed >= goal * 0.9 &&
-    consumed <= goal * 1.1;
