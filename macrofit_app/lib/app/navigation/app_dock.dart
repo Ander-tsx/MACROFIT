@@ -53,10 +53,10 @@ abstract final class DockTabs {
       route: AppRoutes.weeklySummary,
     ),
     DockItem(
-      key: Key('weights_button'),
-      icon: LucideIcons.weight,
-      label: 'Peso',
-      route: AppRoutes.weights,
+      key: Key('progress_button'),
+      icon: LucideIcons.trendingUp,
+      label: 'Progreso',
+      route: AppRoutes.progress,
     ),
   ];
 

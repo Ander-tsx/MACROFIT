@@ -17,8 +17,8 @@ import 'client_detail_view_model.dart';
 import '../../../../core/presentation/theme/lucide_icons.dart';
 import '../../../../core/presentation/widgets/card_edge_clip.dart';
 
-/// HU-24 — detalle de un cliente: su resumen y el acceso a sus metas (HU-05)
-/// y a sus comidas (HU-25).
+/// HU-24 — detalle de un cliente: su resumen y el acceso a sus metas (HU-05),
+/// a sus comidas (HU-25) y a su progreso (HU-23).
 class ClientDetailView extends StatelessWidget {
   const ClientDetailView({super.key});
 
@@ -160,6 +160,29 @@ class ClientDetailView extends StatelessWidget {
                           );
                           if (unlinked == true) {
                             // Ya no está vinculado (HU-25): se regresa a la lista, que se recarga.
+                            if (context.mounted) context.pop();
+                          } else {
+                            await viewModel.refresh();
+                          }
+                        },
+                      ),
+                      const Divider(
+                        height: AppSpacing.xs,
+                        indent: AppSpacing.dividerInset,
+                      ),
+                      ActionTile(
+                        key: const Key('client_detail_progress'),
+                        icon: LucideIcons.trendingUp,
+                        title: 'Progreso',
+                        subtitle: 'Su peso, consumo y entrenamiento',
+                        enabled: !viewModel.isUnlinked,
+                        onTap: () async {
+                          final unlinked = await context.push<bool>(
+                            AppRoutes.coachClientProgress(client.id),
+                            extra: client,
+                          );
+                          if (unlinked == true) {
+                            // Ya no está vinculado (HU-23, RN-04): se regresa a la lista, que se recarga.
                             if (context.mounted) context.pop();
                           } else {
                             await viewModel.refresh();

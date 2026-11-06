@@ -20,6 +20,8 @@ import '../features/clients/presentation/client_detail/client_detail_view.dart';
 import '../features/clients/presentation/client_detail/client_detail_view_model.dart';
 import '../features/clients/presentation/client_meals/client_meals_view.dart';
 import '../features/clients/presentation/client_meals/client_meals_view_model.dart';
+import '../features/clients/presentation/client_progress/client_progress_view.dart';
+import '../features/clients/presentation/client_progress/client_progress_view_model.dart';
 import '../features/clients/presentation/clients_list/clients_list_view.dart';
 import '../features/clients/presentation/clients_list/clients_list_view_model.dart';
 import '../features/goals/domain/entities/coach_client.dart';
@@ -55,7 +57,10 @@ import '../features/summary/presentation/weekly_summary/weekly_summary_view.dart
 import '../features/summary/presentation/weekly_summary/weekly_summary_view_model.dart';
 import '../features/profile/presentation/profile_form/profile_form_view.dart';
 import '../features/profile/presentation/profile_form/profile_form_view_model.dart';
+import '../features/progress/domain/repositories/progress_repository.dart';
 import '../features/progress/domain/repositories/weights_repository.dart';
+import '../features/progress/presentation/progress_charts/progress_view.dart';
+import '../features/progress/presentation/progress_charts/progress_view_model.dart';
 import '../features/progress/presentation/weights/weights_view.dart';
 import '../features/progress/presentation/weights/weights_view_model.dart';
 import '../features/routines/domain/entities/routine.dart';
@@ -127,6 +132,18 @@ GoRouter createRouter(
           child: const UserHomeView(),
         ),
         routes: [
+          GoRoute(
+            path: AppRoutes.progressChild,
+            pageBuilder: (context, state) => tabPage(
+              state,
+              ChangeNotifierProvider(
+                create: (context) => ProgressViewModel(
+                  repository: context.read<ProgressRepository>(),
+                )..load(),
+                child: const ProgressView(),
+              ),
+            ),
+          ),
           GoRoute(
             path: AppRoutes.weightsChild,
             pageBuilder: (context, state) => tabPage(
@@ -334,6 +351,19 @@ GoRouter createRouter(
             client: state.extra! as CoachClient,
           )..load(),
           child: const ClientMealsView(),
+        ),
+      ),
+      GoRoute(
+        path: AppRoutes.coachClientProgressPattern,
+        // Sin el cliente (p. ej. al restaurar la ruta) se vuelve a la lista.
+        redirect: (_, state) =>
+            state.extra is CoachClient ? null : AppRoutes.coachClients,
+        builder: (context, state) => ChangeNotifierProvider(
+          create: (context) => ClientProgressViewModel(
+            repository: context.read<ProgressRepository>(),
+            client: state.extra! as CoachClient,
+          )..load(),
+          child: const ClientProgressView(),
         ),
       ),
       GoRoute(

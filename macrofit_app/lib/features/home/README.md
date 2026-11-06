@@ -15,7 +15,7 @@ coach, accesos a su código, rutinas y clientes. Ambas usan la guía visual (TEC
 | `presentation/widgets/account_sheet.dart` | Hoja de la cuenta del coach: avatar, nombre, correo, rol y **Cerrar sesión** (`logout_button`, con confirmación `logout_confirm`) |
 | `presentation/widgets/daily_progress_card.dart` | Tarjeta del progreso del día (HU-10): anillos concéntricos de los tres macros; por macro, consumido / meta y lo que falta o el exceso; barra de calorías |
 | `presentation/widgets/current_goal_card.dart` | Tarjeta de la meta: calorías, proteína, grasa y origen («Calculada» / «Definida por tu coach») |
-| (barra inferior) | Ya no vive aquí: es global (`AppDock`, `lib/app/navigation`, ver `lib/app/README.md`). Claves: `home_tab`, `meal_history_button`, `weekly_summary_button`, `weights_button`, `register_meal_button` (usuario) y `clients_button`, `routines_button`, `invite_code_button` (coach) |
+| (barra inferior) | Ya no vive aquí: es global (`AppDock`, `lib/app/navigation`, ver `lib/app/README.md`). Claves: `home_tab`, `meal_history_button`, `weekly_summary_button`, `progress_button` (HU-22), `register_meal_button` (usuario) y `clients_button`, `routines_button`, `invite_code_button` (coach) |
 
 - No tiene capas de datos ni dominio propias todavía; cuando una historia necesite datos de inicio, se agregan aquí
   siguiendo la plantilla de `lib/features/README.md`.
@@ -24,7 +24,7 @@ coach, accesos a su código, rutinas y clientes. Ambas usan la guía visual (TEC
 - `HomeScaffold<T extends HomeViewModel>` lee el ViewModel de la ruta (`HomeViewModel` por omisión, `UserHomeViewModel`
   en la del usuario).
 - `HomeScaffold` recibe el subtítulo, el contenido, la acción del avatar y la barra inferior (`HomeDock`).
-- El registro de peso (HU-21, `/user/weights`) no tenía acceso desde la app; ahora se abre desde **Peso** en la barra.
+- El registro de peso (HU-21, `/user/weights`) se abre desde **Registrar** en "Mi progreso" (HU-22, pestaña **Progreso**).
 - **Cerrar sesión** (HU-02) ya no está en el inicio: el usuario lo encuentra al final de **Mi perfil** y el coach en la
   hoja de su cuenta (al tocar su avatar). Ambos piden confirmación.
 
