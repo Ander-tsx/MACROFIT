@@ -24,6 +24,14 @@ class RoutinesListView extends StatelessWidget {
     await viewModel.load();
   }
 
+  Future<void> _openAssign(BuildContext context, Routine routine) async {
+    // HU-19: la rutina ya está guardada; salir sin asignar no cambia nada.
+    await context.push(
+      AppRoutes.coachRoutineAssign(routine.id),
+      extra: routine,
+    );
+  }
+
   Future<void> _delete(
     BuildContext context,
     RoutinesListViewModel viewModel,
@@ -118,6 +126,7 @@ class RoutinesListView extends StatelessWidget {
                   enabled: !viewModel.isDeleting,
                   onEdit: () =>
                       _openBuilder(context, viewModel, routine: routine),
+                  onAssign: () => _openAssign(context, routine),
                   onDelete: () => _delete(context, viewModel, routine),
                 );
               },
@@ -154,7 +163,7 @@ Future<bool> _confirmDelete(BuildContext context, Routine routine) async {
   return confirmed ?? false;
 }
 
-enum _RoutineAction { edit, delete }
+enum _RoutineAction { edit, assign, delete }
 
 class _RoutineTile extends StatelessWidget {
   const _RoutineTile({
@@ -162,6 +171,7 @@ class _RoutineTile extends StatelessWidget {
     required this.isDeleting,
     required this.enabled,
     required this.onEdit,
+    required this.onAssign,
     required this.onDelete,
   });
 
@@ -169,6 +179,7 @@ class _RoutineTile extends StatelessWidget {
   final bool isDeleting;
   final bool enabled;
   final VoidCallback onEdit;
+  final VoidCallback onAssign;
   final VoidCallback onDelete;
 
   @override
@@ -191,6 +202,7 @@ class _RoutineTile extends StatelessWidget {
               tooltip: 'Opciones',
               onSelected: (action) => switch (action) {
                 _RoutineAction.edit => onEdit(),
+                _RoutineAction.assign => onAssign(),
                 _RoutineAction.delete => onDelete(),
               },
               itemBuilder: (_) => const [
@@ -198,6 +210,11 @@ class _RoutineTile extends StatelessWidget {
                   key: Key('routine_menu_edit'),
                   value: _RoutineAction.edit,
                   child: Text('Editar'),
+                ),
+                PopupMenuItem(
+                  key: Key('routine_menu_assign'),
+                  value: _RoutineAction.assign,
+                  child: Text('Asignar'),
                 ),
                 PopupMenuItem(
                   key: Key('routine_menu_delete'),

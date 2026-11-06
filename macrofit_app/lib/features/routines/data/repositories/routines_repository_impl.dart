@@ -1,5 +1,6 @@
 import '../../domain/entities/exercise.dart';
 import '../../domain/entities/routine.dart';
+import '../../domain/entities/routine_assignment.dart';
 import '../../domain/repositories/routines_repository.dart';
 import '../datasources/routines_remote_data_source.dart';
 
@@ -27,4 +28,14 @@ class RoutinesRepositoryImpl implements RoutinesRepository {
 
   @override
   Future<void> deleteRoutine(String id) => _remote.deleteRoutine(id);
+
+  @override
+  Future<List<RoutineAssignment>> getAssignments(String routineId) =>
+      _remote.getAssignments(routineId);
+
+  @override
+  Future<List<RoutineAssignment>> assignRoutine(
+    String routineId,
+    List<String> clientIds,
+  ) => _remote.assignRoutine(routineId, clientIds);
 }

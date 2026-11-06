@@ -7,7 +7,7 @@ Historias implementadas: **HU-01** (registro con rol y aviso de privacidad), **H
 cierre de sesión), **HU-03** (perfil inicial del usuario y su edición), **HU-05** (el coach fija las metas de sus clientes),
 **HU-06** (tomar o elegir la foto de la comida y subirla), **HU-07** (estimación nutricional de la foto), **HU-08** (corrección de los valores y captura manual), **HU-09** (guardar, historial del día y eliminación de registros), **HU-12** (código de invitación del coach: ver, copiar,
 compartir y regenerar), **HU-18** (constructor de rutinas del coach: crear, editar y eliminar con ejercicios del
-catálogo), **HU-24** (lista de clientes del coach con búsqueda y detalle de cada uno), **HU-25** (registro
+catálogo), **HU-19** (asignar una rutina a uno o varios clientes vinculados), **HU-24** (lista de clientes del coach con búsqueda y detalle de cada uno), **HU-25** (registro
 diario de comidas de un cliente, de solo lectura para el coach) y **HU-26** (meta vigente en la pantalla principal del
 usuario), **HU-10** (progreso del día contra la meta) y **HU-11** (resumen semanal con gráfica).
 
@@ -105,7 +105,7 @@ lib/
     ├── meals/             # HU-06 foto de la comida, HU-07 estimación, HU-08 corrección, HU-09 historial
     ├── clients/           # HU-24 lista de clientes del coach y detalle, HU-25 comidas del cliente
     ├── invite_code/       # HU-12 código de invitación del coach
-    ├── routines/          # HU-18 constructor de rutinas del coach (catálogo de TEC-09)
+    ├── routines/          # HU-18 constructor de rutinas del coach (catálogo de TEC-09) y HU-19 asignación a clientes
     └── home/              # Pantallas principales por rol (solo presentación por ahora)
 ```
 

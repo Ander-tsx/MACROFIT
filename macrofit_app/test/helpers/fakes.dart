@@ -42,6 +42,7 @@ import 'package:macrofit_app/features/progress/domain/entities/weight_entry.dart
 import 'package:macrofit_app/features/progress/domain/repositories/weights_repository.dart';
 import 'package:macrofit_app/features/routines/domain/entities/exercise.dart';
 import 'package:macrofit_app/features/routines/domain/entities/routine.dart';
+import 'package:macrofit_app/features/routines/domain/entities/routine_assignment.dart';
 import 'package:macrofit_app/features/routines/domain/repositories/routines_repository.dart';
 
 /// Usuario que ya capturó su perfil (HU-03): entra a la pantalla principal.
@@ -1001,12 +1002,29 @@ final testLegRoutine = Routine(
 /// Rutinas y catálogo en memoria (simula `/coach/routines` y `GET /exercises`).
 /// Crear, editar y eliminar cambian [routines], así que recargar muestra el cambio.
 class FakeRoutinesRepository implements RoutinesRepository {
-  FakeRoutinesRepository({List<Routine>? routines, List<Exercise>? exercises})
-    : routines = routines ?? [testRoutine, testLegRoutine],
-      exercises = exercises ?? [...testExercises];
+  FakeRoutinesRepository({
+    List<Routine>? routines,
+    List<Exercise>? exercises,
+    Map<String, List<RoutineAssignment>>? assignments,
+  }) : routines = routines ?? [testRoutine, testLegRoutine],
+       exercises = exercises ?? [...testExercises],
+       assignments = assignments ?? {};
 
   List<Routine> routines;
   List<Exercise> exercises;
+
+  /// HU-19: asignaciones activas por id de rutina.
+  Map<String, List<RoutineAssignment>> assignments;
+
+  /// HU-19: errores de `getAssignments` y `assignRoutine`.
+  ApiException? assignmentsError;
+  ApiException? assignError;
+
+  /// HU-19: si se asigna, `assignRoutine` espera a que se complete.
+  Completer<void>? assignGate;
+
+  final assignmentRequests = <String>[];
+  final assignCalls = <({String routineId, List<String> clientIds})>[];
 
   /// Si se asigna, las siguientes llamadas del tipo correspondiente lanzan este error.
   ApiException? listError;
@@ -1074,6 +1092,40 @@ class FakeRoutinesRepository implements RoutinesRepository {
     routines = [...routines.where((item) => item.id != id)];
   }
 
+  @override
+  Future<List<RoutineAssignment>> getAssignments(String routineId) async {
+    assignmentRequests.add(routineId);
+    if (assignmentsError case final error?) throw error;
+    return [...?assignments[routineId]];
+  }
+
+  @override
+  Future<List<RoutineAssignment>> assignRoutine(
+    String routineId,
+    List<String> clientIds,
+  ) async {
+    assignCalls.add((routineId: routineId, clientIds: [...clientIds]));
+    await assignGate?.future;
+    if (assignError case final error?) throw error;
+    final current = [...?assignments[routineId]];
+    final result = <RoutineAssignment>[];
+    for (final clientId in clientIds) {
+      final existing = current.where((item) => item.clientId == clientId);
+      if (existing.isNotEmpty) {
+        result.add(existing.first);
+        continue;
+      }
+      final assignment = testAssignment(
+        routineId: routineId,
+        clientId: clientId,
+      );
+      current.insert(0, assignment);
+      result.add(assignment);
+    }
+    assignments[routineId] = current;
+    return result;
+  }
+
   Routine _routineOf(String id, RoutineDraft draft) {
     final now = DateTime.utc(2026, 10, 27, 12);
     return Routine(
@@ -1100,6 +1152,19 @@ class FakeRoutinesRepository implements RoutinesRepository {
     );
   }
 }
+
+/// Asignación activa de una rutina a un cliente (HU-19).
+RoutineAssignment testAssignment({
+  String? routineId,
+  required String clientId,
+  String clientName = 'Cliente',
+}) => RoutineAssignment(
+  id: '6b10${clientId.substring(4)}',
+  routineId: routineId ?? testRoutine.id,
+  clientId: clientId,
+  clientName: clientName,
+  assignedAt: DateTime.utc(2026, 11, 5, 18),
+);
 
 class FakeCoachLinkRepository implements CoachLinkRepository {
   FakeCoachLinkRepository({

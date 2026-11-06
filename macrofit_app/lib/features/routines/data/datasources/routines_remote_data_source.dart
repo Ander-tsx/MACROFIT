@@ -4,9 +4,11 @@ import '../../../../core/network/dio_factory.dart';
 import '../../domain/entities/exercise.dart';
 import '../../domain/entities/routine.dart';
 import '../models/exercise_model.dart';
+import '../models/routine_assignment_model.dart';
 import '../models/routine_model.dart';
 
-/// Endpoints de rutinas del coach (HU-18) y del catálogo de ejercicios (TEC-09).
+/// Endpoints de rutinas del coach (HU-18), su asignación (HU-19) y del catálogo
+/// de ejercicios (TEC-09).
 /// Usa el cliente HTTP **con** `AuthInterceptor`.
 class RoutinesRemoteDataSource {
   const RoutinesRemoteDataSource(this._dio);
@@ -65,5 +67,32 @@ class RoutinesRemoteDataSource {
   /// HU-18 — `DELETE /coach/routines/{id}` (`204` sin cuerpo).
   Future<void> deleteRoutine(String id) => guardApiCall(() async {
     await _dio.delete<void>('$_routines/$id');
+  });
+
+  /// HU-19 — `GET /coach/routines/{id}/assignments`.
+  Future<List<RoutineAssignmentModel>> getAssignments(String routineId) =>
+      guardApiCall(() async {
+        final response = await _dio.get<List<dynamic>>(
+          '$_routines/$routineId/assignments',
+        );
+        return [
+          for (final json in response.data!)
+            RoutineAssignmentModel.fromJson(json as Map<String, dynamic>),
+        ];
+      });
+
+  /// HU-19 — `POST /coach/routines/{id}/assignments` (`201`).
+  Future<List<RoutineAssignmentModel>> assignRoutine(
+    String routineId,
+    List<String> clientIds,
+  ) => guardApiCall(() async {
+    final response = await _dio.post<List<dynamic>>(
+      '$_routines/$routineId/assignments',
+      data: AssignRoutineRequestModel.toJson(clientIds),
+    );
+    return [
+      for (final json in response.data!)
+        RoutineAssignmentModel.fromJson(json as Map<String, dynamic>),
+    ];
   });
 }
