@@ -5,6 +5,10 @@ import 'package:macrofit_app/core/presentation/theme/app_colors.dart';
 import 'package:macrofit_app/core/presentation/widgets/app_avatar.dart';
 import 'package:macrofit_app/core/presentation/widgets/app_header.dart';
 import 'package:macrofit_app/core/presentation/widgets/app_snack_bar.dart';
+import 'package:macrofit_app/core/presentation/widgets/charts/chart_data.dart';
+import 'package:macrofit_app/core/presentation/widgets/charts/ratio_bars.dart';
+import 'package:macrofit_app/core/presentation/widgets/charts/target_bar_chart.dart';
+import 'package:macrofit_app/core/presentation/widgets/charts/trend_line_chart.dart';
 import 'package:macrofit_app/core/presentation/widgets/choice_pills.dart';
 import 'package:macrofit_app/core/presentation/widgets/confirm_dialog.dart';
 import 'package:macrofit_app/core/presentation/widgets/count_up_text.dart';
@@ -448,6 +452,94 @@ void main() {
       await tester.tap(find.text('guardar'));
       await tester.pumpAndSettle();
       expect(find.text('Comida registrada'), findsOneWidget);
+    });
+  });
+
+  group('Gráficas (HU-22)', () {
+    testWidgets('TargetBarChart rotula las barras y describe cada día', (
+      tester,
+    ) async {
+      await pumpThemed(
+        tester,
+        const SizedBox(
+          width: 320,
+          child: TargetBarChart(
+            color: AppPalette.green300,
+            bars: [
+              TargetBar(
+                label: 'lun',
+                value: 1900,
+                target: 2000,
+                met: true,
+                semanticLabel: 'lunes: 1900 de 2000 kcal',
+              ),
+              TargetBar(label: 'mar', value: 0, target: 2000),
+            ],
+          ),
+        ),
+      );
+      expect(find.text('lun'), findsOneWidget);
+      expect(find.text('mar'), findsOneWidget);
+      expect(find.bySemanticsLabel('lunes: 1900 de 2000 kcal'), findsOneWidget);
+    });
+
+    testWidgets('TargetBarChart con un mes muestra solo algunas etiquetas', (
+      tester,
+    ) async {
+      await pumpThemed(
+        tester,
+        SizedBox(
+          width: 360,
+          child: TargetBarChart(
+            color: AppPalette.green300,
+            bars: [
+              for (var day = 1; day <= 30; day++)
+                TargetBar(label: '$day', value: day * 10.0, target: 200),
+            ],
+          ),
+        ),
+      );
+      expect(find.text('1'), findsOneWidget);
+      expect(find.text('2'), findsNothing);
+    });
+
+    testWidgets('TrendLineChart muestra el rango de valores y de fechas', (
+      tester,
+    ) async {
+      await pumpThemed(
+        tester,
+        SizedBox(
+          width: 320,
+          child: TrendLineChart(
+            color: AppPalette.cyan300,
+            formatValue: (value) => '$value kg',
+            semanticLabel: 'Peso',
+            points: const [
+              ChartPoint(label: '30 oct', value: 73.1),
+              ChartPoint(label: '4 nov', value: 72.4),
+            ],
+          ),
+        ),
+      );
+      expect(find.bySemanticsLabel('Peso'), findsOneWidget);
+    });
+
+    testWidgets('RatioBars muestra cada semana con su avance', (tester) async {
+      await pumpThemed(
+        tester,
+        const SizedBox(
+          width: 320,
+          child: RatioBars(
+            color: AppPalette.purple300,
+            unit: 'sesiones',
+            items: [RatioItem(label: '30 oct – 5 nov', value: 2, total: 4)],
+          ),
+        ),
+      );
+      expect(
+        find.bySemanticsLabel('30 oct – 5 nov: 2 de 4 sesiones'),
+        findsOneWidget,
+      );
     });
   });
 }

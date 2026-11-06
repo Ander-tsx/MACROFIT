@@ -16,6 +16,7 @@ import '../features/meals/domain/repositories/meals_repository.dart';
 import '../features/profile/domain/repositories/profile_repository.dart';
 import '../features/summary/domain/repositories/summary_repository.dart';
 import '../features/routines/domain/repositories/routines_repository.dart';
+import '../features/progress/domain/repositories/progress_repository.dart';
 import '../features/progress/domain/repositories/weights_repository.dart';
 import 'dependencies.dart';
 import 'navigation/app_shell.dart';
@@ -88,6 +89,9 @@ class _MacroFitAppState extends State<MacroFitApp> {
         ),
         Provider<WeightsRepository>.value(
           value: dependencies.weightsRepository,
+        ),
+        Provider<ProgressRepository>.value(
+          value: dependencies.progressRepository,
         ),
         Provider<RoutinesRepository>.value(
           value: dependencies.routinesRepository,

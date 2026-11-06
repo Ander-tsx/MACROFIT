@@ -6,6 +6,7 @@
   pasos 1 y 2). Reemplaza la lista mínima de clientes que dejó HU-05 en `features/goals`.
 - **HU-25**: "Como coach, quiero consultar el registro diario de comidas de un cliente para revisar su alimentación."
   (RF-20, RN-04, RN-07, RNF-05, CU-03 paso 3). Solo lectura.
+- **HU-23**: "Como coach, quiero ver el progreso histórico de mi cliente." (RF-25, RN-04, RNF-11). Solo lectura.
 
 ## Archivos
 
@@ -20,7 +21,8 @@
 | | `models/client_meal_model.dart` | JSON de un registro; `photo_url` puede ser `null` |
 | | `repositories/clients_repository_impl.dart` | `ClientsRepositoryImpl` |
 | Presentación | `clients_list/` | Lista con búsqueda, lista vacía, error con reintento y recarga al deslizar |
-| | `client_detail/` | Resumen del cliente y acceso a **Metas** (HU-05) y **Comidas** (HU-25) |
+| | `client_detail/` | Resumen del cliente y acceso a **Metas** (HU-05), **Comidas** (HU-25) y **Progreso** (HU-23) |
+| | `client_progress/` | Progreso del cliente: `ClientProgressViewModel` (extiende `ProgressChartsViewModel`) y `ClientProgressView` (usa `ProgressCharts`) |
 | | `client_meals/` | Comidas del día con hora, foto y valores, total del día, cambio de día y cliente desvinculado |
 | | `widgets/client_summary_texts.dart` | Textos del resumen: meta, origen y último registro |
 | | `widgets/client_meal_texts.dart` | Textos de las comidas: cantidades, hora local y nombre del día |
@@ -55,6 +57,22 @@
   que cierra las comidas y el detalle y regresa a la lista (que se recarga y ya no lo muestra). Sin conexión muestra el
   error con **Reintentar**.
 - Si el coach cambia de día antes de que llegue la respuesta del día anterior, esa respuesta se descarta.
+
+## Progreso de un cliente (HU-23)
+
+- **Progreso** en el detalle abre `/coach/clients/:clientId/progress` con el cliente como `extra` (sin él, vuelve a la
+  lista). Pide `GET /coach/clients/{id}/progress?from=&to=` con el cliente con sesión, a través de
+  `ProgressRepository.getClientProgress` (dominio de `progress`: el contrato es el mismo de HU-22).
+- Mismo contenido que "Mi progreso" (HU-22): **Semana / Mes**, periodo anterior y siguiente (nunca futuro), y las
+  tarjetas **Peso**, **Consumo por día** (calorías, proteína o grasa contra la meta de cada día) y **Entrenamiento**.
+  Los textos de los estados vacíos hablan del cliente (`ProgressCopy.client`) y las claves de prueba empiezan con
+  `client_progress_`.
+- **Solo lectura**: la tarjeta de peso no tiene **Registrar** ni hay otros botones de edición.
+- `403 CLIENT_NOT_LINKED` (RN-04) muestra *Este cliente ya no está vinculado contigo.* y **Volver a mis clientes**,
+  que cierra el progreso y el detalle (igual que en las comidas). Sin conexión (RNF-11) muestra el error con
+  **Reintentar**; si ya había un reporte, lo conserva y avisa con un banner.
+- **Reutilización**: `client_progress/` importa `features/progress/presentation/shared/` (el ViewModel base y
+  `ProgressCharts`). Es una excepción documentada a AGENTS.md §3, aprobada para no duplicar las gráficas de HU-22.
 
 ## Decisiones
 

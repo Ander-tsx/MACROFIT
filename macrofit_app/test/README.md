@@ -7,14 +7,15 @@ test/
 ├── helpers/fakes.dart        # Fakes compartidos (repositorios, almacenamiento, adaptador HTTP)
 ├── app/
 │   ├── router_test.dart      # resolveRedirect: guard de sesión y redirección por rol
-│   └── app_test.dart         # Flujos de widgets: carga inicial, login por rol, registro, aviso, logout + atrás, perfil (HU-03), metas por coach (HU-05), foto de la comida (HU-06), estimación nutricional (HU-07), formulario de valores (HU-08), historial de comidas con RNF-09 en 4 toques (HU-09), lista de clientes (HU-24), comidas de un cliente (HU-25), código de invitación (HU-12), rutinas del coach (HU-18), asignar rutina a clientes (HU-19)
+│   └── app_test.dart         # Flujos de widgets: carga inicial, login por rol, registro, aviso, logout + atrás, perfil (HU-03), metas por coach (HU-05), foto de la comida (HU-06), estimación nutricional (HU-07), formulario de valores (HU-08), historial de comidas con RNF-09 en 4 toques (HU-09), lista de clientes (HU-24), comidas de un cliente (HU-25), progreso de un cliente (HU-23), código de invitación (HU-12), rutinas del coach (HU-18), asignar rutina a clientes (HU-19)
 ├── core/presentation/        # Tema (claro/oscuro) y widgets compartidos de la guía visual (TEC-17)
 ├── features/meals/           # MealPhotoValidator, MealPhotoRepositoryImpl (Dio e image_picker simulados) y MealPhotoViewModel; MealsRepositoryImpl (Dio simulado) y MealEstimateViewModel (HU-07); MealValuesValidator y MealFormViewModel (HU-08); MealHistoryViewModel y guardar desde la estimación (HU-09)
 ├── features/profile/         # Validadores, ProfileRepositoryImpl (Dio simulado) y ProfileFormViewModel
 ├── features/goals/           # Cálculo de la meta, validadores, CoachGoalsRepositoryImpl y CoachGoalFormViewModel
+├── features/progress/        # HU-22: ProgressPeriod (semana/mes), ProgressModel y repositorio (Dio simulado; contrato real del backend y `/coach/clients/{id}/progress`), ProgressViewModel; FakeProgressRepository y testProgressReport en helpers
 ├── features/summary/         # SummaryRepositoryImpl (Dio simulado) `appDay`/`shiftDay` (día en hora de México, HU-10) y `WeeklySummaryViewModel` (HU-11); el progreso del día se prueba en `features/home` y `app/`
 ├── features/invite_code/     # InviteCodeRepositoryImpl (Dio simulado) e InviteCodeViewModel (HU-12)
-├── features/clients/         # Búsqueda por nombre, ClientsRepositoryImpl (JSON con nulos), textos del resumen y ViewModels de lista y detalle (HU-24); comidas y fotos con Dio simulado, textos y ViewModel de comidas (HU-25)
+├── features/clients/         # Búsqueda por nombre, ClientsRepositoryImpl (JSON con nulos), textos del resumen y ViewModels de lista y detalle (HU-24); comidas y fotos con Dio simulado, textos y ViewModel de comidas (HU-25); ViewModel del progreso del cliente con `FakeProgressRepository.clientRequests` (HU-23)
 ├── features/routines/        # RoutineValidator, RoutinesRepositoryImpl (Dio simulado) y ViewModels de la lista, el constructor y el selector de ejercicios (HU-18) y de la asignación a clientes (HU-19)
 └── features/auth/
     ├── domain/               # Validadores

@@ -18,7 +18,13 @@ abstract final class AppRoutes {
   /// HU-13: vinculación con el coach mediante código.
   static const coachLink = '/user/coach-link';
 
-  /// HU-21: registro e historial de peso (pestaña "Peso", subruta de `/user`).
+  /// HU-22: gráficas de peso, macros y cumplimiento (pestaña "Progreso",
+  /// subruta de `/user`).
+  static const progressChild = 'progress';
+  static const progress = '$userHome/$progressChild';
+
+  /// HU-21: registro e historial de peso (subruta de `/user`; se abre desde
+  /// "Mi progreso").
   static const weightsChild = 'weights';
   static const weights = '$userHome/$weightsChild';
 
@@ -60,6 +66,11 @@ abstract final class AppRoutes {
   static const coachClientMealsPattern = '/coach/clients/:clientId/meals';
   static String coachClientMeals(String clientId) =>
       '/coach/clients/$clientId/meals';
+
+  /// HU-23: progreso histórico de un cliente (solo lectura).
+  static const coachClientProgressPattern = '/coach/clients/:clientId/progress';
+  static String coachClientProgress(String clientId) =>
+      '/coach/clients/$clientId/progress';
 
   /// HU-05: meta e historial de un cliente.
   static const coachClientGoalsPattern = '/coach/clients/:clientId/goals';
@@ -103,6 +114,7 @@ abstract final class AppRoutes {
     profileEdit,
     coachLink,
     weights,
+    progress,
     mealPhoto,
     mealEstimate,
     mealForm,
