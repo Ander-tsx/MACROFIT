@@ -112,6 +112,7 @@ void main() {
           weightsRepository: weightsRepo,
           progressRepository: progress,
           routinesRepository: routines,
+          myRoutinesRepository: FakeMyRoutinesRepository(),
           shareService: share,
         ),
       ),

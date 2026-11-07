@@ -47,6 +47,15 @@ abstract final class AppRoutes {
   static const weeklySummaryChild = 'summary';
   static const weeklySummary = '$userHome/$weeklySummaryChild';
 
+  /// HU-16: rutinas del usuario (recomendada y asignadas) con su origen.
+  static const myRoutinesChild = 'routines';
+  static const myRoutines = '$userHome/$myRoutinesChild';
+
+  /// HU-16: detalle de una rutina del usuario. Puede recibir en `extra` el
+  /// `UserRoutineSummary` de la lista (para el título mientras carga).
+  static const myRoutineDetailChild = 'routines/:routineId';
+  static String myRoutineDetail(String routineId) => '$myRoutines/$routineId';
+
   /// Pantalla principal del rol `coach`.
   static const coachHome = '/coach';
 
@@ -101,6 +110,14 @@ abstract final class AppRoutes {
   static String coachRoutineAssign(String routineId) =>
       '/coach/routines/$routineId/assign';
 
+  /// Pantallas de un usuario con perfil completo: las de [userRoutes] y el
+  /// detalle de cada rutina (HU-16, `/user/routines/{id}`).
+  static bool isUserRoute(String location) =>
+      userRoutes.contains(location) ||
+      (location.startsWith('$myRoutines/') &&
+          location.length > myRoutines.length + 1 &&
+          !location.substring(myRoutines.length + 1).contains('/'));
+
   /// Pantallas del rol `coach`: su principal y las que cuelgan de ella.
   static bool isCoachRoute(String location) =>
       location == coachHome || location.startsWith('$coachHome/');
@@ -120,5 +137,6 @@ abstract final class AppRoutes {
     mealForm,
     mealHistory,
     weeklySummary,
+    myRoutines,
   };
 }
