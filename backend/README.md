@@ -202,6 +202,7 @@ El contrato completo (cuerpos, respuestas y códigos de error de cada endpoint) 
 | DELETE | `/coach/routines/{id}` | Bearer (coach) | HU-18, HU-19 | Elimina una rutina propia (y retira sus asignaciones) |
 | POST | `/coach/routines/{id}/assignments` | Bearer (coach) | HU-19 | Asigna una rutina propia a uno o varios clientes vinculados |
 | GET | `/coach/routines/{id}/assignments` | Bearer (coach) | HU-19 | Clientes vinculados con la rutina asignada |
+| POST | `/users/me/routines/recommended` | Bearer (user) | HU-15 | Genera y guarda la rutina recomendada (reemplaza la vigente) |
 
 ### Contrato OpenAPI (TEC-14)
 
@@ -865,6 +866,71 @@ Respuesta (cada elemento, POST y GET):
 **Errores:** `400 VALIDATION_ERROR` / `INVALID_BODY` (POST), `401 UNAUTHORIZED` / `TOKEN_REVOKED`,
 `403 FORBIDDEN_ROLE` / `CLIENT_NOT_LINKED` (POST), `404 ROUTINE_NOT_FOUND`.
 
+### Rutina recomendada — POST `/users/me/routines/recommended` (HU-15)
+
+Cabecera `Authorization: Bearer <access_token>`. **Solo rol `user`**. Sin cuerpo. Genera la rutina con el
+[motor de reglas de TEC-10](src/services/README.md#motor-de-rutinas-recomendadas-tec-10) a partir del objetivo, el nivel y
+los días de entrenamiento del perfil (HU-03), con ejercicios del [catálogo de TEC-09](#catálogo-de-ejercicios--exercises-tec-09)
+del nivel del usuario o inferiores, y la guarda con origen `system` (RN-08) en `recommended_routines`
+([esquema](src/models/README.md#colección-recommended_routines-recommended_routiners)).
+
+| Caso | Respuesta |
+|---|---|
+| Usuario con perfil | `201` con la rutina: **una sesión por día de entrenamiento**, nunca más (RF-14) |
+| Pedirla de nuevo | `201` con una rutina nueva (otro `id`). La anterior deja de estar vigente (`replaced`) pero **no se borra**, igual que sus sesiones completadas (HU-17). Siempre hay una sola vigente por usuario |
+| Usuario sin perfil | `404 PROFILE_NOT_FOUND` |
+| El catálogo no tiene ejercicios de algún grupo para el nivel del usuario | `503 EXERCISE_CATALOG_INCOMPLETE`; la rutina vigente no cambia |
+| Cuenta de coach | `403 FORBIDDEN_ROLE` |
+| Sin sesión | `401 UNAUTHORIZED` |
+
+**Respuesta `201`** (perfil `lose_fat`, `beginner`, 3 días; se muestra un ejercicio por sesión):
+
+```json
+{
+  "id": "6b2a...",
+  "origin": "system",
+  "name": "Rutina recomendada · Perder grasa · 3 días",
+  "objective": "lose_fat",
+  "level": "beginner",
+  "training_days": 3,
+  "sessions": [
+    {
+      "number": 1,
+      "name": "Día 1 · Cuerpo completo",
+      "focus": "full_body",
+      "exercises": [
+        {
+          "exercise_id": "6ac6...",
+          "name": "Flexiones de pecho",
+          "muscle_group": "chest",
+          "equipment": "bodyweight",
+          "level": "beginner",
+          "sets": 2,
+          "reps": 15,
+          "rest_seconds": 45
+        }
+      ]
+    }
+  ],
+  "created_at": "2026-11-05T18:00:00Z"
+}
+```
+
+| Campo | Valores |
+|---|---|
+| `origin` | Siempre `system`. Las rutinas asignadas por un coach (HU-19) usan `coach` en HU-16 |
+| `sessions[i].number` / `name` | Numeradas desde 1 con su foco (`Día 1 · Empuje`); no se atan a un día de la semana |
+| `sessions[i].focus` | `full_body` (1–3 días), `upper` / `legs` (4 días), `push` / `pull` / `legs` (5–7 días) |
+| `sets` | 2 `beginner` · 3 `intermediate` · 4 `advanced` |
+| `reps` / `rest_seconds` | 10 / 90 `gain_muscle` · 12 / 60 `maintain` · 15 / 45 `lose_fat` |
+
+**Documento guardado** (lo usan HU-16 y HU-17): `_id` propio por rutina (es el `id` de la respuesta y el
+`routine_id` de las sesiones completadas), `user_id`, `origin: "system"`, los mismos campos de la respuesta y
+`status` `active` | `replaced` (+ `replaced_at`). La vigente de un usuario es la única con `status: "active"`.
+
+**Errores:** `401 UNAUTHORIZED` / `TOKEN_REVOKED`, `403 FORBIDDEN_ROLE`, `404 PROFILE_NOT_FOUND`,
+`503 EXERCISE_CATALOG_INCOMPLETE`.
+
 ### POST `/dev/seed/exercises` (TEC-09)
 
 Solo existe con `APP_ENV=development`; en cualquier otro ambiente la ruta no se monta (`404`). Sin autenticación.
@@ -1016,6 +1082,7 @@ Todas las respuestas de error tienen la misma forma. `fields` siempre es un obje
 | `PHOTO_TOO_LARGE` | 413 | La foto supera 5 MiB (o el cuerpo de la subida supera el límite de la ruta) |
 | `UNSUPPORTED_PHOTO_TYPE` | 415 | La foto no es JPEG ni PNG (se revisa el contenido) |
 | `FOOD_PROVIDER_ERROR` | 502 | El servicio de reconocimiento de alimentos falló (HU-07) |
+| `EXERCISE_CATALOG_INCOMPLETE` | 503 | El catálogo de ejercicios no tiene ejercicios de algún grupo muscular para el nivel del usuario; no se puede generar la rutina recomendada (HU-15). El detalle solo va al log |
 | `FOOD_PROVIDER_TIMEOUT` | 504 | El servicio de reconocimiento de alimentos no respondió en el tiempo de espera (HU-07, máximo 10 s) |
 | `INTERNAL_ERROR` | 500 | Error inesperado (el detalle solo va al log del servidor) |
 

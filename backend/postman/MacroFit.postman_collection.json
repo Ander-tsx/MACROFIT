@@ -2,7 +2,7 @@
   "info": {
     "_postman_id": "b3e0d869-7c85-4871-9d22-4f6a1c2e0001",
     "name": "MacroFit",
-    "description": "ARCHIVO GENERADO por postman/build.js: no lo edites, modifica postman/<modulo>/ y regenera.\n\nAPI del backend de MacroFit (/api/v1). Una carpeta por historia del backlog (HU-XX / TEC-XX). Requiere el entorno \"MacroFit - Local\" (postman/MacroFit.postman_environment.json).\n\nMódulos (en orden): core, openapi, legal, auth, profile, goals, coach_invite_codes, coach_links, weights, exercises, routines, meals, summary. Las carpetas \"... · Cierre\" van al final.",
+    "description": "ARCHIVO GENERADO por postman/build.js: no lo edites, modifica postman/<modulo>/ y regenera.\n\nAPI del backend de MacroFit (/api/v1). Una carpeta por historia del backlog (HU-XX / TEC-XX). Requiere el entorno \"MacroFit - Local\" (postman/MacroFit.postman_environment.json).\n\nMódulos (en orden): core, openapi, legal, auth, profile, goals, coach_invite_codes, coach_links, weights, exercises, routines, recommended_routines, meals, summary. Las carpetas \"... · Cierre\" van al final.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "item": [
@@ -12165,6 +12165,1221 @@
       ]
     },
     {
+      "name": "HU-15 Rutina recomendada",
+      "description": "POST /users/me/routines/recommended: una sesión por día de entrenamiento con ejercicios del nivel del usuario o inferiores; regenerar crea otra rutina vigente; sin perfil 404, coach 403 y sin sesión 401.",
+      "item": [
+        {
+          "name": "00 - Preparación: registrar Usuario Principiante",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    const email = \"recommended.beginner.\" + Date.now() + \".\" + Math.floor(Math.random() * 1e6) + \"@macrofit.test\";",
+                  "    pm.variables.set(\"email\", email);",
+                  "    pm.collectionVariables.set(\"rec_beginner_email\", email);",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 201 Created\", function () {",
+                  "        pm.response.to.have.status(201);",
+                  "    });",
+                  "    pm.test(\"Rol user\", function () {",
+                  "        pm.expect(pm.response.json().role).to.eql(\"user\");",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "register"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Usuario Principiante\",\n  \"email\": \"{{email}}\",\n  \"password\": \"{{test_password}}\",\n  \"role\": \"user\",\n  \"privacy_accepted\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "00 - Preparación: iniciar sesión de Usuario Principiante",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 200 OK\", function () {",
+                  "        pm.response.to.have.status(200);",
+                  "    });",
+                  "    const data = pm.response.json();",
+                  "    pm.test(\"Devuelve access_token\", function () {",
+                  "        pm.expect(data.access_token).to.be.a(\"string\").and.not.empty;",
+                  "    });",
+                  "    pm.collectionVariables.set(\"rec_beginner_token\", data.access_token);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{rec_beginner_email}}\",\n  \"password\": \"{{test_password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "00 - Preparación: perfil de Usuario Principiante",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 201 Created\", function () {",
+                  "        pm.response.to.have.status(201);",
+                  "    });",
+                  "    pm.test(\"Perfil con 3 días\", function () {",
+                  "        pm.expect(pm.response.json().training_days).to.eql(3);",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{rec_beginner_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/me/profile",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "me",
+                "profile"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"weight_kg\": 72.5,\n  \"height_cm\": 170,\n  \"birth_date\": \"1998-03-15\",\n  \"gender\": \"female\",\n  \"level\": \"beginner\",\n  \"training_days\": 3,\n  \"objective\": \"lose_fat\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "00 - Preparación: registrar Usuario Intermedio",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    const email = \"recommended.intermediate.\" + Date.now() + \".\" + Math.floor(Math.random() * 1e6) + \"@macrofit.test\";",
+                  "    pm.variables.set(\"email\", email);",
+                  "    pm.collectionVariables.set(\"rec_intermediate_email\", email);",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 201 Created\", function () {",
+                  "        pm.response.to.have.status(201);",
+                  "    });",
+                  "    pm.test(\"Rol user\", function () {",
+                  "        pm.expect(pm.response.json().role).to.eql(\"user\");",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "register"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Usuario Intermedio\",\n  \"email\": \"{{email}}\",\n  \"password\": \"{{test_password}}\",\n  \"role\": \"user\",\n  \"privacy_accepted\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "00 - Preparación: iniciar sesión de Usuario Intermedio",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 200 OK\", function () {",
+                  "        pm.response.to.have.status(200);",
+                  "    });",
+                  "    const data = pm.response.json();",
+                  "    pm.test(\"Devuelve access_token\", function () {",
+                  "        pm.expect(data.access_token).to.be.a(\"string\").and.not.empty;",
+                  "    });",
+                  "    pm.collectionVariables.set(\"rec_intermediate_token\", data.access_token);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{rec_intermediate_email}}\",\n  \"password\": \"{{test_password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "00 - Preparación: perfil de Usuario Intermedio",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 201 Created\", function () {",
+                  "        pm.response.to.have.status(201);",
+                  "    });",
+                  "    pm.test(\"Perfil con 4 días\", function () {",
+                  "        pm.expect(pm.response.json().training_days).to.eql(4);",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{rec_intermediate_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/me/profile",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "me",
+                "profile"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"weight_kg\": 72.5,\n  \"height_cm\": 170,\n  \"birth_date\": \"1998-03-15\",\n  \"gender\": \"female\",\n  \"level\": \"intermediate\",\n  \"training_days\": 4,\n  \"objective\": \"maintain\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "00 - Preparación: registrar Usuario Avanzado",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    const email = \"recommended.advanced.\" + Date.now() + \".\" + Math.floor(Math.random() * 1e6) + \"@macrofit.test\";",
+                  "    pm.variables.set(\"email\", email);",
+                  "    pm.collectionVariables.set(\"rec_advanced_email\", email);",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 201 Created\", function () {",
+                  "        pm.response.to.have.status(201);",
+                  "    });",
+                  "    pm.test(\"Rol user\", function () {",
+                  "        pm.expect(pm.response.json().role).to.eql(\"user\");",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "register"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Usuario Avanzado\",\n  \"email\": \"{{email}}\",\n  \"password\": \"{{test_password}}\",\n  \"role\": \"user\",\n  \"privacy_accepted\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "00 - Preparación: iniciar sesión de Usuario Avanzado",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 200 OK\", function () {",
+                  "        pm.response.to.have.status(200);",
+                  "    });",
+                  "    const data = pm.response.json();",
+                  "    pm.test(\"Devuelve access_token\", function () {",
+                  "        pm.expect(data.access_token).to.be.a(\"string\").and.not.empty;",
+                  "    });",
+                  "    pm.collectionVariables.set(\"rec_advanced_token\", data.access_token);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{rec_advanced_email}}\",\n  \"password\": \"{{test_password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "00 - Preparación: perfil de Usuario Avanzado",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 201 Created\", function () {",
+                  "        pm.response.to.have.status(201);",
+                  "    });",
+                  "    pm.test(\"Perfil con 6 días\", function () {",
+                  "        pm.expect(pm.response.json().training_days).to.eql(6);",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{rec_advanced_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/me/profile",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "me",
+                "profile"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"weight_kg\": 72.5,\n  \"height_cm\": 170,\n  \"birth_date\": \"1998-03-15\",\n  \"gender\": \"female\",\n  \"level\": \"advanced\",\n  \"training_days\": 6,\n  \"objective\": \"gain_muscle\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "00 - Preparación: registrar Usuario sin perfil",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    const email = \"recommended.noprofile.\" + Date.now() + \".\" + Math.floor(Math.random() * 1e6) + \"@macrofit.test\";",
+                  "    pm.variables.set(\"email\", email);",
+                  "    pm.collectionVariables.set(\"rec_noprofile_email\", email);",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 201 Created\", function () {",
+                  "        pm.response.to.have.status(201);",
+                  "    });",
+                  "    pm.test(\"Rol user\", function () {",
+                  "        pm.expect(pm.response.json().role).to.eql(\"user\");",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "register"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Usuario sin perfil\",\n  \"email\": \"{{email}}\",\n  \"password\": \"{{test_password}}\",\n  \"role\": \"user\",\n  \"privacy_accepted\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "00 - Preparación: iniciar sesión de Usuario sin perfil",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 200 OK\", function () {",
+                  "        pm.response.to.have.status(200);",
+                  "    });",
+                  "    const data = pm.response.json();",
+                  "    pm.test(\"Devuelve access_token\", function () {",
+                  "        pm.expect(data.access_token).to.be.a(\"string\").and.not.empty;",
+                  "    });",
+                  "    pm.collectionVariables.set(\"rec_noprofile_token\", data.access_token);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{rec_noprofile_email}}\",\n  \"password\": \"{{test_password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "00 - Preparación: registrar Coach Rutina Recomendada",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    const email = \"recommended.coach.\" + Date.now() + \".\" + Math.floor(Math.random() * 1e6) + \"@macrofit.test\";",
+                  "    pm.variables.set(\"email\", email);",
+                  "    pm.collectionVariables.set(\"rec_coach_email\", email);",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 201 Created\", function () {",
+                  "        pm.response.to.have.status(201);",
+                  "    });",
+                  "    pm.test(\"Rol coach\", function () {",
+                  "        pm.expect(pm.response.json().role).to.eql(\"coach\");",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "register"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Coach Rutina Recomendada\",\n  \"email\": \"{{email}}\",\n  \"password\": \"{{test_password}}\",\n  \"role\": \"coach\",\n  \"privacy_accepted\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "00 - Preparación: iniciar sesión de Coach Rutina Recomendada",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 200 OK\", function () {",
+                  "        pm.response.to.have.status(200);",
+                  "    });",
+                  "    const data = pm.response.json();",
+                  "    pm.test(\"Devuelve access_token\", function () {",
+                  "        pm.expect(data.access_token).to.be.a(\"string\").and.not.empty;",
+                  "    });",
+                  "    pm.collectionVariables.set(\"rec_coach_token\", data.access_token);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{rec_coach_email}}\",\n  \"password\": \"{{test_password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "01 - Principiante con 3 días: cuerpo completo",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 201 Created\", function () {",
+                  "        pm.response.to.have.status(201);",
+                  "    });",
+                  "    const data = pm.response.json();",
+                  "    pm.test(\"Rutina con origen system y los datos del perfil\", function () {",
+                  "        pm.expect(data.id).to.match(/^[0-9a-f]{24}$/);",
+                  "        pm.expect(data.origin).to.eql(\"system\");",
+                  "        pm.expect(data.objective).to.eql(\"lose_fat\");",
+                  "        pm.expect(data.level).to.eql(\"beginner\");",
+                  "        pm.expect(data.training_days).to.eql(3);",
+                  "        pm.expect(data.name).to.be.a(\"string\").and.include(\"Rutina recomendada\");",
+                  "        pm.expect(data.created_at).to.be.a(\"string\").and.not.empty;",
+                  "        pm.expect(data).to.not.have.property(\"user_id\");",
+                  "        pm.expect(data).to.not.have.property(\"status\");",
+                  "    });",
+                  "    pm.test(\"Una sesión por día de entrenamiento, numeradas desde 1 (RF-14)\", function () {",
+                  "        pm.expect(data.sessions).to.be.an(\"array\").with.lengthOf(3);",
+                  "        data.sessions.forEach(function (s, i) {",
+                  "            pm.expect(s.number).to.eql(i + 1);",
+                  "            pm.expect(s.name).to.match(new RegExp(\"^Día \" + (i + 1) + \" · \"));",
+                  "        });",
+                  "        pm.expect(data.sessions.map(function (s) { return s.focus; })).to.eql([\"full_body\",\"full_body\",\"full_body\"]);",
+                  "    });",
+                  "    pm.test(\"Ejercicios con series, repeticiones y descanso del nivel y objetivo\", function () {",
+                  "        data.sessions.forEach(function (s) {",
+                  "            pm.expect(s.exercises).to.be.an(\"array\").and.not.empty;",
+                  "            s.exercises.forEach(function (e) {",
+                  "                pm.expect(e.exercise_id).to.match(/^[0-9a-f]{24}$/);",
+                  "                pm.expect(e.name).to.be.a(\"string\").and.not.empty;",
+                  "                pm.expect(e.muscle_group).to.be.oneOf([\"chest\", \"back\", \"legs\", \"shoulders\", \"arms\", \"core\"]);",
+                  "                pm.expect(e.equipment).to.be.a(\"string\").and.not.empty;",
+                  "                pm.expect(e.level).to.be.oneOf([\"beginner\"]);",
+                  "                pm.expect([e.sets, e.reps, e.rest_seconds]).to.eql([2, 15, 45]);",
+                  "            });",
+                  "        });",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{rec_beginner_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/me/routines/recommended",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "me",
+                "routines",
+                "recommended"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "02 - Intermedio con 4 días: torso y pierna",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 201 Created\", function () {",
+                  "        pm.response.to.have.status(201);",
+                  "    });",
+                  "    const data = pm.response.json();",
+                  "    pm.test(\"Rutina con origen system y los datos del perfil\", function () {",
+                  "        pm.expect(data.id).to.match(/^[0-9a-f]{24}$/);",
+                  "        pm.expect(data.origin).to.eql(\"system\");",
+                  "        pm.expect(data.objective).to.eql(\"maintain\");",
+                  "        pm.expect(data.level).to.eql(\"intermediate\");",
+                  "        pm.expect(data.training_days).to.eql(4);",
+                  "        pm.expect(data.name).to.be.a(\"string\").and.include(\"Rutina recomendada\");",
+                  "        pm.expect(data.created_at).to.be.a(\"string\").and.not.empty;",
+                  "        pm.expect(data).to.not.have.property(\"user_id\");",
+                  "        pm.expect(data).to.not.have.property(\"status\");",
+                  "    });",
+                  "    pm.test(\"Una sesión por día de entrenamiento, numeradas desde 1 (RF-14)\", function () {",
+                  "        pm.expect(data.sessions).to.be.an(\"array\").with.lengthOf(4);",
+                  "        data.sessions.forEach(function (s, i) {",
+                  "            pm.expect(s.number).to.eql(i + 1);",
+                  "            pm.expect(s.name).to.match(new RegExp(\"^Día \" + (i + 1) + \" · \"));",
+                  "        });",
+                  "        pm.expect(data.sessions.map(function (s) { return s.focus; })).to.eql([\"upper\",\"legs\",\"upper\",\"legs\"]);",
+                  "    });",
+                  "    pm.test(\"Ejercicios con series, repeticiones y descanso del nivel y objetivo\", function () {",
+                  "        data.sessions.forEach(function (s) {",
+                  "            pm.expect(s.exercises).to.be.an(\"array\").and.not.empty;",
+                  "            s.exercises.forEach(function (e) {",
+                  "                pm.expect(e.exercise_id).to.match(/^[0-9a-f]{24}$/);",
+                  "                pm.expect(e.name).to.be.a(\"string\").and.not.empty;",
+                  "                pm.expect(e.muscle_group).to.be.oneOf([\"chest\", \"back\", \"legs\", \"shoulders\", \"arms\", \"core\"]);",
+                  "                pm.expect(e.equipment).to.be.a(\"string\").and.not.empty;",
+                  "                pm.expect(e.level).to.be.oneOf([\"beginner\",\"intermediate\"]);",
+                  "                pm.expect([e.sets, e.reps, e.rest_seconds]).to.eql([3, 12, 60]);",
+                  "            });",
+                  "        });",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{rec_intermediate_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/me/routines/recommended",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "me",
+                "routines",
+                "recommended"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "03 - Avanzado con 6 días: empuje, tirón y pierna",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 201 Created\", function () {",
+                  "        pm.response.to.have.status(201);",
+                  "    });",
+                  "    const data = pm.response.json();",
+                  "    pm.test(\"Rutina con origen system y los datos del perfil\", function () {",
+                  "        pm.expect(data.id).to.match(/^[0-9a-f]{24}$/);",
+                  "        pm.expect(data.origin).to.eql(\"system\");",
+                  "        pm.expect(data.objective).to.eql(\"gain_muscle\");",
+                  "        pm.expect(data.level).to.eql(\"advanced\");",
+                  "        pm.expect(data.training_days).to.eql(6);",
+                  "        pm.expect(data.name).to.be.a(\"string\").and.include(\"Rutina recomendada\");",
+                  "        pm.expect(data.created_at).to.be.a(\"string\").and.not.empty;",
+                  "        pm.expect(data).to.not.have.property(\"user_id\");",
+                  "        pm.expect(data).to.not.have.property(\"status\");",
+                  "    });",
+                  "    pm.test(\"Una sesión por día de entrenamiento, numeradas desde 1 (RF-14)\", function () {",
+                  "        pm.expect(data.sessions).to.be.an(\"array\").with.lengthOf(6);",
+                  "        data.sessions.forEach(function (s, i) {",
+                  "            pm.expect(s.number).to.eql(i + 1);",
+                  "            pm.expect(s.name).to.match(new RegExp(\"^Día \" + (i + 1) + \" · \"));",
+                  "        });",
+                  "        pm.expect(data.sessions.map(function (s) { return s.focus; })).to.eql([\"push\",\"pull\",\"legs\",\"push\",\"pull\",\"legs\"]);",
+                  "    });",
+                  "    pm.test(\"Ejercicios con series, repeticiones y descanso del nivel y objetivo\", function () {",
+                  "        data.sessions.forEach(function (s) {",
+                  "            pm.expect(s.exercises).to.be.an(\"array\").and.not.empty;",
+                  "            s.exercises.forEach(function (e) {",
+                  "                pm.expect(e.exercise_id).to.match(/^[0-9a-f]{24}$/);",
+                  "                pm.expect(e.name).to.be.a(\"string\").and.not.empty;",
+                  "                pm.expect(e.muscle_group).to.be.oneOf([\"chest\", \"back\", \"legs\", \"shoulders\", \"arms\", \"core\"]);",
+                  "                pm.expect(e.equipment).to.be.a(\"string\").and.not.empty;",
+                  "                pm.expect(e.level).to.be.oneOf([\"beginner\",\"intermediate\",\"advanced\"]);",
+                  "                pm.expect([e.sets, e.reps, e.rest_seconds]).to.eql([4, 10, 90]);",
+                  "            });",
+                  "        });",
+                  "    });",
+                  "    pm.collectionVariables.set(\"rec_advanced_routine_id\", data.id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{rec_advanced_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/me/routines/recommended",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "me",
+                "routines",
+                "recommended"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "04 - Regenerar: reemplaza la rutina anterior",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 201 Created\", function () {",
+                  "        pm.response.to.have.status(201);",
+                  "    });",
+                  "    const data = pm.response.json();",
+                  "    pm.test(\"Rutina con origen system y los datos del perfil\", function () {",
+                  "        pm.expect(data.id).to.match(/^[0-9a-f]{24}$/);",
+                  "        pm.expect(data.origin).to.eql(\"system\");",
+                  "        pm.expect(data.objective).to.eql(\"gain_muscle\");",
+                  "        pm.expect(data.level).to.eql(\"advanced\");",
+                  "        pm.expect(data.training_days).to.eql(6);",
+                  "        pm.expect(data.name).to.be.a(\"string\").and.include(\"Rutina recomendada\");",
+                  "        pm.expect(data.created_at).to.be.a(\"string\").and.not.empty;",
+                  "        pm.expect(data).to.not.have.property(\"user_id\");",
+                  "        pm.expect(data).to.not.have.property(\"status\");",
+                  "    });",
+                  "    pm.test(\"Una sesión por día de entrenamiento, numeradas desde 1 (RF-14)\", function () {",
+                  "        pm.expect(data.sessions).to.be.an(\"array\").with.lengthOf(6);",
+                  "        data.sessions.forEach(function (s, i) {",
+                  "            pm.expect(s.number).to.eql(i + 1);",
+                  "            pm.expect(s.name).to.match(new RegExp(\"^Día \" + (i + 1) + \" · \"));",
+                  "        });",
+                  "        pm.expect(data.sessions.map(function (s) { return s.focus; })).to.eql([\"push\",\"pull\",\"legs\",\"push\",\"pull\",\"legs\"]);",
+                  "    });",
+                  "    pm.test(\"Ejercicios con series, repeticiones y descanso del nivel y objetivo\", function () {",
+                  "        data.sessions.forEach(function (s) {",
+                  "            pm.expect(s.exercises).to.be.an(\"array\").and.not.empty;",
+                  "            s.exercises.forEach(function (e) {",
+                  "                pm.expect(e.exercise_id).to.match(/^[0-9a-f]{24}$/);",
+                  "                pm.expect(e.name).to.be.a(\"string\").and.not.empty;",
+                  "                pm.expect(e.muscle_group).to.be.oneOf([\"chest\", \"back\", \"legs\", \"shoulders\", \"arms\", \"core\"]);",
+                  "                pm.expect(e.equipment).to.be.a(\"string\").and.not.empty;",
+                  "                pm.expect(e.level).to.be.oneOf([\"beginner\",\"intermediate\",\"advanced\"]);",
+                  "                pm.expect([e.sets, e.reps, e.rest_seconds]).to.eql([4, 10, 90]);",
+                  "            });",
+                  "        });",
+                  "    });",
+                  "    pm.test(\"Es una rutina nueva: reemplaza a la anterior\", function () {",
+                  "        pm.expect(data.id).to.not.eql(pm.collectionVariables.get(\"rec_advanced_routine_id\"));",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{rec_advanced_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/me/routines/recommended",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "me",
+                "routines",
+                "recommended"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "05 - Usuario sin perfil: 404 PROFILE_NOT_FOUND",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 404 Not Found\", function () {",
+                  "        pm.response.to.have.status(404);",
+                  "    });",
+                  "    const error = pm.response.json().error;",
+                  "    pm.test(\"Código PROFILE_NOT_FOUND con la forma de error de la API\", function () {",
+                  "        pm.expect(error.code).to.eql(\"PROFILE_NOT_FOUND\");",
+                  "        pm.expect(error.message).to.be.a(\"string\").and.not.empty;",
+                  "        pm.expect(error.fields).to.be.an(\"object\");",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{rec_noprofile_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/me/routines/recommended",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "me",
+                "routines",
+                "recommended"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "06 - Cuenta de coach: 403 FORBIDDEN_ROLE",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 403 Forbidden\", function () {",
+                  "        pm.response.to.have.status(403);",
+                  "    });",
+                  "    const error = pm.response.json().error;",
+                  "    pm.test(\"Código FORBIDDEN_ROLE con la forma de error de la API\", function () {",
+                  "        pm.expect(error.code).to.eql(\"FORBIDDEN_ROLE\");",
+                  "        pm.expect(error.message).to.be.a(\"string\").and.not.empty;",
+                  "        pm.expect(error.fields).to.be.an(\"object\");",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{rec_coach_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/me/routines/recommended",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "me",
+                "routines",
+                "recommended"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "07 - Sin sesión: 401 UNAUTHORIZED",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 401 Unauthorized\", function () {",
+                  "        pm.response.to.have.status(401);",
+                  "    });",
+                  "    const error = pm.response.json().error;",
+                  "    pm.test(\"Código UNAUTHORIZED con la forma de error de la API\", function () {",
+                  "        pm.expect(error.code).to.eql(\"UNAUTHORIZED\");",
+                  "        pm.expect(error.message).to.be.a(\"string\").and.not.empty;",
+                  "        pm.expect(error.fields).to.be.an(\"object\");",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/me/routines/recommended",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "me",
+                "routines",
+                "recommended"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
       "name": "HU-06 Carga de foto",
       "description": "HU-06: el usuario sube la foto de su comida (POST /api/v1/meals/photos, multipart con el campo \"photo\"). Solo JPEG y PNG, detectados por contenido, y máximo 5 MiB (TEC-13).\n\nLos archivos de prueba están en backend/postman/meals/files/ y se referencian relativos a backend/: en Postman, Settings → General → Working directory debe ser la carpeta backend/ del repositorio (newman se ejecuta desde backend/). Ejecutar en orden.",
       "item": [
@@ -20877,6 +22092,62 @@
     {
       "key": "hu19_routine_id",
       "value": ""
+    },
+    {
+      "key": "rec_beginner_email",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "rec_beginner_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "rec_intermediate_email",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "rec_intermediate_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "rec_advanced_email",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "rec_advanced_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "rec_noprofile_email",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "rec_noprofile_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "rec_coach_email",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "rec_coach_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "rec_advanced_routine_id",
+      "value": "",
+      "type": "string",
+      "description": "Id de la primera rutina del usuario avanzado (para comprobar que regenerar crea otra)."
     },
     {
       "key": "meals_user_email",

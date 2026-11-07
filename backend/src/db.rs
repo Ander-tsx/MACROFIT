@@ -15,6 +15,7 @@ use crate::models::goal::{GOALS_COLLECTION, NutritionalGoal};
 use crate::models::meal::{MEALS_COLLECTION, Meal};
 use crate::models::meal_photo::{MEAL_PHOTOS_CHUNKS_COLLECTION, MEAL_PHOTOS_FILES_COLLECTION};
 use crate::models::profile::{PROFILES_COLLECTION, UserProfile};
+use crate::models::recommended_routine::{RECOMMENDED_ROUTINES_COLLECTION, RecommendedRoutine};
 use crate::models::refresh_token::{REFRESH_TOKENS_COLLECTION, RefreshToken};
 use crate::models::routine::{ROUTINES_COLLECTION, Routine};
 use crate::models::routine_assignment::{ROUTINE_ASSIGNMENTS_COLLECTION, RoutineAssignment};
@@ -310,4 +311,20 @@ async fn ensure_indexes(db: &Database) {
         .create_indexes(assignment_indexes)
         .await
         .expect("No se pudieron crear los índices de routine_assignments (¿hay asignaciones activas repetidas?)");
+
+    // HU-15: una sola rutina recomendada vigente por usuario (las reemplazadas quedan como historial).
+    let recommended_active_unique = IndexModel::builder()
+        .keys(doc! { "user_id": 1 })
+        .options(
+            IndexOptions::builder()
+                .unique(true)
+                .partial_filter_expression(doc! { "status": "active" })
+                .name("user_id_active_unique".to_string())
+                .build(),
+        )
+        .build();
+    db.collection::<RecommendedRoutine>(RECOMMENDED_ROUTINES_COLLECTION)
+        .create_index(recommended_active_unique)
+        .await
+        .expect("No se pudo crear el índice de recommended_routines (¿hay dos rutinas vigentes de un usuario?)");
 }

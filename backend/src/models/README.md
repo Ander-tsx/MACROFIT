@@ -211,6 +211,29 @@ Reasignar una rutina retirada crea un documento nuevo (la retirada queda como hi
   una sola asignación activa por rutina y cliente; las retiradas no cuentan.
 - `client_id_status` → `{ client_id: 1, status: 1 }` (rutinas asignadas a un usuario, HU-16).
 
+## Colección `recommended_routines` (`recommended_routine.rs`)
+
+Rutinas recomendadas por el sistema a un usuario (HU-15, RF-14). Se crean con `POST /users/me/routines/recommended`
+a partir del motor de TEC-10. **Forma compartida** con HU-16-API (lista y detalle con su origen) y HU-17-API (sesiones
+completadas, que guardan el `_id` como `routine_id`).
+
+| Campo | Tipo | Notas |
+|---|---|---|
+| `_id` | ObjectId | Se expone como `id` (hex). Uno nuevo cada vez que se genera |
+| `user_id` | ObjectId | → `users._id` (rol `user`); no se expone |
+| `origin` | `"system"` | Origen de la rutina (RN-08). `RoutineOrigin` también tiene `coach` para las asignadas (HU-16) |
+| `name` | string | `Rutina recomendada · <objetivo> · <N> días` |
+| `objective` / `level` / `training_days` | string / string / int | Valores del perfil con que se generó |
+| `sessions` | array | Una por día de entrenamiento, en orden: `{ number, name, focus, exercises }` |
+| `sessions.number` / `name` / `focus` | int / string / string | Desde 1; `Día 1 · Empuje`; `full_body`, `upper`, `push`, `pull` o `legs` |
+| `sessions.exercises` | array | `{ exercise_id, name, muscle_group, equipment, level, sets, reps, rest_seconds }`; `exercise_id` → `exercises._id` y el resto del ejercicio es copia del catálogo |
+| `status` | `"active"` \| `"replaced"` | `active`: la vigente. `replaced`: se generó otra después; se conserva como historial |
+| `created_at` | ISODate | Momento en que se generó |
+| `replaced_at` | ISODate \| ausente | Solo si `status` es `replaced` |
+
+**Índices:** `user_id_active_unique` → `{ user_id: 1 }`, único **parcial** (`{ status: "active" }`): una sola rutina
+vigente por usuario; las reemplazadas no cuentan.
+
 ## Colección `exercises` (`exercise.rs`)
 
 Catálogo base de ejercicios precargados (TEC-09) para las rutinas recomendadas del motor de reglas (TEC-10 / RF-14)
