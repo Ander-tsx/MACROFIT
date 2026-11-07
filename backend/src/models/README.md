@@ -234,6 +234,34 @@ completadas, que guardan el `_id` como `routine_id`).
 **Índices:** `user_id_active_unique` → `{ user_id: 1 }`, único **parcial** (`{ status: "active" }`): una sola rutina
 vigente por usuario; las reemplazadas no cuentan.
 
+## Colección `routine_sessions` (`routine_session.rs`)
+
+Sesión de una rutina que el usuario marcó como completada (HU-17, RF-16). Se crea con
+`POST /users/me/routines/{id}/sessions`. **Forma compartida** con HU-22-API (cumplimiento semanal: contar por
+`user_id` y `date`) y con HU-15-API (las sesiones de la recomendada usan su `routine_id` y sus números de sesión).
+Nunca se borra al editar, regenerar o retirar la rutina (RF-24).
+
+| Campo | Tipo | Notas |
+|---|---|---|
+| `_id` | ObjectId | Se expone como `id` (hex) |
+| `user_id` | ObjectId | → `users._id` (rol `user`); no se expone |
+| `routine_id` | ObjectId | → `routines._id` (origen `coach`) o id de la rutina recomendada (origen `system`, HU-15) |
+| `origin` | `"system"` \| `"coach"` | Mismos valores que el `origin` de HU-16 (RN-08) |
+| `coach_id` | ObjectId \| ausente | Coach dueño de la rutina; solo con origen `coach`; no se expone |
+| `assignment_id` | ObjectId \| ausente | `routine_assignments._id` vigente al registrar; solo con origen `coach`; no se expone |
+| `routine_name` | string | Copia del nombre de la rutina al registrar |
+| `session_number` | int | Número de la sesión (1 en las asignadas) |
+| `session_name` | string | Copia del nombre de la sesión (en las asignadas, el nombre de la rutina) |
+| `date` | string `YYYY-MM-DD` | Día de cumplimiento en hora de México (`APP_UTC_OFFSET`), igual que `meals.date` |
+| `completed_at` | ISODate | Instante del registro |
+
+**Índices:**
+- `user_id_routine_id_session_number_date_unique` → `{ user_id: 1, routine_id: 1, session_number: 1, date: 1 }`, único:
+  la misma sesión una vez por día (`SESSION_ALREADY_COMPLETED`).
+- `user_id_routine_id_date_completed_at` → `{ user_id: 1, routine_id: 1, date: -1, completed_at: -1 }` (lista de una
+  rutina, la más reciente primero).
+- `user_id_date` → `{ user_id: 1, date: 1 }` (sesiones de un usuario en un rango de días, cumplimiento de HU-22).
+
 ## Colección `exercises` (`exercise.rs`)
 
 Catálogo base de ejercicios precargados (TEC-09) para las rutinas recomendadas del motor de reglas (TEC-10 / RF-14)

@@ -1,5 +1,6 @@
 //! HU-18 — rutas de las rutinas personalizadas del coach (`/coach/routines`, solo rol coach).
 //! HU-19 — asignación de una rutina a clientes (`/coach/routines/{id}/assignments`).
+//! HU-17 — sesiones completadas de una rutina del usuario (`/users/me/routines/{id}/sessions`, solo rol user).
 
 use axum::{
     Json, Router,
@@ -11,10 +12,12 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use utoipa::ToSchema;
 
-use crate::auth::middleware::CoachOnly;
+use crate::auth::middleware::{CoachOnly, UserOnly};
 use crate::error::{ApiJson, AppError, ErrorResponse};
 use crate::models::routine::{Routine, RoutineExercise};
+use crate::models::routine_session::{RoutineOrigin, RoutineSession};
 use crate::services::routine_assignments::{self, AssignmentView};
+use crate::services::routine_sessions;
 use crate::services::routines::{self, RoutineInput};
 use crate::state::AppState;
 
@@ -338,6 +341,122 @@ pub async fn list_assignments_handler(
     Ok(Json(views.into_iter().map(Into::into).collect()))
 }
 
+#[derive(Debug, Deserialize, ToSchema)]
+#[schema(description = "Sesión de la rutina que se marca como completada.")]
+pub struct CompleteSessionRequest {
+    /// Número de la sesión dentro de la rutina: de 1 al número de sesiones en la recomendada; siempre 1 en una
+    /// rutina asignada por un coach.
+    #[schema(value_type = i32, required = true, example = 1, minimum = 1)]
+    pub session_number: Option<Value>,
+    /// Día en que se completó (YYYY-MM-DD, hora de México según `APP_UTC_OFFSET`). Opcional: por defecto hoy. No
+    /// puede ser futuro.
+    #[schema(value_type = Option<String>, format = Date, example = "2026-11-06")]
+    pub date: Option<Value>,
+}
+
+#[derive(Debug, Serialize, ToSchema)]
+pub struct RoutineSessionResponse {
+    /// Id de la sesión completada.
+    #[schema(example = "6b2042d1ac968514f2732401")]
+    pub id: String,
+    #[schema(example = "6b0142d1ac968514f27322ff")]
+    pub routine_id: String,
+    /// Origen de la rutina: `system` (recomendada, HU-15) o `coach` (asignada, HU-19).
+    #[schema(example = "coach")]
+    pub origin: RoutineOrigin,
+    /// Nombre de la rutina al registrar (se conserva aunque la rutina cambie o se retire).
+    #[schema(example = "Torso A")]
+    pub routine_name: String,
+    #[schema(example = 1)]
+    pub session_number: i32,
+    /// Nombre de la sesión al registrar. En una rutina asignada es el nombre de la rutina.
+    #[schema(example = "Torso A")]
+    pub session_name: String,
+    /// Día de cumplimiento (YYYY-MM-DD, hora de México).
+    #[schema(format = Date, example = "2026-11-06")]
+    pub date: String,
+    /// Fecha y hora (RFC 3339, UTC) en que se registró.
+    #[schema(format = DateTime, example = "2026-11-06T18:00:00Z")]
+    pub completed_at: String,
+}
+
+impl From<RoutineSession> for RoutineSessionResponse {
+    fn from(s: RoutineSession) -> Self {
+        Self {
+            id: s.id.to_hex(),
+            routine_id: s.routine_id.to_hex(),
+            origin: s.origin,
+            routine_name: s.routine_name,
+            session_number: s.session_number,
+            session_name: s.session_name,
+            date: s.date,
+            completed_at: s.completed_at.try_to_rfc3339_string().unwrap_or_default(),
+        }
+    }
+}
+
+/// HU-17 — POST /api/v1/users/me/routines/{id}/sessions. Marca una sesión de la rutina como completada.
+#[utoipa::path(
+    post,
+    path = "/users/me/routines/{id}/sessions",
+    tag = "Rutinas",
+    summary = "Marca una sesión como completada (HU-17)",
+    description = "Sirve para la rutina recomendada vigente (sesiones numeradas, HU-15) y para una rutina asignada activa de un coach con el que el usuario sigue vinculado (una sola sesión, la 1). Guarda copia del nombre de la rutina y de la sesión: el registro se conserva aunque la rutina se edite, se regenere o se retire (RF-24). Una rutina inaccesible responde 404 antes de validar el cuerpo.",
+    security(("bearer_auth" = ["user"])),
+    params(("id" = String, Path, description = "Id de la rutina")),
+    request_body = CompleteSessionRequest,
+    responses(
+        (status = 201, description = "Sesión registrada", body = RoutineSessionResponse),
+        (status = 400, description = "`VALIDATION_ERROR` (`session_number` ausente, no entero o que no existe en la rutina; `date` mal formada o futura) o `INVALID_BODY`", body = ErrorResponse),
+        (status = 401, description = "`UNAUTHORIZED` o `TOKEN_REVOKED`", body = ErrorResponse),
+        (status = 403, description = "`FORBIDDEN_ROLE` (cuenta `coach`)", body = ErrorResponse),
+        (status = 404, description = "`ROUTINE_NOT_FOUND` (no existe, id mal formado, es ajena, se retiró o el coach ya no está vinculado)", body = ErrorResponse),
+        (status = 409, description = "`SESSION_ALREADY_COMPLETED` (esa sesión ya se registró ese día)", body = ErrorResponse),
+    )
+)]
+pub async fn complete_session_handler(
+    State(state): State<AppState>,
+    UserOnly(auth): UserOnly,
+    Path(id): Path<String>,
+    ApiJson(body): ApiJson<CompleteSessionRequest>,
+) -> Result<(StatusCode, Json<RoutineSessionResponse>), AppError> {
+    let session = routine_sessions::complete_session(
+        &state.db,
+        auth.user_id,
+        state.utc_offset,
+        &id,
+        body.session_number,
+        body.date,
+    )
+    .await?;
+    Ok((StatusCode::CREATED, Json(session.into())))
+}
+
+/// HU-17 — GET /api/v1/users/me/routines/{id}/sessions. Sesiones completadas de una rutina del usuario.
+#[utoipa::path(
+    get,
+    path = "/users/me/routines/{id}/sessions",
+    tag = "Rutinas",
+    summary = "Sesiones completadas de una rutina (HU-17)",
+    description = "Las sesiones que el usuario marcó como completadas en esa rutina, la más reciente primero (por día y luego por hora de registro). Sin sesiones devuelve una lista vacía.",
+    security(("bearer_auth" = ["user"])),
+    params(("id" = String, Path, description = "Id de la rutina")),
+    responses(
+        (status = 200, description = "Sesiones completadas", body = [RoutineSessionResponse]),
+        (status = 401, description = "`UNAUTHORIZED` o `TOKEN_REVOKED`", body = ErrorResponse),
+        (status = 403, description = "`FORBIDDEN_ROLE` (cuenta `coach`)", body = ErrorResponse),
+        (status = 404, description = "`ROUTINE_NOT_FOUND` (no existe, id mal formado, es ajena, se retiró o el coach ya no está vinculado)", body = ErrorResponse),
+    )
+)]
+pub async fn list_sessions_handler(
+    State(state): State<AppState>,
+    UserOnly(auth): UserOnly,
+    Path(id): Path<String>,
+) -> Result<Json<Vec<RoutineSessionResponse>>, AppError> {
+    let list = routine_sessions::list_sessions(&state.db, auth.user_id, &id).await?;
+    Ok(Json(list.into_iter().map(Into::into).collect()))
+}
+
 pub fn router() -> Router<AppState> {
     Router::new()
         .route(
@@ -353,6 +472,10 @@ pub fn router() -> Router<AppState> {
         .route(
             "/coach/routines/:id/assignments",
             get(list_assignments_handler).post(assign_routine_handler),
+        )
+        .route(
+            "/users/me/routines/:id/sessions",
+            get(list_sessions_handler).post(complete_session_handler),
         )
 }
 
@@ -396,6 +519,38 @@ mod tests {
             })
         );
         assert_eq!(json["created_at"], now.try_to_rfc3339_string().unwrap());
+    }
+
+    #[test]
+    fn session_response_trae_origen_nombres_y_fechas_sin_ids_internos() {
+        let now = DateTime::now();
+        let session = RoutineSession {
+            id: ObjectId::new(),
+            user_id: ObjectId::new(),
+            routine_id: ObjectId::new(),
+            origin: RoutineOrigin::Coach,
+            coach_id: Some(ObjectId::new()),
+            assignment_id: Some(ObjectId::new()),
+            routine_name: "Torso A".into(),
+            session_number: 1,
+            session_name: "Torso A".into(),
+            date: "2026-11-06".into(),
+            completed_at: now,
+        };
+        let json = serde_json::to_value(RoutineSessionResponse::from(session.clone())).unwrap();
+        assert_eq!(
+            json,
+            serde_json::json!({
+                "id": session.id.to_hex(),
+                "routine_id": session.routine_id.to_hex(),
+                "origin": "coach",
+                "routine_name": "Torso A",
+                "session_number": 1,
+                "session_name": "Torso A",
+                "date": "2026-11-06",
+                "completed_at": now.try_to_rfc3339_string().unwrap(),
+            })
+        );
     }
 
     #[test]
