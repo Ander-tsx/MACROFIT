@@ -12,8 +12,8 @@ use utoipa::{Modify, OpenApi};
 use utoipa_swagger_ui::SwaggerUi;
 
 use super::{
-    auth, coach_invite_codes, coach_links, dev, goals, legal, meals, profile, progress, routines,
-    summary,
+    auth, coach_invite_codes, coach_links, dev, goals, legal, meals, profile, progress,
+    recommended_routines, routines, summary,
 };
 
 /// Ruta de la especificación en JSON.
@@ -78,6 +78,7 @@ responder `500 INTERNAL_ERROR` ante un error inesperado.";
         routines::delete_routine_handler,
         routines::assign_routine_handler,
         routines::list_assignments_handler,
+        recommended_routines::generate_recommended_routine_handler,
         auth::coach_only_handler,
     ),
     modifiers(&BearerAuth),
@@ -90,7 +91,7 @@ responder `500 INTERNAL_ERROR` ante un error inesperado.";
         (name = "Coach", description = "Clientes, metas por coach (HU-05), código de invitación (HU-12) y comidas de un cliente (HU-25)"),
         (name = "Resumen", description = "Resumen diario contra la meta (HU-10) y resumen semanal (HU-11)"),
         (name = "Comidas", description = "Foto de la comida (HU-06 y HU-25), estimación nutricional (HU-07) y registros de comida (HU-09)"),
-        (name = "Rutinas", description = "Rutinas personalizadas del coach con ejercicios del catálogo (HU-18) y su asignación a clientes (HU-19)"),
+        (name = "Rutinas", description = "Rutinas personalizadas del coach con ejercicios del catálogo (HU-18), su asignación a clientes (HU-19) y la rutina recomendada del usuario (HU-15)"),
     )
 )]
 struct ApiDoc;
@@ -299,6 +300,12 @@ mod tests {
             "/coach/routines/{id}/assignments",
             Coach,
             &[200, 401, 403, 404],
+        ),
+        (
+            "post",
+            "/users/me/routines/recommended",
+            User,
+            &[201, 401, 403, 404, 503],
         ),
     ];
 

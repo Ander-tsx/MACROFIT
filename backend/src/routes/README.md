@@ -104,5 +104,6 @@ La especificación (`GET /api/v1/openapi.json`, Swagger UI en `/api/v1/docs`) se
 | `coach_invite_codes.rs` | `/coach/invite-code` GET y POST `/coach/invite-code/regenerate` (HU-12), solo rol `coach` (`CoachOnly`) |
 | `coach_links.rs` | `/users/me/coach-link` GET (HU-13, coach activo) y POST (HU-13), solo rol `user` (`UserOnly`) |
 | `routines.rs` | `/coach/routines` POST/GET y `/coach/routines/{id}` GET/PUT/DELETE (HU-18), solo rol `coach` (`CoachOnly`). `RoutineRequest` lee `name` y `exercises` como `Value` para señalar errores por campo; `RoutineExerciseRequest` solo documenta el contrato. HU-19: `/coach/routines/{id}/assignments` POST/GET con `AssignRoutineRequest` (`client_ids` como `Value`) y `RoutineAssignmentResponse` |
+| `recommended_routines.rs` | `/users/me/routines/recommended` POST (HU-15), solo rol `user` (`UserOnly`), sin cuerpo: `RecommendedRoutineResponse` con `origin`, sesiones (`RecommendedSessionResponse`) y ejercicios (`RecommendedExerciseResponse`) |
 | `summary.rs` | `/users/me/summary/daily` GET (HU-10, `UserOnly`): consumo del día contra la meta; `?date=` se lee con `Query` y su rechazo se convierte a `INVALID_BODY`. `/users/me/summary/weekly` GET (HU-11, `UserOnly`): 7 días con totales, promedio y días con la meta cumplida; `?start=` igual |
 | `weights.rs` | `/users/me/weights` POST/GET (HU-21), solo rol `user` (`UserOnly`) |

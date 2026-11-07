@@ -95,6 +95,9 @@ pub enum AppError {
     PhotoAlreadyUsed,
     /// 404 — la rutina no existe, su id está mal formado o es de otro coach (no se distingue, HU-18).
     RoutineNotFound,
+    /// 503 — el catálogo de ejercicios no tiene ejercicios elegibles para algún grupo muscular del nivel del usuario
+    /// (HU-15). Es un problema de datos del servidor; el detalle solo va al log.
+    ExerciseCatalogIncomplete,
 }
 
 impl AppError {
@@ -280,6 +283,13 @@ impl IntoResponse for AppError {
                 "La rutina no existe".to_string(),
                 FieldErrors::new(),
             ),
+            Self::ExerciseCatalogIncomplete => (
+                StatusCode::SERVICE_UNAVAILABLE,
+                "EXERCISE_CATALOG_INCOMPLETE",
+                "Por ahora no podemos generar tu rutina: faltan ejercicios en el catálogo. Intenta más tarde"
+                    .to_string(),
+                FieldErrors::new(),
+            ),
             Self::PhotoAlreadyUsed => (
                 StatusCode::CONFLICT,
                 "PHOTO_ALREADY_USED",
@@ -372,6 +382,11 @@ mod tests {
                 AppError::RoutineNotFound,
                 StatusCode::NOT_FOUND,
                 "ROUTINE_NOT_FOUND",
+            ),
+            (
+                AppError::ExerciseCatalogIncomplete,
+                StatusCode::SERVICE_UNAVAILABLE,
+                "EXERCISE_CATALOG_INCOMPLETE",
             ),
         ] {
             let response = error.into_response();
