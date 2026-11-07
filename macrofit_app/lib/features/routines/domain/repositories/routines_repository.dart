@@ -38,4 +38,10 @@ abstract interface class RoutinesRepository {
     String routineId,
     List<String> clientIds,
   );
+
+  /// HU-20 — `DELETE /coach/routines/{id}/assignments/{clientId}` (`204`):
+  /// retira la rutina del cliente. Sus sesiones completadas se conservan.
+  /// `ASSIGNMENT_NOT_FOUND` si ya estaba retirada; `ROUTINE_NOT_FOUND` si la
+  /// rutina no es del coach.
+  Future<void> removeAssignment(String routineId, String clientId);
 }

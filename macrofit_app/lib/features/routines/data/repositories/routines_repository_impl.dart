@@ -38,4 +38,8 @@ class RoutinesRepositoryImpl implements RoutinesRepository {
     String routineId,
     List<String> clientIds,
   ) => _remote.assignRoutine(routineId, clientIds);
+
+  @override
+  Future<void> removeAssignment(String routineId, String clientId) =>
+      _remote.removeAssignment(routineId, clientId);
 }

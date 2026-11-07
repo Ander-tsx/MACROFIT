@@ -1128,6 +1128,24 @@ class FakeRoutinesRepository implements RoutinesRepository {
     return result;
   }
 
+  /// HU-20: error de `removeAssignment` y llamadas registradas.
+  ApiException? removeError;
+  final removed = <({String routineId, String clientId})>[];
+
+  @override
+  Future<void> removeAssignment(String routineId, String clientId) async {
+    removed.add((routineId: routineId, clientId: clientId));
+    if (removeError case final error?) throw error;
+    final current = [...?assignments[routineId]];
+    if (!current.any((item) => item.clientId == clientId)) {
+      throw apiError(ApiErrorCode.assignmentNotFound, status: 404);
+    }
+    assignments[routineId] = [
+      for (final item in current)
+        if (item.clientId != clientId) item,
+    ];
+  }
+
   Routine _routineOf(String id, RoutineDraft draft) {
     final now = DateTime.utc(2026, 10, 27, 12);
     return Routine(

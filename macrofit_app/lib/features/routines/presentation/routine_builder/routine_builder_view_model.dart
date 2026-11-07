@@ -167,7 +167,14 @@ class RoutineBuilderViewModel extends ViewModel with FormStateMixin {
 
   /// Valida y guarda (`POST` al crear, `PUT` al editar). Devuelve `true` si quedó
   /// guardada.
-  Future<bool> submit() async {
+  ///
+  /// HU-20: al editar una rutina asignada, antes de guardar se consulta a
+  /// cuántos clientes afecta y se llama [confirmAffected] con ese número; si
+  /// responde `false` no se guarda. Si la consulta falla, se guarda sin avisar
+  /// (el `PUT` informará cualquier problema).
+  Future<bool> submit({
+    Future<bool> Function(int affectedClients)? confirmAffected,
+  }) async {
     if (isSubmitting || _saved != null) return false;
 
     final errors = RoutineValidator.validate(
@@ -184,6 +191,11 @@ class RoutineBuilderViewModel extends ViewModel with FormStateMixin {
       return false;
     }
 
+    if (initial case final routine? when confirmAffected != null) {
+      final affected = await _affectedClients(routine.id);
+      if (affected > 0 && !await confirmAffected(affected)) return false;
+    }
+
     setSubmitting(true);
     try {
       final draft = _draft();
@@ -197,6 +209,14 @@ class RoutineBuilderViewModel extends ViewModel with FormStateMixin {
       return false;
     } finally {
       setSubmitting(false);
+    }
+  }
+
+  Future<int> _affectedClients(String routineId) async {
+    try {
+      return (await _repository.getAssignments(routineId)).length;
+    } on ApiException {
+      return 0;
     }
   }
 
