@@ -53,3 +53,13 @@ String routineSummaryText(Routine routine) {
   };
   return groups.isEmpty ? exercises : '$exercises · ${groups.join(', ')}';
 }
+
+/// «6/11/2026» en hora de México (UTC−6), el mismo día que ve el cliente.
+String assignedDateText(DateTime assignedAt) {
+  final local = assignedAt.toUtc().subtract(const Duration(hours: 6));
+  return '${local.day}/${local.month}/${local.year}';
+}
+
+/// «1 cliente» / «3 clientes».
+String clientCountText(int count) =>
+    count == 1 ? '1 cliente' : '$count clientes';

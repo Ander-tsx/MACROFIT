@@ -15,7 +15,7 @@ Instrucciones para Claude Code al trabajar en `macrofit_app/`. Las reglas genera
 - Historias implementadas: HU-01 (registro con rol + aviso de privacidad), HU-02 (inicio, persistencia y cierre de sesión),
   HU-03 (perfil inicial y edición), HU-05 (metas por coach), HU-06 (foto de la comida), HU-07 (estimación nutricional), HU-08 (corrección de valores), HU-09 (historial y eliminación de comidas), HU-12 (código de invitación del
   coach), HU-24 (lista de clientes del coach), HU-25 (comidas de un cliente), HU-23 (progreso de un cliente para el coach),
-  HU-26 (meta vigente en la pantalla principal), HU-10 (progreso del día), HU-11 (resumen semanal), HU-18 (constructor de rutinas del coach), HU-19 (asignar rutinas a clientes), HU-22 (gráficas de progreso; contrato de la API
+  HU-26 (meta vigente en la pantalla principal), HU-10 (progreso del día), HU-11 (resumen semanal), HU-18 (constructor de rutinas del coach), HU-19 (asignar rutinas a clientes), HU-20 (clientes asignados, retiro por cliente y aviso al editar/eliminar; contrato en `lib/features/routines/README.md`), HU-22 (gráficas de progreso; contrato de la API
   en `lib/features/progress/README.md`), TEC-17 (guía visual en `lib/app/README.md`).
 - Antes de terminar: `dart format --output=none --set-exit-if-changed lib test`, `flutter analyze`, `flutter test`
   y prueba de punta a punta contra el backend con base temporal (AGENTS.md §7).

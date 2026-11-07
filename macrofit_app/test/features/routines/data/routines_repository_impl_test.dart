@@ -356,4 +356,36 @@ void main() {
       ),
     );
   });
+
+  group('retirar una asignación (HU-20)', () {
+    test(
+      'llama a DELETE /coach/routines/{id}/assignments/{clientId}',
+      () async {
+        final repository = build((_) => ResponseBody.fromString('', 204));
+
+        await repository.removeAssignment('r1', 'cli1');
+
+        final request = adapter.requests.single;
+        expect(request.method, 'DELETE');
+        expect(request.path, '/coach/routines/r1/assignments/cli1');
+      },
+    );
+
+    test('una asignación ya retirada responde ASSIGNMENT_NOT_FOUND', () async {
+      final repository = build(
+        (_) => errorResponse(ApiErrorCode.assignmentNotFound, 404),
+      );
+
+      await expectLater(
+        repository.removeAssignment('r1', 'cli1'),
+        throwsA(
+          isA<ApiException>().having(
+            (e) => e.code,
+            'code',
+            ApiErrorCode.assignmentNotFound,
+          ),
+        ),
+      );
+    });
+  });
 }
