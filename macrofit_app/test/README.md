@@ -16,6 +16,7 @@ test/
 ├── features/summary/         # SummaryRepositoryImpl (Dio simulado) `appDay`/`shiftDay` (día en hora de México, HU-10) y `WeeklySummaryViewModel` (HU-11); el progreso del día se prueba en `features/home` y `app/`
 ├── features/invite_code/     # InviteCodeRepositoryImpl (Dio simulado) e InviteCodeViewModel (HU-12)
 ├── features/clients/         # Búsqueda por nombre, ClientsRepositoryImpl (JSON con nulos), textos del resumen y ViewModels de lista y detalle (HU-24); comidas y fotos con Dio simulado, textos y ViewModel de comidas (HU-25); ViewModel del progreso del cliente con `FakeProgressRepository.clientRequests` (HU-23)
+├── features/my_routines/     # HU-16: modelos JSON y repositorio (Dio simulado; lista, detalle, recomendada), ViewModels de lista y detalle, y vistas (origen, detalle, rutina retirada, vacío, sin conexión) con GoRouter de prueba; HU-17: marcar sesión (confirmación, repetida, retirada, sin conexión y reintento) con `FakeMyRoutinesRepository.completed`/`today`/`completedElsewhere`
 ├── features/routines/        # RoutineValidator, RoutinesRepositoryImpl (Dio simulado) y ViewModels de la lista, el constructor y el selector de ejercicios (HU-18) y de la asignación a clientes (HU-19)
 └── features/auth/
     ├── domain/               # Validadores
