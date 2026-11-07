@@ -162,6 +162,64 @@ void main() {
     expect(routine.toSummary().sessionCount, 2);
   });
 
+  const sessionJson = {
+    'id': '6b2042d1ac968514f2732401',
+    'routine_id': '6b2a00000000000000000001',
+    'origin': 'system',
+    'routine_name': 'Rutina recomendada · Mantener · 2 días',
+    'session_number': 2,
+    'session_name': 'Día 2 · Cuerpo completo',
+    'date': '2026-11-07',
+    'completed_at': '2026-11-07T18:00:00Z',
+  };
+
+  test('marcar una sesión envía solo su número (hoy lo pone la API)', () async {
+    final repository = build((_) => jsonResponse(sessionJson, 201));
+
+    final session = await repository.completeSession(
+      '6b2a00000000000000000001',
+      2,
+    );
+
+    final request = adapter.requests.single;
+    expect(request.method, 'POST');
+    expect(
+      request.path,
+      '/users/me/routines/6b2a00000000000000000001/sessions',
+    );
+    expect(request.data, {'session_number': 2});
+    expect(session.sessionNumber, 2);
+    expect(session.sessionName, 'Día 2 · Cuerpo completo');
+    expect(session.date, '2026-11-07');
+    expect(session.completedAt, DateTime.utc(2026, 11, 7, 18));
+  });
+
+  test('las sesiones completadas se leen de la lista de la API', () async {
+    final repository = build((_) => jsonResponse([sessionJson], 200));
+
+    final sessions = await repository.getCompletedSessions('r1');
+
+    expect(adapter.requests.single.path, '/users/me/routines/r1/sessions');
+    expect(sessions.single.routineId, '6b2a00000000000000000001');
+  });
+
+  test('una sesión repetida responde SESSION_ALREADY_COMPLETED', () async {
+    final repository = build(
+      (_) => errorResponse(ApiErrorCode.sessionAlreadyCompleted, 409),
+    );
+
+    await expectLater(
+      repository.completeSession('r1', 1),
+      throwsA(
+        isA<ApiException>().having(
+          (e) => e.code,
+          'code',
+          ApiErrorCode.sessionAlreadyCompleted,
+        ),
+      ),
+    );
+  });
+
   test('un origen desconocido se trata como recomendada', () {
     expect(RoutineOrigin.fromApi('coach'), RoutineOrigin.coach);
     expect(RoutineOrigin.fromApi('system'), RoutineOrigin.system);

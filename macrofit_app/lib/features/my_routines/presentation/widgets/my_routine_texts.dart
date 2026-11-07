@@ -29,3 +29,24 @@ String muscleGroupText(String apiValue) => switch (apiValue) {
   'core' => 'Core',
   _ => apiValue,
 };
+
+const _months = [
+  'enero',
+  'febrero',
+  'marzo',
+  'abril',
+  'mayo',
+  'junio',
+  'julio',
+  'agosto',
+  'septiembre',
+  'octubre',
+  'noviembre',
+  'diciembre',
+];
+
+/// «Completada hoy · 7 de noviembre» a partir del día `YYYY-MM-DD` de la API.
+String completedTodayText(String day) {
+  final date = DateTime.parse(day);
+  return 'Completada hoy · ${date.day} de ${_months[date.month - 1]}';
+}

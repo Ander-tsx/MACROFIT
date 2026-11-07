@@ -42,6 +42,7 @@ import 'package:macrofit_app/features/progress/domain/entities/progress_report.d
 import 'package:macrofit_app/features/progress/domain/entities/weight_entry.dart';
 import 'package:macrofit_app/features/progress/domain/repositories/progress_repository.dart';
 import 'package:macrofit_app/features/progress/domain/repositories/weights_repository.dart';
+import 'package:macrofit_app/features/my_routines/domain/entities/completed_session.dart';
 import 'package:macrofit_app/features/my_routines/domain/entities/user_routine.dart';
 import 'package:macrofit_app/features/my_routines/domain/repositories/my_routines_repository.dart';
 import 'package:macrofit_app/features/routines/domain/entities/exercise.dart';
@@ -1455,4 +1456,76 @@ class FakeMyRoutinesRepository implements MyRoutinesRepository {
     ];
     return routine;
   }
+
+  // ───────── HU-17: sesiones completadas ─────────
+
+  /// Día que la API considera «hoy» (`YYYY-MM-DD`).
+  String today = '2026-11-07';
+
+  /// Sesiones completadas por id de rutina, la más reciente primero.
+  final completed = <String, List<CompletedSession>>{};
+  ApiException? sessionsError;
+  ApiException? completeError;
+  final completeRequests = <(String, int)>[];
+
+  /// Si es `true`, el siguiente registro responde 409 como si otro
+  /// dispositivo ya la hubiera registrado (y la deja registrada).
+  bool completedElsewhere = false;
+
+  @override
+  Future<List<CompletedSession>> getCompletedSessions(String routineId) async {
+    if (sessionsError case final error?) throw error;
+    if (!routines.any((r) => r.id == routineId)) {
+      throw apiError(ApiErrorCode.routineNotFound, status: 404);
+    }
+    return List.of(completed[routineId] ?? const []);
+  }
+
+  @override
+  Future<CompletedSession> completeSession(
+    String routineId,
+    int sessionNumber,
+  ) async {
+    completeRequests.add((routineId, sessionNumber));
+    if (completeError case final error?) throw error;
+    final routine = routines.where((r) => r.id == routineId).firstOrNull;
+    if (routine == null) {
+      throw apiError(ApiErrorCode.routineNotFound, status: 404);
+    }
+    final list = completed.putIfAbsent(routineId, () => []);
+    final session = CompletedSession(
+      id: 's${completeRequests.length}',
+      routineId: routineId,
+      sessionNumber: sessionNumber,
+      sessionName: routine.sessions
+          .firstWhere((s) => s.number == sessionNumber)
+          .name,
+      date: today,
+      completedAt: DateTime.utc(2026, 11, 7, 18),
+    );
+    if (completedElsewhere) {
+      completedElsewhere = false;
+      list.insert(0, session);
+      throw apiError(ApiErrorCode.sessionAlreadyCompleted, status: 409);
+    }
+    if (list.any((s) => s.sessionNumber == sessionNumber && s.date == today)) {
+      throw apiError(ApiErrorCode.sessionAlreadyCompleted, status: 409);
+    }
+    list.insert(0, session);
+    return session;
+  }
 }
+
+/// Sesión completada de prueba (HU-17).
+CompletedSession testCompletedSession({
+  String routineId = 'rec1',
+  int number = 1,
+  String date = '2026-11-07',
+}) => CompletedSession(
+  id: 'done-$routineId-$number-$date',
+  routineId: routineId,
+  sessionNumber: number,
+  sessionName: 'Día $number · Cuerpo completo',
+  date: date,
+  completedAt: DateTime.parse('${date}T18:00:00Z'),
+);
