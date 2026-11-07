@@ -125,6 +125,49 @@ void main() {
     });
   });
 
+  group('rutinas del usuario (HU-16)', () {
+    test(
+      'un usuario con perfil abre "Mis rutinas" y el detalle de una rutina',
+      () {
+        for (final route in [
+          AppRoutes.myRoutines,
+          AppRoutes.myRoutineDetail('6b2a00000000000000000001'),
+        ]) {
+          expect(
+            resolveRedirect(const Authenticated(testUser), route),
+            isNull,
+            reason: route,
+          );
+        }
+      },
+    );
+
+    test('un coach, un usuario sin perfil o sin sesión no las abren', () {
+      final detail = AppRoutes.myRoutineDetail('r1');
+      for (final route in [AppRoutes.myRoutines, detail]) {
+        expect(
+          resolveRedirect(const Authenticated(testCoach), route),
+          AppRoutes.coachHome,
+        );
+        expect(
+          resolveRedirect(const Authenticated(testNewUser), route),
+          AppRoutes.profileSetup,
+        );
+        expect(
+          resolveRedirect(const Unauthenticated(), route),
+          AppRoutes.login,
+        );
+      }
+    });
+
+    test('solo cuenta como detalle /user/routines/{id}, sin más segmentos', () {
+      expect(AppRoutes.isUserRoute('${AppRoutes.myRoutines}/r1'), isTrue);
+      expect(AppRoutes.isUserRoute('${AppRoutes.myRoutines}/'), isFalse);
+      expect(AppRoutes.isUserRoute('${AppRoutes.myRoutines}/r1/x'), isFalse);
+      expect(AppRoutes.isUserRoute('/user/routinesx'), isFalse);
+    });
+  });
+
   group('formulario de valores (HU-08)', () {
     test('un usuario con perfil abre el formulario', () {
       expect(

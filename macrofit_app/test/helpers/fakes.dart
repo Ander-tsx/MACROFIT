@@ -42,6 +42,8 @@ import 'package:macrofit_app/features/progress/domain/entities/progress_report.d
 import 'package:macrofit_app/features/progress/domain/entities/weight_entry.dart';
 import 'package:macrofit_app/features/progress/domain/repositories/progress_repository.dart';
 import 'package:macrofit_app/features/progress/domain/repositories/weights_repository.dart';
+import 'package:macrofit_app/features/my_routines/domain/entities/user_routine.dart';
+import 'package:macrofit_app/features/my_routines/domain/repositories/my_routines_repository.dart';
 import 'package:macrofit_app/features/routines/domain/entities/exercise.dart';
 import 'package:macrofit_app/features/routines/domain/entities/routine.dart';
 import 'package:macrofit_app/features/routines/domain/entities/routine_assignment.dart';
@@ -1345,5 +1347,112 @@ class FakeProgressRepository implements ProgressRepository {
   }) {
     clientRequests.add(clientId);
     return getProgress(from: from, to: to);
+  }
+}
+// ───────────────────────── HU-16: rutinas del usuario ─────────────────────────
+
+/// Rutina recomendada de 3 sesiones (HU-15).
+UserRoutine testRecommendedRoutine({String id = 'rec1'}) => UserRoutine(
+  id: id,
+  origin: RoutineOrigin.system,
+  name: 'Rutina recomendada · Mantener · 3 días',
+  sessions: [
+    for (var n = 1; n <= 3; n++)
+      RoutineSessionPlan(
+        number: n,
+        name: 'Día $n · Cuerpo completo',
+        exercises: const [
+          SessionExercise(
+            exerciseId: 'e1',
+            name: 'Sentadilla',
+            muscleGroup: 'legs',
+            sets: 2,
+            reps: 12,
+            restSeconds: 60,
+          ),
+          SessionExercise(
+            exerciseId: 'e2',
+            name: 'Flexiones de pecho',
+            muscleGroup: 'chest',
+            sets: 2,
+            reps: 12,
+            restSeconds: 60,
+          ),
+        ],
+      ),
+  ],
+);
+
+/// Rutina asignada por un coach: una sola sesión con el nombre de la rutina.
+UserRoutine testAssignedRoutine({
+  String id = 'asg1',
+  String name = 'Torso A',
+  String coachName = 'Carlos',
+}) => UserRoutine(
+  id: id,
+  origin: RoutineOrigin.coach,
+  name: name,
+  coachName: coachName,
+  sessions: [
+    RoutineSessionPlan(
+      number: 1,
+      name: name,
+      exercises: const [
+        SessionExercise(
+          exerciseId: 'e3',
+          name: 'Press de banca',
+          muscleGroup: 'chest',
+          sets: 4,
+          reps: 10,
+          restSeconds: 90,
+        ),
+      ],
+    ),
+  ],
+);
+
+/// Rutinas del usuario en memoria. [routines] se puede cambiar entre cargas
+/// (p. ej. una asignación nueva); `listError`, `detailError` y
+/// `recommendedError` simulan errores de la API.
+class FakeMyRoutinesRepository implements MyRoutinesRepository {
+  FakeMyRoutinesRepository({List<UserRoutine>? routines})
+    : routines = routines ?? [];
+
+  List<UserRoutine> routines;
+  ApiException? listError;
+  ApiException? detailError;
+  ApiException? recommendedError;
+  int listCalls = 0;
+  final detailRequests = <String>[];
+  int recommendedCalls = 0;
+
+  @override
+  Future<List<UserRoutineSummary>> getRoutines() async {
+    listCalls++;
+    if (listError case final error?) throw error;
+    return [for (final routine in routines) routine.toSummary()];
+  }
+
+  @override
+  Future<UserRoutine> getRoutine(String id) async {
+    detailRequests.add(id);
+    if (detailError case final error?) throw error;
+    for (final routine in routines) {
+      if (routine.id == id) return routine;
+    }
+    throw apiError(ApiErrorCode.routineNotFound, status: 404);
+  }
+
+  @override
+  Future<UserRoutine> requestRecommendedRoutine() async {
+    recommendedCalls++;
+    if (recommendedError case final error?) throw error;
+    final routine = testRecommendedRoutine(id: 'rec$recommendedCalls');
+    routines = [
+      routine,
+      for (final item in routines)
+        if (item.origin == RoutineOrigin.coach) item,
+    ];
+    return routine;
   }
 }

@@ -63,6 +63,12 @@ import '../features/progress/presentation/progress_charts/progress_view.dart';
 import '../features/progress/presentation/progress_charts/progress_view_model.dart';
 import '../features/progress/presentation/weights/weights_view.dart';
 import '../features/progress/presentation/weights/weights_view_model.dart';
+import '../features/my_routines/domain/entities/user_routine.dart';
+import '../features/my_routines/domain/repositories/my_routines_repository.dart';
+import '../features/my_routines/presentation/routine_detail/routine_detail_view.dart';
+import '../features/my_routines/presentation/routine_detail/routine_detail_view_model.dart';
+import '../features/my_routines/presentation/routines_list/my_routines_list_view.dart';
+import '../features/my_routines/presentation/routines_list/my_routines_list_view_model.dart';
 import '../features/routines/domain/entities/routine.dart';
 import '../features/routines/domain/repositories/routines_repository.dart';
 import '../features/routines/presentation/assign_routine/assign_routine_view.dart';
@@ -218,6 +224,29 @@ GoRouter createRouter(
                 )..load(),
                 child: const MealHistoryView(),
               ),
+            ),
+          ),
+          // HU-16: rutinas del usuario. Se recargan al abrir (RF-23).
+          GoRoute(
+            path: AppRoutes.myRoutinesChild,
+            builder: (context, _) => ChangeNotifierProvider(
+              create: (context) =>
+                  MyRoutinesListViewModel(context.read<MyRoutinesRepository>())
+                    ..load(),
+              child: const MyRoutinesListView(),
+            ),
+          ),
+          GoRoute(
+            path: AppRoutes.myRoutineDetailChild,
+            builder: (context, state) => ChangeNotifierProvider(
+              create: (context) => RoutineDetailViewModel(
+                repository: context.read<MyRoutinesRepository>(),
+                routineId: state.pathParameters['routineId']!,
+                summary: state.extra is UserRoutineSummary
+                    ? state.extra! as UserRoutineSummary
+                    : null,
+              )..load(),
+              child: const RoutineDetailView(),
             ),
           ),
         ],
@@ -431,9 +460,7 @@ String? resolveRedirect(AuthState state, String location) {
               ? null
               : AppRoutes.profileSetup;
         case Role.user:
-          return AppRoutes.userRoutes.contains(location)
-              ? null
-              : AppRoutes.userHome;
+          return AppRoutes.isUserRoute(location) ? null : AppRoutes.userHome;
         case Role.coach:
           return AppRoutes.isCoachRoute(location) ? null : AppRoutes.coachHome;
       }
