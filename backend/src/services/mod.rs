@@ -17,4 +17,5 @@ pub mod routine_sessions;
 pub mod routines;
 pub mod session;
 pub mod summary;
+pub mod user_routines;
 pub mod weights;

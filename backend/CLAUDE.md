@@ -28,6 +28,8 @@ Instrucciones para Claude Code al trabajar en `backend/`. Las reglas generales d
   HU-17 (sesiones completadas: `POST/GET /users/me/routines/{id}/sessions`, colección `routine_sessions` con copia de nombres,
   `SESSION_ALREADY_COMPLETED` por día; asignada activa con coach vinculado o recomendada vigente de HU-15),
   TEC-10 (motor de reglas de rutinas recomendadas: `services/routine_engine.rs`, función pura sin endpoint; lo expone HU-15-API),
+  HU-16 (rutinas del usuario: `GET /users/me/routines` y `GET /routines/{id}` con forma común; la del coach es una sola
+  sesión; acceso con `routine_sessions::find_user_routine`),
   HU-15 (rutina recomendada: `POST /users/me/routines/recommended`, colección `recommended_routines` con una sola vigente por
   usuario y las anteriores como `replaced`, `EXERCISE_CATALOG_INCOMPLETE` 503),
   TEC-14 (contrato OpenAPI con utoipa en `/api/v1/docs`; todo endpoint nuevo se documenta ahí, ver
