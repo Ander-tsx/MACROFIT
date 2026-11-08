@@ -9,5 +9,6 @@ pub mod recommended_routine;
 pub mod refresh_token;
 pub mod routine;
 pub mod routine_assignment;
+pub mod routine_session;
 pub mod user;
 pub mod weight_entry;
