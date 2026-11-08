@@ -8,6 +8,7 @@ import 'package:macrofit_app/features/my_routines/presentation/routine_detail/ro
 import 'package:macrofit_app/features/my_routines/presentation/routine_detail/routine_detail_view_model.dart';
 import 'package:macrofit_app/features/my_routines/presentation/routines_list/my_routines_list_view.dart';
 import 'package:macrofit_app/features/my_routines/presentation/routines_list/my_routines_list_view_model.dart';
+import 'package:macrofit_app/features/summary/domain/usecases/app_day.dart';
 import 'package:provider/provider.dart';
 
 import '../../../helpers/fakes.dart';
@@ -144,5 +145,115 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Torso A'), findsOneWidget);
+  });
+
+  group('marcar sesión como completada (HU-17)', () {
+    Future<FakeMyRoutinesRepository> openDetail(WidgetTester tester) async {
+      final repository = FakeMyRoutinesRepository(
+        routines: [testAssignedRoutine()],
+      )..today = appDay(DateTime.now());
+      await pumpRoutines(tester, repository);
+      await tester.tap(find.byKey(const Key('my_routine_asg1')));
+      await tester.pumpAndSettle();
+      return repository;
+    }
+
+    testWidgets('confirmar marca la sesión con su fecha y quita el botón', (
+      tester,
+    ) async {
+      final repository = await openDetail(tester);
+
+      await tester.ensureVisible(find.byKey(const Key('complete_session_1')));
+      await tester.tap(find.byKey(const Key('complete_session_1')));
+      await tester.pumpAndSettle();
+      expect(find.text('¿Terminaste «Torso A» hoy?'), findsOneWidget);
+      await tester.tap(find.byKey(const Key('complete_session_confirm')));
+      await tester.pumpAndSettle();
+
+      expect(repository.completeRequests, [('asg1', 1)]);
+      expect(find.byKey(const Key('session_completed_1')), findsOneWidget);
+      expect(find.textContaining('Completada hoy'), findsOneWidget);
+      expect(find.byKey(const Key('complete_session_1')), findsNothing);
+      expect(find.text('Sesión registrada. ¡Bien hecho!'), findsOneWidget);
+    });
+
+    testWidgets('cancelar no registra la sesión', (tester) async {
+      final repository = await openDetail(tester);
+
+      await tester.ensureVisible(find.byKey(const Key('complete_session_1')));
+      await tester.tap(find.byKey(const Key('complete_session_1')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('complete_session_cancel')));
+      await tester.pumpAndSettle();
+
+      expect(repository.completeRequests, isEmpty);
+      expect(find.byKey(const Key('complete_session_1')), findsOneWidget);
+    });
+
+    testWidgets(
+      'sin conexión muestra el error en la sesión y permite reintentar',
+      (tester) async {
+        final repository = await openDetail(tester);
+        repository.completeError = networkError;
+
+        await tester.ensureVisible(find.byKey(const Key('complete_session_1')));
+        await tester.tap(find.byKey(const Key('complete_session_1')));
+        await tester.pumpAndSettle();
+        await tester.tap(find.byKey(const Key('complete_session_confirm')));
+        await tester.pumpAndSettle();
+
+        expect(
+          find.byKey(const Key('complete_session_error_1')),
+          findsOneWidget,
+        );
+        expect(find.text('Reintentar'), findsOneWidget);
+
+        repository.completeError = null;
+        await tester.ensureVisible(find.byKey(const Key('complete_session_1')));
+        await tester.tap(find.byKey(const Key('complete_session_1')));
+        await tester.pumpAndSettle();
+        await tester.tap(find.byKey(const Key('complete_session_confirm')));
+        await tester.pumpAndSettle();
+
+        expect(find.byKey(const Key('session_completed_1')), findsOneWidget);
+      },
+    );
+
+    testWidgets('ya registrada hoy en otro dispositivo: lo indica y la marca', (
+      tester,
+    ) async {
+      final repository = await openDetail(tester);
+      repository.completedElsewhere = true;
+
+      await tester.ensureVisible(find.byKey(const Key('complete_session_1')));
+      await tester.tap(find.byKey(const Key('complete_session_1')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('complete_session_confirm')));
+      await tester.pumpAndSettle();
+
+      expect(
+        find.text(RoutineDetailView.alreadyCompletedMessage),
+        findsOneWidget,
+      );
+      expect(find.byKey(const Key('session_completed_1')), findsOneWidget);
+    });
+
+    testWidgets(
+      'si la rutina se retiró al marcar, avisa y regresa a la lista',
+      (tester) async {
+        final repository = await openDetail(tester);
+        repository.routines = [];
+
+        await tester.ensureVisible(find.byKey(const Key('complete_session_1')));
+        await tester.tap(find.byKey(const Key('complete_session_1')));
+        await tester.pumpAndSettle();
+        await tester.tap(find.byKey(const Key('complete_session_confirm')));
+        await tester.pumpAndSettle();
+
+        expect(find.text(RoutineDetailView.unavailableMessage), findsWidgets);
+        expect(find.byType(RoutineDetailView), findsNothing);
+        expect(find.byType(MyRoutinesListView), findsOneWidget);
+      },
+    );
   });
 }
