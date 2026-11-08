@@ -17,8 +17,8 @@ import '../../../core/presentation/theme/app_images.dart';
 
 /// Pantalla principal del rol `user`: progreso del día (HU-10) y meta vigente (HU-26).
 /// Desde aquí se abren "Mi perfil" (HU-03), "Registrar comida" (HU-06), "Mis comidas"
-/// (HU-09), el resumen semanal (HU-11), la vinculación con el coach (HU-13) y el
-/// registro de peso (HU-21).
+/// (HU-09), el resumen semanal (HU-11), "Mis rutinas" (HU-16), la vinculación con
+/// el coach (HU-13) y el registro de peso (HU-21).
 class UserHomeView extends StatelessWidget {
   const UserHomeView({super.key});
 
@@ -79,9 +79,23 @@ class UserHomeView extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: AppSpacing.cardGap),
-              // HU-13: vinculación con el coach.
+              // HU-16: rutinas recomendada y asignadas.
               FadeSlideIn(
                 index: 3,
+                child: HighlightCard(
+                  key: const Key('my_routines_home_button'),
+                  title: 'Mis rutinas',
+                  description:
+                      'Tu rutina recomendada y las que te asigna tu coach.',
+                  icon: LucideIcons.dumbbell,
+                  image: AppImages.workout,
+                  onTap: () => context.push(AppRoutes.myRoutines),
+                ),
+              ),
+              const SizedBox(height: AppSpacing.cardGap),
+              // HU-13: vinculación con el coach.
+              FadeSlideIn(
+                index: 4,
                 child: HighlightCard(
                   title: 'Tu coach',
                   description: switch (viewModel.linkedCoach) {
