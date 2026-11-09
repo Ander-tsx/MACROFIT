@@ -1943,6 +1943,8 @@ void main() {
       const access = Key('recommended_routine_home_button');
 
       await tester.scrollUntilVisible(find.byKey(access), 200);
+      await tester.ensureVisible(find.byKey(access));
+      await tester.pumpAndSettle();
       await tester.tap(find.byKey(access));
       await tester.pumpAndSettle();
 
