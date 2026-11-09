@@ -4,6 +4,7 @@ import 'package:macrofit_app/core/errors/api_exception.dart';
 import 'package:macrofit_app/features/my_routines/data/datasources/my_routines_remote_data_source.dart';
 import 'package:macrofit_app/features/my_routines/data/repositories/my_routines_repository_impl.dart';
 import 'package:macrofit_app/features/my_routines/domain/entities/user_routine.dart';
+import 'package:macrofit_app/features/profile/domain/entities/profile.dart';
 
 import '../../../helpers/fakes.dart';
 
@@ -161,6 +162,48 @@ void main() {
     expect(routine.sessions.map((s) => s.number), [1, 2]);
     expect(routine.toSummary().sessionCount, 2);
   });
+
+  test(
+    'la recomendada trae objetivo, nivel y días, y sesiones numeradas (HU-15)',
+    () async {
+      final repository = build((_) => jsonResponse(recommendedJson, 201));
+
+      final routine = await repository.requestRecommendedRoutine();
+
+      expect(routine.name, 'Rutina recomendada · Mantener · 2 días');
+      expect(routine.objective, Objective.maintain);
+      expect(routine.level, ExperienceLevel.beginner);
+      expect(routine.trainingDays, 2);
+      expect(routine.sessions.first.name, 'Día 1 · Cuerpo completo');
+      final exercise = routine.sessions.first.exercises.single;
+      expect(exercise.name, 'Sentadilla');
+      expect(exercise.sets, 2);
+      expect(exercise.reps, 12);
+      expect(exercise.restSeconds, 60);
+    },
+  );
+
+  for (final (status, code) in [
+    (404, ApiErrorCode.profileNotFound),
+    (503, ApiErrorCode.exerciseCatalogIncomplete),
+  ]) {
+    test('$status $code al pedir la recomendada sale como ApiException', () {
+      final repository = build(
+        (_) => jsonResponse({
+          'error': {
+            'code': code,
+            'message': 'Mensaje',
+            'fields': <String, String>{},
+          },
+        }, status),
+      );
+
+      expect(
+        repository.requestRecommendedRoutine(),
+        throwsA(isA<ApiException>().having((e) => e.code, 'code', code)),
+      );
+    });
+  }
 
   const sessionJson = {
     'id': '6b2042d1ac968514f2732401',

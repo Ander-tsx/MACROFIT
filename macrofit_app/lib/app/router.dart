@@ -65,6 +65,8 @@ import '../features/progress/presentation/weights/weights_view.dart';
 import '../features/progress/presentation/weights/weights_view_model.dart';
 import '../features/my_routines/domain/entities/user_routine.dart';
 import '../features/my_routines/domain/repositories/my_routines_repository.dart';
+import '../features/my_routines/presentation/recommended/recommended_routine_view.dart';
+import '../features/my_routines/presentation/recommended/recommended_routine_view_model.dart';
 import '../features/my_routines/presentation/routine_detail/routine_detail_view.dart';
 import '../features/my_routines/presentation/routine_detail/routine_detail_view_model.dart';
 import '../features/my_routines/presentation/routines_list/my_routines_list_view.dart';
@@ -234,6 +236,16 @@ GoRouter createRouter(
                   MyRoutinesListViewModel(context.read<MyRoutinesRepository>())
                     ..load(),
               child: const MyRoutinesListView(),
+            ),
+          ),
+          // HU-15: antes del detalle, que acepta cualquier id.
+          GoRoute(
+            path: AppRoutes.recommendedRoutineChild,
+            builder: (context, _) => ChangeNotifierProvider(
+              create: (context) => RecommendedRoutineViewModel(
+                context.read<MyRoutinesRepository>(),
+              )..load(),
+              child: const RecommendedRoutineView(),
             ),
           ),
           GoRoute(

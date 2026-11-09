@@ -93,9 +93,22 @@ class UserHomeView extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: AppSpacing.cardGap),
-              // HU-13: vinculación con el coach.
+              // HU-15: solicitar la rutina recomendada.
               FadeSlideIn(
                 index: 4,
+                child: HighlightCard(
+                  key: const Key('recommended_routine_home_button'),
+                  title: 'Rutina recomendada',
+                  description: 'Según tu objetivo, tu nivel y tus días de entrenamiento.',
+                  icon: LucideIcons.sparkles,
+                  image: AppImages.workout,
+                  onTap: () => context.push(AppRoutes.recommendedRoutine),
+                ),
+              ),
+              const SizedBox(height: AppSpacing.cardGap),
+              // HU-13: vinculación con el coach.
+              FadeSlideIn(
+                index: 5,
                 child: HighlightCard(
                   title: 'Tu coach',
                   description: switch (viewModel.linkedCoach) {
