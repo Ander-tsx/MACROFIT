@@ -1353,36 +1353,39 @@ class FakeProgressRepository implements ProgressRepository {
 // ───────────────────────── HU-16: rutinas del usuario ─────────────────────────
 
 /// Rutina recomendada de 3 sesiones (HU-15).
-UserRoutine testRecommendedRoutine({String id = 'rec1'}) => UserRoutine(
-  id: id,
-  origin: RoutineOrigin.system,
-  name: 'Rutina recomendada · Mantener · 3 días',
-  sessions: [
-    for (var n = 1; n <= 3; n++)
-      RoutineSessionPlan(
-        number: n,
-        name: 'Día $n · Cuerpo completo',
-        exercises: const [
-          SessionExercise(
-            exerciseId: 'e1',
-            name: 'Sentadilla',
-            muscleGroup: 'legs',
-            sets: 2,
-            reps: 12,
-            restSeconds: 60,
+RecommendedRoutine testRecommendedRoutine({String id = 'rec1'}) =>
+    RecommendedRoutine(
+      id: id,
+      name: 'Rutina recomendada · Mantener · 3 días',
+      objective: Objective.maintain,
+      level: ExperienceLevel.beginner,
+      trainingDays: 3,
+      sessions: [
+        for (var n = 1; n <= 3; n++)
+          RoutineSessionPlan(
+            number: n,
+            name: 'Día $n · Cuerpo completo',
+            exercises: const [
+              SessionExercise(
+                exerciseId: 'e1',
+                name: 'Sentadilla',
+                muscleGroup: 'legs',
+                sets: 2,
+                reps: 12,
+                restSeconds: 60,
+              ),
+              SessionExercise(
+                exerciseId: 'e2',
+                name: 'Flexiones de pecho',
+                muscleGroup: 'chest',
+                sets: 2,
+                reps: 12,
+                restSeconds: 60,
+              ),
+            ],
           ),
-          SessionExercise(
-            exerciseId: 'e2',
-            name: 'Flexiones de pecho',
-            muscleGroup: 'chest',
-            sets: 2,
-            reps: 12,
-            restSeconds: 60,
-          ),
-        ],
-      ),
-  ],
-);
+      ],
+    );
 
 /// Rutina asignada por un coach: una sola sesión con el nombre de la rutina.
 UserRoutine testAssignedRoutine({
@@ -1423,6 +1426,9 @@ class FakeMyRoutinesRepository implements MyRoutinesRepository {
   ApiException? listError;
   ApiException? detailError;
   ApiException? recommendedError;
+
+  /// Si existe, generar la recomendada espera a que se complete (estado de carga).
+  Completer<void>? recommendedGate;
   int listCalls = 0;
   final detailRequests = <String>[];
   int recommendedCalls = 0;
@@ -1445,8 +1451,9 @@ class FakeMyRoutinesRepository implements MyRoutinesRepository {
   }
 
   @override
-  Future<UserRoutine> requestRecommendedRoutine() async {
+  Future<RecommendedRoutine> requestRecommendedRoutine() async {
     recommendedCalls++;
+    if (recommendedGate case final gate?) await gate.future;
     if (recommendedError case final error?) throw error;
     final routine = testRecommendedRoutine(id: 'rec$recommendedCalls');
     routines = [

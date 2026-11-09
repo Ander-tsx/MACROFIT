@@ -29,12 +29,13 @@ class MyRoutinesRemoteDataSource {
   });
 
   /// HU-15 — `POST /users/me/routines/recommended` (`201`, sin cuerpo).
-  Future<UserRoutine> requestRecommendedRoutine() => guardApiCall(() async {
-    final response = await _dio.post<Map<String, dynamic>>(
-      '/users/me/routines/recommended',
-    );
-    return UserRoutineModel.fromJson(response.data!);
-  });
+  Future<RecommendedRoutine> requestRecommendedRoutine() =>
+      guardApiCall(() async {
+        final response = await _dio.post<Map<String, dynamic>>(
+          '/users/me/routines/recommended',
+        );
+        return RecommendedRoutineModel.fromJson(response.data!);
+      });
 
   /// HU-17 — `GET /users/me/routines/{id}/sessions`.
   Future<List<CompletedSession>> getCompletedSessions(String routineId) =>
