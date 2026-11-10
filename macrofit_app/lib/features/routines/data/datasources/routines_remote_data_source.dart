@@ -95,4 +95,10 @@ class RoutinesRemoteDataSource {
         RoutineAssignmentModel.fromJson(json as Map<String, dynamic>),
     ];
   });
+
+  /// HU-20 — `DELETE /coach/routines/{id}/assignments/{clientId}` (`204`).
+  Future<void> removeAssignment(String routineId, String clientId) =>
+      guardApiCall(() async {
+        await _dio.delete<void>('$_routines/$routineId/assignments/$clientId');
+      });
 }

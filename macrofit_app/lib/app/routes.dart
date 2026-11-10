@@ -115,6 +115,13 @@ abstract final class AppRoutes {
   static String coachRoutineAssign(String routineId) =>
       '/coach/routines/$routineId/assign';
 
+  /// HU-20: clientes con la rutina asignada y retiro por cliente. Recibe la
+  /// `Routine` en `extra`; sin ella vuelve a la lista.
+  static const coachRoutineClientsPattern =
+      '/coach/routines/:routineId/clients';
+  static String coachRoutineClients(String routineId) =>
+      '/coach/routines/$routineId/clients';
+
   /// Pantallas de un usuario con perfil completo: las de [userRoutes] y el
   /// detalle de cada rutina (HU-16, `/user/routines/{id}`).
   static bool isUserRoute(String location) =>

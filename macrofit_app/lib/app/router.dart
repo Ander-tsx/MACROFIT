@@ -77,6 +77,8 @@ import '../features/routines/presentation/assign_routine/assign_routine_view.dar
 import '../features/routines/presentation/assign_routine/assign_routine_view_model.dart';
 import '../features/routines/presentation/exercise_picker/exercise_picker_view.dart';
 import '../features/routines/presentation/exercise_picker/exercise_picker_view_model.dart';
+import '../features/routines/presentation/routine_assignments/routine_assignments_view.dart';
+import '../features/routines/presentation/routine_assignments/routine_assignments_view_model.dart';
 import '../features/routines/presentation/routine_builder/routine_builder_view.dart';
 import '../features/routines/presentation/routine_builder/routine_builder_view_model.dart';
 import '../features/routines/presentation/routines_list/routines_list_view.dart';
@@ -368,6 +370,19 @@ GoRouter createRouter(
             initial: state.extra! as Routine,
           ),
           child: const RoutineBuilderView(),
+        ),
+      ),
+      GoRoute(
+        path: AppRoutes.coachRoutineClientsPattern,
+        // HU-20. Sin la rutina (p. ej. al restaurar la ruta) se vuelve a la lista.
+        redirect: (_, state) =>
+            state.extra is Routine ? null : AppRoutes.coachRoutines,
+        builder: (context, state) => ChangeNotifierProvider(
+          create: (context) => RoutineAssignmentsViewModel(
+            repository: context.read<RoutinesRepository>(),
+            routine: state.extra! as Routine,
+          )..load(),
+          child: const RoutineAssignmentsView(),
         ),
       ),
       GoRoute(

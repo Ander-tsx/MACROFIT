@@ -27,6 +27,7 @@ abstract final class ApiErrorCode {
   static const foodProviderError = 'FOOD_PROVIDER_ERROR';
   static const foodProviderTimeout = 'FOOD_PROVIDER_TIMEOUT';
   static const routineNotFound = 'ROUTINE_NOT_FOUND';
+  static const assignmentNotFound = 'ASSIGNMENT_NOT_FOUND';
   static const sessionAlreadyCompleted = 'SESSION_ALREADY_COMPLETED';
   static const exerciseCatalogIncomplete = 'EXERCISE_CATALOG_INCOMPLETE';
 

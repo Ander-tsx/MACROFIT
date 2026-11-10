@@ -342,6 +342,7 @@ void main() {
         AppRoutes.coachExercisePicker,
         AppRoutes.coachRoutineEdit('abc'),
         AppRoutes.coachRoutineAssign('abc'),
+        AppRoutes.coachRoutineClients('abc'),
       ]) {
         expect(
           resolveRedirect(const Authenticated(testCoach), route),
@@ -357,6 +358,7 @@ void main() {
         AppRoutes.coachRoutineNew,
         AppRoutes.coachRoutineEdit('abc'),
         AppRoutes.coachRoutineAssign('abc'),
+        AppRoutes.coachRoutineClients('abc'),
       ]) {
         expect(
           resolveRedirect(const Authenticated(testUser), route),

@@ -1,4 +1,4 @@
-# `features/routines/` — rutinas del coach (HU-18) y su asignación a clientes (HU-19)
+# `features/routines/` — rutinas del coach (HU-18), su asignación a clientes (HU-19) y su edición o retiro (HU-20)
 
 **HU-18-APP:** "Como coach, quiero crear rutinas personalizadas para adaptarlas a cada cliente." (RF-22, CU-04 pasos
 1 a 4, flujos alternos 4a y 5a). El coach ve sus rutinas, crea una nueva con ejercicios del catálogo (TEC-09), captura
@@ -8,6 +8,10 @@ es HU-19.
 **HU-19-APP:** "Como coach, quiero asignar una rutina a uno o varios clientes para que la sigan." (RF-23, RN-04, RNF-11,
 CU-04 pasos 5 y 6, alterno 5a). Desde el menú de una rutina, **Asignar** abre la selección múltiple de los clientes
 vinculados; los que ya la tienen aparecen marcados y bloqueados; se confirma un resumen y se regresa con el aviso de éxito.
+
+**HU-20-APP:** "Como coach, quiero modificar o retirar una rutina asignada para ajustarla al avance del cliente."
+(RF-24, RNF-11). Desde el menú de una rutina, **Clientes asignados** muestra quién la tiene y permite **retirarla** de
+cada uno con confirmación. Editar o eliminar una rutina asignada avisa antes a cuántos clientes afecta.
 
 ## Endpoints
 
@@ -25,6 +29,21 @@ sesión**; las rutas de `/coach/routines` son solo para el rol `coach`.
 | `GET /coach/clients` | HU-19: clientes con vinculación activa (dominio de `clients`, `ClientsRepository.getClients`) |
 | `GET /coach/routines/{id}/assignments` | HU-19: asignaciones activas de clientes vinculados (se marcan como «Ya asignada») |
 | `POST /coach/routines/{id}/assignments` | HU-19: `{ client_ids }` (1 a 50), todo o nada; `403 CLIENT_NOT_LINKED` con `fields["client_ids[i]"]` |
+| `DELETE /coach/routines/{id}/assignments/{clientId}` | HU-20: retira la rutina del cliente (`204`). **Contrato propuesto para HU-20-API** (abajo) |
+
+### Contrato que usa la app (HU-20-API)
+
+HU-20-API se acopla a esta forma:
+
+- `DELETE /coach/routines/{id}/assignments/{clientId}` → `204` sin cuerpo. La asignación activa pasa a `removed`
+  (`removed_at`); **no** se borran las sesiones completadas del cliente (`routine_sessions`, RF-24). Después, el
+  cliente deja de ver la rutina (HU-16) y de poder registrar sesiones (HU-17 responde `404`).
+- `404 ASSIGNMENT_NOT_FOUND` (código nuevo): el cliente no tiene la rutina asignada (ya se retiró o nunca la tuvo). La
+  app lo trata como retirada: lo quita de la lista y avisa «La rutina ya se había retirado de…».
+- `404 ROUTINE_NOT_FOUND`: la rutina no existe, el id está mal formado o es de otro coach.
+- `401` / `403 FORBIDDEN_ROLE` (cuenta `user`).
+- `PUT` y `DELETE /coach/routines/{id}` no cambian: editar ya se refleja en los clientes y eliminar ya retira las
+  asignaciones (HU-19).
 
 Cuerpo de `POST` y `PUT`: `{ name, exercises: [{ exercise_id, sets, reps, rest_seconds }] }`. La respuesta trae `name` y
 `muscle_group` de cada ejercicio (copia del catálogo), así que la lista no cruza con `/exercises`.
@@ -59,6 +78,7 @@ ejercicio.
 | `data/datasources/routines_remote_data_source.dart` | Los 7 endpoints con `guardApiCall` |
 | `data/repositories/routines_repository_impl.dart` | Implementación del contrato |
 | `presentation/routines_list/` | `/coach/routines` «Mis rutinas»: lista, vacío, error con «Reintentar», «Nueva rutina», menú Editar / Asignar / Eliminar |
+| `presentation/routine_assignments/` | `/coach/routines/:routineId/clients` «Clientes asignados» (HU-20): lista de clientes con la rutina, **Retirar** con confirmación, vacío, sin conexión |
 | `presentation/assign_routine/` | `/coach/routines/:routineId/assign` «Asignar rutina» (HU-19): búsqueda, selección múltiple, ya asignados, confirmación |
 | `presentation/routine_builder/` | `/coach/routines/new` y `/coach/routines/:routineId/edit`: nombre, ejercicios, Guardar, confirmación al salir |
 | `presentation/exercise_picker/` | `/coach/routines/exercises` «Agregar ejercicios»: filtros y selección múltiple |
@@ -79,6 +99,21 @@ ejercicio.
 5. Tocar una rutina (o **Editar** en su menú) abre el constructor precargado. **Eliminar** pide confirmación, llama al
    `DELETE` y recarga la lista.
 6. **Atrás** con cambios sin guardar pregunta «¿Descartar cambios?».
+
+### Editar y retirar (HU-20)
+
+1. En «Mis rutinas», menú de la rutina → **Clientes asignados** abre `/coach/routines/:routineId/clients` con la rutina
+   en `extra` (sin ella vuelve a la lista). Carga `GET /coach/routines/{id}/assignments`.
+2. Cada cliente muestra su nombre y la fecha de asignación, con el ícono **Retirar**. Al tocarlo pide confirmación
+   («¿Retirar «Torso A» de Ana? Dejará de verla en su app; sus sesiones completadas se conservan.»); al confirmar,
+   `DELETE` y lo quita de la lista con el aviso «Rutina retirada de Ana».
+3. `404 ASSIGNMENT_NOT_FOUND`: se quita igual y avisa que ya se había retirado. Sin red: `ErrorBanner` en la pantalla y
+   el cliente se queda en la lista (RNF-11). Sin clientes: estado vacío.
+4. **Editar** una rutina asignada: al tocar **Guardar** (después de la validación local) se consulta cuántos clientes la
+   tienen; si son 1 o más, pregunta «Esta rutina está asignada a 2 clientes. Los cambios se verán en su app…» antes del
+   `PUT`. Si la consulta falla, guarda sin preguntar.
+5. **Eliminar** una rutina: antes del diálogo se consulta cuántos clientes la tienen; el mensaje agrega «Está asignada
+   a 2 clientes: se les retirará; sus sesiones completadas se conservan.» (si la consulta falla, un aviso general).
 
 ### Asignar (HU-19)
 
@@ -134,7 +169,10 @@ ejercicio.
   ya asignados (marcados, no se envían), selección y búsqueda, confirmar/cancelar, éxito y `CLIENT_NOT_LINKED`.
 - `test/features/routines/data/routines_repository_impl_test.dart` › asignaciones (HU-19): rutas, cuerpo, respuesta,
   `403` con su campo, `404` y sin red.
-- `test/app/app_test.dart` › rutinas del coach (HU-18) y asignar rutina a clientes (HU-19); `test/app/router_test.dart`
+- `test/features/routines/presentation/routine_assignments_view_model_test.dart` (HU-20): clientes asignados, retirar,
+  cancelar, ya retirada, sin conexión, aviso al editar (confirmar, cancelar, sin clientes, al crear, sin red) y al
+  eliminar; `routines_repository_impl_test.dart` › retirar una asignación.
+- `test/app/app_test.dart` › rutinas del coach (HU-18), asignar rutina a clientes (HU-19) y editar y retirar (HU-20); `test/app/router_test.dart`
   › rutinas del coach (incluye `/coach/routines/:id/assign`).
 
 ## Pendiente

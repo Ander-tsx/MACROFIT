@@ -44,6 +44,7 @@ import 'package:macrofit_app/features/progress/presentation/progress_charts/prog
 import 'package:macrofit_app/features/progress/presentation/weights/weights_view.dart';
 import 'package:macrofit_app/features/routines/presentation/assign_routine/assign_routine_view.dart';
 import 'package:macrofit_app/features/routines/presentation/exercise_picker/exercise_picker_view.dart';
+import 'package:macrofit_app/features/routines/presentation/routine_assignments/routine_assignments_view.dart';
 import 'package:macrofit_app/features/routines/presentation/routine_builder/routine_builder_view.dart';
 import 'package:macrofit_app/features/routines/presentation/routines_list/routines_list_view.dart';
 
@@ -1933,6 +1934,115 @@ void main() {
       expect(routines.assignCalls, isEmpty);
       expect(routines.deleted, isEmpty);
     });
+  });
+
+  group('editar y retirar una rutina asignada (HU-20)', () {
+    Future<void> openRoutinesWithClients(WidgetTester tester) async {
+      await pumpApp(tester, state: const Authenticated(testCoach));
+      routines.assignments = {
+        testRoutine.id: [
+          testAssignment(clientId: testClientSummary.id, clientName: 'Ana'),
+          testAssignment(
+            clientId: testClientWithoutData.id,
+            clientName: 'José Pérez',
+          ),
+        ],
+      };
+      await tester.tap(find.byKey(const Key('routines_home_button')));
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets(
+      'desde el menú se ven los clientes asignados y se retira uno con confirmación',
+      (tester) async {
+        await openRoutinesWithClients(tester);
+        await tester.tap(find.byKey(Key('routine_menu_${testRoutine.id}')));
+        await tester.pumpAndSettle();
+        await tester.tap(find.byKey(const Key('routine_menu_clients')));
+        await tester.pumpAndSettle();
+
+        expect(find.byType(RoutineAssignmentsView), findsOneWidget);
+        expect(find.text('Ana'), findsOneWidget);
+        expect(find.text('José Pérez'), findsOneWidget);
+
+        await tester.tap(
+          find.byKey(Key('remove_assignment_${testClientSummary.id}')),
+        );
+        await tester.pumpAndSettle();
+        expect(
+          find.textContaining('¿Retirar «Torso A» de Ana?'),
+          findsOneWidget,
+        );
+        await tester.tap(find.byKey(const Key('remove_assignment_confirm')));
+        await tester.pumpAndSettle();
+
+        expect(routines.removed.single.clientId, testClientSummary.id);
+        expect(find.text('Ana'), findsNothing);
+        expect(find.text('José Pérez'), findsOneWidget);
+        expect(find.text('Rutina retirada de Ana'), findsOneWidget);
+      },
+    );
+
+    testWidgets('sin conexión el retiro muestra el error y no cierra la app', (
+      tester,
+    ) async {
+      await openRoutinesWithClients(tester);
+      routines.removeError = networkError;
+      await tester.tap(find.byKey(Key('routine_menu_${testRoutine.id}')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('routine_menu_clients')));
+      await tester.pumpAndSettle();
+
+      await tester.tap(
+        find.byKey(Key('remove_assignment_${testClientSummary.id}')),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('remove_assignment_confirm')));
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const Key('remove_assignment_error')), findsOneWidget);
+      expect(find.text('Ana'), findsOneWidget);
+    });
+
+    testWidgets('editar una rutina asignada avisa a cuántos clientes afecta', (
+      tester,
+    ) async {
+      await openRoutinesWithClients(tester);
+      await tester.tap(find.text('Torso A'));
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byKey(const Key('routine_name')), 'Torso B');
+      await tester.tap(find.byKey(const Key('routine_submit')));
+      await tester.pumpAndSettle();
+
+      expect(
+        find.textContaining('Esta rutina está asignada a 2 clientes'),
+        findsOneWidget,
+      );
+      await tester.tap(find.byKey(const Key('routine_affected_confirm')));
+      await tester.pumpAndSettle();
+
+      expect(routines.updated.single.id, testRoutine.id);
+      expect(find.text('Torso B'), findsOneWidget);
+    });
+
+    testWidgets(
+      'eliminar una rutina asignada avisa que se retira de sus clientes',
+      (tester) async {
+        await openRoutinesWithClients(tester);
+        await tester.tap(find.byKey(Key('routine_menu_${testRoutine.id}')));
+        await tester.pumpAndSettle();
+        await tester.tap(find.byKey(const Key('routine_menu_delete')));
+        await tester.pumpAndSettle();
+
+        expect(
+          find.textContaining('Está asignada a 2 clientes: se les retirará'),
+          findsOneWidget,
+        );
+        await tester.tap(find.byKey(const Key('routine_delete_cancel')));
+        await tester.pumpAndSettle();
+        expect(routines.deleted, isEmpty);
+      },
+    );
   });
 
   group('rutina recomendada (HU-15)', () {
