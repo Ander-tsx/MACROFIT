@@ -4,7 +4,6 @@ import 'package:provider/provider.dart';
 
 import '../../../../core/presentation/theme/app_tokens.dart';
 import '../../../../core/presentation/theme/lucide_icons.dart';
-import '../../../../core/presentation/theme/theme_context.dart';
 import '../../../../core/presentation/widgets/app_header.dart';
 import '../../../../core/presentation/widgets/app_snack_bar.dart';
 import '../../../../core/presentation/widgets/card_edge_clip.dart';
@@ -15,11 +14,11 @@ import '../../../../core/presentation/widgets/error_state.dart';
 import '../../../../core/presentation/widgets/fade_slide_in.dart';
 import '../../../../core/presentation/widgets/loading_state.dart';
 import '../../../../core/presentation/widgets/primary_button.dart';
-import '../../../../core/presentation/widgets/section_card.dart';
 import '../../../../core/presentation/widgets/status_banner.dart';
 import '../../domain/entities/user_routine.dart';
 import '../widgets/my_routine_texts.dart';
 import '../widgets/origin_tag.dart';
+import '../widgets/session_plan_card.dart';
 import 'routine_detail_view_model.dart';
 
 /// HU-16 — detalle de una rutina del usuario: cada sesión con sus ejercicios,
@@ -146,7 +145,7 @@ class RoutineDetailView extends StatelessWidget {
         for (final (index, session) in routine.sessions.indexed) ...[
           FadeSlideIn(
             index: index,
-            child: _SessionCard(
+            child: SessionPlanCard(
               session: session,
               footer: _SessionStatus(
                 session: session,
@@ -158,44 +157,6 @@ class RoutineDetailView extends StatelessWidget {
           const SizedBox(height: AppSpacing.cardGap),
         ],
       ],
-    );
-  }
-}
-
-class _SessionCard extends StatelessWidget {
-  const _SessionCard({required this.session, required this.footer});
-
-  final RoutineSessionPlan session;
-  final Widget footer;
-
-  @override
-  Widget build(BuildContext context) {
-    final text = context.text;
-    return SectionCard(
-      key: Key('routine_session_${session.number}'),
-      title: session.name,
-      subtitle: session.exercises.length == 1
-          ? '1 ejercicio'
-          : '${session.exercises.length} ejercicios',
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          for (final (index, exercise) in session.exercises.indexed) ...[
-            if (index > 0) const Divider(height: AppSpacing.xxl),
-            Text(exercise.name, style: text.titleMedium),
-            const SizedBox(height: AppSpacing.xxs),
-            Text(
-              '${muscleGroupText(exercise.muscleGroup)} · '
-              '${exerciseVolumeText(exercise)}',
-              style: text.bodyMedium?.copyWith(
-                color: context.colors.onSurfaceVariant,
-              ),
-            ),
-          ],
-          const SizedBox(height: AppSpacing.xl),
-          footer,
-        ],
-      ),
     );
   }
 }

@@ -1,4 +1,8 @@
-# `features/my_routines/` — rutinas del usuario (HU-16) y sesiones completadas (HU-17)
+# `features/my_routines/` — rutina recomendada (HU-15), rutinas del usuario (HU-16) y sesiones completadas (HU-17)
+
+**HU-15-APP:** "Como usuario, quiero recibir rutinas recomendadas según mi objetivo, nivel y disponibilidad para entrenar
+sin coach." (RF-14, RNF-11). Desde el inicio, **Rutina recomendada** abre una pantalla para solicitarla, verla con sus
+sesiones numeradas y generarla de nuevo.
 
 **HU-16-APP:** "Como usuario, quiero ver mis rutinas identificando si son recomendadas o asignadas para saber cuál
 seguir." (RF-15, RF-23, RN-08, RNF-11). El usuario ve su rutina recomendada (HU-15) y las que le asignó su coach
@@ -16,7 +20,7 @@ Cliente HTTP **con** sesión; solo rol `user`.
 |---|---|---|
 | `GET /users/me/routines` | Lista «Mis rutinas» | Contrato propuesto para HU-16-API (abajo) |
 | `GET /routines/{id}` | Detalle | Contrato propuesto para HU-16-API (abajo) |
-| `POST /users/me/routines/recommended` | Acceso desde la lista vacía: genera la recomendada y abre su detalle | HU-15-API, en develop |
+| `POST /users/me/routines/recommended` | HU-15: pantalla «Rutina recomendada» y acceso desde la lista vacía. Responde `objective`, `level` y `training_days` además de la forma del detalle | HU-15-API, en develop |
 | `GET /users/me/routines/{id}/sessions` | HU-17: sesiones completadas de la rutina (se marcan las de hoy) | HU-17-API (PR #67) |
 | `POST /users/me/routines/{id}/sessions` | HU-17: `{ session_number }`; sin `date`, la API registra hoy (hora de México) | HU-17-API (PR #67) |
 
@@ -51,15 +55,17 @@ Campos extra (p. ej. `focus`, `equipment`, `level`) se ignoran.
 | Archivo | Contenido |
 |---|---|
 | `domain/entities/user_routine.dart` | `RoutineOrigin` (`system` / `coach`), `UserRoutineSummary` (lista), `UserRoutine`, `RoutineSessionPlan`, `SessionExercise` |
+| `domain/entities/user_routine.dart` (`RecommendedRoutine`) | HU-15: `UserRoutine` más objetivo, nivel y días con que se generó (solo la respuesta de `POST`) |
 | `domain/entities/completed_session.dart` | `CompletedSession` (HU-17): número y nombre de la sesión, día `YYYY-MM-DD` y hora del registro |
 | `domain/repositories/my_routines_repository.dart` | Contrato `MyRoutinesRepository` (`getRoutines`, `getRoutine`, `requestRecommendedRoutine`; HU-17: `getCompletedSessions`, `completeSession`) |
 | `data/models/user_routine_model.dart` | JSON de la lista y del detalle (también la respuesta de HU-15) |
 | `data/models/completed_session_model.dart` | JSON de la sesión completada y cuerpo `{ session_number }` (HU-17) |
 | `data/datasources/my_routines_remote_data_source.dart` | Los 5 endpoints con `guardApiCall` |
 | `data/repositories/my_routines_repository_impl.dart` | Implementación del contrato |
+| `presentation/recommended/` | HU-15: `/user/routines/recommended` con `RecommendedRoutineViewModel`: revisa si hay una vigente, genera, regenera con confirmación y atiende los errores |
 | `presentation/routines_list/` | `/user/routines` «Mis rutinas»: lista con origen, vacío con acceso a la recomendada, error con «Reintentar» |
 | `presentation/routine_detail/` | `/user/routines/:routineId`: sesiones con ejercicios y volumen; `ROUTINE_NOT_FOUND` avisa y regresa. HU-17: botón por sesión, «Completada hoy · fecha», errores por sesión con «Reintentar» |
-| `presentation/widgets/` | `OriginTag` (píldora de origen con ícono) y textos (`originLabel`, `sessionCountText`, `exerciseVolumeText`) |
+| `presentation/widgets/` | `OriginTag` (píldora de origen con ícono), `SessionPlanCard` (sesión con sus ejercicios, compartida por el detalle y HU-15) y textos (`originLabel`, `sessionCountText`, `exerciseVolumeText`) |
 
 ## Flujo
 
@@ -82,8 +88,25 @@ Campos extra (p. ej. `focus`, `equipment`, `level`) se ignoran.
    - Sin conexión: el registro no se pierde en silencio; la sesión muestra el error y su botón cambia a **Reintentar**.
    - Si no se pudieron consultar las completadas, la rutina se muestra igual con un aviso.
 
+### Rutina recomendada (HU-15)
+
+1. **Inicio** → tarjeta **Rutina recomendada** (`/user/routines/recommended`). Al abrir solo se consulta
+   `GET /users/me/routines` para saber si ya hay una vigente; **abrir nunca genera**.
+2. Sin vigente: **Generar mi rutina**. Mientras se genera, el botón muestra la carga y no permite enviar dos veces.
+3. Se muestra el nombre, el objetivo, el nivel, los días y cada sesión numerada con sus ejercicios, series, repeticiones
+   y descanso.
+4. **Generar de nuevo** pide confirmación porque reemplaza la anterior (las sesiones completadas se conservan). También
+   la pide si la vigente se encontró al abrir; esa se muestra como una fila que abre su detalle.
+5. Errores (RNF-11), sin cerrar la app y conservando lo que se estaba viendo:
+   - `404 PROFILE_NOT_FOUND`: mensaje y **Completar perfil** (`/user/profile`).
+   - `503 EXERCISE_CATALOG_INCOMPLETE` y falta de conexión: el mensaje en español y el botón sigue disponible.
+   - Si al abrir no se pudo consultar la lista: mensaje con **Reintentar**; no se ofrece generar para no reemplazar sin
+     confirmar una rutina que no se pudo ver.
+
 ## Decisiones
 
 - Feature propia (`my_routines`) separada de `routines` (coach): solo comparte el concepto, no código.
-- El acceso desde la lista vacía usa directamente `POST /users/me/routines/recommended` (HU-15-API ya existe) en lugar de
-  una pantalla aparte; HU-15-APP puede reemplazar esa navegación si agrega la suya.
+- El acceso desde la lista vacía usa directamente `POST /users/me/routines/recommended` y abre el detalle; como en ese caso
+  no hay rutina que reemplazar, HU-15-APP lo conserva y agrega su pantalla desde el inicio.
+- La pantalla de HU-15 depende de `GET /users/me/routines` (HU-16-API) para saber si ya hay una vigente: la API no tiene
+  consulta de la recomendada con objetivo y nivel, por eso esos datos solo se ven justo después de generarla.

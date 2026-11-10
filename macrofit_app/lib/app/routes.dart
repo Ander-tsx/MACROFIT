@@ -51,6 +51,11 @@ abstract final class AppRoutes {
   static const myRoutinesChild = 'routines';
   static const myRoutines = '$userHome/$myRoutinesChild';
 
+  /// HU-15: solicitar y ver la rutina recomendada. Se declara antes del detalle
+  /// para que `recommended` no se tome como id de una rutina.
+  static const recommendedRoutineChild = 'routines/recommended';
+  static const recommendedRoutine = '$userHome/$recommendedRoutineChild';
+
   /// HU-16: detalle de una rutina del usuario. Puede recibir en `extra` el
   /// `UserRoutineSummary` de la lista (para el título mientras carga).
   static const myRoutineDetailChild = 'routines/:routineId';
@@ -138,5 +143,6 @@ abstract final class AppRoutes {
     mealHistory,
     weeklySummary,
     myRoutines,
+    recommendedRoutine,
   };
 }

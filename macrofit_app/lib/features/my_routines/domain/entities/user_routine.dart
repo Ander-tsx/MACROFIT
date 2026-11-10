@@ -1,3 +1,5 @@
+import '../../../profile/domain/entities/profile.dart';
+
 /// Origen de una rutina del usuario (RN-08).
 enum RoutineOrigin {
   /// Recomendada por el sistema (HU-15).
@@ -71,6 +73,23 @@ class UserRoutine {
     coachName: coachName,
     sessionCount: sessions.length,
   );
+}
+
+/// Rutina recomendada recién generada (HU-15): además de sus sesiones trae el
+/// objetivo, el nivel y los días del perfil con que se generó.
+class RecommendedRoutine extends UserRoutine {
+  const RecommendedRoutine({
+    required super.id,
+    required super.name,
+    required super.sessions,
+    required this.objective,
+    required this.level,
+    required this.trainingDays,
+  }) : super(origin: RoutineOrigin.system);
+
+  final Objective objective;
+  final ExperienceLevel level;
+  final int trainingDays;
 }
 
 /// Sesión de una rutina («Día 1 · Empuje»).

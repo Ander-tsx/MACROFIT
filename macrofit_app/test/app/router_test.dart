@@ -160,6 +160,35 @@ void main() {
       }
     });
 
+    test('un usuario con perfil abre la rutina recomendada (HU-15)', () {
+      expect(
+        resolveRedirect(
+          const Authenticated(testUser),
+          AppRoutes.recommendedRoutine,
+        ),
+        isNull,
+      );
+    });
+
+    test(
+      'un coach, un usuario sin perfil o sin sesión no abren la recomendada',
+      () {
+        const route = AppRoutes.recommendedRoutine;
+        expect(
+          resolveRedirect(const Authenticated(testCoach), route),
+          AppRoutes.coachHome,
+        );
+        expect(
+          resolveRedirect(const Authenticated(testNewUser), route),
+          AppRoutes.profileSetup,
+        );
+        expect(
+          resolveRedirect(const Unauthenticated(), route),
+          AppRoutes.login,
+        );
+      },
+    );
+
     test('solo cuenta como detalle /user/routines/{id}, sin más segmentos', () {
       expect(AppRoutes.isUserRoute('${AppRoutes.myRoutines}/r1'), isTrue);
       expect(AppRoutes.isUserRoute('${AppRoutes.myRoutines}/'), isFalse);

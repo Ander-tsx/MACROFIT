@@ -10,8 +10,10 @@ abstract interface class MyRoutinesRepository {
   /// es accesible (retirada, reemplazada o ajena).
   Future<UserRoutine> getRoutine(String id);
 
-  /// HU-15 — genera la rutina recomendada (acceso desde la lista vacía).
-  Future<UserRoutine> requestRecommendedRoutine();
+  /// HU-15 — genera la rutina recomendada y reemplaza la vigente.
+  /// `PROFILE_NOT_FOUND` sin perfil; `EXERCISE_CATALOG_INCOMPLETE` si el catálogo
+  /// no alcanza para generarla.
+  Future<RecommendedRoutine> requestRecommendedRoutine();
 
   /// HU-17 — sesiones completadas de la rutina, la más reciente primero.
   Future<List<CompletedSession>> getCompletedSessions(String routineId);

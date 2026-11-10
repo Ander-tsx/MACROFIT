@@ -2,8 +2,10 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 import 'package:macrofit_app/app/app.dart';
 import 'package:macrofit_app/app/dependencies.dart';
+import 'package:macrofit_app/app/routes.dart';
 import 'package:macrofit_app/features/auth/domain/entities/auth_state.dart';
 import 'package:macrofit_app/features/auth/presentation/login/login_view.dart';
 import 'package:macrofit_app/features/auth/presentation/register/register_view.dart';
@@ -25,6 +27,7 @@ import 'package:macrofit_app/features/legal/presentation/privacy_notice/privacy_
 import 'package:macrofit_app/features/meals/domain/entities/meal_estimate.dart';
 import 'package:macrofit_app/features/meals/domain/entities/meal_photo.dart';
 import 'package:macrofit_app/features/meals/domain/entities/photo_pick_exception.dart';
+import 'package:macrofit_app/features/my_routines/presentation/recommended/recommended_routine_view.dart';
 import 'package:macrofit_app/features/meals/presentation/meal_estimate/meal_estimate_view.dart';
 import 'package:macrofit_app/features/meals/presentation/meal_estimate/meal_estimate_view_model.dart';
 import 'package:macrofit_app/features/meals/presentation/meal_form/meal_form_view.dart';
@@ -1929,6 +1932,36 @@ void main() {
       expect(find.text('Torso A'), findsOneWidget);
       expect(routines.assignCalls, isEmpty);
       expect(routines.deleted, isEmpty);
+    });
+  });
+
+  group('rutina recomendada (HU-15)', () {
+    testWidgets('el inicio del usuario abre la pantalla para solicitarla', (
+      tester,
+    ) async {
+      await pumpApp(tester, state: const Authenticated(testUser));
+      const access = Key('recommended_routine_home_button');
+
+      await tester.scrollUntilVisible(find.byKey(access), 200);
+      await tester.ensureVisible(find.byKey(access));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(access));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(RecommendedRoutineView), findsOneWidget);
+      expect(find.byKey(const Key('recommended_generate')), findsOneWidget);
+    });
+
+    testWidgets('/user/routines/recommended no se confunde con un detalle', (
+      tester,
+    ) async {
+      await pumpApp(tester, state: const Authenticated(testUser));
+
+      final router = GoRouter.of(tester.element(find.byType(Scaffold).first));
+      unawaited(router.push(AppRoutes.recommendedRoutine));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(RecommendedRoutineView), findsOneWidget);
     });
   });
 

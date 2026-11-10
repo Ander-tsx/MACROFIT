@@ -15,7 +15,7 @@ class MyRoutinesRepositoryImpl implements MyRoutinesRepository {
   Future<UserRoutine> getRoutine(String id) => _remote.getRoutine(id);
 
   @override
-  Future<UserRoutine> requestRecommendedRoutine() =>
+  Future<RecommendedRoutine> requestRecommendedRoutine() =>
       _remote.requestRecommendedRoutine();
 
   @override

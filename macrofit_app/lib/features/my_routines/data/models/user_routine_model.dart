@@ -1,3 +1,4 @@
+import '../../../profile/domain/entities/profile.dart';
 import '../../domain/entities/user_routine.dart';
 
 /// Elemento de `GET /users/me/routines` (HU-16):
@@ -13,8 +14,23 @@ abstract final class UserRoutineSummaryModel {
       );
 }
 
-/// Respuesta de `GET /routines/{id}` (HU-16) y de
-/// `POST /users/me/routines/recommended` (HU-15):
+/// Respuesta de `POST /users/me/routines/recommended` (HU-15): la forma del
+/// detalle más `objective`, `level` y `training_days`.
+abstract final class RecommendedRoutineModel {
+  static RecommendedRoutine fromJson(Map<String, dynamic> json) {
+    final routine = UserRoutineModel.fromJson(json);
+    return RecommendedRoutine(
+      id: routine.id,
+      name: routine.name,
+      sessions: routine.sessions,
+      objective: Objective.fromApi(json['objective'] as String),
+      level: ExperienceLevel.fromApi(json['level'] as String),
+      trainingDays: (json['training_days'] as num).toInt(),
+    );
+  }
+}
+
+/// Respuesta de `GET /routines/{id}` (HU-16):
 /// `{ id, origin, name, coach_name?, sessions: [{ number, name, exercises }] }`.
 abstract final class UserRoutineModel {
   static UserRoutine fromJson(Map<String, dynamic> json) => UserRoutine(
