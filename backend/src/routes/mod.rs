@@ -16,6 +16,7 @@ pub mod progress;
 pub mod recommended_routines;
 pub mod routines;
 pub mod summary;
+pub mod user_routines;
 pub mod weights;
 
 /// Prefijo común de la API. Una versión nueva incompatible se monta en `/api/v2`.
@@ -38,7 +39,8 @@ pub fn api_router(dev_mode: bool) -> Router<AppState> {
         .merge(summary::router())
         .merge(progress::router())
         .merge(routines::router())
-        .merge(recommended_routines::router());
+        .merge(recommended_routines::router())
+        .merge(user_routines::router());
     if dev_mode {
         v1 = v1.merge(dev::router());
     }

@@ -28,6 +28,8 @@ abstract final class ApiErrorCode {
   static const foodProviderTimeout = 'FOOD_PROVIDER_TIMEOUT';
   static const routineNotFound = 'ROUTINE_NOT_FOUND';
   static const assignmentNotFound = 'ASSIGNMENT_NOT_FOUND';
+  static const sessionAlreadyCompleted = 'SESSION_ALREADY_COMPLETED';
+  static const exerciseCatalogIncomplete = 'EXERCISE_CATALOG_INCOMPLETE';
 
   /// No se pudo contactar al servidor (sin red, servidor apagado, timeout).
   static const network = 'NETWORK_ERROR';

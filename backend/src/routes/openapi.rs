@@ -13,7 +13,7 @@ use utoipa_swagger_ui::SwaggerUi;
 
 use super::{
     auth, coach_invite_codes, coach_links, dev, goals, legal, meals, profile, progress,
-    recommended_routines, routines, summary,
+    recommended_routines, routines, summary, user_routines,
 };
 
 /// Ruta de la especificación en JSON.
@@ -79,6 +79,10 @@ responder `500 INTERNAL_ERROR` ante un error inesperado.";
         routines::assign_routine_handler,
         routines::list_assignments_handler,
         recommended_routines::generate_recommended_routine_handler,
+        user_routines::list_user_routines_handler,
+        user_routines::get_user_routine_handler,
+        routines::complete_session_handler,
+        routines::list_sessions_handler,
         auth::coach_only_handler,
     ),
     modifiers(&BearerAuth),
@@ -91,7 +95,7 @@ responder `500 INTERNAL_ERROR` ante un error inesperado.";
         (name = "Coach", description = "Clientes, metas por coach (HU-05), código de invitación (HU-12) y comidas de un cliente (HU-25)"),
         (name = "Resumen", description = "Resumen diario contra la meta (HU-10) y resumen semanal (HU-11)"),
         (name = "Comidas", description = "Foto de la comida (HU-06 y HU-25), estimación nutricional (HU-07) y registros de comida (HU-09)"),
-        (name = "Rutinas", description = "Rutinas personalizadas del coach con ejercicios del catálogo (HU-18), su asignación a clientes (HU-19) y la rutina recomendada del usuario (HU-15)"),
+        (name = "Rutinas", description = "Rutinas personalizadas del coach con ejercicios del catálogo (HU-18), su asignación a clientes (HU-19), la rutina recomendada del usuario (HU-15), sus rutinas con su origen (HU-16) y sus sesiones completadas (HU-17)"),
     )
 )]
 struct ApiDoc;
@@ -307,6 +311,20 @@ mod tests {
             User,
             &[201, 401, 403, 404, 503],
         ),
+        (
+            "post",
+            "/users/me/routines/{id}/sessions",
+            User,
+            &[201, 400, 401, 403, 404, 409],
+        ),
+        (
+            "get",
+            "/users/me/routines/{id}/sessions",
+            User,
+            &[200, 401, 403, 404],
+        ),
+        ("get", "/users/me/routines", User, &[200, 401, 403]),
+        ("get", "/routines/{id}", User, &[200, 401, 403, 404]),
     ];
 
     /// Rutas que solo existen con `APP_ENV=development`.
@@ -415,6 +433,7 @@ mod tests {
             ("post", "/coach/routines"),
             ("put", "/coach/routines/{id}"),
             ("post", "/coach/routines/{id}/assignments"),
+            ("post", "/users/me/routines/{id}/sessions"),
         ];
         let with_multipart = [("post", "/meals/photos")];
         for (method, path) in operations(&spec) {

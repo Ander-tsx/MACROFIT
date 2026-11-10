@@ -42,6 +42,9 @@ import 'package:macrofit_app/features/progress/domain/entities/progress_report.d
 import 'package:macrofit_app/features/progress/domain/entities/weight_entry.dart';
 import 'package:macrofit_app/features/progress/domain/repositories/progress_repository.dart';
 import 'package:macrofit_app/features/progress/domain/repositories/weights_repository.dart';
+import 'package:macrofit_app/features/my_routines/domain/entities/completed_session.dart';
+import 'package:macrofit_app/features/my_routines/domain/entities/user_routine.dart';
+import 'package:macrofit_app/features/my_routines/domain/repositories/my_routines_repository.dart';
 import 'package:macrofit_app/features/routines/domain/entities/exercise.dart';
 import 'package:macrofit_app/features/routines/domain/entities/routine.dart';
 import 'package:macrofit_app/features/routines/domain/entities/routine_assignment.dart';
@@ -1365,3 +1368,189 @@ class FakeProgressRepository implements ProgressRepository {
     return getProgress(from: from, to: to);
   }
 }
+// ───────────────────────── HU-16: rutinas del usuario ─────────────────────────
+
+/// Rutina recomendada de 3 sesiones (HU-15).
+RecommendedRoutine testRecommendedRoutine({String id = 'rec1'}) =>
+    RecommendedRoutine(
+      id: id,
+      name: 'Rutina recomendada · Mantener · 3 días',
+      objective: Objective.maintain,
+      level: ExperienceLevel.beginner,
+      trainingDays: 3,
+      sessions: [
+        for (var n = 1; n <= 3; n++)
+          RoutineSessionPlan(
+            number: n,
+            name: 'Día $n · Cuerpo completo',
+            exercises: const [
+              SessionExercise(
+                exerciseId: 'e1',
+                name: 'Sentadilla',
+                muscleGroup: 'legs',
+                sets: 2,
+                reps: 12,
+                restSeconds: 60,
+              ),
+              SessionExercise(
+                exerciseId: 'e2',
+                name: 'Flexiones de pecho',
+                muscleGroup: 'chest',
+                sets: 2,
+                reps: 12,
+                restSeconds: 60,
+              ),
+            ],
+          ),
+      ],
+    );
+
+/// Rutina asignada por un coach: una sola sesión con el nombre de la rutina.
+UserRoutine testAssignedRoutine({
+  String id = 'asg1',
+  String name = 'Torso A',
+  String coachName = 'Carlos',
+}) => UserRoutine(
+  id: id,
+  origin: RoutineOrigin.coach,
+  name: name,
+  coachName: coachName,
+  sessions: [
+    RoutineSessionPlan(
+      number: 1,
+      name: name,
+      exercises: const [
+        SessionExercise(
+          exerciseId: 'e3',
+          name: 'Press de banca',
+          muscleGroup: 'chest',
+          sets: 4,
+          reps: 10,
+          restSeconds: 90,
+        ),
+      ],
+    ),
+  ],
+);
+
+/// Rutinas del usuario en memoria. [routines] se puede cambiar entre cargas
+/// (p. ej. una asignación nueva); `listError`, `detailError` y
+/// `recommendedError` simulan errores de la API.
+class FakeMyRoutinesRepository implements MyRoutinesRepository {
+  FakeMyRoutinesRepository({List<UserRoutine>? routines})
+    : routines = routines ?? [];
+
+  List<UserRoutine> routines;
+  ApiException? listError;
+  ApiException? detailError;
+  ApiException? recommendedError;
+
+  /// Si existe, generar la recomendada espera a que se complete (estado de carga).
+  Completer<void>? recommendedGate;
+  int listCalls = 0;
+  final detailRequests = <String>[];
+  int recommendedCalls = 0;
+
+  @override
+  Future<List<UserRoutineSummary>> getRoutines() async {
+    listCalls++;
+    if (listError case final error?) throw error;
+    return [for (final routine in routines) routine.toSummary()];
+  }
+
+  @override
+  Future<UserRoutine> getRoutine(String id) async {
+    detailRequests.add(id);
+    if (detailError case final error?) throw error;
+    for (final routine in routines) {
+      if (routine.id == id) return routine;
+    }
+    throw apiError(ApiErrorCode.routineNotFound, status: 404);
+  }
+
+  @override
+  Future<RecommendedRoutine> requestRecommendedRoutine() async {
+    recommendedCalls++;
+    if (recommendedGate case final gate?) await gate.future;
+    if (recommendedError case final error?) throw error;
+    final routine = testRecommendedRoutine(id: 'rec$recommendedCalls');
+    routines = [
+      routine,
+      for (final item in routines)
+        if (item.origin == RoutineOrigin.coach) item,
+    ];
+    return routine;
+  }
+
+  // ───────── HU-17: sesiones completadas ─────────
+
+  /// Día que la API considera «hoy» (`YYYY-MM-DD`).
+  String today = '2026-11-07';
+
+  /// Sesiones completadas por id de rutina, la más reciente primero.
+  final completed = <String, List<CompletedSession>>{};
+  ApiException? sessionsError;
+  ApiException? completeError;
+  final completeRequests = <(String, int)>[];
+
+  /// Si es `true`, el siguiente registro responde 409 como si otro
+  /// dispositivo ya la hubiera registrado (y la deja registrada).
+  bool completedElsewhere = false;
+
+  @override
+  Future<List<CompletedSession>> getCompletedSessions(String routineId) async {
+    if (sessionsError case final error?) throw error;
+    if (!routines.any((r) => r.id == routineId)) {
+      throw apiError(ApiErrorCode.routineNotFound, status: 404);
+    }
+    return List.of(completed[routineId] ?? const []);
+  }
+
+  @override
+  Future<CompletedSession> completeSession(
+    String routineId,
+    int sessionNumber,
+  ) async {
+    completeRequests.add((routineId, sessionNumber));
+    if (completeError case final error?) throw error;
+    final routine = routines.where((r) => r.id == routineId).firstOrNull;
+    if (routine == null) {
+      throw apiError(ApiErrorCode.routineNotFound, status: 404);
+    }
+    final list = completed.putIfAbsent(routineId, () => []);
+    final session = CompletedSession(
+      id: 's${completeRequests.length}',
+      routineId: routineId,
+      sessionNumber: sessionNumber,
+      sessionName: routine.sessions
+          .firstWhere((s) => s.number == sessionNumber)
+          .name,
+      date: today,
+      completedAt: DateTime.utc(2026, 11, 7, 18),
+    );
+    if (completedElsewhere) {
+      completedElsewhere = false;
+      list.insert(0, session);
+      throw apiError(ApiErrorCode.sessionAlreadyCompleted, status: 409);
+    }
+    if (list.any((s) => s.sessionNumber == sessionNumber && s.date == today)) {
+      throw apiError(ApiErrorCode.sessionAlreadyCompleted, status: 409);
+    }
+    list.insert(0, session);
+    return session;
+  }
+}
+
+/// Sesión completada de prueba (HU-17).
+CompletedSession testCompletedSession({
+  String routineId = 'rec1',
+  int number = 1,
+  String date = '2026-11-07',
+}) => CompletedSession(
+  id: 'done-$routineId-$number-$date',
+  routineId: routineId,
+  sessionNumber: number,
+  sessionName: 'Día $number · Cuerpo completo',
+  date: date,
+  completedAt: DateTime.parse('${date}T18:00:00Z'),
+);

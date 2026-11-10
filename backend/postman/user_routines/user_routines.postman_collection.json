@@ -1,0 +1,1669 @@
+{
+  "info": {
+    "_postman_id": "5d1e7b2a-4c3f-4a9e-8b6d-0e2f7a9c1601",
+    "name": "MacroFit · User Routines",
+    "description": "Rutinas del usuario con su origen (src/routes/user_routines.rs). Cada historia registra sus propias cuentas; el coach vincula al usuario con su código de invitación (HU-12/HU-13), así corre también en el ambiente desplegado. Usa el catálogo que carga el módulo exercises.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "HU-16 Rutinas del usuario",
+      "description": "GET /users/me/routines (recomendada vigente y asignadas activas con su origen) y GET /routines/{id} (forma común: la rutina del coach es una sola sesión).",
+      "item": [
+        {
+          "name": "00 - Preparación: registrar Ana Rutinas",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    const email = \"user.routines.ana.\" + Date.now() + \".\" + Math.floor(Math.random() * 1e6) + \"@macrofit.test\";",
+                  "    pm.variables.set(\"email\", email);",
+                  "    pm.collectionVariables.set(\"ur_ana_email\", email);",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 201 Created\", function () {",
+                  "        pm.response.to.have.status(201);",
+                  "    });",
+                  "    pm.collectionVariables.set(\"ur_ana_id\", pm.response.json().id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "register"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Ana Rutinas\",\n  \"email\": \"{{email}}\",\n  \"password\": \"{{test_password}}\",\n  \"role\": \"user\",\n  \"privacy_accepted\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "00 - Preparación: iniciar sesión de Ana Rutinas",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 200 OK\", function () {",
+                  "        pm.response.to.have.status(200);",
+                  "    });",
+                  "    const data = pm.response.json();",
+                  "    pm.test(\"Devuelve access_token\", function () {",
+                  "        pm.expect(data.access_token).to.be.a(\"string\").and.not.empty;",
+                  "    });",
+                  "    pm.collectionVariables.set(\"ur_ana_token\", data.access_token);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{ur_ana_email}}\",\n  \"password\": \"{{test_password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "00 - Preparación: perfil de Ana Rutinas",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 201 Created\", function () {",
+                  "        pm.response.to.have.status(201);",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ur_ana_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/me/profile",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "me",
+                "profile"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"weight_kg\": 68,\n  \"height_cm\": 165,\n  \"birth_date\": \"1997-06-20\",\n  \"gender\": \"female\",\n  \"level\": \"beginner\",\n  \"training_days\": 3,\n  \"objective\": \"maintain\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "00 - Preparación: registrar Bruno Rutinas",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    const email = \"user.routines.bruno.\" + Date.now() + \".\" + Math.floor(Math.random() * 1e6) + \"@macrofit.test\";",
+                  "    pm.variables.set(\"email\", email);",
+                  "    pm.collectionVariables.set(\"ur_bruno_email\", email);",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 201 Created\", function () {",
+                  "        pm.response.to.have.status(201);",
+                  "    });",
+                  "    pm.collectionVariables.set(\"ur_bruno_id\", pm.response.json().id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "register"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Bruno Rutinas\",\n  \"email\": \"{{email}}\",\n  \"password\": \"{{test_password}}\",\n  \"role\": \"user\",\n  \"privacy_accepted\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "00 - Preparación: iniciar sesión de Bruno Rutinas",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 200 OK\", function () {",
+                  "        pm.response.to.have.status(200);",
+                  "    });",
+                  "    const data = pm.response.json();",
+                  "    pm.test(\"Devuelve access_token\", function () {",
+                  "        pm.expect(data.access_token).to.be.a(\"string\").and.not.empty;",
+                  "    });",
+                  "    pm.collectionVariables.set(\"ur_bruno_token\", data.access_token);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{ur_bruno_email}}\",\n  \"password\": \"{{test_password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "00 - Preparación: registrar Carlos Coach",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    const email = \"user.routines.coach.\" + Date.now() + \".\" + Math.floor(Math.random() * 1e6) + \"@macrofit.test\";",
+                  "    pm.variables.set(\"email\", email);",
+                  "    pm.collectionVariables.set(\"ur_coach_email\", email);",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 201 Created\", function () {",
+                  "        pm.response.to.have.status(201);",
+                  "    });",
+                  "    pm.collectionVariables.set(\"ur_coach_id\", pm.response.json().id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "register"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Carlos Coach\",\n  \"email\": \"{{email}}\",\n  \"password\": \"{{test_password}}\",\n  \"role\": \"coach\",\n  \"privacy_accepted\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "00 - Preparación: iniciar sesión de Carlos Coach",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 200 OK\", function () {",
+                  "        pm.response.to.have.status(200);",
+                  "    });",
+                  "    const data = pm.response.json();",
+                  "    pm.test(\"Devuelve access_token\", function () {",
+                  "        pm.expect(data.access_token).to.be.a(\"string\").and.not.empty;",
+                  "    });",
+                  "    pm.collectionVariables.set(\"ur_coach_token\", data.access_token);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{ur_coach_email}}\",\n  \"password\": \"{{test_password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "01 - Lista vacía: usuario sin rutinas",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 200 OK\", function () {",
+                  "        pm.response.to.have.status(200);",
+                  "    });",
+                  "    pm.test(\"Lista vacía\", function () {",
+                  "        pm.expect(pm.response.json()).to.eql([]);",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ur_ana_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/me/routines",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "me",
+                "routines"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "00 - Preparación: Ana pide su rutina recomendada",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 201 Created\", function () {",
+                  "        pm.response.to.have.status(201);",
+                  "    });",
+                  "    pm.collectionVariables.set(\"ur_recommended_id\", pm.response.json().id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ur_ana_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/me/routines/recommended",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "me",
+                "routines",
+                "recommended"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "02 - Lista solo con la recomendada",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 200 OK\", function () {",
+                  "        pm.response.to.have.status(200);",
+                  "    });",
+                  "    const list = pm.response.json();",
+                  "    pm.test(\"Cada rutina con id, origen, nombre, coach_name y número de sesiones\", function () {",
+                  "        list.forEach(function (r) {",
+                  "            pm.expect(r).to.have.all.keys(\"id\", \"origin\", \"name\", \"coach_name\", \"session_count\");",
+                  "            pm.expect(r.id).to.match(/^[0-9a-f]{24}$/);",
+                  "            pm.expect(r.origin).to.be.oneOf([\"system\", \"coach\"]);",
+                  "            pm.expect(r.name).to.be.a(\"string\").and.not.empty;",
+                  "            pm.expect(r.session_count).to.be.a(\"number\").and.above(0);",
+                  "        });",
+                  "    });",
+                  "    pm.test(\"Solo la recomendada vigente, con origen system\", function () {",
+                  "        pm.expect(list).to.have.lengthOf(1);",
+                  "        pm.expect(list[0].id).to.eql(pm.collectionVariables.get(\"ur_recommended_id\"));",
+                  "        pm.expect(list[0].origin).to.eql(\"system\");",
+                  "        pm.expect(list[0].coach_name).to.eql(null);",
+                  "        pm.expect(list[0].session_count).to.eql(3);",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ur_ana_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/me/routines",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "me",
+                "routines"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "00 - Preparación: código de invitación del coach",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 200 OK\", function () {",
+                  "        pm.response.to.have.status(200);",
+                  "    });",
+                  "    pm.collectionVariables.set(\"ur_invite_code\", pm.response.json().code);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ur_coach_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/coach/invite-code",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "coach",
+                "invite-code"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "00 - Preparación: Ana se vincula con el coach",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 201 Created\", function () {",
+                  "        pm.response.to.have.status(201);",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ur_ana_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/me/coach-link",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "me",
+                "coach-link"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"invite_code\": \"{{ur_invite_code}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "00 - Preparación: ejercicio del catálogo",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 200 OK\", function () {",
+                  "        pm.response.to.have.status(200);",
+                  "    });",
+                  "    const catalog = pm.response.json();",
+                  "    pm.test(\"Catálogo con ejercicios\", function () {",
+                  "        pm.expect(catalog).to.be.an(\"array\").and.not.empty;",
+                  "    });",
+                  "    pm.collectionVariables.set(\"ur_exercise_id\", catalog[0].id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ur_coach_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/exercises",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "exercises"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "00 - Preparación: el coach crea una rutina",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 201 Created\", function () {",
+                  "        pm.response.to.have.status(201);",
+                  "    });",
+                  "    pm.collectionVariables.set(\"ur_routine_id\", pm.response.json().id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ur_coach_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/coach/routines",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "coach",
+                "routines"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Torso Rutinas HU-16\",\n  \"exercises\": [\n    {\n      \"exercise_id\": \"{{ur_exercise_id}}\",\n      \"sets\": 4,\n      \"reps\": 10,\n      \"rest_seconds\": 90\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "00 - Preparación: el coach asigna la rutina a Ana",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 201 Created\", function () {",
+                  "        pm.response.to.have.status(201);",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ur_coach_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/coach/routines/{{ur_routine_id}}/assignments",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "coach",
+                "routines",
+                "{{ur_routine_id}}",
+                "assignments"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"client_ids\": [\n    \"{{ur_ana_id}}\"\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "03 - Lista con la recomendada y la asignada",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 200 OK\", function () {",
+                  "        pm.response.to.have.status(200);",
+                  "    });",
+                  "    const list = pm.response.json();",
+                  "    pm.test(\"Cada rutina con id, origen, nombre, coach_name y número de sesiones\", function () {",
+                  "        list.forEach(function (r) {",
+                  "            pm.expect(r).to.have.all.keys(\"id\", \"origin\", \"name\", \"coach_name\", \"session_count\");",
+                  "            pm.expect(r.id).to.match(/^[0-9a-f]{24}$/);",
+                  "            pm.expect(r.origin).to.be.oneOf([\"system\", \"coach\"]);",
+                  "            pm.expect(r.name).to.be.a(\"string\").and.not.empty;",
+                  "            pm.expect(r.session_count).to.be.a(\"number\").and.above(0);",
+                  "        });",
+                  "    });",
+                  "    pm.test(\"Recomendada primero y después la asignada en cuanto se crea la asignación (RF-23)\", function () {",
+                  "        pm.expect(list).to.have.lengthOf(2);",
+                  "        pm.expect(list[0].origin).to.eql(\"system\");",
+                  "        pm.expect(list[1]).to.eql({",
+                  "            id: pm.collectionVariables.get(\"ur_routine_id\"),",
+                  "            origin: \"coach\",",
+                  "            name: \"Torso Rutinas HU-16\",",
+                  "            coach_name: \"Carlos Coach\",",
+                  "            session_count: 1",
+                  "        });",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ur_ana_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/me/routines",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "me",
+                "routines"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "04 - Detalle de la recomendada",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 200 OK\", function () {",
+                  "        pm.response.to.have.status(200);",
+                  "    });",
+                  "    const data = pm.response.json();",
+                  "    pm.test(\"Sesiones numeradas con ejercicios, series, repeticiones y descanso (RF-15)\", function () {",
+                  "        pm.expect(data).to.have.all.keys(\"id\", \"origin\", \"name\", \"coach_name\", \"sessions\");",
+                  "        pm.expect(data.sessions).to.be.an(\"array\").and.not.empty;",
+                  "        data.sessions.forEach(function (s, i) {",
+                  "            pm.expect(s.number).to.eql(i + 1);",
+                  "            pm.expect(s.name).to.be.a(\"string\").and.not.empty;",
+                  "            pm.expect(s.exercises).to.be.an(\"array\").and.not.empty;",
+                  "            s.exercises.forEach(function (e) {",
+                  "                pm.expect(e.exercise_id).to.match(/^[0-9a-f]{24}$/);",
+                  "                pm.expect(e.name).to.be.a(\"string\").and.not.empty;",
+                  "                pm.expect(e.muscle_group).to.be.oneOf([\"chest\", \"back\", \"legs\", \"shoulders\", \"arms\", \"core\"]);",
+                  "                pm.expect(e.sets).to.be.a(\"number\").and.above(0);",
+                  "                pm.expect(e.reps).to.be.a(\"number\").and.above(0);",
+                  "                pm.expect(e.rest_seconds).to.be.a(\"number\").and.at.least(0);",
+                  "            });",
+                  "        });",
+                  "    });",
+                  "    pm.test(\"Origen system, sin coach y una sesión por día\", function () {",
+                  "        pm.expect(data.id).to.eql(pm.collectionVariables.get(\"ur_recommended_id\"));",
+                  "        pm.expect(data.origin).to.eql(\"system\");",
+                  "        pm.expect(data.coach_name).to.eql(null);",
+                  "        pm.expect(data.sessions).to.have.lengthOf(3);",
+                  "        pm.expect(data.sessions[0].name).to.eql(\"Día 1 · Cuerpo completo\");",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ur_ana_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/routines/{{ur_recommended_id}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "routines",
+                "{{ur_recommended_id}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "05 - Detalle de la asignada",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 200 OK\", function () {",
+                  "        pm.response.to.have.status(200);",
+                  "    });",
+                  "    const data = pm.response.json();",
+                  "    pm.test(\"Sesiones numeradas con ejercicios, series, repeticiones y descanso (RF-15)\", function () {",
+                  "        pm.expect(data).to.have.all.keys(\"id\", \"origin\", \"name\", \"coach_name\", \"sessions\");",
+                  "        pm.expect(data.sessions).to.be.an(\"array\").and.not.empty;",
+                  "        data.sessions.forEach(function (s, i) {",
+                  "            pm.expect(s.number).to.eql(i + 1);",
+                  "            pm.expect(s.name).to.be.a(\"string\").and.not.empty;",
+                  "            pm.expect(s.exercises).to.be.an(\"array\").and.not.empty;",
+                  "            s.exercises.forEach(function (e) {",
+                  "                pm.expect(e.exercise_id).to.match(/^[0-9a-f]{24}$/);",
+                  "                pm.expect(e.name).to.be.a(\"string\").and.not.empty;",
+                  "                pm.expect(e.muscle_group).to.be.oneOf([\"chest\", \"back\", \"legs\", \"shoulders\", \"arms\", \"core\"]);",
+                  "                pm.expect(e.sets).to.be.a(\"number\").and.above(0);",
+                  "                pm.expect(e.reps).to.be.a(\"number\").and.above(0);",
+                  "                pm.expect(e.rest_seconds).to.be.a(\"number\").and.at.least(0);",
+                  "            });",
+                  "        });",
+                  "    });",
+                  "    pm.test(\"Origen coach: una sola sesión, la 1, con el nombre de la rutina\", function () {",
+                  "        pm.expect(data.origin).to.eql(\"coach\");",
+                  "        pm.expect(data.coach_name).to.eql(\"Carlos Coach\");",
+                  "        pm.expect(data.sessions).to.have.lengthOf(1);",
+                  "        pm.expect(data.sessions[0].name).to.eql(\"Torso Rutinas HU-16\");",
+                  "        const e = data.sessions[0].exercises[0];",
+                  "        pm.expect(e.exercise_id).to.eql(pm.collectionVariables.get(\"ur_exercise_id\"));",
+                  "        pm.expect([e.sets, e.reps, e.rest_seconds]).to.eql([4, 10, 90]);",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ur_ana_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/routines/{{ur_routine_id}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "routines",
+                "{{ur_routine_id}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "06 - Rutina de otro usuario: 404 ROUTINE_NOT_FOUND",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 404 Not Found\", function () {",
+                  "        pm.response.to.have.status(404);",
+                  "    });",
+                  "    const error = pm.response.json().error;",
+                  "    pm.test(\"Código ROUTINE_NOT_FOUND con la forma de error de la API\", function () {",
+                  "        pm.expect(error.code).to.eql(\"ROUTINE_NOT_FOUND\");",
+                  "        pm.expect(error.message).to.be.a(\"string\").and.not.empty;",
+                  "        pm.expect(error.fields).to.be.an(\"object\");",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ur_bruno_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/routines/{{ur_recommended_id}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "routines",
+                "{{ur_recommended_id}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "07 - Rutina asignada a otro usuario: 404 ROUTINE_NOT_FOUND",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 404 Not Found\", function () {",
+                  "        pm.response.to.have.status(404);",
+                  "    });",
+                  "    const error = pm.response.json().error;",
+                  "    pm.test(\"Código ROUTINE_NOT_FOUND con la forma de error de la API\", function () {",
+                  "        pm.expect(error.code).to.eql(\"ROUTINE_NOT_FOUND\");",
+                  "        pm.expect(error.message).to.be.a(\"string\").and.not.empty;",
+                  "        pm.expect(error.fields).to.be.an(\"object\");",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ur_bruno_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/routines/{{ur_routine_id}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "routines",
+                "{{ur_routine_id}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "08 - El otro usuario no ve las rutinas de Ana",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 200 OK\", function () {",
+                  "        pm.response.to.have.status(200);",
+                  "    });",
+                  "    pm.test(\"Lista vacía\", function () {",
+                  "        pm.expect(pm.response.json()).to.eql([]);",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ur_bruno_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/me/routines",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "me",
+                "routines"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "09 - Id mal formado: 404 ROUTINE_NOT_FOUND",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 404 Not Found\", function () {",
+                  "        pm.response.to.have.status(404);",
+                  "    });",
+                  "    const error = pm.response.json().error;",
+                  "    pm.test(\"Código ROUTINE_NOT_FOUND con la forma de error de la API\", function () {",
+                  "        pm.expect(error.code).to.eql(\"ROUTINE_NOT_FOUND\");",
+                  "        pm.expect(error.message).to.be.a(\"string\").and.not.empty;",
+                  "        pm.expect(error.fields).to.be.an(\"object\");",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ur_ana_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/routines/no-es-un-id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "routines",
+                "no-es-un-id"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "10 - Rutina inexistente: 404 ROUTINE_NOT_FOUND",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 404 Not Found\", function () {",
+                  "        pm.response.to.have.status(404);",
+                  "    });",
+                  "    const error = pm.response.json().error;",
+                  "    pm.test(\"Código ROUTINE_NOT_FOUND con la forma de error de la API\", function () {",
+                  "        pm.expect(error.code).to.eql(\"ROUTINE_NOT_FOUND\");",
+                  "        pm.expect(error.message).to.be.a(\"string\").and.not.empty;",
+                  "        pm.expect(error.fields).to.be.an(\"object\");",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ur_ana_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/routines/000000000000000000000000",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "routines",
+                "000000000000000000000000"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "11 - Cuenta de coach (lista): 403 FORBIDDEN_ROLE",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 403 Forbidden\", function () {",
+                  "        pm.response.to.have.status(403);",
+                  "    });",
+                  "    const error = pm.response.json().error;",
+                  "    pm.test(\"Código FORBIDDEN_ROLE con la forma de error de la API\", function () {",
+                  "        pm.expect(error.code).to.eql(\"FORBIDDEN_ROLE\");",
+                  "        pm.expect(error.message).to.be.a(\"string\").and.not.empty;",
+                  "        pm.expect(error.fields).to.be.an(\"object\");",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ur_coach_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/me/routines",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "me",
+                "routines"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "12 - Cuenta de coach (detalle): 403 FORBIDDEN_ROLE",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 403 Forbidden\", function () {",
+                  "        pm.response.to.have.status(403);",
+                  "    });",
+                  "    const error = pm.response.json().error;",
+                  "    pm.test(\"Código FORBIDDEN_ROLE con la forma de error de la API\", function () {",
+                  "        pm.expect(error.code).to.eql(\"FORBIDDEN_ROLE\");",
+                  "        pm.expect(error.message).to.be.a(\"string\").and.not.empty;",
+                  "        pm.expect(error.fields).to.be.an(\"object\");",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ur_coach_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/routines/{{ur_routine_id}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "routines",
+                "{{ur_routine_id}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "13 - Sin sesión: 401 UNAUTHORIZED",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 401 Unauthorized\", function () {",
+                  "        pm.response.to.have.status(401);",
+                  "    });",
+                  "    const error = pm.response.json().error;",
+                  "    pm.test(\"Código UNAUTHORIZED con la forma de error de la API\", function () {",
+                  "        pm.expect(error.code).to.eql(\"UNAUTHORIZED\");",
+                  "        pm.expect(error.message).to.be.a(\"string\").and.not.empty;",
+                  "        pm.expect(error.fields).to.be.an(\"object\");",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/me/routines",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "me",
+                "routines"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "00 - Preparación: el coach elimina la rutina (retira la asignación)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 204 No Content\", function () {",
+                  "        pm.response.to.have.status(204);",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ur_coach_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/coach/routines/{{ur_routine_id}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "coach",
+                "routines",
+                "{{ur_routine_id}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "14 - La rutina retirada deja de aparecer",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 200 OK\", function () {",
+                  "        pm.response.to.have.status(200);",
+                  "    });",
+                  "    const list = pm.response.json();",
+                  "    pm.test(\"Solo queda la recomendada\", function () {",
+                  "        pm.expect(list.map(function (r) { return r.origin; })).to.eql([\"system\"]);",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ur_ana_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/me/routines",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "me",
+                "routines"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "15 - Detalle de la rutina retirada: 404 ROUTINE_NOT_FOUND",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 404 Not Found\", function () {",
+                  "        pm.response.to.have.status(404);",
+                  "    });",
+                  "    const error = pm.response.json().error;",
+                  "    pm.test(\"Código ROUTINE_NOT_FOUND con la forma de error de la API\", function () {",
+                  "        pm.expect(error.code).to.eql(\"ROUTINE_NOT_FOUND\");",
+                  "        pm.expect(error.message).to.be.a(\"string\").and.not.empty;",
+                  "        pm.expect(error.fields).to.be.an(\"object\");",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ur_ana_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/routines/{{ur_routine_id}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "routines",
+                "{{ur_routine_id}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "00 - Preparación: Ana regenera su rutina recomendada",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 201 Created\", function () {",
+                  "        pm.response.to.have.status(201);",
+                  "    });",
+                  "    pm.test(\"Es otra rutina\", function () {",
+                  "        pm.expect(pm.response.json().id).to.not.eql(pm.collectionVariables.get(\"ur_recommended_id\"));",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ur_ana_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/me/routines/recommended",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "me",
+                "routines",
+                "recommended"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "16 - Detalle de una recomendada reemplazada: 404 ROUTINE_NOT_FOUND",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 404 Not Found\", function () {",
+                  "        pm.response.to.have.status(404);",
+                  "    });",
+                  "    const error = pm.response.json().error;",
+                  "    pm.test(\"Código ROUTINE_NOT_FOUND con la forma de error de la API\", function () {",
+                  "        pm.expect(error.code).to.eql(\"ROUTINE_NOT_FOUND\");",
+                  "        pm.expect(error.message).to.be.a(\"string\").and.not.empty;",
+                  "        pm.expect(error.fields).to.be.an(\"object\");",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ur_ana_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/routines/{{ur_recommended_id}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "routines",
+                "{{ur_recommended_id}}"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "test_password",
+      "value": "Prueba-MacroFit-2026",
+      "type": "string",
+      "description": "Contraseña ficticia solo para pruebas."
+    },
+    {
+      "key": "ur_recommended_id",
+      "value": "",
+      "type": "string",
+      "description": "Rutina recomendada vigente de Ana."
+    },
+    {
+      "key": "ur_invite_code",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "ur_exercise_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "ur_routine_id",
+      "value": "",
+      "type": "string",
+      "description": "Rutina del coach asignada a Ana (se elimina al final de la carpeta)."
+    },
+    {
+      "key": "ur_ana_email",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "ur_ana_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "ur_ana_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "ur_bruno_email",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "ur_bruno_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "ur_bruno_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "ur_coach_email",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "ur_coach_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "ur_coach_token",
+      "value": "",
+      "type": "string"
+    }
+  ]
+}

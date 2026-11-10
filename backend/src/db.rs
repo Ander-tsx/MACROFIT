@@ -19,6 +19,7 @@ use crate::models::recommended_routine::{RECOMMENDED_ROUTINES_COLLECTION, Recomm
 use crate::models::refresh_token::{REFRESH_TOKENS_COLLECTION, RefreshToken};
 use crate::models::routine::{ROUTINES_COLLECTION, Routine};
 use crate::models::routine_assignment::{ROUTINE_ASSIGNMENTS_COLLECTION, RoutineAssignment};
+use crate::models::routine_session::{ROUTINE_SESSIONS_COLLECTION, RoutineSession};
 use crate::models::user::{USERS_COLLECTION, User};
 use crate::models::weight_entry::{WEIGHTS_COLLECTION, WeightEntry};
 
@@ -327,4 +328,37 @@ async fn ensure_indexes(db: &Database) {
         .create_index(recommended_active_unique)
         .await
         .expect("No se pudo crear el índice de recommended_routines (¿hay dos rutinas vigentes de un usuario?)");
+    // HU-17: una sola sesión completada por usuario, rutina, sesión y día; la lista de una rutina (la más reciente
+    // primero) y las sesiones de un usuario por día para el cumplimiento de HU-22.
+    let session_indexes = [
+        IndexModel::builder()
+            .keys(doc! { "user_id": 1, "routine_id": 1, "session_number": 1, "date": 1 })
+            .options(
+                IndexOptions::builder()
+                    .unique(true)
+                    .name("user_id_routine_id_session_number_date_unique".to_string())
+                    .build(),
+            )
+            .build(),
+        IndexModel::builder()
+            .keys(doc! { "user_id": 1, "routine_id": 1, "date": -1, "completed_at": -1 })
+            .options(
+                IndexOptions::builder()
+                    .name("user_id_routine_id_date_completed_at".to_string())
+                    .build(),
+            )
+            .build(),
+        IndexModel::builder()
+            .keys(doc! { "user_id": 1, "date": 1 })
+            .options(
+                IndexOptions::builder()
+                    .name("user_id_date".to_string())
+                    .build(),
+            )
+            .build(),
+    ];
+    db.collection::<RoutineSession>(ROUTINE_SESSIONS_COLLECTION)
+        .create_indexes(session_indexes)
+        .await
+        .expect("No se pudieron crear los índices de routine_sessions (¿hay sesiones repetidas el mismo día?)");
 }

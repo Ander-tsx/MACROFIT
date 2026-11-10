@@ -98,6 +98,8 @@ pub enum AppError {
     /// 503 — el catálogo de ejercicios no tiene ejercicios elegibles para algún grupo muscular del nivel del usuario
     /// (HU-15). Es un problema de datos del servidor; el detalle solo va al log.
     ExerciseCatalogIncomplete,
+    /// 409 — esa sesión de la rutina ya se registró como completada ese día (HU-17).
+    SessionAlreadyCompleted,
 }
 
 impl AppError {
@@ -290,6 +292,15 @@ impl IntoResponse for AppError {
                     .to_string(),
                 FieldErrors::new(),
             ),
+            Self::SessionAlreadyCompleted => (
+                StatusCode::CONFLICT,
+                "SESSION_ALREADY_COMPLETED",
+                "Ya registraste esta sesión como completada ese día".to_string(),
+                FieldErrors::from([(
+                    "session_number".to_string(),
+                    "Esta sesión ya está registrada ese día".to_string(),
+                )]),
+            ),
             Self::PhotoAlreadyUsed => (
                 StatusCode::CONFLICT,
                 "PHOTO_ALREADY_USED",
@@ -398,6 +409,18 @@ mod tests {
             assert_eq!(body["error"]["code"], code);
             assert_eq!(body["error"]["fields"], serde_json::json!({}));
         }
+    }
+
+    #[tokio::test]
+    async fn sesion_ya_completada_es_409_y_senala_session_number() {
+        let response = AppError::SessionAlreadyCompleted.into_response();
+        assert_eq!(response.status(), StatusCode::CONFLICT);
+        let bytes = axum::body::to_bytes(response.into_body(), usize::MAX)
+            .await
+            .expect("cuerpo");
+        let body: serde_json::Value = serde_json::from_slice(&bytes).expect("JSON");
+        assert_eq!(body["error"]["code"], "SESSION_ALREADY_COMPLETED");
+        assert!(body["error"]["fields"]["session_number"].is_string());
     }
 
     #[tokio::test]
