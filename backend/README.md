@@ -203,6 +203,8 @@ El contrato completo (cuerpos, respuestas y códigos de error de cada endpoint) 
 | POST | `/coach/routines/{id}/assignments` | Bearer (coach) | HU-19 | Asigna una rutina propia a uno o varios clientes vinculados |
 | GET | `/coach/routines/{id}/assignments` | Bearer (coach) | HU-19 | Clientes vinculados con la rutina asignada |
 | POST | `/users/me/routines/recommended` | Bearer (user) | HU-15 | Genera y guarda la rutina recomendada (reemplaza la vigente) |
+| GET | `/users/me/routines` | Bearer (user) | HU-16 | Rutinas del usuario con su origen: la recomendada vigente y las asignadas activas |
+| GET | `/routines/{id}` | Bearer (user) | HU-16 | Detalle de una rutina del usuario con sus sesiones y ejercicios |
 | POST | `/users/me/routines/{id}/sessions` | Bearer (user) | HU-17 | Marca una sesión de la rutina como completada |
 | GET | `/users/me/routines/{id}/sessions` | Bearer (user) | HU-17 | Sesiones completadas de la rutina, la más reciente primero |
 
@@ -933,13 +935,62 @@ del nivel del usuario o inferiores, y la guarda con origen `system` (RN-08) en `
 **Errores:** `401 UNAUTHORIZED` / `TOKEN_REVOKED`, `403 FORBIDDEN_ROLE`, `404 PROFILE_NOT_FOUND`,
 `503 EXERCISE_CATALOG_INCOMPLETE`.
 
+### Rutinas del usuario — `GET /users/me/routines` y `GET /routines/{id}` (HU-16)
+
+Cabecera `Authorization: Bearer <access_token>`. **Solo rol `user`** (`403 FORBIDDEN_ROLE` para un coach; sin sesión
+`401 UNAUTHORIZED`). Une la rutina recomendada vigente (HU-15, origen `system`) y las asignadas activas (HU-19, origen
+`coach`) con una **forma común** (RN-08). Se consulta sin caché: una asignación nueva aparece en la siguiente consulta y
+una retirada deja de aparecer (RF-23).
+
+**GET `/users/me/routines`** → `200`: primero la recomendada vigente y después las asignadas activas de su coach
+vinculado, la asignada más recientemente primero. Sin rutinas, `[]`.
+
+```json
+[
+  { "id": "6b2a...", "origin": "system", "name": "Rutina recomendada · Mantener · 3 días", "coach_name": null, "session_count": 3 },
+  { "id": "6b01...", "origin": "coach", "name": "Torso A", "coach_name": "Carlos", "session_count": 1 }
+]
+```
+
+**GET `/routines/{id}`** → `200` con el detalle (`id` de la lista):
+
+```json
+{
+  "id": "6b01...",
+  "origin": "coach",
+  "name": "Torso A",
+  "coach_name": "Carlos",
+  "sessions": [
+    {
+      "number": 1,
+      "name": "Torso A",
+      "exercises": [
+        { "exercise_id": "6ac6...", "name": "Press de banca con mancuernas", "muscle_group": "chest", "sets": 4, "reps": 10, "rest_seconds": 90 }
+      ]
+    }
+  ]
+}
+```
+
+| Origen | Sesiones |
+|---|---|
+| `system` | Las de HU-15, una por día de entrenamiento: `Día 1 · Cuerpo completo`, `Día 2 · …` (`session_count` = días). `coach_name: null` |
+| `coach` | **Una sola sesión, la 1, con el nombre de la rutina** y todos sus ejercicios (`session_count: 1`), igual que en HU-17 |
+
+Acceso (misma comprobación que HU-17, `routine_sessions::find_user_routine`): la recomendada **vigente** del usuario o una
+asignación **activa** de un coach con el que sigue **vinculado** (RN-04). Una rutina de otro usuario, retirada (HU-20 o
+rutina eliminada, HU-18), reemplazada al regenerar (HU-15), de un coach del que se desvinculó, inexistente o con id mal
+formado responde `404 ROUTINE_NOT_FOUND`; en la lista simplemente no aparece.
+
+**Errores:** `401 UNAUTHORIZED` / `TOKEN_REVOKED`, `403 FORBIDDEN_ROLE`, `404 ROUTINE_NOT_FOUND` (detalle).
+
 ### Sesiones completadas — `/users/me/routines/{id}/sessions` (HU-17)
 
 Cabecera `Authorization: Bearer <access_token>`. **Solo rol `user`**. Registra y lista las sesiones que el usuario
 marcó como completadas (RF-16). Colección `routine_sessions`
 ([esquema](src/models/README.md#colección-routine_sessions-routine_sessionrs)), que HU-22 lee para el cumplimiento.
 
-La rutina `{id}` debe ser accesible para el usuario (misma comprobación que usará `GET /routines/{id}` de HU-16):
+La rutina `{id}` debe ser accesible para el usuario (misma comprobación que `GET /routines/{id}` de HU-16):
 
 | Origen | Rutina accesible | Sesiones |
 |---|---|---|
@@ -1130,7 +1181,7 @@ Todas las respuestas de error tienen la misma forma. `fields` siempre es un obje
 | `INVITE_CODE_NOT_FOUND` | 404 | El código de invitación no existe o ya no está vigente |
 | `PHOTO_NOT_FOUND` | 404 | La foto no existe o la cuenta no puede verla (no se distingue) |
 | `MEAL_NOT_FOUND` | 404 | El registro de comida no existe o es de otra cuenta (no se distingue, HU-09) |
-| `ROUTINE_NOT_FOUND` | 404 | La rutina no existe, su id está mal formado o es de otro coach (no se distingue, HU-18). En HU-17, también si es ajena, se retiró o el usuario se desvinculó del coach |
+| `ROUTINE_NOT_FOUND` | 404 | La rutina no existe, su id está mal formado o es de otro coach (no se distingue, HU-18). En HU-16 y HU-17, también si es ajena, se retiró, se reemplazó o el usuario se desvinculó del coach |
 | `FOOD_NOT_RECOGNIZED` | 422 | El servicio de reconocimiento no encontró comida en la foto (HU-07): captura manual |
 | `USER_ALREADY_LINKED` | 409 | El usuario ya tiene una vinculación activa con un coach |
 | `EMAIL_ALREADY_EXISTS` | 409 | El correo ya está registrado |
