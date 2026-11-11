@@ -186,7 +186,7 @@ con `DELETE /coach/routines/{id}`.
 
 **Índices:** `coach_id_updated_at` → `{ coach_id: 1, updated_at: -1 }` (rutinas de un coach, la editada más recientemente primero).
 
-Al eliminar una rutina, sus asignaciones activas pasan a `removed` (HU-19).
+Al eliminar una rutina, **antes** de borrarla sus asignaciones activas pasan a `removed` (HU-19/HU-20).
 
 ## Colección `routine_assignments` (`routine_assignment.rs`)
 
@@ -204,7 +204,8 @@ Rutina de un coach asignada a un cliente (HU-19, RF-23). Se crea con `POST /coac
 | `updated_at` | ISODate | Último cambio de la asignación |
 | `removed_at` | ISODate \| ausente | Solo si `status` es `removed` |
 
-Reasignar una rutina retirada crea un documento nuevo (la retirada queda como historial).
+Reasignar una rutina retirada crea un documento nuevo (la retirada queda como historial). HU-20 retira una con
+`DELETE /coach/routines/{id}/assignments/{clientId}`; nunca se borran las `routine_sessions` del cliente (RF-24).
 
 **Índices:**
 - `routine_id_client_id_active_unique` → `{ routine_id: 1, client_id: 1 }`, único **parcial** (`{ status: "active" }`):

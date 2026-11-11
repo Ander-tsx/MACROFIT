@@ -44,6 +44,7 @@
                   "        ['get', '/coach/routines/{id}', 'coach'], ['put', '/coach/routines/{id}', 'coach'],",
                   "        ['delete', '/coach/routines/{id}', 'coach'],",
                   "        ['post', '/coach/routines/{id}/assignments', 'coach'], ['get', '/coach/routines/{id}/assignments', 'coach'],",
+                  "        ['delete', '/coach/routines/{id}/assignments/{clientId}', 'coach'],",
                   "    ];",
                   "    pm.test('Incluye todos los endpoints del catálogo', function () {",
                   "        catalog.forEach(([method, route]) => {",

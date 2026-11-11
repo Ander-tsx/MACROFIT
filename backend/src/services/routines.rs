@@ -358,22 +358,25 @@ pub async fn update_routine(
         .ok_or(AppError::RoutineNotFound)
 }
 
-/// HU-18 — elimina una rutina del coach. HU-19: sus asignaciones activas pasan a `removed` (el cliente deja de verla
-/// y se conserva el historial).
+/// HU-18 — elimina una rutina del coach. HU-19/HU-20: **antes** de borrarla, sus asignaciones activas pasan a
+/// `removed` (el cliente deja de verla y se conserva el historial). Así, si falla el borrado, no queda ninguna
+/// asignación activa apuntando a una rutina que ya no existe. Las sesiones completadas (`routine_sessions`) nunca se
+/// borran (RF-24).
 pub async fn delete_routine(
     db: &Database,
     coach_id: ObjectId,
     routine_id: &str,
 ) -> Result<(), AppError> {
-    let routine_id = parse_routine_id(routine_id)?;
+    let routine = get_routine(db, coach_id, routine_id).await?;
+    crate::services::routine_assignments::retire_routine_assignments(db, routine.id).await?;
     let result = routines(db)
-        .delete_one(doc! { "_id": routine_id, "coach_id": coach_id })
+        .delete_one(doc! { "_id": routine.id, "coach_id": coach_id })
         .await
         .map_err(AppError::internal)?;
     if result.deleted_count == 0 {
+        // Otra petición la borró entre la consulta y el borrado.
         return Err(AppError::RoutineNotFound);
     }
-    crate::services::routine_assignments::retire_routine_assignments(db, routine_id).await?;
     Ok(())
 }
 

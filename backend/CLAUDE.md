@@ -25,6 +25,8 @@ Instrucciones para Claude Code al trabajar en `backend/`. Las reglas generales d
   HU-18 (rutinas personalizadas del coach: CRUD en `/coach/routines`, PUT reemplaza la rutina, `ROUTINE_NOT_FOUND`),
   HU-19 (asignación de rutinas: `POST/GET /coach/routines/{id}/assignments`, colección `routine_assignments` compartida con HU-16/HU-17,
   todo o nada con `CLIENT_NOT_LINKED` por `client_ids[i]`; eliminar una rutina retira sus asignaciones),
+  HU-20 (modificar o retirar una asignación: `DELETE /coach/routines/{id}/assignments/{clientId}` → `204` o
+  `ASSIGNMENT_NOT_FOUND`; PUT se refleja en los clientes; eliminar retira antes de borrar; nunca se borran `routine_sessions`),
   HU-17 (sesiones completadas: `POST/GET /users/me/routines/{id}/sessions`, colección `routine_sessions` con copia de nombres,
   `SESSION_ALREADY_COMPLETED` por día; asignada activa con coach vinculado o recomendada vigente de HU-15),
   TEC-10 (motor de reglas de rutinas recomendadas: `services/routine_engine.rs`, función pura sin endpoint; lo expone HU-15-API),

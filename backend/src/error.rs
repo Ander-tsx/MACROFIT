@@ -95,6 +95,9 @@ pub enum AppError {
     PhotoAlreadyUsed,
     /// 404 — la rutina no existe, su id está mal formado o es de otro coach (no se distingue, HU-18).
     RoutineNotFound,
+    /// 404 — el cliente no tiene esa rutina asignada (activa): ya se retiró, nunca la tuvo o su id no existe o está mal
+    /// formado (HU-20).
+    AssignmentNotFound,
     /// 503 — el catálogo de ejercicios no tiene ejercicios elegibles para algún grupo muscular del nivel del usuario
     /// (HU-15). Es un problema de datos del servidor; el detalle solo va al log.
     ExerciseCatalogIncomplete,
@@ -285,6 +288,12 @@ impl IntoResponse for AppError {
                 "La rutina no existe".to_string(),
                 FieldErrors::new(),
             ),
+            Self::AssignmentNotFound => (
+                StatusCode::NOT_FOUND,
+                "ASSIGNMENT_NOT_FOUND",
+                "El cliente no tiene esta rutina asignada".to_string(),
+                FieldErrors::new(),
+            ),
             Self::ExerciseCatalogIncomplete => (
                 StatusCode::SERVICE_UNAVAILABLE,
                 "EXERCISE_CATALOG_INCOMPLETE",
@@ -393,6 +402,11 @@ mod tests {
                 AppError::RoutineNotFound,
                 StatusCode::NOT_FOUND,
                 "ROUTINE_NOT_FOUND",
+            ),
+            (
+                AppError::AssignmentNotFound,
+                StatusCode::NOT_FOUND,
+                "ASSIGNMENT_NOT_FOUND",
             ),
             (
                 AppError::ExerciseCatalogIncomplete,

@@ -78,6 +78,7 @@ responder `500 INTERNAL_ERROR` ante un error inesperado.";
         routines::delete_routine_handler,
         routines::assign_routine_handler,
         routines::list_assignments_handler,
+        routines::remove_assignment_handler,
         recommended_routines::generate_recommended_routine_handler,
         user_routines::list_user_routines_handler,
         user_routines::get_user_routine_handler,
@@ -304,6 +305,12 @@ mod tests {
             "/coach/routines/{id}/assignments",
             Coach,
             &[200, 401, 403, 404],
+        ),
+        (
+            "delete",
+            "/coach/routines/{id}/assignments/{clientId}",
+            Coach,
+            &[204, 401, 403, 404],
         ),
         (
             "post",

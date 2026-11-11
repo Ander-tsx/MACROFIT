@@ -1,12 +1,13 @@
 //! HU-18 — rutas de las rutinas personalizadas del coach (`/coach/routines`, solo rol coach).
 //! HU-19 — asignación de una rutina a clientes (`/coach/routines/{id}/assignments`).
+//! HU-20 — retiro de una rutina asignada (`/coach/routines/{id}/assignments/{clientId}`).
 //! HU-17 — sesiones completadas de una rutina del usuario (`/users/me/routines/{id}/sessions`, solo rol user).
 
 use axum::{
     Json, Router,
     extract::{Path, State},
     http::StatusCode,
-    routing::get,
+    routing::{delete, get},
 };
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -198,7 +199,7 @@ pub async fn get_routine_handler(
     path = "/coach/routines/{id}",
     tag = "Rutinas",
     summary = "Edita una rutina (HU-18)",
-    description = "Reemplazo completo: mismo cuerpo y mismas reglas que al crear. Una rutina ajena responde 404 antes de validar el cuerpo.",
+    description = "Reemplazo completo: mismo cuerpo y mismas reglas que al crear. Una rutina ajena responde 404 antes de validar el cuerpo. HU-20: si la rutina está asignada, los clientes ven la versión nueva en su siguiente consulta (`GET /routines/{id}`); las asignaciones no cambian y las sesiones ya completadas conservan su registro (RF-24).",
     security(("bearer_auth" = ["coach"])),
     params(("id" = String, Path, description = "Id de la rutina")),
     request_body = RoutineRequest,
@@ -226,6 +227,7 @@ pub async fn update_routine_handler(
     path = "/coach/routines/{id}",
     tag = "Rutinas",
     summary = "Elimina una rutina (HU-18)",
+    description = "HU-19/HU-20: antes de eliminarla se retiran todas sus asignaciones activas (pasan a `removed`): los clientes dejan de verla. Las sesiones completadas de los clientes se conservan (RF-24).",
     security(("bearer_auth" = ["coach"])),
     params(("id" = String, Path, description = "Id de la rutina")),
     responses(
@@ -339,6 +341,34 @@ pub async fn list_assignments_handler(
 ) -> Result<Json<Vec<RoutineAssignmentResponse>>, AppError> {
     let views = routine_assignments::list_assignments(&state.db, auth.user_id, &id).await?;
     Ok(Json(views.into_iter().map(Into::into).collect()))
+}
+
+/// HU-20 — DELETE /api/v1/coach/routines/{id}/assignments/{clientId}. Retira una rutina propia de un cliente.
+#[utoipa::path(
+    delete,
+    path = "/coach/routines/{id}/assignments/{clientId}",
+    tag = "Rutinas",
+    summary = "Retira una rutina asignada de un cliente (HU-20)",
+    description = "La asignación activa pasa a `removed`: el cliente deja de ver la rutina (HU-16) y de poder registrar sesiones (HU-17). Sus sesiones completadas se conservan (RF-24); si se le vuelve a asignar, recupera su historial. La rutina se comprueba antes que la asignación.",
+    security(("bearer_auth" = ["coach"])),
+    params(
+        ("id" = String, Path, description = "Id de la rutina"),
+        ("clientId" = String, Path, description = "Id del cliente (`client_id` de `GET /coach/routines/{id}/assignments`)"),
+    ),
+    responses(
+        (status = 204, description = "Rutina retirada del cliente"),
+        (status = 401, description = "`UNAUTHORIZED` o `TOKEN_REVOKED`", body = ErrorResponse),
+        (status = 403, description = "`FORBIDDEN_ROLE` (cuenta `user`)", body = ErrorResponse),
+        (status = 404, description = "`ROUTINE_NOT_FOUND` (no existe, id mal formado o es de otro coach) o `ASSIGNMENT_NOT_FOUND` (el cliente no tiene la rutina asignada: ya se retiró, nunca la tuvo o su id no existe o está mal formado)", body = ErrorResponse),
+    )
+)]
+pub async fn remove_assignment_handler(
+    State(state): State<AppState>,
+    CoachOnly(auth): CoachOnly,
+    Path((id, client_id)): Path<(String, String)>,
+) -> Result<StatusCode, AppError> {
+    routine_assignments::remove_assignment(&state.db, auth.user_id, &id, &client_id).await?;
+    Ok(StatusCode::NO_CONTENT)
 }
 
 #[derive(Debug, Deserialize, ToSchema)]
@@ -472,6 +502,10 @@ pub fn router() -> Router<AppState> {
         .route(
             "/coach/routines/:id/assignments",
             get(list_assignments_handler).post(assign_routine_handler),
+        )
+        .route(
+            "/coach/routines/:id/assignments/:clientId",
+            delete(remove_assignment_handler),
         )
         .route(
             "/users/me/routines/:id/sessions",
