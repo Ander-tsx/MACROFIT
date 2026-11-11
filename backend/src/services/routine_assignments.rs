@@ -5,6 +5,10 @@
 //!   `CLIENT_NOT_LINKED` señala cuáles en `client_ids[i]`.
 //! - Una sola asignación `active` por rutina y cliente (índice único parcial en `db.rs`): repetir no duplica.
 //! - La colección `routine_assignments` se comparte con HU-16-API y HU-17-API (`models/routine_assignment.rs`).
+//!
+//! HU-20 — retiro de una rutina asignada (RF-24): la asignación activa pasa a `removed` (con `removed_at`); nunca se
+//! borran las sesiones completadas (`routine_sessions`). Editar la rutina (PUT de HU-18) no toca las asignaciones: el
+//! cliente lee la rutina en cada consulta y ve la versión nueva.
 
 use std::collections::{HashMap, HashSet};
 
@@ -128,6 +132,11 @@ pub fn build_assignment_views(
             })
         })
         .collect()
+}
+
+/// HU-20 — id del cliente de la ruta. Uno mal formado no puede tener asignación: `ASSIGNMENT_NOT_FOUND`.
+pub fn parse_client_id(client_id: &str) -> Result<ObjectId, AppError> {
+    ObjectId::parse_str(client_id.trim()).map_err(|_| AppError::AssignmentNotFound)
 }
 
 /// Ordena las asignaciones en el orden en que se pidieron los clientes.
@@ -258,7 +267,40 @@ pub async fn list_assignments(
     Ok(build_assignment_views(active, users, &linked))
 }
 
+/// HU-20 — retira una rutina propia de un cliente: su asignación activa pasa a `removed` (se conserva como historial,
+/// igual que `retire_routine_assignments`). Las sesiones completadas del cliente no se tocan (RF-24).
+///
+/// Orden de las comprobaciones: rutina propia (`ROUTINE_NOT_FOUND`) → asignación activa (`ASSIGNMENT_NOT_FOUND`: ya se
+/// retiró, nunca la tuvo o el id del cliente no existe o está mal formado). No exige vinculación activa: una asignación
+/// que quedó activa tras una desvinculación también se puede retirar.
+pub async fn remove_assignment(
+    db: &Database,
+    coach_id: ObjectId,
+    routine_id: &str,
+    client_id: &str,
+) -> Result<(), AppError> {
+    let routine = routines::get_routine(db, coach_id, routine_id).await?;
+    let client_id = parse_client_id(client_id)?;
+    let now = DateTime::now();
+    let result = assignments(db)
+        .update_one(
+            doc! { "routine_id": routine.id, "client_id": client_id, "status": "active" },
+            doc! { "$set": {
+                "status": AssignmentStatus::Removed.as_str(),
+                "removed_at": now,
+                "updated_at": now,
+            } },
+        )
+        .await
+        .map_err(AppError::internal)?;
+    if result.matched_count == 0 {
+        return Err(AppError::AssignmentNotFound);
+    }
+    Ok(())
+}
+
 /// HU-19 — al eliminar una rutina (HU-18), sus asignaciones activas pasan a `removed` (se conservan como historial).
+/// HU-20: `delete_routine` lo llama **antes** de borrar la rutina.
 pub async fn retire_routine_assignments(
     db: &Database,
     routine_id: ObjectId,
@@ -473,6 +515,24 @@ mod tests {
     }
 
     #[test]
+    fn id_de_cliente_valido_se_acepta_y_uno_mal_formado_es_asignacion_inexistente() {
+        let id = ObjectId::new();
+        assert_eq!(parse_client_id(&id.to_hex()).unwrap(), id);
+        assert_eq!(parse_client_id(&format!(" {} ", id.to_hex())).unwrap(), id);
+        for raw in [
+            "",
+            "abc",
+            "6ad0a1b2c3d4e5f6a7b8c9dz",
+            "6ad0a1b2c3d4e5f6a7b8c9d00",
+        ] {
+            assert!(
+                matches!(parse_client_id(raw), Err(AppError::AssignmentNotFound)),
+                "{raw}"
+            );
+        }
+    }
+
+    #[test]
     fn el_estado_se_guarda_en_minusculas() {
         let doc = mongodb::bson::to_document(&assignment(ObjectId::new())).unwrap();
         assert_eq!(doc.get_str("status").unwrap(), "active");
@@ -486,8 +546,13 @@ mod tests {
     mod mongo {
         use super::*;
         use crate::models::coach_link::LinkStatus;
+        use crate::models::routine_session::{ROUTINE_SESSIONS_COLLECTION, RoutineSession};
         use crate::services::exercises::{list_exercises, seed_exercises};
-        use crate::services::routines::{RoutineInput, create_routine, delete_routine};
+        use crate::services::routine_sessions::{complete_session, list_sessions};
+        use crate::services::routines::{
+            RoutineInput, create_routine, delete_routine, update_routine,
+        };
+        use crate::services::user_routines::get_user_routine;
 
         async fn test_db() -> Database {
             let uri = std::env::var("TEST_MONGO_URI")
@@ -673,6 +738,174 @@ mod tests {
             a.status = AssignmentStatus::Removed;
             a.removed_at = Some(DateTime::now());
             assignments(&db).insert_one(&a).await.unwrap();
+            db.drop().await.unwrap();
+        }
+
+        /// El cliente marca como completada la sesión 1 de la rutina hoy (HU-17).
+        async fn complete(db: &Database, client: ObjectId, routine_id: &str) {
+            let offset = chrono::FixedOffset::west_opt(6 * 3600).unwrap();
+            complete_session(db, client, offset, routine_id, Some(json!(1)), None)
+                .await
+                .unwrap();
+        }
+
+        async fn sessions_of(db: &Database, client: ObjectId) -> u64 {
+            db.collection::<RoutineSession>(ROUTINE_SESSIONS_COLLECTION)
+                .count_documents(doc! { "user_id": client })
+                .await
+                .unwrap()
+        }
+
+        #[tokio::test]
+        #[ignore = "requiere MongoDB"]
+        async fn retirar_de_un_cliente_conserva_sus_sesiones_y_el_repetido_es_404() {
+            let db = test_db().await;
+            let coach = ObjectId::new();
+            let routine_id = routine(&db, coach).await;
+            let ana = client(&db, coach, "Ana", Some(LinkStatus::Active)).await;
+            let bruno = client(&db, coach, "Bruno", Some(LinkStatus::Active)).await;
+            assign_routine(&db, coach, &routine_id, ids(&[ana, bruno]))
+                .await
+                .unwrap();
+            complete(&db, ana, &routine_id).await;
+
+            remove_assignment(&db, coach, &routine_id, &ana.to_hex())
+                .await
+                .unwrap();
+
+            // Solo la de Ana pasa a `removed`, con fecha; la de Bruno sigue activa.
+            let removed =
+                doc! { "client_id": ana, "status": "removed", "removed_at": { "$type": "date" } };
+            assert_eq!(count(&db, removed).await, 1);
+            assert_eq!(
+                count(&db, doc! { "client_id": bruno, "status": "active" }).await,
+                1
+            );
+            let list = list_assignments(&db, coach, &routine_id).await.unwrap();
+            assert_eq!(
+                list.iter()
+                    .map(|v| v.assignment.client_id)
+                    .collect::<Vec<_>>(),
+                vec![bruno]
+            );
+            // Ana deja de ver la rutina y su sesión completada se conserva (RF-24).
+            assert!(matches!(
+                get_user_routine(&db, ana, &routine_id).await,
+                Err(AppError::RoutineNotFound)
+            ));
+            assert_eq!(sessions_of(&db, ana).await, 1);
+
+            // Retiro repetido, cliente sin la rutina e id mal formado.
+            for client_id in [ana.to_hex(), ObjectId::new().to_hex(), "abc".to_string()] {
+                let result = remove_assignment(&db, coach, &routine_id, &client_id).await;
+                assert!(
+                    matches!(result, Err(AppError::AssignmentNotFound)),
+                    "{client_id}"
+                );
+            }
+
+            // Si se le vuelve a asignar, recupera su historial.
+            assign_routine(&db, coach, &routine_id, ids(&[ana]))
+                .await
+                .unwrap();
+            let history = list_sessions(&db, ana, &routine_id).await.unwrap();
+            assert_eq!(history.len(), 1);
+            db.drop().await.unwrap();
+        }
+
+        #[tokio::test]
+        #[ignore = "requiere MongoDB"]
+        async fn retirar_de_una_rutina_ajena_o_inexistente_es_404_y_no_retira_nada() {
+            let db = test_db().await;
+            let owner = ObjectId::new();
+            let other = ObjectId::new();
+            let routine_id = routine(&db, owner).await;
+            let ana = client(&db, owner, "Ana", Some(LinkStatus::Active)).await;
+            assign_routine(&db, owner, &routine_id, ids(&[ana]))
+                .await
+                .unwrap();
+            for (coach, id) in [
+                (other, routine_id.clone()),
+                (owner, ObjectId::new().to_hex()),
+                (owner, "abc".to_string()),
+            ] {
+                let result = remove_assignment(&db, coach, &id, &ana.to_hex()).await;
+                assert!(matches!(result, Err(AppError::RoutineNotFound)), "{id}");
+            }
+            assert_eq!(count(&db, doc! { "status": "active" }).await, 1);
+            db.drop().await.unwrap();
+        }
+
+        #[tokio::test]
+        #[ignore = "requiere MongoDB"]
+        async fn editar_una_rutina_asignada_se_refleja_en_el_cliente() {
+            let db = test_db().await;
+            let coach = ObjectId::new();
+            let routine_id = routine(&db, coach).await;
+            let ana = client(&db, coach, "Ana", Some(LinkStatus::Active)).await;
+            assign_routine(&db, coach, &routine_id, ids(&[ana]))
+                .await
+                .unwrap();
+            complete(&db, ana, &routine_id).await;
+
+            let catalog = list_exercises(&db, None, None).await.unwrap();
+            let input = RoutineInput {
+                name: Some(json!("Torso A v2")),
+                exercises: Some(json!([{
+                    "exercise_id": catalog[1].id.to_hex(), "sets": 5, "reps": 8, "rest_seconds": 120
+                }])),
+            };
+            update_routine(&db, coach, &routine_id, input)
+                .await
+                .unwrap();
+
+            let detail = get_user_routine(&db, ana, &routine_id).await.unwrap();
+            assert_eq!(detail.name, "Torso A v2");
+            let exercise = &detail.sessions[0].exercises[0];
+            assert_eq!(exercise.exercise_id, catalog[1].id);
+            assert_eq!(
+                (exercise.sets, exercise.reps, exercise.rest_seconds),
+                (5, 8, 120)
+            );
+            // La asignación sigue igual y la sesión ya registrada conserva el nombre de entonces.
+            assert_eq!(
+                count(&db, doc! { "client_id": ana, "status": "active" }).await,
+                1
+            );
+            let history = list_sessions(&db, ana, &routine_id).await.unwrap();
+            assert_eq!(history[0].routine_name, "Torso A");
+            db.drop().await.unwrap();
+        }
+
+        #[tokio::test]
+        #[ignore = "requiere MongoDB"]
+        async fn eliminar_una_rutina_asignada_retira_todo_y_conserva_las_sesiones() {
+            let db = test_db().await;
+            let coach = ObjectId::new();
+            let routine_id = routine(&db, coach).await;
+            let ana = client(&db, coach, "Ana", Some(LinkStatus::Active)).await;
+            let bruno = client(&db, coach, "Bruno", Some(LinkStatus::Active)).await;
+            assign_routine(&db, coach, &routine_id, ids(&[ana, bruno]))
+                .await
+                .unwrap();
+            complete(&db, ana, &routine_id).await;
+            complete(&db, bruno, &routine_id).await;
+
+            delete_routine(&db, coach, &routine_id).await.unwrap();
+
+            assert_eq!(count(&db, doc! { "status": "active" }).await, 0);
+            assert_eq!(count(&db, doc! { "status": "removed" }).await, 2);
+            assert!(matches!(
+                routines::get_routine(&db, coach, &routine_id).await,
+                Err(AppError::RoutineNotFound)
+            ));
+            for client_id in [ana, bruno] {
+                assert!(matches!(
+                    get_user_routine(&db, client_id, &routine_id).await,
+                    Err(AppError::RoutineNotFound)
+                ));
+                assert_eq!(sessions_of(&db, client_id).await, 1, "RF-24");
+            }
             db.drop().await.unwrap();
         }
     }

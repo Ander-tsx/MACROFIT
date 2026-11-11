@@ -199,9 +199,10 @@ El contrato completo (cuerpos, respuestas y códigos de error de cada endpoint) 
 | GET | `/coach/routines` | Bearer (coach) | HU-18 | Rutinas del coach de la sesión (la editada más recientemente primero) |
 | GET | `/coach/routines/{id}` | Bearer (coach) | HU-18 | Detalle de una rutina propia |
 | PUT | `/coach/routines/{id}` | Bearer (coach) | HU-18 | Reemplaza nombre y ejercicios de una rutina propia |
-| DELETE | `/coach/routines/{id}` | Bearer (coach) | HU-18, HU-19 | Elimina una rutina propia (y retira sus asignaciones) |
+| DELETE | `/coach/routines/{id}` | Bearer (coach) | HU-18, HU-19, HU-20 | Elimina una rutina propia (antes retira todas sus asignaciones) |
 | POST | `/coach/routines/{id}/assignments` | Bearer (coach) | HU-19 | Asigna una rutina propia a uno o varios clientes vinculados |
 | GET | `/coach/routines/{id}/assignments` | Bearer (coach) | HU-19 | Clientes vinculados con la rutina asignada |
+| DELETE | `/coach/routines/{id}/assignments/{clientId}` | Bearer (coach) | HU-20 | Retira una rutina asignada de un cliente (conserva sus sesiones completadas) |
 | POST | `/users/me/routines/recommended` | Bearer (user) | HU-15 | Genera y guarda la rutina recomendada (reemplaza la vigente) |
 | GET | `/users/me/routines` | Bearer (user) | HU-16 | Rutinas del usuario con su origen: la recomendada vigente y las asignadas activas |
 | GET | `/routines/{id}` | Bearer (user) | HU-16 | Detalle de una rutina del usuario con sus sesiones y ejercicios |
@@ -827,8 +828,9 @@ más recientemente primero; DELETE `204` sin cuerpo):
 **Errores:** `400 VALIDATION_ERROR` / `INVALID_BODY` (POST y PUT), `401 UNAUTHORIZED` / `TOKEN_REVOKED`,
 `403 FORBIDDEN_ROLE`, `404 ROUTINE_NOT_FOUND` (rutas con `{id}`).
 
-Al **eliminar** una rutina, sus asignaciones activas (HU-19) pasan a `removed`: el cliente deja de verla y se conserva el
-historial.
+Al **eliminar** una rutina, **antes** de borrarla sus asignaciones activas (HU-19) pasan a `removed`: el cliente deja de
+verla y se conserva el historial. Al **editarla** (PUT), los clientes que la tienen asignada ven la versión nueva en su
+siguiente consulta (HU-20). En ningún caso se borran las sesiones completadas de los clientes (RF-24).
 
 ### Asignación de rutinas — `/coach/routines/{id}/assignments` (HU-19)
 
@@ -869,6 +871,29 @@ Respuesta (cada elemento, POST y GET):
 
 **Errores:** `400 VALIDATION_ERROR` / `INVALID_BODY` (POST), `401 UNAUTHORIZED` / `TOKEN_REVOKED`,
 `403 FORBIDDEN_ROLE` / `CLIENT_NOT_LINKED` (POST), `404 ROUTINE_NOT_FOUND`.
+
+### Modificar o retirar una asignación (HU-20)
+
+Cabecera `Authorization: Bearer <access_token>`. **Solo rol `coach`**. Ajusta una rutina asignada al avance del cliente
+(RF-24). Contrato acordado con HU-20-APP.
+
+| Acción | Ruta | Efecto |
+|---|---|---|
+| Modificar | `PUT /coach/routines/{id}` (HU-18, sin cambios) | La rutina se edita en sitio: `GET /routines/{id}` de cada cliente con la rutina asignada devuelve la versión nueva. Las asignaciones no cambian |
+| Retirar de un cliente | `DELETE /coach/routines/{id}/assignments/{clientId}` | `204` sin cuerpo. La asignación activa pasa a `removed` con `removed_at`: el cliente deja de verla en `GET /users/me/routines` (HU-16) y HU-17 responde `404` |
+| Eliminar la rutina | `DELETE /coach/routines/{id}` (HU-18, sin cambios de contrato) | **Antes** de borrarla retira todas sus asignaciones activas |
+
+**Sesiones completadas (RF-24):** ninguna de las tres acciones borra `routine_sessions`. Cada sesión guarda el nombre que
+tenía la rutina al completarla (no cambia al editar), y si el coach vuelve a asignar una rutina retirada el cliente
+recupera su historial (las sesiones se guardan por usuario y rutina).
+
+| Caso (DELETE `.../assignments/{clientId}`) | Respuesta |
+|---|---|
+| El cliente tiene la rutina activa (aunque se haya desvinculado) | `204` |
+| El cliente no la tiene activa: ya se retiró, nunca la tuvo, id inexistente o mal formado | `404 ASSIGNMENT_NOT_FOUND` |
+| Rutina ajena, inexistente o con id mal formado | `404 ROUTINE_NOT_FOUND` (se comprueba primero) |
+
+**Errores:** `401 UNAUTHORIZED` / `TOKEN_REVOKED`, `403 FORBIDDEN_ROLE`, `404 ROUTINE_NOT_FOUND` / `ASSIGNMENT_NOT_FOUND`.
 
 ### Rutina recomendada — POST `/users/me/routines/recommended` (HU-15)
 
@@ -1182,6 +1207,7 @@ Todas las respuestas de error tienen la misma forma. `fields` siempre es un obje
 | `PHOTO_NOT_FOUND` | 404 | La foto no existe o la cuenta no puede verla (no se distingue) |
 | `MEAL_NOT_FOUND` | 404 | El registro de comida no existe o es de otra cuenta (no se distingue, HU-09) |
 | `ROUTINE_NOT_FOUND` | 404 | La rutina no existe, su id está mal formado o es de otro coach (no se distingue, HU-18). En HU-16 y HU-17, también si es ajena, se retiró, se reemplazó o el usuario se desvinculó del coach |
+| `ASSIGNMENT_NOT_FOUND` | 404 | El cliente no tiene esa rutina asignada (activa): ya se retiró, nunca la tuvo o su id no existe o está mal formado (HU-20) |
 | `FOOD_NOT_RECOGNIZED` | 422 | El servicio de reconocimiento no encontró comida en la foto (HU-07): captura manual |
 | `USER_ALREADY_LINKED` | 409 | El usuario ya tiene una vinculación activa con un coach |
 | `EMAIL_ALREADY_EXISTS` | 409 | El correo ya está registrado |
