@@ -8,6 +8,11 @@
 		<key>NSAllowsLocalNetworking</key>
 		<true/>
 	</dict>
+	<!-- HU-06: textos que iOS muestra al pedir los permisos de cámara y de fotos. -->
+	<key>NSCameraUsageDescription</key>
+	<string>MacroFit usa la cámara para tomar la foto de tu comida y estimar sus calorías, proteína y grasa.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>MacroFit necesita acceso a tus fotos para que elijas la foto de tu comida y estime sus calorías, proteína y grasa.</string>
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
 	<key>CFBundleDevelopmentRegion</key>
