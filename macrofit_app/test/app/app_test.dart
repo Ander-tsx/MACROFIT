@@ -2,17 +2,21 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 import 'package:macrofit_app/app/app.dart';
 import 'package:macrofit_app/app/dependencies.dart';
+import 'package:macrofit_app/app/routes.dart';
 import 'package:macrofit_app/features/auth/domain/entities/auth_state.dart';
 import 'package:macrofit_app/features/auth/presentation/login/login_view.dart';
 import 'package:macrofit_app/features/auth/presentation/register/register_view.dart';
 import 'package:macrofit_app/features/auth/presentation/splash/splash_view.dart';
 import 'package:macrofit_app/core/errors/api_exception.dart';
+import 'package:macrofit_app/core/presentation/theme/lucide_icons.dart';
 import 'package:macrofit_app/features/clients/domain/entities/client_meal.dart';
 import 'package:macrofit_app/features/clients/domain/entities/client_summary.dart';
 import 'package:macrofit_app/features/clients/presentation/client_detail/client_detail_view.dart';
 import 'package:macrofit_app/features/clients/presentation/client_meals/client_meals_view.dart';
+import 'package:macrofit_app/features/clients/presentation/client_progress/client_progress_view.dart';
 import 'package:macrofit_app/features/clients/presentation/clients_list/clients_list_view.dart';
 import 'package:macrofit_app/features/goals/domain/entities/nutritional_goal.dart';
 import 'package:macrofit_app/features/goals/presentation/coach_goal_form/coach_goal_form_view.dart';
@@ -20,16 +24,27 @@ import 'package:macrofit_app/features/home/presentation/coach_home_view.dart';
 import 'package:macrofit_app/features/home/presentation/user_home_view.dart';
 import 'package:macrofit_app/features/invite_code/presentation/invite_code/invite_code_view.dart';
 import 'package:macrofit_app/features/legal/presentation/privacy_notice/privacy_notice_view.dart';
+import 'package:macrofit_app/features/meals/domain/entities/meal_estimate.dart';
 import 'package:macrofit_app/features/meals/domain/entities/meal_photo.dart';
 import 'package:macrofit_app/features/meals/domain/entities/photo_pick_exception.dart';
+import 'package:macrofit_app/features/my_routines/presentation/recommended/recommended_routine_view.dart';
 import 'package:macrofit_app/features/meals/presentation/meal_estimate/meal_estimate_view.dart';
 import 'package:macrofit_app/features/meals/presentation/meal_estimate/meal_estimate_view_model.dart';
 import 'package:macrofit_app/features/meals/presentation/meal_form/meal_form_view.dart';
+import 'package:macrofit_app/features/meals/presentation/meal_history/meal_history_view.dart';
+import 'package:macrofit_app/features/meals/presentation/meal_history/meal_history_view_model.dart';
 import 'package:macrofit_app/features/meals/presentation/meal_photo/meal_photo_view.dart';
 import 'package:macrofit_app/features/meals/presentation/meal_photo/meal_photo_view_model.dart';
 import 'package:macrofit_app/features/profile/domain/entities/profile.dart';
 import 'package:macrofit_app/features/profile/presentation/profile_form/profile_form_view.dart';
+import 'package:macrofit_app/features/summary/domain/entities/macro_values.dart';
+import 'package:macrofit_app/features/summary/domain/usecases/app_day.dart';
+import 'package:macrofit_app/features/summary/presentation/weekly_summary/weekly_summary_view.dart';
+import 'package:macrofit_app/features/progress/presentation/progress_charts/progress_view.dart';
+import 'package:macrofit_app/features/progress/presentation/weights/weights_view.dart';
+import 'package:macrofit_app/features/routines/presentation/assign_routine/assign_routine_view.dart';
 import 'package:macrofit_app/features/routines/presentation/exercise_picker/exercise_picker_view.dart';
+import 'package:macrofit_app/features/routines/presentation/routine_assignments/routine_assignments_view.dart';
 import 'package:macrofit_app/features/routines/presentation/routine_builder/routine_builder_view.dart';
 import 'package:macrofit_app/features/routines/presentation/routines_list/routines_list_view.dart';
 
@@ -47,7 +62,9 @@ void main() {
   late FakeInviteCodeRepository inviteCodes;
   late FakeCoachLinkRepository coachLinksRepo;
   late FakeWeightsRepository weightsRepo;
+  late FakeProgressRepository progress;
   late FakeShareService share;
+  late FakeSummaryRepository summary;
   late FakeRoutinesRepository routines;
 
   Future<void> pumpApp(
@@ -58,6 +75,7 @@ void main() {
     PickedPhoto? recoveredPhoto,
     FakeGoalsRepository? goalsRepository,
     List<ClientSummary>? clientList,
+    FakeSummaryRepository? summaryRepository,
     ApiException? clientsError,
     Map<DateTime, List<ClientMeal>>? clientMeals,
     ApiException? mealsError,
@@ -71,17 +89,20 @@ void main() {
     coachGoals = FakeCoachGoalsRepository();
     mealPhotos = FakeMealPhotoRepository(recovered: recoveredPhoto);
     meals = FakeMealsRepository();
+    summary = summaryRepository ?? FakeSummaryRepository();
     clients = FakeClientsRepository(clients: clientList, meals: clientMeals)
       ..error = clientsError
       ..mealsError = mealsError;
     inviteCodes = FakeInviteCodeRepository()..error = inviteCodeError;
     coachLinksRepo = FakeCoachLinkRepository();
     weightsRepo = FakeWeightsRepository();
+    progress = FakeProgressRepository();
     share = FakeShareService();
     routines = FakeRoutinesRepository()..listError = routinesError;
     await tester.pumpWidget(
       MacroFitApp(
         dependencies: AppDependencies(
+          summaryRepository: summary,
           authRepository: auth,
           legalRepository: legal,
           profileRepository: profiles,
@@ -93,7 +114,9 @@ void main() {
           inviteCodeRepository: inviteCodes,
           coachLinkRepository: coachLinksRepo,
           weightsRepository: weightsRepo,
+          progressRepository: progress,
           routinesRepository: routines,
+          myRoutinesRepository: FakeMyRoutinesRepository(),
           shareService: share,
         ),
       ),
@@ -167,12 +190,202 @@ void main() {
     expect(find.textContaining('Aviso de privacidad integral'), findsOneWidget);
   });
 
+  group('progreso (HU-22)', () {
+    Future<void> openProgress(WidgetTester tester) async {
+      // Alto suficiente para construir las tres gráficas.
+      tester.view.physicalSize = const Size(800, 2400);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      await pumpApp(tester, state: const Authenticated(testUser));
+      await tester.tap(find.byKey(const Key('progress_button')));
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('muestra peso, consumo por día y entrenamiento de la semana', (
+      tester,
+    ) async {
+      await openProgress(tester);
+
+      expect(find.byType(ProgressView), findsOneWidget);
+      expect(progress.requests, hasLength(1));
+      expect(find.byKey(const Key('progress_weight_chart')), findsOneWidget);
+      expect(find.text('−0.7 kg en el periodo'), findsOneWidget);
+      expect(find.byKey(const Key('progress_chart_calories')), findsOneWidget);
+      expect(find.text('Dentro de la meta: 4 de 7 días'), findsOneWidget);
+      expect(
+        find.byKey(const Key('progress_compliance_chart')),
+        findsOneWidget,
+      );
+      expect(find.text('0 de 4 sesiones en el periodo'), findsOneWidget);
+    });
+
+    testWidgets('cambia el macro de la gráfica de consumo', (tester) async {
+      await openProgress(tester);
+
+      await tester.tap(find.byKey(const Key('progress_macro_protein')));
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const Key('progress_chart_protein')), findsOneWidget);
+      expect(find.byKey(const Key('progress_chart_calories')), findsNothing);
+    });
+
+    testWidgets('cambia a mes y no permite ir a un periodo futuro', (
+      tester,
+    ) async {
+      await openProgress(tester);
+      final next = find.byKey(const Key('progress_next'));
+      expect(tester.widget<IconButton>(next).onPressed, isNull);
+
+      await tester.tap(find.byKey(const Key('progress_range_month')));
+      await tester.pumpAndSettle();
+      final today = appDay(DateTime.now());
+      expect(progress.requests.last, '${today.substring(0, 8)}01..$today');
+      expect(tester.widget<IconButton>(next).onPressed, isNull);
+
+      await tester.tap(find.byKey(const Key('progress_previous')));
+      await tester.pumpAndSettle();
+      expect(tester.widget<IconButton>(next).onPressed, isNotNull);
+    });
+
+    testWidgets('sin datos suficientes muestra mensajes en lugar de gráficas', (
+      tester,
+    ) async {
+      tester.view.physicalSize = const Size(800, 2400);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      await pumpApp(tester, state: const Authenticated(testUser));
+      progress.withData = false;
+      await tester.tap(find.byKey(const Key('progress_button')));
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const Key('progress_weight_empty')), findsOneWidget);
+      expect(
+        find.byKey(const Key('progress_consumption_empty')),
+        findsOneWidget,
+      );
+      expect(find.byKey(const Key('progress_weight_chart')), findsNothing);
+    });
+
+    testWidgets('sin conexión muestra el error en español y reintenta', (
+      tester,
+    ) async {
+      await pumpApp(tester, state: const Authenticated(testUser));
+      progress.error = networkError;
+      await tester.tap(find.byKey(const Key('progress_button')));
+      await tester.pumpAndSettle();
+
+      expect(find.text(networkError.message), findsOneWidget);
+      progress.error = null;
+      await tester.tap(find.byKey(const Key('progress_retry')));
+      await tester.pumpAndSettle();
+
+      expect(find.text(networkError.message), findsNothing);
+      expect(find.byKey(const Key('progress_weight')), findsOneWidget);
+    });
+
+    testWidgets('"Registrar" abre el registro de peso', (tester) async {
+      await openProgress(tester);
+
+      await tester.tap(find.byKey(const Key('progress_register_weight')));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(WeightsView), findsOneWidget);
+    });
+  });
+
+  group('barra inferior (TEC-17)', () {
+    testWidgets('cambia entre pestañas y vuelve al inicio', (tester) async {
+      await pumpApp(tester, state: const Authenticated(testUser));
+
+      await tester.tap(find.byKey(const Key('progress_button')));
+      await tester.pumpAndSettle();
+      expect(find.byType(ProgressView), findsOneWidget);
+
+      await tester.tap(find.byKey(const Key('weekly_summary_button')));
+      await tester.pumpAndSettle();
+      expect(find.byType(WeeklySummaryView), findsOneWidget);
+      expect(find.byType(ProgressView), findsNothing);
+
+      await tester.tap(find.byKey(const Key('home_tab')));
+      await tester.pumpAndSettle();
+      expect(find.byType(UserHomeView), findsOneWidget);
+      expect(find.byType(WeeklySummaryView), findsNothing);
+    });
+
+    testWidgets('se ve en las pantallas secundarias y no al registrar comida', (
+      tester,
+    ) async {
+      await pumpApp(
+        tester,
+        state: const Authenticated(testUser),
+        storedProfile: testProfile,
+      );
+
+      await tester.tap(find.byKey(const Key('profile_button')));
+      await tester.pumpAndSettle();
+      expect(
+        find.byKey(const Key('meal_history_button')).hitTestable(),
+        findsOneWidget,
+      );
+
+      await tester.tap(find.byKey(const Key('register_meal_button')));
+      await tester.pumpAndSettle();
+      expect(find.byType(MealPhotoView), findsOneWidget);
+      expect(
+        find.byKey(const Key('meal_history_button')).hitTestable(),
+        findsNothing,
+      );
+    });
+
+    testWidgets('el coach cambia a sus clientes y a sus rutinas', (
+      tester,
+    ) async {
+      await pumpApp(tester, state: const Authenticated(testCoach));
+
+      await tester.tap(find.byKey(const Key('clients_button')));
+      await tester.pumpAndSettle();
+      expect(find.byType(ClientsListView), findsOneWidget);
+
+      await tester.tap(find.byKey(const Key('routines_button')));
+      await tester.pumpAndSettle();
+      expect(find.byType(RoutinesListView), findsOneWidget);
+      expect(find.byType(ClientsListView), findsNothing);
+    });
+  });
+
+  testWidgets('el coach cierra sesión desde la hoja de su cuenta', (
+    tester,
+  ) async {
+    await pumpApp(tester, state: const Authenticated(testCoach));
+
+    await tester.tap(find.byKey(const Key('account_button')));
+    await tester.pumpAndSettle();
+    expect(find.text(testCoach.email), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('logout_button')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('logout_confirm')));
+    await tester.pumpAndSettle();
+
+    expect(auth.logoutCalls, 1);
+    expect(find.byType(LoginView), findsOneWidget);
+  });
+
   testWidgets('cerrar sesión vuelve al login y atrás no regresa', (
     tester,
   ) async {
-    await pumpApp(tester, state: const Authenticated(testUser));
+    await pumpApp(
+      tester,
+      state: const Authenticated(testUser),
+      storedProfile: testProfile,
+    );
     expect(find.byType(UserHomeView), findsOneWidget);
 
+    // TEC-17: cerrar sesión vive al final de "Mi perfil".
+    await tester.tap(find.byKey(const Key('profile_button')));
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.byKey(const Key('logout_button')));
+    await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('logout_button')));
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('logout_confirm')));
@@ -511,10 +724,11 @@ void main() {
         expect(find.text('42.2 g'), findsOneWidget);
         expect(find.text('4.9 g'), findsOneWidget);
         await tester.scrollUntilVisible(
-          find.byKey(const Key('meal_estimate_continue')),
+          find.byKey(const Key('meal_estimate_save')),
           200,
         );
-        expect(find.byKey(const Key('meal_estimate_continue')), findsOneWidget);
+        expect(find.byKey(const Key('meal_estimate_save')), findsOneWidget);
+        expect(find.byKey(const Key('meal_estimate_correct')), findsOneWidget);
       },
     );
 
@@ -599,10 +813,10 @@ void main() {
     }
 
     testWidgets(
-      'Continuar abre el formulario precargado y Guardar registra lo corregido',
+      'Corregir valores abre el formulario precargado y Guardar registra lo corregido',
       (tester) async {
         await openEstimate(tester);
-        await tapVisible(tester, const Key('meal_estimate_continue'));
+        await tapVisible(tester, const Key('meal_estimate_correct'));
 
         expect(find.byType(MealFormView), findsOneWidget);
         expect(find.text('Revisar valores'), findsOneWidget);
@@ -621,8 +835,8 @@ void main() {
         expect(meal.values.caloriesKcal, 380);
         expect(meal.values.proteinG, 42.2);
         expect(meal.estimated, testEstimate.totals);
-        // TODO(HU-09-APP): el guardado irá al historial del día.
-        expect(find.byType(UserHomeView), findsOneWidget);
+        // HU-09: al guardar se abre el historial del día con el registro nuevo.
+        expect(find.byType(MealHistoryView), findsOneWidget);
         expect(find.text('Comida registrada'), findsOneWidget);
       },
     );
@@ -653,7 +867,7 @@ void main() {
         final meal = meals.created.single;
         expect(meal.photoId, testUploadedPhoto.id);
         expect(meal.estimated, isNull);
-        expect(find.byType(UserHomeView), findsOneWidget);
+        expect(find.byType(MealHistoryView), findsOneWidget);
       },
     );
 
@@ -706,6 +920,219 @@ void main() {
       expect(meals.created, isEmpty);
       expect(find.byType(MealFormView), findsOneWidget);
     });
+  });
+
+  group('historial de comidas (HU-09)', () {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final yesterday = DateTime(now.year, now.month, now.day - 1);
+
+    Future<void> tapVisible(WidgetTester tester, Key key) async {
+      // Los campos de texto también tienen un Scrollable: se usa el de la lista.
+      await tester.scrollUntilVisible(
+        find.byKey(key),
+        200,
+        scrollable: find.byType(Scrollable).first,
+      );
+      await tester.tap(find.byKey(key));
+      await tester.pumpAndSettle();
+    }
+
+    Future<void> openHistory(WidgetTester tester) async {
+      await pumpApp(tester, state: const Authenticated(testUser));
+      meals.days[today] = [
+        testMeal(
+          id: 'desayuno',
+          eatenAt: today.add(const Duration(hours: 8, minutes: 30)),
+        ),
+        testMeal(
+          id: 'comida',
+          eatenAt: today.add(const Duration(hours: 14, minutes: 5)),
+          withPhoto: false,
+          values: const NutritionValues(
+            caloriesKcal: 380,
+            proteinG: 40,
+            fatG: 6.5,
+          ),
+        ),
+      ];
+      await tapVisible(tester, const Key('meal_history_button'));
+    }
+
+    testWidgets(
+      'registro por foto en 4 toques desde el inicio hasta guardar (RNF-09)',
+      (tester) async {
+        await pumpApp(tester, state: const Authenticated(testUser));
+        meals.savedDay = today;
+        var taps = 0;
+        Future<void> tap(Key key) async {
+          taps++;
+          await tapVisible(tester, key);
+        }
+
+        await tap(const Key('register_meal_button'));
+        await tap(const Key('meal_photo_gallery'));
+        await tap(const Key('meal_photo_upload'));
+        await tap(const Key('meal_estimate_save'));
+
+        expect(taps, 4);
+        final meal = meals.created.single;
+        expect(meal.photoId, testUploadedPhoto.id);
+        expect(meal.values, testEstimate.totals);
+        expect(meal.estimated, testEstimate.totals);
+        // Regresa al historial del día con el registro nuevo.
+        expect(find.byType(MealHistoryView), findsOneWidget);
+        expect(find.text('Comida registrada'), findsOneWidget);
+        expect(
+          find.byKey(const Key('meal_6ad0a1b2c3d4e5f6a7b8c9d0')),
+          findsOneWidget,
+        );
+      },
+    );
+
+    testWidgets(
+      'al regresar al inicio después de guardar se actualiza el progreso del día (HU-10)',
+      (tester) async {
+        await pumpApp(tester, state: const Authenticated(testUser));
+        meals.savedDay = today;
+        expect(summary.dailyDates, hasLength(1));
+
+        await tapVisible(tester, const Key('register_meal_button'));
+        await tapVisible(tester, const Key('meal_photo_gallery'));
+        await tapVisible(tester, const Key('meal_photo_upload'));
+        await tapVisible(tester, const Key('meal_estimate_save'));
+        expect(find.byType(MealHistoryView), findsOneWidget);
+
+        summary.daily = testDaySummary(
+          consumed: const MacroValues(
+            caloriesKcal: 1500,
+            proteinG: 90,
+            fatG: 50,
+          ),
+        );
+        tester.state<NavigatorState>(find.byType(Navigator).first).pop();
+        await tester.pumpAndSettle();
+
+        expect(find.byType(UserHomeView), findsOneWidget);
+        expect(summary.dailyDates.length, greaterThan(1));
+        expect(find.text('1500 / 2200 kcal'), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'al regresar de Mis comidas se actualiza el progreso del día (HU-10)',
+      (tester) async {
+        await openHistory(tester);
+        final requests = summary.dailyDates.length;
+
+        summary.daily = testDaySummary(
+          consumed: const MacroValues(
+            caloriesKcal: 1500,
+            proteinG: 90,
+            fatG: 50,
+          ),
+        );
+        tester.state<NavigatorState>(find.byType(Navigator).first).pop();
+        await tester.pumpAndSettle();
+
+        expect(summary.dailyDates.length, greaterThan(requests));
+        expect(find.text('1500 / 2200 kcal'), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'Mis comidas muestra hora, foto y valores de cada registro del día',
+      (tester) async {
+        await openHistory(tester);
+
+        expect(find.byType(MealHistoryView), findsOneWidget);
+        expect(find.text('Hoy'), findsOneWidget);
+        expect(meals.listRequests, [today]);
+        expect(find.text('08:30'), findsOneWidget);
+        expect(find.text('14:05'), findsOneWidget);
+        expect(find.byKey(const Key('meal_desayuno_photo')), findsOneWidget);
+        expect(find.byKey(const Key('meal_comida_manual')), findsOneWidget);
+        expect(find.text('Captura manual'), findsOneWidget);
+        expect(find.text('380 kcal · P 40 g · G 6.5 g'), findsOneWidget);
+        expect(
+          find.text('Total del día: 793 kcal · P 82.2 g · G 11.4 g'),
+          findsOneWidget,
+        );
+        expect(meals.photoRequests, ['foto-desayuno']);
+      },
+    );
+
+    testWidgets('un día sin registros lo indica y se puede cambiar de día', (
+      tester,
+    ) async {
+      await pumpApp(tester, state: const Authenticated(testUser));
+      meals.days[yesterday] = [
+        testMeal(id: 'cena', eatenAt: yesterday.add(const Duration(hours: 20))),
+      ];
+      await tapVisible(tester, const Key('meal_history_button'));
+
+      expect(find.byKey(const Key('meal_history_empty')), findsOneWidget);
+
+      await tester.tap(find.byKey(const Key('meal_history_prev')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Ayer'), findsOneWidget);
+      expect(find.text('20:00'), findsOneWidget);
+      expect(find.byKey(const Key('meal_history_empty')), findsNothing);
+    });
+
+    testWidgets(
+      'eliminar pide confirmación: cancelar lo conserva y confirmar lo quita',
+      (tester) async {
+        await openHistory(tester);
+
+        await tester.tap(find.byKey(const Key('meal_desayuno_delete')));
+        await tester.pumpAndSettle();
+        expect(find.text('¿Eliminar este registro?'), findsOneWidget);
+        await tester.tap(find.byKey(const Key('meal_delete_cancel')));
+        await tester.pumpAndSettle();
+        expect(meals.deleted, isEmpty);
+        expect(find.byKey(const Key('meal_desayuno')), findsOneWidget);
+
+        await tester.tap(find.byKey(const Key('meal_desayuno_delete')));
+        await tester.pumpAndSettle();
+        await tester.tap(find.byKey(const Key('meal_delete_confirm')));
+        await tester.pumpAndSettle();
+
+        expect(meals.deleted, ['desayuno']);
+        expect(find.byKey(const Key('meal_desayuno')), findsNothing);
+        expect(find.byKey(const Key('meal_comida')), findsOneWidget);
+        expect(find.text('Registro eliminado'), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'si el registro ya no existía recarga la lista y lo avisa (404 MEAL_NOT_FOUND)',
+      (tester) async {
+        await openHistory(tester);
+        // Otro dispositivo ya lo eliminó.
+        meals.days[today]!.removeWhere((meal) => meal.id == 'desayuno');
+
+        await tester.tap(find.byKey(const Key('meal_desayuno_delete')));
+        await tester.pumpAndSettle();
+        // La recarga tarda: mientras, la lista (y la tarjeta) se reemplaza por la carga.
+        final gate = meals.listGate = Completer<void>();
+        await tester.tap(find.byKey(const Key('meal_delete_confirm')));
+        await tester.pump();
+        await tester.pump();
+        expect(find.byKey(const Key('meal_desayuno')), findsNothing);
+        gate.complete();
+        await tester.pumpAndSettle();
+
+        expect(meals.listRequests, [today, today]);
+        expect(find.byKey(const Key('meal_desayuno')), findsNothing);
+        expect(find.byKey(const Key('meal_comida')), findsOneWidget);
+        expect(
+          find.text(MealHistoryViewModel.alreadyDeletedMessage),
+          findsOneWidget,
+        );
+      },
+    );
   });
 
   group('lista de clientes (HU-24)', () {
@@ -834,6 +1261,9 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(find.byKey(Key('client_${testClientSummary.id}')));
       await tester.pumpAndSettle();
+      // TEC-17: la barra inferior ocupa el pie de la pantalla; se lleva a la vista.
+      await tester.ensureVisible(find.byKey(const Key('client_detail_meals')));
+      await tester.pumpAndSettle();
       await tester.tap(find.byKey(const Key('client_detail_meals')));
       await tester.pumpAndSettle();
     }
@@ -941,6 +1371,130 @@ void main() {
     });
   });
 
+  group('progreso de un cliente (HU-23)', () {
+    Future<void> openProgress(
+      WidgetTester tester, {
+      ApiException? progressError,
+      bool withData = true,
+    }) async {
+      await pumpApp(tester, state: const Authenticated(testCoach));
+      progress
+        ..error = progressError
+        ..withData = withData;
+      await tester.tap(find.byKey(const Key('clients_button')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(Key('client_${testClientSummary.id}')));
+      await tester.pumpAndSettle();
+      // TEC-17: la barra inferior ocupa el pie de la pantalla; se lleva a la vista.
+      await tester.ensureVisible(
+        find.byKey(const Key('client_detail_progress')),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('client_detail_progress')));
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('desde el detalle se abre el progreso semanal del cliente', (
+      tester,
+    ) async {
+      await openProgress(tester);
+
+      expect(find.byType(ClientProgressView), findsOneWidget);
+      expect(
+        find.text('Progreso de ${testClientSummary.name}'),
+        findsOneWidget,
+      );
+      expect(progress.clientRequests, [testClientSummary.id]);
+      expect(find.byKey(const Key('client_progress_weight')), findsOneWidget);
+      expect(
+        find.byKey(const Key('client_progress_weight_chart')),
+        findsOneWidget,
+      );
+      // La lista se construye bajo demanda: se desplaza hasta las demás tarjetas.
+      final list = find.descendant(
+        of: find.byType(ClientProgressView),
+        matching: find.byType(ListView),
+      );
+      await tester.dragUntilVisible(
+        find.byKey(const Key('client_progress_chart_calories')),
+        list,
+        const Offset(0, -200),
+      );
+      await tester.dragUntilVisible(
+        find.byKey(const Key('client_progress_compliance_chart')),
+        list,
+        const Offset(0, -200),
+      );
+      await tester.pumpAndSettle();
+    });
+
+    testWidgets('es de solo lectura: sin botón para registrar peso', (
+      tester,
+    ) async {
+      await openProgress(tester);
+
+      expect(
+        find.byKey(const Key('client_progress_register_weight')),
+        findsNothing,
+      );
+      expect(find.byKey(const Key('progress_register_weight')), findsNothing);
+      expect(find.byType(FloatingActionButton), findsNothing);
+    });
+
+    testWidgets('cambia a mes', (tester) async {
+      await openProgress(tester);
+
+      await tester.tap(find.byKey(const Key('client_progress_range_month')));
+      await tester.pumpAndSettle();
+
+      final today = appDay(DateTime.now());
+      expect(progress.requests.last, '${today.substring(0, 8)}01..$today');
+      expect(progress.clientRequests.toSet(), {testClientSummary.id});
+    });
+
+    testWidgets('un periodo sin datos lo indica con textos para el coach', (
+      tester,
+    ) async {
+      await openProgress(tester, withData: false);
+
+      expect(
+        find.text(
+          'Tu cliente necesita al menos dos registros de peso en este periodo '
+          'para ver su tendencia.',
+        ),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('un cliente desvinculado lo indica y regresa a la lista', (
+      tester,
+    ) async {
+      await openProgress(
+        tester,
+        progressError: apiError(ApiErrorCode.clientNotLinked, status: 403),
+      );
+
+      expect(find.byKey(const Key('client_progress_unlinked')), findsOneWidget);
+      await tester.tap(find.byKey(const Key('client_progress_back')));
+      await tester.pumpAndSettle();
+      expect(find.byType(ClientsListView), findsOneWidget);
+      expect(find.byType(ClientDetailView), findsNothing);
+    });
+
+    testWidgets('sin conexión muestra el error y permite reintentar', (
+      tester,
+    ) async {
+      await openProgress(tester, progressError: networkError);
+      expect(find.text(networkError.message), findsOneWidget);
+
+      progress.error = null;
+      await tester.tap(find.byKey(const Key('client_progress_retry')));
+      await tester.pumpAndSettle();
+      expect(find.text(networkError.message), findsNothing);
+      expect(find.byKey(const Key('client_progress_weight')), findsOneWidget);
+    });
+  });
+
   group('código de invitación (HU-12)', () {
     Future<void> openInviteCode(
       WidgetTester tester, {
@@ -1003,6 +1557,11 @@ void main() {
     ) async {
       await openInviteCode(tester);
 
+      // TEC-17: la barra inferior ocupa el pie de la pantalla; se lleva a la vista.
+      await tester.ensureVisible(
+        find.byKey(const Key('invite_code_regenerate')),
+      );
+      await tester.pumpAndSettle();
       await tester.tap(find.byKey(const Key('invite_code_regenerate')));
       await tester.pumpAndSettle();
       expect(find.textContaining('dejará de funcionar'), findsOneWidget);
@@ -1020,6 +1579,11 @@ void main() {
     testWidgets('cancelar la regeneración conserva el código', (tester) async {
       await openInviteCode(tester);
 
+      // TEC-17: la barra inferior ocupa el pie de la pantalla; se lleva a la vista.
+      await tester.ensureVisible(
+        find.byKey(const Key('invite_code_regenerate')),
+      );
+      await tester.pumpAndSettle();
       await tester.tap(find.byKey(const Key('invite_code_regenerate')));
       await tester.pumpAndSettle();
       await tester.tap(find.byKey(const Key('invite_code_regenerate_cancel')));
@@ -1042,18 +1606,23 @@ void main() {
       expect(find.text(testInviteCode), findsOneWidget);
     });
 
-    testWidgets(
-      'abre la pantalla de vinculación con el coach desde el inicio',
-      (tester) async {
-        await pumpApp(tester, state: const Authenticated(testUser));
+    testWidgets('abre la pantalla de vinculación con el coach desde el inicio', (
+      tester,
+    ) async {
+      await pumpApp(tester, state: const Authenticated(testUser));
+      // Con el progreso del día (HU-10) el botón queda debajo de las tarjetas.
+      await tester.scrollUntilVisible(
+        find.byKey(const Key('link_coach_nav_button')),
+        200,
+        scrollable: find.byType(Scrollable).first,
+      );
 
-        expect(find.byKey(const Key('link_coach_nav_button')), findsOneWidget);
-        await tester.tap(find.byKey(const Key('link_coach_nav_button')));
-        await tester.pumpAndSettle();
+      expect(find.byKey(const Key('link_coach_nav_button')), findsOneWidget);
+      await tester.tap(find.byKey(const Key('link_coach_nav_button')));
+      await tester.pumpAndSettle();
 
-        expect(find.text('Vincular con coach'), findsWidgets);
-      },
-    );
+      expect(find.text('Vincular con coach'), findsWidgets);
+    });
   });
 
   group('rutinas del coach (HU-18)', () {
@@ -1246,6 +1815,266 @@ void main() {
     });
   });
 
+  group('asignar rutina a clientes (HU-19)', () {
+    Future<void> openAssign(WidgetTester tester) async {
+      await pumpApp(tester, state: const Authenticated(testCoach));
+      await tester.tap(find.byKey(const Key('routines_home_button')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(Key('routine_menu_${testRoutine.id}')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('routine_menu_assign')));
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets(
+      'desde el menú de la rutina se eligen clientes, se confirma y se regresa con el aviso',
+      (tester) async {
+        await pumpApp(tester, state: const Authenticated(testCoach));
+        routines.assignments = {
+          testRoutine.id: [
+            testAssignment(clientId: testClientSummary.id, clientName: 'Ana'),
+          ],
+        };
+        await tester.tap(find.byKey(const Key('routines_home_button')));
+        await tester.pumpAndSettle();
+        await tester.tap(find.byKey(Key('routine_menu_${testRoutine.id}')));
+        await tester.pumpAndSettle();
+        await tester.tap(find.byKey(const Key('routine_menu_assign')));
+        await tester.pumpAndSettle();
+
+        expect(find.byType(AssignRoutineView), findsOneWidget);
+        expect(find.byKey(const Key('assign_routine_name')), findsOneWidget);
+        expect(find.text('Ana'), findsOneWidget);
+        expect(find.text('José Pérez'), findsOneWidget);
+        // Ana ya la tiene: marcada y bloqueada.
+        expect(
+          find.byKey(Key('assign_client_assigned_${testClientSummary.id}')),
+          findsOneWidget,
+        );
+        await tester.tap(
+          find.byKey(Key('assign_client_${testClientSummary.id}')),
+        );
+        await tester.pump();
+        expect(find.text('Asignar'), findsOneWidget);
+
+        await tester.tap(
+          find.byKey(Key('assign_client_${testClientWithoutData.id}')),
+        );
+        await tester.pump();
+        expect(find.text('Asignar (1)'), findsOneWidget);
+
+        await tester.tap(find.byKey(const Key('assign_routine_submit')));
+        await tester.pumpAndSettle();
+        expect(
+          find.textContaining('«Torso A» se asignará a 1 cliente'),
+          findsOneWidget,
+        );
+        expect(find.textContaining('• José Pérez'), findsOneWidget);
+
+        await tester.tap(find.byKey(const Key('assign_routine_confirm')));
+        await tester.pumpAndSettle();
+
+        expect(routines.assignCalls.single.clientIds, [
+          testClientWithoutData.id,
+        ]);
+        expect(find.byType(RoutinesListView), findsOneWidget);
+        expect(find.text('«Torso A» se asignó a 1 cliente.'), findsOneWidget);
+      },
+    );
+
+    testWidgets('cancelar el resumen no asigna', (tester) async {
+      await openAssign(tester);
+      await tester.tap(
+        find.byKey(Key('assign_client_${testClientSummary.id}')),
+      );
+      await tester.pump();
+      await tester.tap(find.byKey(const Key('assign_routine_submit')));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const Key('assign_routine_cancel')));
+      await tester.pumpAndSettle();
+
+      expect(routines.assignCalls, isEmpty);
+      expect(find.byType(AssignRoutineView), findsOneWidget);
+    });
+
+    testWidgets('sin clientes explica que primero debe vincularlos', (
+      tester,
+    ) async {
+      await pumpApp(tester, state: const Authenticated(testCoach));
+      clients.clients = [];
+      await tester.tap(find.byKey(const Key('routines_home_button')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(Key('routine_menu_${testRoutine.id}')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('routine_menu_assign')));
+      await tester.pumpAndSettle();
+
+      expect(
+        find.byKey(const Key('assign_routine_no_clients')),
+        findsOneWidget,
+      );
+      expect(find.byKey(const Key('assign_routine_submit')), findsNothing);
+      expect(
+        find.byKey(const Key('assign_routine_invite_code')),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('salir sin asignar conserva la rutina (CU-04 5a)', (
+      tester,
+    ) async {
+      await openAssign(tester);
+
+      await tester.tap(find.byType(BackButton));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(RoutinesListView), findsOneWidget);
+      expect(find.text('Torso A'), findsOneWidget);
+      expect(routines.assignCalls, isEmpty);
+      expect(routines.deleted, isEmpty);
+    });
+  });
+
+  group('editar y retirar una rutina asignada (HU-20)', () {
+    Future<void> openRoutinesWithClients(WidgetTester tester) async {
+      await pumpApp(tester, state: const Authenticated(testCoach));
+      routines.assignments = {
+        testRoutine.id: [
+          testAssignment(clientId: testClientSummary.id, clientName: 'Ana'),
+          testAssignment(
+            clientId: testClientWithoutData.id,
+            clientName: 'José Pérez',
+          ),
+        ],
+      };
+      await tester.tap(find.byKey(const Key('routines_home_button')));
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets(
+      'desde el menú se ven los clientes asignados y se retira uno con confirmación',
+      (tester) async {
+        await openRoutinesWithClients(tester);
+        await tester.tap(find.byKey(Key('routine_menu_${testRoutine.id}')));
+        await tester.pumpAndSettle();
+        await tester.tap(find.byKey(const Key('routine_menu_clients')));
+        await tester.pumpAndSettle();
+
+        expect(find.byType(RoutineAssignmentsView), findsOneWidget);
+        expect(find.text('Ana'), findsOneWidget);
+        expect(find.text('José Pérez'), findsOneWidget);
+
+        await tester.tap(
+          find.byKey(Key('remove_assignment_${testClientSummary.id}')),
+        );
+        await tester.pumpAndSettle();
+        expect(
+          find.textContaining('¿Retirar «Torso A» de Ana?'),
+          findsOneWidget,
+        );
+        await tester.tap(find.byKey(const Key('remove_assignment_confirm')));
+        await tester.pumpAndSettle();
+
+        expect(routines.removed.single.clientId, testClientSummary.id);
+        expect(find.text('Ana'), findsNothing);
+        expect(find.text('José Pérez'), findsOneWidget);
+        expect(find.text('Rutina retirada de Ana'), findsOneWidget);
+      },
+    );
+
+    testWidgets('sin conexión el retiro muestra el error y no cierra la app', (
+      tester,
+    ) async {
+      await openRoutinesWithClients(tester);
+      routines.removeError = networkError;
+      await tester.tap(find.byKey(Key('routine_menu_${testRoutine.id}')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('routine_menu_clients')));
+      await tester.pumpAndSettle();
+
+      await tester.tap(
+        find.byKey(Key('remove_assignment_${testClientSummary.id}')),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('remove_assignment_confirm')));
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const Key('remove_assignment_error')), findsOneWidget);
+      expect(find.text('Ana'), findsOneWidget);
+    });
+
+    testWidgets('editar una rutina asignada avisa a cuántos clientes afecta', (
+      tester,
+    ) async {
+      await openRoutinesWithClients(tester);
+      await tester.tap(find.text('Torso A'));
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byKey(const Key('routine_name')), 'Torso B');
+      await tester.tap(find.byKey(const Key('routine_submit')));
+      await tester.pumpAndSettle();
+
+      expect(
+        find.textContaining('Esta rutina está asignada a 2 clientes'),
+        findsOneWidget,
+      );
+      await tester.tap(find.byKey(const Key('routine_affected_confirm')));
+      await tester.pumpAndSettle();
+
+      expect(routines.updated.single.id, testRoutine.id);
+      expect(find.text('Torso B'), findsOneWidget);
+    });
+
+    testWidgets(
+      'eliminar una rutina asignada avisa que se retira de sus clientes',
+      (tester) async {
+        await openRoutinesWithClients(tester);
+        await tester.tap(find.byKey(Key('routine_menu_${testRoutine.id}')));
+        await tester.pumpAndSettle();
+        await tester.tap(find.byKey(const Key('routine_menu_delete')));
+        await tester.pumpAndSettle();
+
+        expect(
+          find.textContaining('Está asignada a 2 clientes: se les retirará'),
+          findsOneWidget,
+        );
+        await tester.tap(find.byKey(const Key('routine_delete_cancel')));
+        await tester.pumpAndSettle();
+        expect(routines.deleted, isEmpty);
+      },
+    );
+  });
+
+  group('rutina recomendada (HU-15)', () {
+    testWidgets('el inicio del usuario abre la pantalla para solicitarla', (
+      tester,
+    ) async {
+      await pumpApp(tester, state: const Authenticated(testUser));
+      const access = Key('recommended_routine_home_button');
+
+      await tester.scrollUntilVisible(find.byKey(access), 200);
+      await tester.ensureVisible(find.byKey(access));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(access));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(RecommendedRoutineView), findsOneWidget);
+      expect(find.byKey(const Key('recommended_generate')), findsOneWidget);
+    });
+
+    testWidgets('/user/routines/recommended no se confunde con un detalle', (
+      tester,
+    ) async {
+      await pumpApp(tester, state: const Authenticated(testUser));
+
+      final router = GoRouter.of(tester.element(find.byType(Scaffold).first));
+      unawaited(router.push(AppRoutes.recommendedRoutine));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(RecommendedRoutineView), findsOneWidget);
+    });
+  });
+
   group('meta vigente en la pantalla principal (HU-26)', () {
     testWidgets('muestra la meta calculada con su origen', (tester) async {
       await pumpApp(
@@ -1308,6 +2137,266 @@ void main() {
       expect(find.text(networkError.message), findsNothing);
       expect(find.text('2200 kcal'), findsOneWidget);
       expect(goals.currentCalls, 2);
+    });
+
+    testWidgets('muestra el progreso del día con consumido, meta y restante', (
+      tester,
+    ) async {
+      await pumpApp(tester, state: const Authenticated(testUser));
+
+      expect(find.text('1050.5 / 2200 kcal'), findsOneWidget);
+      expect(find.text('Te faltan 1149.5 kcal'), findsOneWidget);
+      expect(find.text('70 / 160 g'), findsOneWidget);
+      expect(find.text('Te faltan 90 g'), findsOneWidget);
+      expect(find.text('35.5 / 70 g'), findsOneWidget);
+      expect(find.byKey(const Key('home_summary_fat_bar')), findsOneWidget);
+    });
+
+    testWidgets('con exceso la barra se llena y dice cuánto se pasó', (
+      tester,
+    ) async {
+      await pumpApp(
+        tester,
+        state: const Authenticated(testUser),
+        summaryRepository: FakeSummaryRepository(
+          daily: testDaySummary(
+            consumed: const MacroValues(
+              caloriesKcal: 2350,
+              proteinG: 100,
+              fatG: 40,
+            ),
+          ),
+        ),
+      );
+
+      expect(find.text('Te pasaste por 150 kcal'), findsOneWidget);
+      final bar = tester.widget<LinearProgressIndicator>(
+        find.byKey(const Key('home_summary_calories_bar')),
+      );
+      expect(bar.value, 1);
+    });
+
+    testWidgets('un día sin registros muestra consumo en 0', (tester) async {
+      await pumpApp(
+        tester,
+        state: const Authenticated(testUser),
+        summaryRepository: FakeSummaryRepository(
+          daily: testDaySummary(
+            consumed: const MacroValues(caloriesKcal: 0, proteinG: 0, fatG: 0),
+          ),
+        ),
+      );
+
+      expect(find.text('0 / 2200 kcal'), findsOneWidget);
+      expect(find.text('Te faltan 2200 kcal'), findsOneWidget);
+    });
+
+    testWidgets('sin meta el resumen muestra un mensaje y no un error', (
+      tester,
+    ) async {
+      await pumpApp(
+        tester,
+        state: const Authenticated(testUser),
+        summaryRepository: FakeSummaryRepository.withoutGoal(),
+      );
+
+      expect(find.byKey(const Key('home_summary_empty')), findsOneWidget);
+      expect(find.byKey(const Key('home_summary_retry')), findsNothing);
+    });
+
+    testWidgets('sin conexión el resumen muestra el error y reintenta', (
+      tester,
+    ) async {
+      await pumpApp(
+        tester,
+        state: const Authenticated(testUser),
+        summaryRepository: FakeSummaryRepository()..error = networkError,
+      );
+
+      expect(find.text(networkError.message), findsOneWidget);
+      summary.error = null;
+      await tester.tap(find.byKey(const Key('home_summary_retry')));
+      await tester.pumpAndSettle();
+
+      expect(find.text(networkError.message), findsNothing);
+      expect(find.text('Te faltan 1149.5 kcal'), findsOneWidget);
+      expect(summary.dailyDates, hasLength(2));
+    });
+
+    testWidgets('al regresar de registrar una comida se vuelve a consultar', (
+      tester,
+    ) async {
+      await pumpApp(tester, state: const Authenticated(testUser));
+      expect(summary.dailyDates, hasLength(1));
+
+      await tester.tap(find.byKey(const Key('register_meal_button')));
+      await tester.pumpAndSettle();
+      summary.daily = testDaySummary(
+        consumed: const MacroValues(caloriesKcal: 1500, proteinG: 90, fatG: 50),
+      );
+      tester.state<NavigatorState>(find.byType(Navigator).first).pop();
+      await tester.pumpAndSettle();
+
+      expect(summary.dailyDates, hasLength(2));
+      expect(find.text('1500 / 2200 kcal'), findsOneWidget);
+    });
+
+    testWidgets('al deslizar para actualizar se consulta de nuevo', (
+      tester,
+    ) async {
+      await pumpApp(tester, state: const Authenticated(testUser));
+
+      await tester.fling(
+        find.byType(ListView).first,
+        const Offset(0, 400),
+        1000,
+      );
+      await tester.pumpAndSettle();
+
+      expect(summary.dailyDates, hasLength(2));
+      expect(goals.currentCalls, 2);
+    });
+
+    group('resumen semanal (HU-11)', () {
+      Future<void> openWeekly(
+        WidgetTester tester, {
+        FakeSummaryRepository? repository,
+      }) async {
+        // Alto suficiente para que la lista construya los 7 días.
+        tester.view.physicalSize = const Size(800, 3200);
+        tester.view.devicePixelRatio = 1;
+        addTearDown(tester.view.reset);
+        await pumpApp(
+          tester,
+          state: const Authenticated(testUser),
+          summaryRepository: repository,
+        );
+        await tester.tap(find.byKey(const Key('weekly_summary_button')));
+        await tester.pumpAndSettle();
+      }
+
+      testWidgets('el botón del inicio abre el resumen semanal', (
+        tester,
+      ) async {
+        await openWeekly(tester);
+
+        expect(find.byType(WeeklySummaryView), findsOneWidget);
+        expect(summary.weeklyStarts, hasLength(1));
+        // La semana inicial termina hoy: empieza 6 días antes.
+        expect(
+          summary.weeklyStarts.single,
+          shiftDay(appDay(DateTime.now()), -6),
+        );
+      });
+
+      testWidgets('muestra las calorías de los 7 días contra la meta', (
+        tester,
+      ) async {
+        await openWeekly(tester);
+
+        expect(
+          find.byWidgetPredicate(
+            (widget) =>
+                widget.key is ValueKey<String> &&
+                (widget.key! as ValueKey<String>).value.startsWith(
+                  'weekly_bar_2',
+                ),
+          ),
+          findsNWidgets(7),
+        );
+        expect(
+          find.byWidgetPredicate(
+            (widget) =>
+                widget.key is ValueKey<String> &&
+                (widget.key! as ValueKey<String>).value.startsWith(
+                  'weekly_goal_2',
+                ),
+          ),
+          findsNWidgets(7),
+        );
+        expect(find.text('1900 / 2000 kcal'), findsNWidgets(5));
+        expect(find.text('2400 / 2000 kcal'), findsOneWidget);
+      });
+
+      testWidgets('los días sin registros aparecen en 0', (tester) async {
+        await openWeekly(
+          tester,
+          repository: FakeSummaryRepository(weekly: testEmptyWeekSummary()),
+        );
+
+        expect(find.text('0 / 2000 kcal'), findsNWidgets(7));
+        expect(find.text('Días con la meta cumplida: 0 de 7'), findsOneWidget);
+      });
+
+      testWidgets('muestra el promedio y los días con la meta cumplida', (
+        tester,
+      ) async {
+        await openWeekly(tester);
+
+        expect(find.text('1700 kcal'), findsOneWidget);
+        expect(find.text('124.3 g'), findsOneWidget);
+        expect(find.text('50.7 g'), findsOneWidget);
+        expect(find.text('Días con la meta cumplida: 5 de 7'), findsOneWidget);
+      });
+
+      testWidgets('cada día indica si cumplió la meta sin depender del color', (
+        tester,
+      ) async {
+        await openWeekly(tester);
+
+        expect(find.text('Meta cumplida'), findsNWidgets(5));
+        expect(find.text('Meta no cumplida'), findsNWidgets(2));
+        expect(find.byIcon(LucideIcons.circleCheck), findsNWidgets(10));
+        expect(find.byIcon(LucideIcons.circleX), findsNWidgets(4));
+      });
+
+      testWidgets('cambia a la semana anterior y regresa a la siguiente', (
+        tester,
+      ) async {
+        await openWeekly(tester);
+        final next = find.byKey(const Key('weekly_next'));
+        // La semana inicial termina hoy: no hay una siguiente.
+        expect(tester.widget<IconButton>(next).onPressed, isNull);
+
+        await tester.tap(find.byKey(const Key('weekly_previous')));
+        await tester.pumpAndSettle();
+        final today = appDay(DateTime.now());
+        expect(summary.weeklyStarts.last, shiftDay(today, -13));
+        expect(tester.widget<IconButton>(next).onPressed, isNotNull);
+
+        await tester.tap(next);
+        await tester.pumpAndSettle();
+        expect(summary.weeklyStarts.last, shiftDay(today, -6));
+        expect(tester.widget<IconButton>(next).onPressed, isNull);
+      });
+
+      testWidgets('sin meta muestra un mensaje y no un error', (tester) async {
+        await openWeekly(
+          tester,
+          repository: FakeSummaryRepository.withoutGoal(),
+        );
+
+        expect(find.byKey(const Key('weekly_empty')), findsOneWidget);
+        expect(find.byKey(const Key('weekly_retry')), findsNothing);
+      });
+
+      testWidgets('sin conexión muestra el error en español y reintenta', (
+        tester,
+      ) async {
+        await openWeekly(
+          tester,
+          repository: FakeSummaryRepository()..error = networkError,
+        );
+
+        expect(find.text(networkError.message), findsOneWidget);
+        expect(find.byType(WeeklySummaryView), findsOneWidget);
+        summary.error = null;
+        await tester.tap(find.byKey(const Key('weekly_retry')));
+        await tester.pumpAndSettle();
+
+        expect(find.text(networkError.message), findsNothing);
+        expect(find.text('Días con la meta cumplida: 5 de 7'), findsOneWidget);
+      });
     });
 
     testWidgets('al regresar de Mi perfil se vuelve a consultar la meta', (

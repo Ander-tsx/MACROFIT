@@ -1,3 +1,4 @@
+import 'package:flutter/widgets.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
@@ -19,6 +20,8 @@ import '../features/clients/presentation/client_detail/client_detail_view.dart';
 import '../features/clients/presentation/client_detail/client_detail_view_model.dart';
 import '../features/clients/presentation/client_meals/client_meals_view.dart';
 import '../features/clients/presentation/client_meals/client_meals_view_model.dart';
+import '../features/clients/presentation/client_progress/client_progress_view.dart';
+import '../features/clients/presentation/client_progress/client_progress_view_model.dart';
 import '../features/clients/presentation/clients_list/clients_list_view.dart';
 import '../features/clients/presentation/clients_list/clients_list_view_model.dart';
 import '../features/goals/domain/entities/coach_client.dart';
@@ -44,23 +47,44 @@ import '../features/meals/presentation/meal_estimate/meal_estimate_view.dart';
 import '../features/meals/presentation/meal_estimate/meal_estimate_view_model.dart';
 import '../features/meals/presentation/meal_form/meal_form_view.dart';
 import '../features/meals/presentation/meal_form/meal_form_view_model.dart';
+import '../features/meals/presentation/meal_history/meal_history_view.dart';
+import '../features/meals/presentation/meal_history/meal_history_view_model.dart';
 import '../features/meals/presentation/meal_photo/meal_photo_view.dart';
 import '../features/meals/presentation/meal_photo/meal_photo_view_model.dart';
 import '../features/profile/domain/repositories/profile_repository.dart';
+import '../features/summary/domain/repositories/summary_repository.dart';
+import '../features/summary/presentation/weekly_summary/weekly_summary_view.dart';
+import '../features/summary/presentation/weekly_summary/weekly_summary_view_model.dart';
 import '../features/profile/presentation/profile_form/profile_form_view.dart';
 import '../features/profile/presentation/profile_form/profile_form_view_model.dart';
+import '../features/progress/domain/repositories/progress_repository.dart';
 import '../features/progress/domain/repositories/weights_repository.dart';
+import '../features/progress/presentation/progress_charts/progress_view.dart';
+import '../features/progress/presentation/progress_charts/progress_view_model.dart';
 import '../features/progress/presentation/weights/weights_view.dart';
 import '../features/progress/presentation/weights/weights_view_model.dart';
+import '../features/my_routines/domain/entities/user_routine.dart';
+import '../features/my_routines/domain/repositories/my_routines_repository.dart';
+import '../features/my_routines/presentation/recommended/recommended_routine_view.dart';
+import '../features/my_routines/presentation/recommended/recommended_routine_view_model.dart';
+import '../features/my_routines/presentation/routine_detail/routine_detail_view.dart';
+import '../features/my_routines/presentation/routine_detail/routine_detail_view_model.dart';
+import '../features/my_routines/presentation/routines_list/my_routines_list_view.dart';
+import '../features/my_routines/presentation/routines_list/my_routines_list_view_model.dart';
 import '../features/routines/domain/entities/routine.dart';
 import '../features/routines/domain/repositories/routines_repository.dart';
+import '../features/routines/presentation/assign_routine/assign_routine_view.dart';
+import '../features/routines/presentation/assign_routine/assign_routine_view_model.dart';
 import '../features/routines/presentation/exercise_picker/exercise_picker_view.dart';
 import '../features/routines/presentation/exercise_picker/exercise_picker_view_model.dart';
+import '../features/routines/presentation/routine_assignments/routine_assignments_view.dart';
+import '../features/routines/presentation/routine_assignments/routine_assignments_view_model.dart';
 import '../features/routines/presentation/routine_builder/routine_builder_view.dart';
 import '../features/routines/presentation/routine_builder/routine_builder_view_model.dart';
 import '../features/routines/presentation/routines_list/routines_list_view.dart';
 import '../features/routines/presentation/routines_list/routines_list_view_model.dart';
 import 'routes.dart';
+import 'navigation/tab_transitions.dart';
 
 /// Crea el router. Escucha al [AuthRepository]: cada cambio de sesión vuelve a
 /// evaluar [resolveRedirect], así que login, logout y sesión expirada navegan solos.
@@ -70,9 +94,11 @@ import 'routes.dart';
 GoRouter createRouter(
   AuthRepository auth, {
   required MealPhotoRepository mealPhotos,
+  List<NavigatorObserver> observers = const [],
 }) {
   return GoRouter(
     initialLocation: AppRoutes.splash,
+    observers: observers,
     refreshListenable: auth,
     redirect: (context, state) =>
         resolveRedirect(auth.state, state.matchedLocation),
@@ -112,10 +138,36 @@ GoRouter createRouter(
           create: (context) => UserHomeViewModel(
             auth: context.read<AuthRepository>(),
             goals: context.read<GoalsRepository>(),
-          )..loadGoal(),
+            summary: context.read<SummaryRepository>(),
+            coachLinks: context.read<CoachLinkRepository>(),
+          )..refresh(),
           child: const UserHomeView(),
         ),
         routes: [
+          GoRoute(
+            path: AppRoutes.progressChild,
+            pageBuilder: (context, state) => tabPage(
+              state,
+              ChangeNotifierProvider(
+                create: (context) => ProgressViewModel(
+                  repository: context.read<ProgressRepository>(),
+                )..load(),
+                child: const ProgressView(),
+              ),
+            ),
+          ),
+          GoRoute(
+            path: AppRoutes.weightsChild,
+            pageBuilder: (context, state) => tabPage(
+              state,
+              ChangeNotifierProvider(
+                create: (context) => WeightsViewModel(
+                  repository: context.read<WeightsRepository>(),
+                )..load(),
+                child: const WeightsView(),
+              ),
+            ),
+          ),
           GoRoute(
             path: AppRoutes.mealPhotoChild,
             builder: (context, _) => ChangeNotifierProvider(
@@ -139,6 +191,18 @@ GoRouter createRouter(
             ),
           ),
           GoRoute(
+            path: AppRoutes.weeklySummaryChild,
+            pageBuilder: (context, state) => tabPage(
+              state,
+              ChangeNotifierProvider(
+                create: (context) => WeeklySummaryViewModel(
+                  repository: context.read<SummaryRepository>(),
+                )..load(),
+                child: const WeeklySummaryView(),
+              ),
+            ),
+          ),
+          GoRoute(
             path: AppRoutes.mealFormChild,
             // Sin el borrador (p. ej. al restaurar la ruta) se vuelve al inicio.
             redirect: (_, state) =>
@@ -149,6 +213,54 @@ GoRouter createRouter(
                 draft: state.extra! as MealDraft,
               ),
               child: const MealFormView(),
+            ),
+          ),
+          GoRoute(
+            path: AppRoutes.mealHistoryChild,
+            pageBuilder: (context, state) => tabPage(
+              state,
+              ChangeNotifierProvider(
+                create: (context) => MealHistoryViewModel(
+                  repository: context.read<MealsRepository>(),
+                  initialDate: state.extra is DateTime
+                      ? state.extra! as DateTime
+                      : null,
+                )..load(),
+                child: const MealHistoryView(),
+              ),
+            ),
+          ),
+          // HU-16: rutinas del usuario. Se recargan al abrir (RF-23).
+          GoRoute(
+            path: AppRoutes.myRoutinesChild,
+            builder: (context, _) => ChangeNotifierProvider(
+              create: (context) =>
+                  MyRoutinesListViewModel(context.read<MyRoutinesRepository>())
+                    ..load(),
+              child: const MyRoutinesListView(),
+            ),
+          ),
+          // HU-15: antes del detalle, que acepta cualquier id.
+          GoRoute(
+            path: AppRoutes.recommendedRoutineChild,
+            builder: (context, _) => ChangeNotifierProvider(
+              create: (context) => RecommendedRoutineViewModel(
+                context.read<MyRoutinesRepository>(),
+              )..load(),
+              child: const RecommendedRoutineView(),
+            ),
+          ),
+          GoRoute(
+            path: AppRoutes.myRoutineDetailChild,
+            builder: (context, state) => ChangeNotifierProvider(
+              create: (context) => RoutineDetailViewModel(
+                repository: context.read<MyRoutinesRepository>(),
+                routineId: state.pathParameters['routineId']!,
+                summary: state.extra is UserRoutineSummary
+                    ? state.extra! as UserRoutineSummary
+                    : null,
+              )..load(),
+              child: const RoutineDetailView(),
             ),
           ),
         ],
@@ -181,6 +293,34 @@ GoRouter createRouter(
           create: (context) => HomeViewModel(context.read<AuthRepository>()),
           child: const CoachHomeView(),
         ),
+        // Pestañas de la barra inferior (TEC-17). Las pantallas que cuelgan de
+        // ellas (detalle, constructor) siguen como rutas de primer nivel.
+        routes: [
+          GoRoute(
+            path: AppRoutes.coachClientsChild,
+            pageBuilder: (context, state) => tabPage(
+              state,
+              ChangeNotifierProvider(
+                create: (context) =>
+                    ClientsListViewModel(context.read<ClientsRepository>())
+                      ..load(),
+                child: const ClientsListView(),
+              ),
+            ),
+          ),
+          GoRoute(
+            path: AppRoutes.coachRoutinesChild,
+            pageBuilder: (context, state) => tabPage(
+              state,
+              ChangeNotifierProvider(
+                create: (context) =>
+                    RoutinesListViewModel(context.read<RoutinesRepository>())
+                      ..load(),
+                child: const RoutinesListView(),
+              ),
+            ),
+          ),
+        ],
       ),
       GoRoute(
         path: AppRoutes.coachInviteCode,
@@ -199,31 +339,6 @@ GoRouter createRouter(
             repository: context.read<CoachLinkRepository>(),
           )..load(),
           child: const CoachLinkView(),
-        ),
-      ),
-      GoRoute(
-        path: AppRoutes.weights,
-        builder: (context, _) => ChangeNotifierProvider(
-          create: (context) =>
-              WeightsViewModel(repository: context.read<WeightsRepository>())
-                ..load(),
-          child: const WeightsView(),
-        ),
-      ),
-      GoRoute(
-        path: AppRoutes.coachClients,
-        builder: (context, _) => ChangeNotifierProvider(
-          create: (context) =>
-              ClientsListViewModel(context.read<ClientsRepository>())..load(),
-          child: const ClientsListView(),
-        ),
-      ),
-      GoRoute(
-        path: AppRoutes.coachRoutines,
-        builder: (context, _) => ChangeNotifierProvider(
-          create: (context) =>
-              RoutinesListViewModel(context.read<RoutinesRepository>())..load(),
-          child: const RoutinesListView(),
         ),
       ),
       GoRoute(
@@ -258,6 +373,33 @@ GoRouter createRouter(
         ),
       ),
       GoRoute(
+        path: AppRoutes.coachRoutineClientsPattern,
+        // HU-20. Sin la rutina (p. ej. al restaurar la ruta) se vuelve a la lista.
+        redirect: (_, state) =>
+            state.extra is Routine ? null : AppRoutes.coachRoutines,
+        builder: (context, state) => ChangeNotifierProvider(
+          create: (context) => RoutineAssignmentsViewModel(
+            repository: context.read<RoutinesRepository>(),
+            routine: state.extra! as Routine,
+          )..load(),
+          child: const RoutineAssignmentsView(),
+        ),
+      ),
+      GoRoute(
+        path: AppRoutes.coachRoutineAssignPattern,
+        // Sin la rutina (p. ej. al restaurar la ruta) se vuelve a la lista.
+        redirect: (_, state) =>
+            state.extra is Routine ? null : AppRoutes.coachRoutines,
+        builder: (context, state) => ChangeNotifierProvider(
+          create: (context) => AssignRoutineViewModel(
+            routine: state.extra! as Routine,
+            routinesRepository: context.read<RoutinesRepository>(),
+            clientsRepository: context.read<ClientsRepository>(),
+          )..load(),
+          child: const AssignRoutineView(),
+        ),
+      ),
+      GoRoute(
         path: AppRoutes.coachClientGoalsPattern,
         // Sin el cliente (p. ej. al restaurar la ruta) se vuelve a la lista.
         redirect: (_, state) =>
@@ -281,6 +423,19 @@ GoRouter createRouter(
             client: state.extra! as CoachClient,
           )..load(),
           child: const ClientMealsView(),
+        ),
+      ),
+      GoRoute(
+        path: AppRoutes.coachClientProgressPattern,
+        // Sin el cliente (p. ej. al restaurar la ruta) se vuelve a la lista.
+        redirect: (_, state) =>
+            state.extra is CoachClient ? null : AppRoutes.coachClients,
+        builder: (context, state) => ChangeNotifierProvider(
+          create: (context) => ClientProgressViewModel(
+            repository: context.read<ProgressRepository>(),
+            client: state.extra! as CoachClient,
+          )..load(),
+          child: const ClientProgressView(),
         ),
       ),
       GoRoute(
@@ -316,7 +471,7 @@ String homeFor(Role role) => switch (role) {
 /// - Usuario sin perfil (HU-03) → solo el formulario de perfil inicial hasta
 ///   completarlo. Con perfil: su pantalla principal, "Mi perfil",
 ///   "Registrar comida" (HU-06), su estimación (HU-07) y el formulario de
-///   valores (HU-08).
+///   valores (HU-08) y "Mis comidas" (HU-09).
 ///   Un coach nunca ve el formulario.
 String? resolveRedirect(AuthState state, String location) {
   switch (state) {
@@ -332,9 +487,7 @@ String? resolveRedirect(AuthState state, String location) {
               ? null
               : AppRoutes.profileSetup;
         case Role.user:
-          return AppRoutes.userRoutes.contains(location)
-              ? null
-              : AppRoutes.userHome;
+          return AppRoutes.isUserRoute(location) ? null : AppRoutes.userHome;
         case Role.coach:
           return AppRoutes.isCoachRoute(location) ? null : AppRoutes.coachHome;
       }

@@ -2,7 +2,9 @@ import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:macrofit_app/core/errors/api_exception.dart';
+import 'package:macrofit_app/features/meals/domain/entities/meal.dart';
 import 'package:macrofit_app/features/meals/presentation/meal_estimate/meal_estimate_view_model.dart';
+import 'package:macrofit_app/features/meals/presentation/widgets/meal_texts.dart';
 
 import '../../../helpers/fakes.dart';
 
@@ -114,4 +116,64 @@ void main() {
       expect(viewModel.canRetry, isTrue);
     },
   );
+
+  group('guardar sin corregir (HU-09)', () {
+    test('manda los totales como finales y en estimated con la foto', () async {
+      await viewModel.load();
+
+      final pending = viewModel.save();
+      expect(viewModel.isSaving, isTrue);
+      expect(await pending, isTrue);
+
+      expect(
+        repository.created.single,
+        NewMeal(
+          photoId: testUploadedPhoto.id,
+          values: testEstimate.totals,
+          estimated: testEstimate.totals,
+        ),
+      );
+      expect(viewModel.saved!.date, repository.savedDay);
+      expect(viewModel.isSaving, isFalse);
+    });
+
+    test('sin estimación no guarda', () async {
+      repository.estimateError = networkError;
+      await viewModel.load();
+
+      expect(await viewModel.save(), isFalse);
+      expect(repository.created, isEmpty);
+    });
+
+    test('un registro guardado no se vuelve a enviar', () async {
+      await viewModel.load();
+
+      await viewModel.save();
+      expect(await viewModel.save(), isFalse);
+
+      expect(repository.created, hasLength(1));
+    });
+
+    for (final (code, status, message) in [
+      (ApiErrorCode.photoAlreadyUsed, 409, MealSaveMessages.photoAlreadyUsed),
+      (ApiErrorCode.photoNotFound, 404, MealSaveMessages.photoNotFound),
+      (ApiErrorCode.network, null, 'Sin conexión'),
+    ]) {
+      test(
+        '${status ?? 'sin red'} $code muestra el error y conserva la estimación',
+        () async {
+          await viewModel.load();
+          repository.createError = status == null
+              ? networkError
+              : apiError(code, status: status);
+
+          expect(await viewModel.save(), isFalse);
+
+          expect(viewModel.saveError, message);
+          expect(viewModel.estimate, testEstimate);
+          expect(viewModel.saved, isNull);
+        },
+      );
+    }
+  });
 }

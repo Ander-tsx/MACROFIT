@@ -31,7 +31,10 @@ class RoutineBuilderView extends StatelessWidget {
     RoutineBuilderViewModel viewModel,
   ) async {
     FocusScope.of(context).unfocus();
-    final saved = await viewModel.submit();
+    final saved = await viewModel.submit(
+      // HU-20: una rutina asignada avisa a cuántos clientes afecta.
+      confirmAffected: (count) => _confirmAffected(context, count),
+    );
     if (!saved || !context.mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -41,6 +44,33 @@ class RoutineBuilderView extends StatelessWidget {
       ),
     );
     context.pop(true);
+  }
+
+  Future<bool> _confirmAffected(BuildContext context, int count) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Guardar cambios'),
+        content: Text(
+          'Esta rutina está asignada a ${clientCountText(count)}. Los cambios '
+          'se verán en su app; sus sesiones completadas se conservan.',
+          key: const Key('routine_affected_message'),
+        ),
+        actions: [
+          TextButton(
+            key: const Key('routine_affected_cancel'),
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            key: const Key('routine_affected_confirm'),
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Guardar'),
+          ),
+        ],
+      ),
+    );
+    return confirmed ?? false;
   }
 
   Future<void> _confirmDiscard(BuildContext context) async {

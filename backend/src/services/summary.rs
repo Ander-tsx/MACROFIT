@@ -17,6 +17,7 @@ use mongodb::{
     Database,
     bson::{DateTime, oid::ObjectId},
 };
+use serde::Serialize;
 use std::collections::HashMap;
 
 use crate::error::{AppError, FieldErrors};
@@ -26,7 +27,7 @@ use crate::services::{goals, meals};
 use crate::validation::{DATE_FORMAT, parse_date};
 
 /// Calorías y macros que muestra el resumen (RF-09).
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, utoipa::ToSchema)]
 pub struct Totals {
     pub calories_kcal: f64,
     pub protein_g: f64,
@@ -34,13 +35,13 @@ pub struct Totals {
 }
 
 /// Meta vigente del día con su origen.
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, utoipa::ToSchema)]
 pub struct DayGoal {
     pub source: GoalSource,
     pub totals: Totals,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, utoipa::ToSchema)]
 pub struct DailySummary {
     /// Día consultado, `YYYY-MM-DD`.
     pub date: String,

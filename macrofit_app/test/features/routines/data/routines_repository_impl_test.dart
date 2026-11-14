@@ -7,6 +7,7 @@ import 'package:macrofit_app/features/routines/data/datasources/routines_remote_
 import 'package:macrofit_app/features/routines/data/repositories/routines_repository_impl.dart';
 import 'package:macrofit_app/features/routines/domain/entities/exercise.dart';
 import 'package:macrofit_app/features/routines/domain/entities/routine.dart';
+import 'package:macrofit_app/features/routines/domain/entities/routine_assignment.dart';
 
 import '../../../helpers/fakes.dart';
 
@@ -199,6 +200,147 @@ void main() {
     );
   });
 
+  group('asignaciones (HU-19)', () {
+    const assignmentJson = {
+      'id': '6b10a0000000000000000001',
+      'routine_id': '6b01a0000000000000000001',
+      'client_id': '6ad0a1b2c3d4e5f6a7b8c9d0',
+      'client_name': 'Ana',
+      'assigned_at': '2026-11-05T18:00:00Z',
+    };
+    final assignment = RoutineAssignment(
+      id: '6b10a0000000000000000001',
+      routineId: '6b01a0000000000000000001',
+      clientId: '6ad0a1b2c3d4e5f6a7b8c9d0',
+      clientName: 'Ana',
+      assignedAt: DateTime.utc(2026, 11, 5, 18),
+    );
+
+    test(
+      'GET /coach/routines/{id}/assignments convierte cada asignación',
+      () async {
+        final repository = build((_) => jsonResponse([assignmentJson], 200));
+
+        final result = await repository.getAssignments(
+          '6b01a0000000000000000001',
+        );
+
+        expect(result, [assignment]);
+        final request = adapter.requests.single;
+        expect(request.method, 'GET');
+        expect(
+          request.path,
+          '/coach/routines/6b01a0000000000000000001/assignments',
+        );
+      },
+    );
+
+    test('GET sin asignaciones devuelve una lista vacía', () async {
+      final repository = build((_) => jsonResponse(<Object>[], 200));
+
+      expect(
+        await repository.getAssignments('6b01a0000000000000000001'),
+        isEmpty,
+      );
+    });
+
+    test(
+      'POST manda client_ids en el orden pedido y convierte la respuesta',
+      () async {
+        final repository = build(
+          (_) => jsonResponse([
+            assignmentJson,
+            {
+              ...assignmentJson,
+              'id': '6b10a0000000000000000002',
+              'client_id': '6ac67c747314ad6c7164900f',
+              'client_name': 'José Pérez',
+            },
+          ], 201),
+        );
+
+        final result = await repository.assignRoutine(
+          '6b01a0000000000000000001',
+          ['6ad0a1b2c3d4e5f6a7b8c9d0', '6ac67c747314ad6c7164900f'],
+        );
+
+        expect(result.map((item) => item.clientName), ['Ana', 'José Pérez']);
+        final request = adapter.requests.single;
+        expect(request.method, 'POST');
+        expect(
+          request.path,
+          '/coach/routines/6b01a0000000000000000001/assignments',
+        );
+        expect(body(request), {
+          'client_ids': [
+            '6ad0a1b2c3d4e5f6a7b8c9d0',
+            '6ac67c747314ad6c7164900f',
+          ],
+        });
+      },
+    );
+
+    test(
+      '403 CLIENT_NOT_LINKED conserva el campo del cliente señalado',
+      () async {
+        final repository = build(
+          (_) => jsonResponse({
+            'error': {
+              'code': 'CLIENT_NOT_LINKED',
+              'message': 'El cliente no está vinculado contigo',
+              'fields': {
+                'client_ids[1]': 'El cliente no está vinculado contigo',
+              },
+            },
+          }, 403),
+        );
+
+        await expectLater(
+          repository.assignRoutine('6b01a0000000000000000001', ['a', 'b']),
+          throwsA(
+            isA<ApiException>()
+                .having((e) => e.code, 'code', ApiErrorCode.clientNotLinked)
+                .having((e) => e.statusCode, 'statusCode', 403)
+                .having((e) => e.fields.keys, 'fields', ['client_ids[1]']),
+          ),
+        );
+      },
+    );
+
+    test('404 ROUTINE_NOT_FOUND al listar lanza ApiException', () async {
+      final repository = build(
+        (_) => errorResponse(ApiErrorCode.routineNotFound, 404),
+      );
+
+      await expectLater(
+        repository.getAssignments('6b01a0000000000000000099'),
+        throwsA(
+          isA<ApiException>().having(
+            (e) => e.code,
+            'code',
+            ApiErrorCode.routineNotFound,
+          ),
+        ),
+      );
+    });
+
+    test('sin red al asignar lanza NETWORK_ERROR', () async {
+      final repository = build(
+        (options) => throw DioException.connectionError(
+          requestOptions: options,
+          reason: 'sin red',
+        ),
+      );
+
+      await expectLater(
+        repository.assignRoutine('6b01a0000000000000000001', ['a']),
+        throwsA(
+          isA<ApiException>().having((e) => e.isNetwork, 'isNetwork', isTrue),
+        ),
+      );
+    });
+  });
+
   test('sin red lanza NETWORK_ERROR', () async {
     final repository = build(
       (options) => throw DioException.connectionError(
@@ -213,5 +355,37 @@ void main() {
         isA<ApiException>().having((e) => e.isNetwork, 'isNetwork', isTrue),
       ),
     );
+  });
+
+  group('retirar una asignación (HU-20)', () {
+    test(
+      'llama a DELETE /coach/routines/{id}/assignments/{clientId}',
+      () async {
+        final repository = build((_) => ResponseBody.fromString('', 204));
+
+        await repository.removeAssignment('r1', 'cli1');
+
+        final request = adapter.requests.single;
+        expect(request.method, 'DELETE');
+        expect(request.path, '/coach/routines/r1/assignments/cli1');
+      },
+    );
+
+    test('una asignación ya retirada responde ASSIGNMENT_NOT_FOUND', () async {
+      final repository = build(
+        (_) => errorResponse(ApiErrorCode.assignmentNotFound, 404),
+      );
+
+      await expectLater(
+        repository.removeAssignment('r1', 'cli1'),
+        throwsA(
+          isA<ApiException>().having(
+            (e) => e.code,
+            'code',
+            ApiErrorCode.assignmentNotFound,
+          ),
+        ),
+      );
+    });
   });
 }

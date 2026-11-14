@@ -14,9 +14,15 @@ import '../features/legal/domain/repositories/legal_repository.dart';
 import '../features/meals/domain/repositories/meal_photo_repository.dart';
 import '../features/meals/domain/repositories/meals_repository.dart';
 import '../features/profile/domain/repositories/profile_repository.dart';
+import '../features/summary/domain/repositories/summary_repository.dart';
+import '../features/my_routines/domain/repositories/my_routines_repository.dart';
 import '../features/routines/domain/repositories/routines_repository.dart';
+import '../features/progress/domain/repositories/progress_repository.dart';
 import '../features/progress/domain/repositories/weights_repository.dart';
 import 'dependencies.dart';
+import 'navigation/app_shell.dart';
+import 'navigation/popup_route_observer.dart';
+import 'navigation/tab_transitions.dart';
 import 'router.dart';
 import 'theme.dart';
 
@@ -31,14 +37,22 @@ class MacroFitApp extends StatefulWidget {
 }
 
 class _MacroFitAppState extends State<MacroFitApp> {
+  /// Diálogos y hojas abiertos: la barra inferior se oculta mientras se ven.
+  final _popups = PopupRouteObserver();
+
+  /// Dirección del cambio de pestaña (transición lateral).
+  final _tabTransitions = TabTransitions();
+
   late final GoRouter _router = createRouter(
     widget.dependencies.authRepository,
     mealPhotos: widget.dependencies.mealPhotoRepository,
+    observers: [_popups],
   );
 
   @override
   void dispose() {
     _router.dispose();
+    _popups.dispose();
     super.dispose();
   }
 
@@ -68,16 +82,26 @@ class _MacroFitAppState extends State<MacroFitApp> {
         Provider<InviteCodeRepository>.value(
           value: dependencies.inviteCodeRepository,
         ),
+        Provider<SummaryRepository>.value(
+          value: dependencies.summaryRepository,
+        ),
         Provider<CoachLinkRepository>.value(
           value: dependencies.coachLinkRepository,
         ),
         Provider<WeightsRepository>.value(
           value: dependencies.weightsRepository,
         ),
+        Provider<ProgressRepository>.value(
+          value: dependencies.progressRepository,
+        ),
         Provider<RoutinesRepository>.value(
           value: dependencies.routinesRepository,
         ),
+        Provider<MyRoutinesRepository>.value(
+          value: dependencies.myRoutinesRepository,
+        ),
         Provider<ShareService>.value(value: dependencies.shareService),
+        Provider<TabTransitions>.value(value: _tabTransitions),
       ],
       child: MaterialApp.router(
         title: 'MacroFit',
@@ -88,6 +112,11 @@ class _MacroFitAppState extends State<MacroFitApp> {
         supportedLocales: const [Locale('es', 'MX'), Locale('es')],
         localizationsDelegates: GlobalMaterialLocalizations.delegates,
         routerConfig: _router,
+        builder: (context, child) => AppShell(
+          router: _router,
+          popups: _popups,
+          child: child ?? const SizedBox.shrink(),
+        ),
       ),
     );
   }

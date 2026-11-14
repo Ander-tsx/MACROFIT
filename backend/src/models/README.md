@@ -186,6 +186,83 @@ con `DELETE /coach/routines/{id}`.
 
 **Índices:** `coach_id_updated_at` → `{ coach_id: 1, updated_at: -1 }` (rutinas de un coach, la editada más recientemente primero).
 
+Al eliminar una rutina, **antes** de borrarla sus asignaciones activas pasan a `removed` (HU-19/HU-20).
+
+## Colección `routine_assignments` (`routine_assignment.rs`)
+
+Rutina de un coach asignada a un cliente (HU-19, RF-23). Se crea con `POST /coach/routines/{id}/assignments`.
+**Forma compartida** con HU-16-API (rutinas del usuario, recomendadas y asignadas) y HU-17-API (sesiones completadas).
+
+| Campo | Tipo | Notas |
+|---|---|---|
+| `_id` | ObjectId | Se expone como `id` (hex) |
+| `routine_id` | ObjectId | → `routines._id` |
+| `coach_id` | ObjectId | Dueño de la rutina (`users._id`, rol `coach`); no se expone |
+| `client_id` | ObjectId | → `users._id` (rol `user`) con vinculación activa al asignar (RN-04) |
+| `status` | `"active"` \| `"removed"` | `active`: el cliente la sigue. `removed`: retirada (HU-20) o rutina eliminada (HU-18); se conserva como historial |
+| `assigned_at` | ISODate | Momento de la asignación; asignar de nuevo una activa no lo cambia |
+| `updated_at` | ISODate | Último cambio de la asignación |
+| `removed_at` | ISODate \| ausente | Solo si `status` es `removed` |
+
+Reasignar una rutina retirada crea un documento nuevo (la retirada queda como historial). HU-20 retira una con
+`DELETE /coach/routines/{id}/assignments/{clientId}`; nunca se borran las `routine_sessions` del cliente (RF-24).
+
+**Índices:**
+- `routine_id_client_id_active_unique` → `{ routine_id: 1, client_id: 1 }`, único **parcial** (`{ status: "active" }`):
+  una sola asignación activa por rutina y cliente; las retiradas no cuentan.
+- `client_id_status` → `{ client_id: 1, status: 1 }` (rutinas asignadas a un usuario, HU-16).
+
+## Colección `recommended_routines` (`recommended_routine.rs`)
+
+Rutinas recomendadas por el sistema a un usuario (HU-15, RF-14). Se crean con `POST /users/me/routines/recommended`
+a partir del motor de TEC-10. **Forma compartida** con HU-16-API (lista y detalle con su origen) y HU-17-API (sesiones
+completadas, que guardan el `_id` como `routine_id`).
+
+| Campo | Tipo | Notas |
+|---|---|---|
+| `_id` | ObjectId | Se expone como `id` (hex). Uno nuevo cada vez que se genera |
+| `user_id` | ObjectId | → `users._id` (rol `user`); no se expone |
+| `origin` | `"system"` | Origen de la rutina (RN-08). `RoutineOrigin` también tiene `coach` para las asignadas (HU-16) |
+| `name` | string | `Rutina recomendada · <objetivo> · <N> días` |
+| `objective` / `level` / `training_days` | string / string / int | Valores del perfil con que se generó |
+| `sessions` | array | Una por día de entrenamiento, en orden: `{ number, name, focus, exercises }` |
+| `sessions.number` / `name` / `focus` | int / string / string | Desde 1; `Día 1 · Empuje`; `full_body`, `upper`, `push`, `pull` o `legs` |
+| `sessions.exercises` | array | `{ exercise_id, name, muscle_group, equipment, level, sets, reps, rest_seconds }`; `exercise_id` → `exercises._id` y el resto del ejercicio es copia del catálogo |
+| `status` | `"active"` \| `"replaced"` | `active`: la vigente. `replaced`: se generó otra después; se conserva como historial |
+| `created_at` | ISODate | Momento en que se generó |
+| `replaced_at` | ISODate \| ausente | Solo si `status` es `replaced` |
+
+**Índices:** `user_id_active_unique` → `{ user_id: 1 }`, único **parcial** (`{ status: "active" }`): una sola rutina
+vigente por usuario; las reemplazadas no cuentan.
+
+## Colección `routine_sessions` (`routine_session.rs`)
+
+Sesión de una rutina que el usuario marcó como completada (HU-17, RF-16). Se crea con
+`POST /users/me/routines/{id}/sessions`. **Forma compartida** con HU-22-API (cumplimiento semanal: contar por
+`user_id` y `date`) y con HU-15-API (las sesiones de la recomendada usan su `routine_id` y sus números de sesión).
+Nunca se borra al editar, regenerar o retirar la rutina (RF-24).
+
+| Campo | Tipo | Notas |
+|---|---|---|
+| `_id` | ObjectId | Se expone como `id` (hex) |
+| `user_id` | ObjectId | → `users._id` (rol `user`); no se expone |
+| `routine_id` | ObjectId | → `routines._id` (origen `coach`) o id de la rutina recomendada (origen `system`, HU-15) |
+| `origin` | `"system"` \| `"coach"` | Mismos valores que el `origin` de HU-16 (RN-08) |
+| `coach_id` | ObjectId \| ausente | Coach dueño de la rutina; solo con origen `coach`; no se expone |
+| `assignment_id` | ObjectId \| ausente | `routine_assignments._id` vigente al registrar; solo con origen `coach`; no se expone |
+| `routine_name` | string | Copia del nombre de la rutina al registrar |
+| `session_number` | int | Número de la sesión (1 en las asignadas) |
+| `session_name` | string | Copia del nombre de la sesión (en las asignadas, el nombre de la rutina) |
+| `date` | string `YYYY-MM-DD` | Día de cumplimiento en hora de México (`APP_UTC_OFFSET`), igual que `meals.date` |
+| `completed_at` | ISODate | Instante del registro |
+
+**Índices:**
+- `user_id_routine_id_session_number_date_unique` → `{ user_id: 1, routine_id: 1, session_number: 1, date: 1 }`, único:
+  la misma sesión una vez por día (`SESSION_ALREADY_COMPLETED`).
+- `user_id_routine_id_date_completed_at` → `{ user_id: 1, routine_id: 1, date: -1, completed_at: -1 }` (lista de una
+  rutina, la más reciente primero).
+- `user_id_date` → `{ user_id: 1, date: 1 }` (sesiones de un usuario en un rango de días, cumplimiento de HU-22).
+
 ## Colección `exercises` (`exercise.rs`)
 
 Catálogo base de ejercicios precargados (TEC-09) para las rutinas recomendadas del motor de reglas (TEC-10 / RF-14)

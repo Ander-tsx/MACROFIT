@@ -3,6 +3,7 @@ import 'package:macrofit_app/core/errors/api_exception.dart';
 import 'package:macrofit_app/features/meals/domain/entities/meal.dart';
 import 'package:macrofit_app/features/meals/domain/entities/meal_estimate.dart';
 import 'package:macrofit_app/features/meals/presentation/meal_form/meal_form_view_model.dart';
+import 'package:macrofit_app/features/meals/presentation/widgets/meal_texts.dart';
 
 import '../../../helpers/fakes.dart';
 
@@ -194,9 +195,9 @@ void main() {
       },
     );
 
-    for (final (code, status) in [
-      ('PHOTO_ALREADY_USED', 409),
-      (ApiErrorCode.photoNotFound, 404),
+    for (final (code, status, message) in [
+      (ApiErrorCode.photoAlreadyUsed, 409, MealSaveMessages.photoAlreadyUsed),
+      (ApiErrorCode.photoNotFound, 404, MealSaveMessages.photoNotFound),
     ]) {
       test('$status $code muestra el mensaje sin perder los valores', () async {
         final viewModel = build(fromEstimate)..setCalories('380');
@@ -204,12 +205,13 @@ void main() {
           code,
           status: status,
           fields: {'photo_id': 'mensaje del campo'},
-          message: 'Mensaje en español',
+          message: 'Mensaje del servidor',
         );
 
         await viewModel.submit();
 
-        expect(viewModel.generalError, 'Mensaje en español');
+        expect(viewModel.generalError, message);
+        expect(viewModel.fieldErrors, isEmpty);
         expect(viewModel.calories, '380');
         expect(viewModel.saved, isNull);
       });

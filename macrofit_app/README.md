@@ -5,11 +5,12 @@ App de MacroFit para los roles **usuario** y **coach**. Consume la API del backe
 
 Historias implementadas: **HU-01** (registro con rol y aviso de privacidad), **HU-02** (inicio, persistencia y
 cierre de sesión), **HU-03** (perfil inicial del usuario y su edición), **HU-05** (el coach fija las metas de sus clientes),
-**HU-06** (tomar o elegir la foto de la comida y subirla), **HU-07** (estimación nutricional de la foto), **HU-08** (corrección de los valores y captura manual), **HU-12** (código de invitación del coach: ver, copiar,
+**HU-06** (tomar o elegir la foto de la comida y subirla), **HU-07** (estimación nutricional de la foto), **HU-08** (corrección de los valores y captura manual), **HU-09** (guardar, historial del día y eliminación de registros), **HU-12** (código de invitación del coach: ver, copiar,
 compartir y regenerar), **HU-18** (constructor de rutinas del coach: crear, editar y eliminar con ejercicios del
-catálogo), **HU-24** (lista de clientes del coach con búsqueda y detalle de cada uno), **HU-25** (registro
-diario de comidas de un cliente, de solo lectura para el coach) y **HU-26** (meta vigente en la pantalla principal del
-usuario).
+catálogo), **HU-19** (asignar una rutina a uno o varios clientes vinculados), **HU-20** (ver los clientes con una rutina, retirarla de uno y aviso al editar o eliminar una rutina asignada), **HU-15** (solicitar y ver la rutina recomendada), **HU-16** (lista y detalle de las rutinas del usuario, recomendada o asignada, con su origen), **HU-17** (marcar una sesión como completada), **HU-24** (lista de clientes del coach con búsqueda y detalle de cada uno), **HU-25** (registro
+diario de comidas de un cliente, de solo lectura para el coach), **HU-23** (progreso histórico de un cliente para el coach, de solo lectura), **HU-22** (gráficas de peso, consumo y cumplimiento
+por semana o mes) y **HU-26** (meta vigente en la pantalla principal del
+usuario), **HU-10** (progreso del día contra la meta) y **HU-11** (resumen semanal con gráfica).
 
 > **Si eres una persona o una sesión de IA que va a modificar la app, lee este archivo y el `README.md` de cada
 > carpeta que vayas a tocar** (`lib/app`, `lib/core`, `lib/features`, `lib/features/<feature>`, `test`).
@@ -102,10 +103,11 @@ lib/
     ├── legal/             # TEC-07 aviso de privacidad
     ├── profile/           # HU-03 perfil inicial y edición
     ├── goals/             # HU-04 dominio de la meta, HU-05 metas por coach
-    ├── meals/             # HU-06 foto de la comida, HU-07 estimación, HU-08 corrección
-    ├── clients/           # HU-24 lista de clientes del coach y detalle, HU-25 comidas del cliente
+    ├── meals/             # HU-06 foto de la comida, HU-07 estimación, HU-08 corrección, HU-09 historial
+    ├── clients/           # HU-24 lista de clientes del coach y detalle, HU-25 comidas del cliente, HU-23 progreso del cliente
     ├── invite_code/       # HU-12 código de invitación del coach
-    ├── routines/          # HU-18 constructor de rutinas del coach (catálogo de TEC-09)
+    ├── routines/          # HU-18 constructor de rutinas del coach (catálogo de TEC-09) y HU-19 asignación a clientes
+    ├── my_routines/       # HU-15 rutina recomendada, HU-16 rutinas del usuario (recomendada y asignadas) con su origen y detalle, HU-17 sesiones completadas
     └── home/              # Pantallas principales por rol (solo presentación por ahora)
 ```
 
@@ -128,6 +130,10 @@ Flujo: `View → ViewModel → Repository (contrato del dominio) → RepositoryI
 | `flutter_markdown_plus` | Renderizar el aviso de privacidad (sustituye a `flutter_markdown`, descontinuado) |
 | `image_picker` | HU-06: cámara y galería; pide los permisos y comprime la foto (lado mayor 1600 px, JPEG calidad 85) |
 | `share_plus` | Hoja de compartir del sistema para el código de invitación (HU-12), detrás de `ShareService` |
+| `blobatar` | TEC-17: avatar determinista generado a partir del correo de cada persona (`AppAvatar`) |
+
+**Recursos locales (TEC-17):** tipografía Inter (`assets/fonts/inter`, SIL OFL), íconos Lucide (`assets/fonts/lucide`,
+ISC) y fondos de las tarjetas destacadas (`assets/images`). Ver la guía visual en `lib/app/README.md`.
 
 ## Reglas generales
 

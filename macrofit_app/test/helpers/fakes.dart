@@ -31,12 +31,23 @@ import 'package:macrofit_app/features/meals/domain/repositories/meal_photo_repos
 import 'package:macrofit_app/features/meals/domain/repositories/meals_repository.dart';
 import 'package:macrofit_app/features/profile/domain/entities/profile.dart';
 import 'package:macrofit_app/features/profile/domain/repositories/profile_repository.dart';
+import 'package:macrofit_app/features/summary/domain/entities/day_summary.dart';
+import 'package:macrofit_app/features/summary/domain/entities/macro_values.dart';
+import 'package:macrofit_app/features/summary/domain/entities/week_summary.dart';
+import 'package:macrofit_app/features/summary/domain/repositories/summary_repository.dart';
+import 'package:macrofit_app/features/summary/domain/usecases/app_day.dart';
 import 'package:macrofit_app/features/coach_link/domain/entities/coach_link.dart';
 import 'package:macrofit_app/features/coach_link/domain/repositories/coach_link_repository.dart';
+import 'package:macrofit_app/features/progress/domain/entities/progress_report.dart';
 import 'package:macrofit_app/features/progress/domain/entities/weight_entry.dart';
+import 'package:macrofit_app/features/progress/domain/repositories/progress_repository.dart';
 import 'package:macrofit_app/features/progress/domain/repositories/weights_repository.dart';
+import 'package:macrofit_app/features/my_routines/domain/entities/completed_session.dart';
+import 'package:macrofit_app/features/my_routines/domain/entities/user_routine.dart';
+import 'package:macrofit_app/features/my_routines/domain/repositories/my_routines_repository.dart';
 import 'package:macrofit_app/features/routines/domain/entities/exercise.dart';
 import 'package:macrofit_app/features/routines/domain/entities/routine.dart';
+import 'package:macrofit_app/features/routines/domain/entities/routine_assignment.dart';
 import 'package:macrofit_app/features/routines/domain/repositories/routines_repository.dart';
 
 /// Usuario que ya capturó su perfil (HU-03): entra a la pantalla principal.
@@ -406,19 +417,97 @@ class FakeMealsRepository implements MealsRepository {
     return testEstimate;
   }
 
+  /// Día en que quedan los registros nuevos (el backend lo calcula al guardar).
+  DateTime savedDay = DateTime(2026, 10, 16);
+
+  /// Registros por día (HU-09), del más antiguo al más reciente.
+  final days = <DateTime, List<Meal>>{};
+
+  /// Si se asigna, la siguiente consulta, eliminación o foto lanza este error.
+  ApiException? listError;
+  ApiException? deleteError;
+  ApiException? photoError;
+
+  final listRequests = <DateTime>[];
+  final deleted = <String>[];
+  final photoRequests = <String>[];
+  var _nextId = 0;
+
   @override
   Future<Meal> createMeal(NewMeal meal) async {
     created.add(meal);
     if (createError case final error?) throw error;
-    return Meal(
-      id: '6ad0a1b2c3d4e5f6a7b8c9d0',
+    final saved = Meal(
+      id: '6ad0a1b2c3d4e5f6a7b8c9d${_nextId++}',
       photoId: meal.photoId,
-      eatenAt: DateTime.utc(2026, 10, 17, 1, 30),
-      date: DateTime(2026, 10, 16),
+      eatenAt: DateTime(
+        savedDay.year,
+        savedDay.month,
+        savedDay.day,
+        14,
+        _nextId,
+      ),
+      date: savedDay,
       values: meal.values,
       estimated: meal.estimated,
     );
+    days.putIfAbsent(savedDay, () => []).add(saved);
+    return saved;
   }
+
+  /// Si se asigna, la consulta espera a que se complete (para ver la carga).
+  Completer<void>? listGate;
+
+  @override
+  Future<List<Meal>> getMeals(DateTime day) async {
+    listRequests.add(day);
+    await listGate?.future;
+    if (listError case final error?) throw error;
+    return [...?days[DateTime(day.year, day.month, day.day)]];
+  }
+
+  @override
+  Future<void> deleteMeal(String id) async {
+    if (deleteError case final error?) throw error;
+    for (final meals in days.values) {
+      final before = meals.length;
+      meals.removeWhere((meal) => meal.id == id);
+      if (meals.length != before) {
+        deleted.add(id);
+        return;
+      }
+    }
+    throw apiError(ApiErrorCode.mealNotFound, status: 404);
+  }
+
+  @override
+  Future<Uint8List> getMealPhoto(String photoId) async {
+    photoRequests.add(photoId);
+    if (photoError case final error?) throw error;
+    return testPhotoBytes;
+  }
+}
+
+/// Registro guardado del usuario (HU-09) en [day], con foto o como captura manual.
+Meal testMeal({
+  required String id,
+  DateTime? eatenAt,
+  bool withPhoto = true,
+  NutritionValues values = const NutritionValues(
+    caloriesKcal: 413,
+    proteinG: 42.2,
+    fatG: 4.9,
+  ),
+}) {
+  final time = eatenAt ?? DateTime(2026, 10, 16, 14, 5);
+  return Meal(
+    id: id,
+    photoId: withPhoto ? 'foto-$id' : null,
+    eatenAt: time,
+    date: DateTime(time.year, time.month, time.day),
+    values: values,
+    estimated: withPhoto ? values : null,
+  );
 }
 
 /// Metas del usuario en memoria (simula `GET /users/me/goals/current`, HU-26).
@@ -708,6 +797,132 @@ Map<String, Object> sessionJson(
   'user': userModelOf(user).toJson(),
 };
 
+/// Resumen del día (HU-10) con 1050.5 kcal consumidas de una meta de 2200 kcal.
+DaySummary testDaySummary({
+  String date = '2026-10-16',
+  MacroValues goal = const MacroValues(
+    caloriesKcal: 2200,
+    proteinG: 160,
+    fatG: 70,
+  ),
+  MacroValues consumed = const MacroValues(
+    caloriesKcal: 1050.5,
+    proteinG: 70,
+    fatG: 35.5,
+  ),
+  GoalSource source = GoalSource.system,
+}) => DaySummary(
+  date: date,
+  goalSource: source,
+  goal: goal,
+  consumed: consumed,
+  remaining: MacroValues(
+    caloriesKcal: goal.caloriesKcal - consumed.caloriesKcal,
+    proteinG: goal.proteinG - consumed.proteinG,
+    fatG: goal.fatG - consumed.fatG,
+  ),
+);
+
+class FakeSummaryRepository implements SummaryRepository {
+  FakeSummaryRepository({DaySummary? daily, this.weekly})
+    : daily = daily ?? testDaySummary();
+
+  /// Usuario sin perfil ni meta: responde `404 PROFILE_NOT_FOUND`.
+  FakeSummaryRepository.withoutGoal() : daily = null, weekly = null;
+
+  DaySummary? daily;
+
+  /// Resumen semanal (HU-11); sin él se arma uno desde la fecha pedida ([testWeekSummary]).
+  WeekSummary? weekly;
+
+  /// Inicios de semana pedidos, en orden.
+  final weeklyStarts = <String>[];
+
+  /// Si se asigna, la siguiente consulta lanza este error.
+  ApiException? error;
+
+  /// Fechas pedidas, en orden.
+  final dailyDates = <String>[];
+
+  /// Si se asigna, la consulta espera a que se complete (para ver el estado intermedio).
+  Completer<void>? gate;
+
+  @override
+  Future<WeekSummary> getWeekly(String start) async {
+    weeklyStarts.add(start);
+    await gate?.future;
+    if (error case final error?) throw error;
+    if (daily == null) {
+      throw apiError(ApiErrorCode.profileNotFound, status: 404);
+    }
+    return weekly ?? testWeekSummary(start: start);
+  }
+
+  @override
+  Future<DaySummary> getDaily(String date) async {
+    dailyDates.add(date);
+    await gate?.future;
+    if (error case final error?) throw error;
+    return daily ?? (throw apiError(ApiErrorCode.profileNotFound, status: 404));
+  }
+}
+
+/// Semana de 7 días desde [start]: cinco días con 1900 kcal (cumplen la meta de 2000),
+/// uno sin registros y el último con exceso (2400).
+WeekSummary testWeekSummary({String start = '2026-10-16'}) {
+  const goal = MacroValues(caloriesKcal: 2000, proteinG: 150, fatG: 60);
+  const empty = MacroValues(caloriesKcal: 0, proteinG: 0, fatG: 0);
+  const normal = MacroValues(caloriesKcal: 1900, proteinG: 140, fatG: 55);
+  const excess = MacroValues(caloriesKcal: 2400, proteinG: 170, fatG: 80);
+
+  DaySummary day(int offset, MacroValues consumed, {required bool met}) =>
+      DaySummary(
+        date: shiftDay(start, offset),
+        goalSource: GoalSource.system,
+        goal: goal,
+        consumed: consumed,
+        remaining: MacroValues(
+          caloriesKcal: goal.caloriesKcal - consumed.caloriesKcal,
+          proteinG: goal.proteinG - consumed.proteinG,
+          fatG: goal.fatG - consumed.fatG,
+        ),
+        goalMet: met,
+      );
+
+  return WeekSummary(
+    start: start,
+    end: shiftDay(start, 6),
+    days: [
+      for (var i = 0; i < 5; i++) day(i, normal, met: true),
+      day(5, empty, met: false),
+      day(6, excess, met: false),
+    ],
+    average: const MacroValues(caloriesKcal: 1700, proteinG: 124.3, fatG: 50.7),
+    goalMetDays: 5,
+  );
+}
+
+/// Semana sin ningún registro: los 7 días en 0, restante igual a la meta y ninguno cumplido.
+WeekSummary testEmptyWeekSummary({String start = '2026-10-16'}) {
+  const goal = MacroValues(caloriesKcal: 2000, proteinG: 150, fatG: 60);
+  return WeekSummary(
+    start: start,
+    end: shiftDay(start, 6),
+    days: [
+      for (var i = 0; i < 7; i++)
+        DaySummary(
+          date: shiftDay(start, i),
+          goalSource: GoalSource.system,
+          goal: goal,
+          consumed: const MacroValues(caloriesKcal: 0, proteinG: 0, fatG: 0),
+          remaining: goal,
+        ),
+    ],
+    average: const MacroValues(caloriesKcal: 0, proteinG: 0, fatG: 0),
+    goalMetDays: 0,
+  );
+}
+
 // ───────────────────────── Rutinas del coach (HU-18) ─────────────────────────
 
 const testBenchPress = Exercise(
@@ -792,12 +1007,29 @@ final testLegRoutine = Routine(
 /// Rutinas y catálogo en memoria (simula `/coach/routines` y `GET /exercises`).
 /// Crear, editar y eliminar cambian [routines], así que recargar muestra el cambio.
 class FakeRoutinesRepository implements RoutinesRepository {
-  FakeRoutinesRepository({List<Routine>? routines, List<Exercise>? exercises})
-    : routines = routines ?? [testRoutine, testLegRoutine],
-      exercises = exercises ?? [...testExercises];
+  FakeRoutinesRepository({
+    List<Routine>? routines,
+    List<Exercise>? exercises,
+    Map<String, List<RoutineAssignment>>? assignments,
+  }) : routines = routines ?? [testRoutine, testLegRoutine],
+       exercises = exercises ?? [...testExercises],
+       assignments = assignments ?? {};
 
   List<Routine> routines;
   List<Exercise> exercises;
+
+  /// HU-19: asignaciones activas por id de rutina.
+  Map<String, List<RoutineAssignment>> assignments;
+
+  /// HU-19: errores de `getAssignments` y `assignRoutine`.
+  ApiException? assignmentsError;
+  ApiException? assignError;
+
+  /// HU-19: si se asigna, `assignRoutine` espera a que se complete.
+  Completer<void>? assignGate;
+
+  final assignmentRequests = <String>[];
+  final assignCalls = <({String routineId, List<String> clientIds})>[];
 
   /// Si se asigna, las siguientes llamadas del tipo correspondiente lanzan este error.
   ApiException? listError;
@@ -865,6 +1097,58 @@ class FakeRoutinesRepository implements RoutinesRepository {
     routines = [...routines.where((item) => item.id != id)];
   }
 
+  @override
+  Future<List<RoutineAssignment>> getAssignments(String routineId) async {
+    assignmentRequests.add(routineId);
+    if (assignmentsError case final error?) throw error;
+    return [...?assignments[routineId]];
+  }
+
+  @override
+  Future<List<RoutineAssignment>> assignRoutine(
+    String routineId,
+    List<String> clientIds,
+  ) async {
+    assignCalls.add((routineId: routineId, clientIds: [...clientIds]));
+    await assignGate?.future;
+    if (assignError case final error?) throw error;
+    final current = [...?assignments[routineId]];
+    final result = <RoutineAssignment>[];
+    for (final clientId in clientIds) {
+      final existing = current.where((item) => item.clientId == clientId);
+      if (existing.isNotEmpty) {
+        result.add(existing.first);
+        continue;
+      }
+      final assignment = testAssignment(
+        routineId: routineId,
+        clientId: clientId,
+      );
+      current.insert(0, assignment);
+      result.add(assignment);
+    }
+    assignments[routineId] = current;
+    return result;
+  }
+
+  /// HU-20: error de `removeAssignment` y llamadas registradas.
+  ApiException? removeError;
+  final removed = <({String routineId, String clientId})>[];
+
+  @override
+  Future<void> removeAssignment(String routineId, String clientId) async {
+    removed.add((routineId: routineId, clientId: clientId));
+    if (removeError case final error?) throw error;
+    final current = [...?assignments[routineId]];
+    if (!current.any((item) => item.clientId == clientId)) {
+      throw apiError(ApiErrorCode.assignmentNotFound, status: 404);
+    }
+    assignments[routineId] = [
+      for (final item in current)
+        if (item.clientId != clientId) item,
+    ];
+  }
+
   Routine _routineOf(String id, RoutineDraft draft) {
     final now = DateTime.utc(2026, 10, 27, 12);
     return Routine(
@@ -891,6 +1175,19 @@ class FakeRoutinesRepository implements RoutinesRepository {
     );
   }
 }
+
+/// Asignación activa de una rutina a un cliente (HU-19).
+RoutineAssignment testAssignment({
+  String? routineId,
+  required String clientId,
+  String clientName = 'Cliente',
+}) => RoutineAssignment(
+  id: '6b10${clientId.substring(4)}',
+  routineId: routineId ?? testRoutine.id,
+  clientId: clientId,
+  clientName: clientName,
+  assignedAt: DateTime.utc(2026, 11, 5, 18),
+);
 
 class FakeCoachLinkRepository implements CoachLinkRepository {
   FakeCoachLinkRepository({
@@ -969,3 +1266,291 @@ class FakeWeightsRepository implements WeightsRepository {
     return entry;
   }
 }
+
+// ───────────────────────────── HU-22 · Progreso ─────────────────────────────
+
+/// Reporte de progreso de [from] a [to] (`YYYY-MM-DD`): un día por fecha con meta de
+/// 2000 kcal / 150 g / 60 g; los días pares consumen 1900 kcal (cumplen), los impares
+/// nada. Con [withData] en `false` no hay pesos ni comidas.
+ProgressReport testProgressReport({
+  required String from,
+  required String to,
+  bool withData = true,
+  int trainingDays = 4,
+}) {
+  final days = <String>[];
+  for (var day = from; day.compareTo(to) <= 0; day = shiftDay(day, 1)) {
+    days.add(day);
+  }
+  const goal = MacroValues(caloriesKcal: 2000, proteinG: 150, fatG: 60);
+  const eaten = MacroValues(caloriesKcal: 1900, proteinG: 140, fatG: 55);
+  const nothing = MacroValues(caloriesKcal: 0, proteinG: 0, fatG: 0);
+  return ProgressReport(
+    from: from,
+    to: to,
+    weights: withData
+        ? [
+            WeightPoint(
+              recordedAt: DateTime.parse('${from}T15:00:00Z'),
+              weightKg: 73.1,
+            ),
+            WeightPoint(
+              recordedAt: DateTime.parse('${to}T15:00:00Z'),
+              weightKg: 72.4,
+            ),
+          ]
+        : const [],
+    days: [
+      for (final (index, day) in days.indexed)
+        ProgressDay(
+          date: day,
+          goal: goal,
+          consumed: withData && index.isEven ? eaten : nothing,
+          goalMet: withData && index.isEven,
+        ),
+    ],
+    compliance: [
+      for (
+        var start = from;
+        start.compareTo(to) <= 0;
+        start = shiftDay(start, 7)
+      )
+        WeeklyCompliance(
+          weekStart: start,
+          weekEnd: shiftDay(start, 6).compareTo(to) <= 0
+              ? shiftDay(start, 6)
+              : to,
+          completedSessions: 0,
+          plannedSessions: trainingDays,
+        ),
+    ],
+  );
+}
+
+/// Progreso en memoria (simula `GET /users/me/progress`, HU-22).
+class FakeProgressRepository implements ProgressRepository {
+  FakeProgressRepository({this.withData = true});
+
+  /// `false`: pesos y comidas vacíos.
+  bool withData;
+
+  /// Si se asigna, la siguiente consulta lanza este error.
+  ApiException? error;
+
+  /// Si se asigna, la consulta espera a que se complete.
+  Completer<void>? gate;
+
+  /// Periodos pedidos, en orden (`desde..hasta`).
+  final requests = <String>[];
+
+  @override
+  Future<ProgressReport> getProgress({
+    required String from,
+    required String to,
+  }) async {
+    requests.add('$from..$to');
+    await gate?.future;
+    if (error case final error?) throw error;
+    return testProgressReport(from: from, to: to, withData: withData);
+  }
+
+  /// Clientes pedidos en `GET /coach/clients/{id}/progress` (HU-23), en orden;
+  /// el periodo de cada uno queda en [requests].
+  final clientRequests = <String>[];
+
+  @override
+  Future<ProgressReport> getClientProgress({
+    required String clientId,
+    required String from,
+    required String to,
+  }) {
+    clientRequests.add(clientId);
+    return getProgress(from: from, to: to);
+  }
+}
+// ───────────────────────── HU-16: rutinas del usuario ─────────────────────────
+
+/// Rutina recomendada de 3 sesiones (HU-15).
+RecommendedRoutine testRecommendedRoutine({String id = 'rec1'}) =>
+    RecommendedRoutine(
+      id: id,
+      name: 'Rutina recomendada · Mantener · 3 días',
+      objective: Objective.maintain,
+      level: ExperienceLevel.beginner,
+      trainingDays: 3,
+      sessions: [
+        for (var n = 1; n <= 3; n++)
+          RoutineSessionPlan(
+            number: n,
+            name: 'Día $n · Cuerpo completo',
+            exercises: const [
+              SessionExercise(
+                exerciseId: 'e1',
+                name: 'Sentadilla',
+                muscleGroup: 'legs',
+                sets: 2,
+                reps: 12,
+                restSeconds: 60,
+              ),
+              SessionExercise(
+                exerciseId: 'e2',
+                name: 'Flexiones de pecho',
+                muscleGroup: 'chest',
+                sets: 2,
+                reps: 12,
+                restSeconds: 60,
+              ),
+            ],
+          ),
+      ],
+    );
+
+/// Rutina asignada por un coach: una sola sesión con el nombre de la rutina.
+UserRoutine testAssignedRoutine({
+  String id = 'asg1',
+  String name = 'Torso A',
+  String coachName = 'Carlos',
+}) => UserRoutine(
+  id: id,
+  origin: RoutineOrigin.coach,
+  name: name,
+  coachName: coachName,
+  sessions: [
+    RoutineSessionPlan(
+      number: 1,
+      name: name,
+      exercises: const [
+        SessionExercise(
+          exerciseId: 'e3',
+          name: 'Press de banca',
+          muscleGroup: 'chest',
+          sets: 4,
+          reps: 10,
+          restSeconds: 90,
+        ),
+      ],
+    ),
+  ],
+);
+
+/// Rutinas del usuario en memoria. [routines] se puede cambiar entre cargas
+/// (p. ej. una asignación nueva); `listError`, `detailError` y
+/// `recommendedError` simulan errores de la API.
+class FakeMyRoutinesRepository implements MyRoutinesRepository {
+  FakeMyRoutinesRepository({List<UserRoutine>? routines})
+    : routines = routines ?? [];
+
+  List<UserRoutine> routines;
+  ApiException? listError;
+  ApiException? detailError;
+  ApiException? recommendedError;
+
+  /// Si existe, generar la recomendada espera a que se complete (estado de carga).
+  Completer<void>? recommendedGate;
+  int listCalls = 0;
+  final detailRequests = <String>[];
+  int recommendedCalls = 0;
+
+  @override
+  Future<List<UserRoutineSummary>> getRoutines() async {
+    listCalls++;
+    if (listError case final error?) throw error;
+    return [for (final routine in routines) routine.toSummary()];
+  }
+
+  @override
+  Future<UserRoutine> getRoutine(String id) async {
+    detailRequests.add(id);
+    if (detailError case final error?) throw error;
+    for (final routine in routines) {
+      if (routine.id == id) return routine;
+    }
+    throw apiError(ApiErrorCode.routineNotFound, status: 404);
+  }
+
+  @override
+  Future<RecommendedRoutine> requestRecommendedRoutine() async {
+    recommendedCalls++;
+    if (recommendedGate case final gate?) await gate.future;
+    if (recommendedError case final error?) throw error;
+    final routine = testRecommendedRoutine(id: 'rec$recommendedCalls');
+    routines = [
+      routine,
+      for (final item in routines)
+        if (item.origin == RoutineOrigin.coach) item,
+    ];
+    return routine;
+  }
+
+  // ───────── HU-17: sesiones completadas ─────────
+
+  /// Día que la API considera «hoy» (`YYYY-MM-DD`).
+  String today = '2026-11-07';
+
+  /// Sesiones completadas por id de rutina, la más reciente primero.
+  final completed = <String, List<CompletedSession>>{};
+  ApiException? sessionsError;
+  ApiException? completeError;
+  final completeRequests = <(String, int)>[];
+
+  /// Si es `true`, el siguiente registro responde 409 como si otro
+  /// dispositivo ya la hubiera registrado (y la deja registrada).
+  bool completedElsewhere = false;
+
+  @override
+  Future<List<CompletedSession>> getCompletedSessions(String routineId) async {
+    if (sessionsError case final error?) throw error;
+    if (!routines.any((r) => r.id == routineId)) {
+      throw apiError(ApiErrorCode.routineNotFound, status: 404);
+    }
+    return List.of(completed[routineId] ?? const []);
+  }
+
+  @override
+  Future<CompletedSession> completeSession(
+    String routineId,
+    int sessionNumber,
+  ) async {
+    completeRequests.add((routineId, sessionNumber));
+    if (completeError case final error?) throw error;
+    final routine = routines.where((r) => r.id == routineId).firstOrNull;
+    if (routine == null) {
+      throw apiError(ApiErrorCode.routineNotFound, status: 404);
+    }
+    final list = completed.putIfAbsent(routineId, () => []);
+    final session = CompletedSession(
+      id: 's${completeRequests.length}',
+      routineId: routineId,
+      sessionNumber: sessionNumber,
+      sessionName: routine.sessions
+          .firstWhere((s) => s.number == sessionNumber)
+          .name,
+      date: today,
+      completedAt: DateTime.utc(2026, 11, 7, 18),
+    );
+    if (completedElsewhere) {
+      completedElsewhere = false;
+      list.insert(0, session);
+      throw apiError(ApiErrorCode.sessionAlreadyCompleted, status: 409);
+    }
+    if (list.any((s) => s.sessionNumber == sessionNumber && s.date == today)) {
+      throw apiError(ApiErrorCode.sessionAlreadyCompleted, status: 409);
+    }
+    list.insert(0, session);
+    return session;
+  }
+}
+
+/// Sesión completada de prueba (HU-17).
+CompletedSession testCompletedSession({
+  String routineId = 'rec1',
+  int number = 1,
+  String date = '2026-11-07',
+}) => CompletedSession(
+  id: 'done-$routineId-$number-$date',
+  routineId: routineId,
+  sessionNumber: number,
+  sessionName: 'Día $number · Cuerpo completo',
+  date: date,
+  completedAt: DateTime.parse('${date}T18:00:00Z'),
+);

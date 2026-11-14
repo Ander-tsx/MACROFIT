@@ -10,6 +10,14 @@ class CoachLinkRemoteDataSource {
 
   final Dio _dio;
 
+  /// `GET /users/me/coach-link`: vinculación activa (`404 USER_NOT_LINKED` si no hay).
+  Future<CoachLinkModel> getLinkedCoach() => guardApiCall(() async {
+    final response = await _dio.get<Map<String, dynamic>>(
+      '/users/me/coach-link',
+    );
+    return CoachLinkModel.fromJson(response.data!);
+  });
+
   /// `POST /users/me/coach-link`.
   Future<CoachLinkModel> linkCoach(String inviteCode) => guardApiCall(() async {
     final response = await _dio.post<Map<String, dynamic>>(

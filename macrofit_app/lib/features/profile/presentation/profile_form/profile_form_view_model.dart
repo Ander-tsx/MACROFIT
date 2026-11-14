@@ -167,7 +167,14 @@ class ProfileFormViewModel extends ViewModel with FormStateMixin {
     }
   }
 
-  /// Cierra la sesión desde el formulario inicial (p. ej. para cambiar de cuenta).
+  /// Correo de la sesión (avatar y tarjeta de cuenta de "Mi perfil").
+  String get email => _auth.currentUser?.email ?? '';
+
+  /// Nombre de la sesión.
+  String get name => _auth.currentUser?.name ?? '';
+
+  /// Cierra la sesión desde el formulario inicial (para cambiar de cuenta) o
+  /// desde la tarjeta de cuenta de "Mi perfil".
   Future<void> logout() async {
     if (_isLoggingOut) return;
     _isLoggingOut = true;

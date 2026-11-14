@@ -68,6 +68,9 @@ pub enum AppError {
     ForbiddenRole(&'static str),
     /// 403 — el coach no tiene una vinculación activa con el cliente.
     ClientNotLinked,
+    /// 403 — uno o más clientes de una lista no tienen vinculación activa con el coach (HU-19). Mismo código que
+    /// `ClientNotLinked`, pero `fields` señala cuáles (`client_ids[i]`).
+    ClientsNotLinked(FieldErrors),
     /// 404 — el usuario aún no tiene perfil.
     ProfileNotFound,
     /// 409 — el usuario ya tiene un perfil.
@@ -92,6 +95,14 @@ pub enum AppError {
     PhotoAlreadyUsed,
     /// 404 — la rutina no existe, su id está mal formado o es de otro coach (no se distingue, HU-18).
     RoutineNotFound,
+    /// 404 — el cliente no tiene esa rutina asignada (activa): ya se retiró, nunca la tuvo o su id no existe o está mal
+    /// formado (HU-20).
+    AssignmentNotFound,
+    /// 503 — el catálogo de ejercicios no tiene ejercicios elegibles para algún grupo muscular del nivel del usuario
+    /// (HU-15). Es un problema de datos del servidor; el detalle solo va al log.
+    ExerciseCatalogIncomplete,
+    /// 409 — esa sesión de la rutina ya se registró como completada ese día (HU-17).
+    SessionAlreadyCompleted,
 }
 
 impl AppError {
@@ -182,6 +193,12 @@ impl IntoResponse for AppError {
                 "No tienes una vinculación activa con este cliente".to_string(),
                 FieldErrors::new(),
             ),
+            Self::ClientsNotLinked(fields) => (
+                StatusCode::FORBIDDEN,
+                "CLIENT_NOT_LINKED",
+                "Uno o más clientes no están vinculados contigo".to_string(),
+                fields,
+            ),
             Self::ProfileNotFound => (
                 StatusCode::NOT_FOUND,
                 "PROFILE_NOT_FOUND",
@@ -270,6 +287,28 @@ impl IntoResponse for AppError {
                 "ROUTINE_NOT_FOUND",
                 "La rutina no existe".to_string(),
                 FieldErrors::new(),
+            ),
+            Self::AssignmentNotFound => (
+                StatusCode::NOT_FOUND,
+                "ASSIGNMENT_NOT_FOUND",
+                "El cliente no tiene esta rutina asignada".to_string(),
+                FieldErrors::new(),
+            ),
+            Self::ExerciseCatalogIncomplete => (
+                StatusCode::SERVICE_UNAVAILABLE,
+                "EXERCISE_CATALOG_INCOMPLETE",
+                "Por ahora no podemos generar tu rutina: faltan ejercicios en el catálogo. Intenta más tarde"
+                    .to_string(),
+                FieldErrors::new(),
+            ),
+            Self::SessionAlreadyCompleted => (
+                StatusCode::CONFLICT,
+                "SESSION_ALREADY_COMPLETED",
+                "Ya registraste esta sesión como completada ese día".to_string(),
+                FieldErrors::from([(
+                    "session_number".to_string(),
+                    "Esta sesión ya está registrada ese día".to_string(),
+                )]),
             ),
             Self::PhotoAlreadyUsed => (
                 StatusCode::CONFLICT,
@@ -364,6 +403,16 @@ mod tests {
                 StatusCode::NOT_FOUND,
                 "ROUTINE_NOT_FOUND",
             ),
+            (
+                AppError::AssignmentNotFound,
+                StatusCode::NOT_FOUND,
+                "ASSIGNMENT_NOT_FOUND",
+            ),
+            (
+                AppError::ExerciseCatalogIncomplete,
+                StatusCode::SERVICE_UNAVAILABLE,
+                "EXERCISE_CATALOG_INCOMPLETE",
+            ),
         ] {
             let response = error.into_response();
             assert_eq!(response.status(), status);
@@ -374,5 +423,36 @@ mod tests {
             assert_eq!(body["error"]["code"], code);
             assert_eq!(body["error"]["fields"], serde_json::json!({}));
         }
+    }
+
+    #[tokio::test]
+    async fn sesion_ya_completada_es_409_y_senala_session_number() {
+        let response = AppError::SessionAlreadyCompleted.into_response();
+        assert_eq!(response.status(), StatusCode::CONFLICT);
+        let bytes = axum::body::to_bytes(response.into_body(), usize::MAX)
+            .await
+            .expect("cuerpo");
+        let body: serde_json::Value = serde_json::from_slice(&bytes).expect("JSON");
+        assert_eq!(body["error"]["code"], "SESSION_ALREADY_COMPLETED");
+        assert!(body["error"]["fields"]["session_number"].is_string());
+    }
+
+    #[tokio::test]
+    async fn clientes_no_vinculados_de_una_lista_se_senalan_en_fields() {
+        let response = AppError::ClientsNotLinked(FieldErrors::from([(
+            "client_ids[1]".to_string(),
+            "El cliente no está vinculado contigo".to_string(),
+        )]))
+        .into_response();
+        assert_eq!(response.status(), StatusCode::FORBIDDEN);
+        let bytes = axum::body::to_bytes(response.into_body(), usize::MAX)
+            .await
+            .expect("cuerpo");
+        let body: serde_json::Value = serde_json::from_slice(&bytes).expect("JSON");
+        assert_eq!(body["error"]["code"], "CLIENT_NOT_LINKED");
+        assert_eq!(
+            body["error"]["fields"],
+            serde_json::json!({ "client_ids[1]": "El cliente no está vinculado contigo" })
+        );
     }
 }

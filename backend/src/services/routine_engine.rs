@@ -103,8 +103,7 @@ pub struct GeneratedRoutine {
     pub sessions: Vec<RoutineSession>,
 }
 
-/// Errores propios del motor.
-// TODO(HU-15-API): traducir a `AppError` al exponer la rutina (código nuevo + fila en README.md).
+/// Errores propios del motor. HU-15-API los traduce a `AppError` en `recommended_routines::map_engine_error`.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum RoutineEngineError {
     /// `training_days` fuera de 1 a 7.

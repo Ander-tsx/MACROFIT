@@ -4,6 +4,7 @@ import '../../domain/entities/meal.dart';
 import '../../domain/entities/meal_estimate.dart';
 import '../../domain/entities/meal_photo.dart';
 import '../../domain/repositories/meals_repository.dart';
+import '../widgets/meal_texts.dart';
 
 /// Qué puede hacer la persona cuando la estimación no salió.
 enum EstimateFailure {
@@ -80,4 +81,42 @@ class MealEstimateViewModel extends ViewModel {
   }
 
   Future<void> retry() => load();
+
+  bool _isSaving = false;
+  String? _saveError;
+  Meal? _saved;
+
+  bool get isSaving => _isSaving;
+
+  /// Error al guardar; la estimación sigue en pantalla para reintentar o corregir.
+  String? get saveError => _saveError;
+
+  /// Registro guardado; la vista abre el historial de su día.
+  Meal? get saved => _saved;
+
+  /// HU-09 — **Guardar** sin corregir (RNF-09: 4 toques desde el inicio): los
+  /// finales y `estimated` son los totales estimados. Devuelve `true` si se guardó.
+  Future<bool> save() async {
+    final estimate = _estimate;
+    if (estimate == null || _isSaving || _saved != null) return false;
+    _isSaving = true;
+    _saveError = null;
+    notifyListeners();
+    try {
+      _saved = await _repository.createMeal(
+        NewMeal(
+          photoId: upload.photoId,
+          values: estimate.totals,
+          estimated: estimate.totals,
+        ),
+      );
+      return true;
+    } on ApiException catch (error) {
+      _saveError = MealSaveMessages.of(error);
+      return false;
+    } finally {
+      _isSaving = false;
+      notifyListeners();
+    }
+  }
 }

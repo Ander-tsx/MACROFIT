@@ -37,7 +37,10 @@ Documentación de referencia (léela antes de tocar una carpeta):
 
 - Flutter **3.47** (stable), Dart **3.13** (se usan *sealed classes*, *patterns* y parámetros nombrados privados `this._x`).
 - `provider` + `ChangeNotifier` (MVVM), `go_router` (rutas y guard), `dio` (HTTP), `flutter_secure_storage` (sesión),
-  `flutter_markdown_plus` (aviso de privacidad), `image_picker` (cámara y galería, HU-06).
+  `flutter_markdown_plus` (aviso de privacidad), `image_picker` (cámara y galería, HU-06), `blobatar` (avatar del correo,
+  TEC-17).
+- Interfaz: solo con la guía visual de `lib/app/README.md` (tokens, `AppTheme`, `LucideIcons` y widgets de
+  `core/presentation/widgets`); sin colores, tamaños de letra ni espaciados escritos a mano.
 - No agregues paquetes sin preguntar; si se aprueba, documéntalo en la tabla de paquetes de `README.md`.
 
 ## 3. Arquitectura

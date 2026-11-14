@@ -47,3 +47,9 @@ Un coach nunca ve estas pantallas (el router lo manda a `/coach`); si llamara al
 - Peso y estatura aceptan coma o punto decimal.
 - La fecha se elige con el selector de fecha (`showDatePicker`, locale `es_MX`); se guarda solo año-mes-día.
 - `TODO(HU-04)`: tras editar el perfil, la meta nutricional se recalcula en el backend.
+
+## Encabezado y cuenta (TEC-17)
+
+La pantalla abre con el blobatar del correo en grande, el nombre, el correo y un resumen de los datos (objetivo, peso,
+estatura, días) que se actualiza al editar. Al final de **Mi perfil** (modo edición) está **Cerrar sesión** (`logout_button`, confirmación `logout_confirm`). Usa `ProfileFormViewModel.logout()`; el router
+lleva a login y reemplaza la pila (HU-02). En el perfil inicial el cierre sigue en la barra superior (`profile_logout`).

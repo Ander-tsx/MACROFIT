@@ -24,14 +24,33 @@ class RoutinesListView extends StatelessWidget {
     await viewModel.load();
   }
 
+  Future<void> _openAssign(BuildContext context, Routine routine) async {
+    // HU-19: la rutina ya está guardada; salir sin asignar no cambia nada.
+    await context.push(
+      AppRoutes.coachRoutineAssign(routine.id),
+      extra: routine,
+    );
+  }
+
+  Future<void> _openClients(BuildContext context, Routine routine) async {
+    // HU-20: clientes con la rutina y retiro por cliente.
+    await context.push(
+      AppRoutes.coachRoutineClients(routine.id),
+      extra: routine,
+    );
+  }
+
   Future<void> _delete(
     BuildContext context,
     RoutinesListViewModel viewModel,
     Routine routine,
   ) async {
+    // HU-20: antes de confirmar se consulta a cuántos clientes afecta.
+    final assigned = await viewModel.assignedClientsCount(routine);
+    if (!context.mounted) return;
     final deleted = await viewModel.delete(
       routine,
-      () => _confirmDelete(context, routine),
+      () => _confirmDelete(context, routine, assigned),
     );
     if (!deleted || !context.mounted) return;
     ScaffoldMessenger.of(context)
@@ -118,6 +137,8 @@ class RoutinesListView extends StatelessWidget {
                   enabled: !viewModel.isDeleting,
                   onEdit: () =>
                       _openBuilder(context, viewModel, routine: routine),
+                  onAssign: () => _openAssign(context, routine),
+                  onClients: () => _openClients(context, routine),
                   onDelete: () => _delete(context, viewModel, routine),
                 );
               },
@@ -129,13 +150,29 @@ class RoutinesListView extends StatelessWidget {
   }
 }
 
-Future<bool> _confirmDelete(BuildContext context, Routine routine) async {
+Future<bool> _confirmDelete(
+  BuildContext context,
+  Routine routine,
+  int? assigned,
+) async {
+  // HU-20: si está asignada, avisa que se retira de sus clientes.
+  final affected = switch (assigned) {
+    null =>
+      ' Si está asignada, se retirará de sus clientes; sus sesiones '
+          'completadas se conservan.',
+    0 => '',
+    final count =>
+      ' Está asignada a ${clientCountText(count)}: se ${count == 1 ? 'le' : 'les'} retirará; sus '
+          'sesiones completadas se conservan.',
+  };
   final confirmed = await showDialog<bool>(
     context: context,
     builder: (context) => AlertDialog(
       title: const Text('Eliminar rutina'),
       content: Text(
-        '¿Eliminar «${routine.name}»? Esta acción no se puede deshacer.',
+        '¿Eliminar «${routine.name}»? Esta acción no se puede deshacer.'
+        '$affected',
+        key: const Key('routine_delete_message'),
       ),
       actions: [
         TextButton(
@@ -154,7 +191,7 @@ Future<bool> _confirmDelete(BuildContext context, Routine routine) async {
   return confirmed ?? false;
 }
 
-enum _RoutineAction { edit, delete }
+enum _RoutineAction { edit, assign, clients, delete }
 
 class _RoutineTile extends StatelessWidget {
   const _RoutineTile({
@@ -162,6 +199,8 @@ class _RoutineTile extends StatelessWidget {
     required this.isDeleting,
     required this.enabled,
     required this.onEdit,
+    required this.onAssign,
+    required this.onClients,
     required this.onDelete,
   });
 
@@ -169,6 +208,8 @@ class _RoutineTile extends StatelessWidget {
   final bool isDeleting;
   final bool enabled;
   final VoidCallback onEdit;
+  final VoidCallback onAssign;
+  final VoidCallback onClients;
   final VoidCallback onDelete;
 
   @override
@@ -191,6 +232,8 @@ class _RoutineTile extends StatelessWidget {
               tooltip: 'Opciones',
               onSelected: (action) => switch (action) {
                 _RoutineAction.edit => onEdit(),
+                _RoutineAction.assign => onAssign(),
+                _RoutineAction.clients => onClients(),
                 _RoutineAction.delete => onDelete(),
               },
               itemBuilder: (_) => const [
@@ -198,6 +241,16 @@ class _RoutineTile extends StatelessWidget {
                   key: Key('routine_menu_edit'),
                   value: _RoutineAction.edit,
                   child: Text('Editar'),
+                ),
+                PopupMenuItem(
+                  key: Key('routine_menu_assign'),
+                  value: _RoutineAction.assign,
+                  child: Text('Asignar'),
+                ),
+                PopupMenuItem(
+                  key: Key('routine_menu_clients'),
+                  value: _RoutineAction.clients,
+                  child: Text('Clientes asignados'),
                 ),
                 PopupMenuItem(
                   key: Key('routine_menu_delete'),

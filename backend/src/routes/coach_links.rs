@@ -1,6 +1,6 @@
 //! HU-13 / HU-14 — rutas de vinculación y desvinculación con el coach.
 
-use axum::{Json, Router, extract::State, http::StatusCode, routing::post};
+use axum::{Json, Router, extract::State, http::StatusCode, routing::get};
 use serde::{Deserialize, Serialize};
 
 use crate::auth::middleware::UserOnly;
@@ -75,6 +75,35 @@ pub async fn link_coach_handler(
     ))
 }
 
+/// HU-13 — GET /api/v1/users/me/coach-link
+#[utoipa::path(
+    get,
+    path = "/users/me/coach-link",
+    tag = "Vinculaciones",
+    summary = "Consultar el coach vinculado (HU-13)",
+    description = "Devuelve la vinculación activa del usuario autenticado con los datos de su coach.",
+    security(("bearer_auth" = ["user"])),
+    responses(
+        (status = 200, description = "Vinculación activa", body = CoachLinkResponse),
+        (status = 401, description = "`UNAUTHORIZED` o `TOKEN_REVOKED`", body = ErrorResponse),
+        (status = 403, description = "`FORBIDDEN_ROLE` (cuenta `coach`)", body = ErrorResponse),
+        (status = 404, description = "`USER_NOT_LINKED` (sin coach activo)", body = ErrorResponse),
+    )
+)]
+pub async fn get_coach_link_handler(
+    UserOnly(auth): UserOnly,
+    State(state): State<AppState>,
+) -> Result<Json<CoachLinkResponse>, AppError> {
+    let (link, coach) = coach_links::find_active_link(&state.db, auth.user_id).await?;
+    Ok(Json(CoachLinkResponse {
+        id: link.id.to_hex(),
+        coach_id: coach.id_hex(),
+        coach_name: coach.name,
+        coach_email: coach.email,
+        status: "active".to_string(),
+    }))
+}
+
 /// HU-14 — DELETE /api/v1/users/me/coach-link
 #[utoipa::path(
     delete,
@@ -101,6 +130,8 @@ pub async fn unlink_coach_handler(
 pub fn router() -> Router<AppState> {
     Router::new().route(
         "/users/me/coach-link",
-        post(link_coach_handler).delete(unlink_coach_handler),
+        get(get_coach_link_handler)
+            .post(link_coach_handler)
+            .delete(unlink_coach_handler),
     )
 }

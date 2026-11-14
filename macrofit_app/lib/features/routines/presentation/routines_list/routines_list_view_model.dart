@@ -46,6 +46,16 @@ class RoutinesListViewModel extends ViewModel {
     }
   }
 
+  /// HU-20 — cuántos clientes tienen [routine] asignada, para avisar antes de
+  /// eliminarla. `null` si no se pudo consultar (la vista avisa de forma general).
+  Future<int?> assignedClientsCount(Routine routine) async {
+    try {
+      return (await _repository.getAssignments(routine.id)).length;
+    } on ApiException {
+      return null;
+    }
+  }
+
   /// Elimina [routine] si [confirm] (el diálogo de la vista) responde `true` y
   /// después recarga la lista. Devuelve `true` si se eliminó.
   ///

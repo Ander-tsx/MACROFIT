@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:dio/dio.dart';
 
 import '../../../../core/network/dio_factory.dart';
@@ -28,4 +30,37 @@ class MealsRemoteDataSource {
     );
     return MealModel.fromJson(response.data!);
   });
+
+  /// HU-09 — `GET /meals?date=YYYY-MM-DD`: registros del día, del más antiguo al
+  /// más reciente. El día es el de la zona horaria de la app (`APP_UTC_OFFSET`).
+  Future<List<MealModel>> list(DateTime day) => guardApiCall(() async {
+    final response = await _dio.get<List<dynamic>>(
+      '/meals',
+      queryParameters: {'date': _formatDate(day)},
+    );
+    return [
+      for (final json in response.data!)
+        MealModel.fromJson(json as Map<String, dynamic>),
+    ];
+  });
+
+  /// HU-09 — `DELETE /meals/{id}` (`204`). También borra su foto en el backend.
+  Future<void> delete(String id) => guardApiCall(() async {
+    await _dio.delete<void>('/meals/$id');
+  });
+
+  /// HU-09 — `GET /meals/photos/{id}`: la foto de un registro propio, con la sesión.
+  Future<Uint8List> photo(String photoId) => guardApiCall(() async {
+    final response = await _dio.get<List<int>>(
+      '/meals/photos/$photoId',
+      options: Options(responseType: ResponseType.bytes),
+    );
+    return Uint8List.fromList(response.data!);
+  });
+
+  /// `YYYY-MM-DD`.
+  static String _formatDate(DateTime date) {
+    String two(int value) => value.toString().padLeft(2, '0');
+    return '${date.year}-${two(date.month)}-${two(date.day)}';
+  }
 }

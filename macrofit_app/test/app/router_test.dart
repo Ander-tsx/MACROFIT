@@ -98,6 +98,105 @@ void main() {
     });
   });
 
+  group('historial de comidas (HU-09)', () {
+    test('un usuario con perfil abre "Mis comidas"', () {
+      expect(
+        resolveRedirect(const Authenticated(testUser), AppRoutes.mealHistory),
+        isNull,
+      );
+    });
+
+    test('un coach, un usuario sin perfil o sin sesión no lo abren', () {
+      expect(
+        resolveRedirect(const Authenticated(testCoach), AppRoutes.mealHistory),
+        AppRoutes.coachHome,
+      );
+      expect(
+        resolveRedirect(
+          const Authenticated(testNewUser),
+          AppRoutes.mealHistory,
+        ),
+        AppRoutes.profileSetup,
+      );
+      expect(
+        resolveRedirect(const Unauthenticated(), AppRoutes.mealHistory),
+        AppRoutes.login,
+      );
+    });
+  });
+
+  group('rutinas del usuario (HU-16)', () {
+    test(
+      'un usuario con perfil abre "Mis rutinas" y el detalle de una rutina',
+      () {
+        for (final route in [
+          AppRoutes.myRoutines,
+          AppRoutes.myRoutineDetail('6b2a00000000000000000001'),
+        ]) {
+          expect(
+            resolveRedirect(const Authenticated(testUser), route),
+            isNull,
+            reason: route,
+          );
+        }
+      },
+    );
+
+    test('un coach, un usuario sin perfil o sin sesión no las abren', () {
+      final detail = AppRoutes.myRoutineDetail('r1');
+      for (final route in [AppRoutes.myRoutines, detail]) {
+        expect(
+          resolveRedirect(const Authenticated(testCoach), route),
+          AppRoutes.coachHome,
+        );
+        expect(
+          resolveRedirect(const Authenticated(testNewUser), route),
+          AppRoutes.profileSetup,
+        );
+        expect(
+          resolveRedirect(const Unauthenticated(), route),
+          AppRoutes.login,
+        );
+      }
+    });
+
+    test('un usuario con perfil abre la rutina recomendada (HU-15)', () {
+      expect(
+        resolveRedirect(
+          const Authenticated(testUser),
+          AppRoutes.recommendedRoutine,
+        ),
+        isNull,
+      );
+    });
+
+    test(
+      'un coach, un usuario sin perfil o sin sesión no abren la recomendada',
+      () {
+        const route = AppRoutes.recommendedRoutine;
+        expect(
+          resolveRedirect(const Authenticated(testCoach), route),
+          AppRoutes.coachHome,
+        );
+        expect(
+          resolveRedirect(const Authenticated(testNewUser), route),
+          AppRoutes.profileSetup,
+        );
+        expect(
+          resolveRedirect(const Unauthenticated(), route),
+          AppRoutes.login,
+        );
+      },
+    );
+
+    test('solo cuenta como detalle /user/routines/{id}, sin más segmentos', () {
+      expect(AppRoutes.isUserRoute('${AppRoutes.myRoutines}/r1'), isTrue);
+      expect(AppRoutes.isUserRoute('${AppRoutes.myRoutines}/'), isFalse);
+      expect(AppRoutes.isUserRoute('${AppRoutes.myRoutines}/r1/x'), isFalse);
+      expect(AppRoutes.isUserRoute('/user/routinesx'), isFalse);
+    });
+  });
+
   group('formulario de valores (HU-08)', () {
     test('un usuario con perfil abre el formulario', () {
       expect(
@@ -117,6 +216,36 @@ void main() {
       );
       expect(
         resolveRedirect(const Unauthenticated(), AppRoutes.mealForm),
+        AppRoutes.login,
+      );
+    });
+  });
+
+  group('resumen semanal (HU-11)', () {
+    test('un usuario con perfil abre el resumen semanal', () {
+      expect(
+        resolveRedirect(const Authenticated(testUser), AppRoutes.weeklySummary),
+        isNull,
+      );
+    });
+
+    test('un coach, un usuario sin perfil o sin sesión no lo abren', () {
+      expect(
+        resolveRedirect(
+          const Authenticated(testCoach),
+          AppRoutes.weeklySummary,
+        ),
+        AppRoutes.coachHome,
+      );
+      expect(
+        resolveRedirect(
+          const Authenticated(testNewUser),
+          AppRoutes.weeklySummary,
+        ),
+        AppRoutes.profileSetup,
+      );
+      expect(
+        resolveRedirect(const Unauthenticated(), AppRoutes.weeklySummary),
         AppRoutes.login,
       );
     });
@@ -212,6 +341,8 @@ void main() {
         AppRoutes.coachRoutineNew,
         AppRoutes.coachExercisePicker,
         AppRoutes.coachRoutineEdit('abc'),
+        AppRoutes.coachRoutineAssign('abc'),
+        AppRoutes.coachRoutineClients('abc'),
       ]) {
         expect(
           resolveRedirect(const Authenticated(testCoach), route),
@@ -226,6 +357,8 @@ void main() {
         AppRoutes.coachRoutines,
         AppRoutes.coachRoutineNew,
         AppRoutes.coachRoutineEdit('abc'),
+        AppRoutes.coachRoutineAssign('abc'),
+        AppRoutes.coachRoutineClients('abc'),
       ]) {
         expect(
           resolveRedirect(const Authenticated(testUser), route),
@@ -281,6 +414,28 @@ void main() {
         resolveRedirect(
           const Authenticated(testUser),
           AppRoutes.coachClientMeals('abc'),
+        ),
+        AppRoutes.userHome,
+      );
+    });
+  });
+
+  group('progreso de un cliente (HU-23)', () {
+    test('un coach abre el progreso de un cliente', () {
+      expect(
+        resolveRedirect(
+          const Authenticated(testCoach),
+          AppRoutes.coachClientProgress('abc'),
+        ),
+        isNull,
+      );
+    });
+
+    test('un usuario no accede al progreso de un cliente', () {
+      expect(
+        resolveRedirect(
+          const Authenticated(testUser),
+          AppRoutes.coachClientProgress('abc'),
         ),
         AppRoutes.userHome,
       );

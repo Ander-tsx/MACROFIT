@@ -38,7 +38,7 @@
 | HU-07 | Comida no reconocida (CU-01 flujo 4a). | Unitaria | `422 FOOD_NOT_RECOGNIZED` muestra el mensaje y ofrece solo **Capturar a mano** (sin **Reintentar**). | [**2**](#caso-34) (mobile 2 · backend 0) |
 | HU-07 | Fallo del proveedor o sin conexión (CU-01 flujo 3a, RNF-11). | Unitaria | `502`, `504`, `404` y la falta de conexión salen como `ApiException`; `502`, `504`, sin conexión y otros errores muestran un mensaje en español y ofrecen **Reintentar** o **Capturar a mano** sin cerrar la pantalla; **Reintentar** vuelve a estimar la misma foto. | [**10**](#caso-35) (mobile 10 · backend 0) |
 | HU-07 | Ruta de la estimación. | Unitaria | Solo un usuario con perfil abre `/user/meals/estimate` (un coach, un usuario sin perfil o sin sesión son redirigidos); atrás regresa al inicio y no a la foto ya subida. | [**3**](#caso-36) (mobile 3 · backend 0) |
-| HU-08 | Formulario precargado y editable (RF-07, CU-01 paso 5). | Interfaz | **Continuar** abre *Revisar valores* con `413`, `42.2` y `4.9` en calorías, proteína y grasa, los tres editables. | [**2**](#caso-37) (mobile 2 · backend 0) |
+| HU-08 | Formulario precargado y editable (RF-07, CU-01 paso 5). | Interfaz | **Corregir valores** abre *Revisar valores* con `413`, `42.2` y `4.9` en calorías, proteína y grasa, los tres editables. | [**2**](#caso-37) (mobile 2 · backend 0) |
 | HU-08 | Validación local con los rangos de la API. | Unitaria | Solo números no negativos (con punto o coma decimal); calorías de 0 a 10 000 y proteína y grasa de 0 a 1 000 g, con el 0 y los límites aceptados; vacío, texto, negativos o fuera de rango marcan su campo, no llaman a la API, y editar el campo limpia su error. | [**9**](#caso-38) (mobile 9 · backend 0) |
 | HU-08 | Valores finales y estimados (`estimated`). | Unitaria | Sin corrección se mandan los mismos valores como finales y en `estimated` (el estimado exacto, aunque el campo lo muestre redondeado); con corrección `estimated` conserva lo estimado y los finales llevan lo corregido. | [**4**](#caso-39) (mobile 4 · backend 0) |
 | HU-08 | Captura manual (CU-01 flujos 3a y 4a). | Unitaria | **Capturar a mano** (tras un fallo de la estimación) y **Capturar sin foto** abren el mismo formulario vacío; se guarda sin `estimated`, con `photo_id` solo si hay foto. | [**5**](#caso-40) (mobile 5 · backend 0) |
@@ -53,6 +53,25 @@
 | HU-18 | Editar guarda los cambios y eliminar pide confirmación; la lista se actualiza tras cada acción. | Interfaz | Editar precarga nombre y ejercicios y guarda con `PUT` a su id; eliminar pide confirmación (cancelar no llama a la API), muestra el progreso, recarga la lista y, si la rutina ya no existía (`404`), la quita igual; con otro error la conserva y muestra el mensaje. | [**10**](#caso-49) (mobile 10 · backend 0) |
 | HU-18 | Sin conexión al cargar la lista de rutinas (RNF-11). | Unitaria | Sin rutinas cargadas muestra el error en español con **Reintentar**, que vuelve a consultar; si falla una recarga se conserva la última lista. | [**3**](#caso-50) (mobile 3 · backend 0) |
 | HU-18 | Salir con cambios sin guardar y rutas del constructor. | Unitaria | Con cambios, **atrás** pide *¿Descartar cambios?* (seguir editando o descartar, sin guardar); solo el rol `coach` abre la lista, el constructor, el selector y la edición (un usuario va a su inicio y sin sesión al login). | [**4**](#caso-51) (mobile 4 · backend 0) |
+| HU-10 | Llamada a `GET /users/me/summary/daily` y modelo del resumen | Unitaria | Se pide `?date=AAAA-MM-DD`; meta con su origen, consumo y restante se convierten a la entidad (el restante negativo del exceso y el día sin registros incluidos); `404 PROFILE_NOT_FOUND` sale como `ApiException` con su código. | [**4**](#caso-52) (mobile 4 · backend 0) |
+| HU-10 | Progreso del día en la pantalla principal (RF-09, CU-01 paso 7). | Interfaz | Una barra por calorías, proteína y grasa con consumido, meta y lo que falta (`650 / 1831 kcal`, *Te faltan 1181 kcal*); con exceso la barra queda llena y dice *Te pasaste por X*; un día sin registros muestra consumo en 0 y restante igual a la meta. | [**6**](#caso-53) (mobile 6 · backend 0) |
+| HU-10 | La fecha del resumen es la de México (`APP_UTC_OFFSET`). | Unitaria | La app pide el día en `UTC-6` (a las 02:30 UTC del 17 es todavía el 16), con mes y día de dos cifras, cruzando mes y año, sin depender de la zona del dispositivo. | [**5**](#caso-54) (mobile 5 · backend 0) |
+| HU-10 | Sin meta y sin conexión al consultar el resumen (RNF-11). | Unitaria | `404 PROFILE_NOT_FOUND` muestra un mensaje, no un error ni **Reintentar**; antes de la primera consulta no se considera que falte; la falta de conexión muestra el mensaje con **Reintentar**; si falla una recarga se conserva el último resumen. | [**6**](#caso-55) (mobile 6 · backend 0) |
+| HU-10 | El resumen se vuelve a consultar (RF-09). | Interfaz | Al regresar de **Registrar comida** y al deslizar para actualizar se consulta de nuevo y se ven los registros guardados; no se lanza una segunda consulta mientras otra está en curso; actualizar trae también la meta. | [**5**](#caso-56) (mobile 5 · backend 0) |
+| HU-11 | Llamada a `GET /users/me/summary/weekly` y modelo del resumen semanal | Unitaria | Se pide `?start=AAAA-MM-DD`; los 7 días (meta con su origen, consumo, restante y `goal_met`), el promedio y `goal_met_days` se convierten a la entidad; `404 PROFILE_NOT_FOUND` sale como `ApiException`; un día del resumen diario, que no trae `goal_met`, queda en `false`. | [**4**](#caso-57) (mobile 4 · backend 0) |
+| HU-11 | Gráfica de los 7 días contra la meta de cada día (RF-10). | Interfaz | Una barra por día con las calorías consumidas y una raya con la meta de ese día; los días sin registros aparecen en 0; la lista de abajo repite `consumido / meta kcal` de cada día. | [**4**](#caso-58) (mobile 4 · backend 0) |
+| HU-11 | Promedio diario y días con la meta cumplida (RF-10). | Interfaz | Se muestran el promedio diario de calorías, proteína y grasa (*1700 kcal*, *124.3 g*, *50.7 g*) y *Días con la meta cumplida: 5 de 7*. | [**1**](#caso-59) (mobile 1 · backend 0) |
+| HU-11 | Cada día indica si cumplió la meta sin depender del color. | Interfaz | Cada día lleva una marca (✓ cumplida, ✗ no cumplida) sobre su barra y el texto *Meta cumplida* / *Meta no cumplida* en la lista. | [**1**](#caso-60) (mobile 1 · backend 0) |
+| HU-11 | Cambio a la semana anterior o siguiente. | Unitaria | La semana inicial termina hoy (día de México, no UTC) y no tiene siguiente; **‹** va 7 días atrás y vuelve a consultar; **›** regresa sin pasar de hoy; al cambiar se quita la semana anterior mientras carga, un error no la deja bajo otras fechas y la respuesta de una semana que ya no se ve se descarta; las fechas se calculan sin depender de la zona del teléfono. | [**12**](#caso-61) (mobile 12 · backend 0) |
+| HU-11 | Sin meta y sin conexión al consultar la semana (RNF-11). | Unitaria | `404 PROFILE_NOT_FOUND` muestra un mensaje, no un error ni **Reintentar**; antes de la primera consulta no se considera que falte; la falta de conexión muestra el mensaje en español con **Reintentar** sin cerrar la app; si falla una recarga de la misma semana se conserva el resumen; no se lanza una segunda consulta mientras otra está en curso. | [**7**](#caso-62) (mobile 7 · backend 0) |
+| HU-11 | Acceso y ruta del resumen semanal. | Unitaria | El botón *Resumen semanal* del inicio abre `/user/summary`, que pide la semana que termina hoy; solo un usuario con perfil la abre (un coach, un usuario sin perfil o sin sesión van a su pantalla). | [**3**](#caso-63) (mobile 3 · backend 0) |
+| HU-09 | Guardar el registro y regresar al historial del día (RF-08, CU-01 paso 6). | Unitaria | **Guardar** en la estimación manda los totales como finales y en `estimated` con la foto, una sola vez; desde la estimación o el formulario se abre el historial del día del registro con el registro nuevo y *Comida registrada*; al regresar al inicio (desde el historial o tras guardar) se actualiza el progreso del día (HU-10). | [**7**](#caso-64) (mobile 7 · backend 0) |
+| HU-09 | Registro por foto en 4 toques o menos (RNF-09). | Interfaz | Inicio → **Registrar comida** → **Elegir de la galería** → **Usar esta foto** → **Guardar**: 4 toques (sin contar el selector del sistema ni ediciones) y el registro queda guardado. | [**1**](#caso-65) (mobile 1 · backend 0) |
+| HU-09 | Historial del día (RF-08, CU-01 paso 7). | Unitaria | `GET /meals?date=AAAA-MM-DD` (sin la hora) en el orden de la API (del más antiguo al más reciente); cada registro muestra hora local, foto (descargada una vez) o *Captura manual* y valores, con el total del día; un día sin registros lo indica; un error permite reintentar. | [**9**](#caso-66) (mobile 9 · backend 0) |
+| HU-09 | Cambio de fecha. | Unitaria | **‹** y **›** cambian de día sin pasar de hoy; elegir una fecha ignora la hora y una futura se lleva a hoy. | [**4**](#caso-67) (mobile 4 · backend 0) |
+| HU-09 | Eliminar con confirmación. | Unitaria | El diálogo pide confirmar (cancelar conserva el registro); `DELETE /meals/{id}` quita el registro y avisa; `404 MEAL_NOT_FOUND` recarga la lista con un mensaje; sin conexión u otro error conserva la lista y muestra el error. | [**8**](#caso-68) (mobile 8 · backend 0) |
+| HU-09 | Errores de la foto al guardar sin perder los valores. | Unitaria | `409 PHOTO_ALREADY_USED` y `404 PHOTO_NOT_FOUND` muestran un mensaje en español de la app, en la estimación y en el formulario, conservando la estimación o los valores capturados. | [**4**](#caso-69) (mobile 4 · backend 0) |
+| HU-09 | Ruta del historial. | Unitaria | Solo un usuario con perfil abre `/user/meals` (un coach, un usuario sin perfil o sin sesión son redirigidos). | [**2**](#caso-70) (mobile 2 · backend 0) |
 
 ## Cómo se cuentan las pruebas
 
@@ -69,6 +88,9 @@ Inventario al cerrar HU-26-APP: **256** pruebas mobile (`flutter test`; 243 en `
 Inventario al cerrar HU-07-APP: **279** pruebas mobile (`flutter test`; 256 en `develop` con HU-26-APP). HU-07-APP agrega 23 (8 de datos, 8 de ViewModels, 2 de rutas y 5 de widgets) y cambia *elige de la galería, muestra la vista previa y la sube* (HU-06) para comprobar que la foto subida abre la estimación. Sin cambios en el backend. Además se probó a mano en un teléfono Android (moto g60) contra el backend de `develop` en local con `FOOD_SIMULATOR_MODE` `ok`, `not_recognized`, `error` y `timeout`, y sin conexión (no se cuenta); la API desplegada aún no tiene `POST /meals/estimate`.
 Inventario al cerrar HU-08-APP: **307** pruebas mobile (`flutter test`; 279 en `develop` con HU-07-APP). HU-08-APP agrega 28 (6 del validador, 3 de datos, 13 del ViewModel, 2 de rutas y 4 de widgets). Sin cambios en el backend. Además se probó a mano en un teléfono Android (moto g60) contra el backend de `develop` en local: guardado sin y con corrección, captura manual con foto (tras `422`) y sin foto, revisando en MongoDB los finales y `estimated` (no se cuenta).
 Inventario al cerrar HU-18-APP: **372** pruebas mobile (`flutter test`; 307 en `develop` con HU-08-APP). HU-18-APP agrega 65 (9 del validador, 9 de datos, 35 de ViewModels —19 del constructor, 9 de la lista y 7 del selector—, 3 de rutas y 9 de widgets). Sin cambios en el backend. Falta la prueba manual en un teléfono contra la API desplegada (no se cuenta).
+Inventario al cerrar HU-10-APP: **418** pruebas mobile (`flutter test`; 392 en `develop` con HU-18-APP y HU-13/14/21-APP). HU-10-APP agrega 26 (4 de datos, 4 de la fecha, 11 del ViewModel y 7 de widgets) y ajusta 1 de HU-13 (el botón *Vincular con coach* quedó debajo del progreso del día). Sin cambios en el backend. Además se probó de punta a punta en el simulador de iPhone 16 contra el backend local con base temporal y se corrió la colección de Postman con Newman (299 requests, 846 aserciones, 0 fallos) (no se cuentan).
+Inventario al cerrar HU-11-APP: **450** pruebas mobile (`flutter test`; 418 en la rama de HU-10-APP, de la que sale). HU-11-APP agrega 32 (4 de datos, 3 de fechas, 15 del ViewModel, 8 de widgets y 2 de rutas). Sin cambios en el backend. Además se probó de punta a punta en el simulador de iPhone 16 contra el backend local con base temporal y se corrió la colección de Postman con Newman (299 requests, 846 aserciones, 0 fallos) (no se cuentan).
+Inventario al cerrar HU-09-APP: **483** pruebas mobile (`flutter test`; 450 en `develop` con HU-10-APP, HU-11-APP, HU-13/14/21-APP y HU-18-APP). HU-09-APP agrega 33 (5 de datos, 13 del ViewModel del historial, 6 de guardar desde la estimación, 2 de rutas y 7 de widgets, 2 de ellos para que el progreso del día de HU-10 se actualice al regresar al inicio) y cambia 5: la de HU-07 que esperaba **Continuar** (ahora **Guardar** y **Corregir valores**), las dos de HU-08 que regresaban al inicio (ahora al historial) y las dos de `409`/`404` del formulario (ahora con el mensaje de la app). Sin cambios en el backend. Además se probó a mano en un teléfono Android (moto g60) contra el backend de `develop` en local: guardar en 4 toques, corregir y guardar, historial con foto y captura manual, eliminar, `404 MEAL_NOT_FOUND` y cambio de día (no se cuenta).
 
 ## Detalle de las pruebas por caso
 
@@ -496,7 +518,7 @@ Mobile: 2 · Backend: 0
 **Mobile**
 
 - `macrofit_app/test/features/meals/presentation/meal_form_view_model_test.dart` › con estimación › se precarga con las calorías, proteína y grasa estimadas
-- `macrofit_app/test/app/app_test.dart` › formulario de valores (HU-08) › Continuar abre el formulario precargado y Guardar registra lo corregido
+- `macrofit_app/test/app/app_test.dart` › formulario de valores (HU-08) › Corregir valores abre el formulario precargado y Guardar registra lo corregido
 
 ### <a id="caso-38"></a>Caso 38 · HU-08 — Validación local con los rangos de la API
 
@@ -535,6 +557,8 @@ Mobile: 5 · Backend: 0
 - `macrofit_app/test/features/meals/presentation/meal_form_view_model_test.dart` › captura manual › sin foto se manda sin photo_id ni estimated
 - `macrofit_app/test/features/meals/data/meals_repository_impl_test.dart` › registro (POST /meals) › una captura manual sin foto no manda photo_id ni estimated
 - `macrofit_app/test/app/app_test.dart` › formulario de valores (HU-08) › comida no reconocida: Capturar a mano abre el formulario vacío y guarda sin estimated
+- `macrofit_app/test/app/app_test.dart` › historial de comidas (HU-09) › al regresar al inicio después de guardar se actualiza el progreso del día (HU-10)
+- `macrofit_app/test/app/app_test.dart` › historial de comidas (HU-09) › al regresar de Mis comidas se actualiza el progreso del día (HU-10)
 - `macrofit_app/test/app/app_test.dart` › formulario de valores (HU-08) › Capturar sin foto abre el formulario vacío y guarda sin foto
 
 ### <a id="caso-41"></a>Caso 41 · HU-08 — Errores del guardado
@@ -686,3 +710,227 @@ Mobile: 4 · Backend: 0
 - `macrofit_app/test/app/router_test.dart` › rutinas del coach (HU-18) › un coach abre su lista, el constructor y el selector
 - `macrofit_app/test/app/router_test.dart` › rutinas del coach (HU-18) › un usuario no accede a las rutinas del coach
 - `macrofit_app/test/app/router_test.dart` › rutinas del coach (HU-18) › sin sesión van al inicio de sesión
+
+### <a id="caso-52"></a>Caso 52 · HU-10 — Llamada a `GET /users/me/summary/daily` y modelo del resumen
+
+Mobile: 4 · Backend: 0
+
+**Mobile**
+
+- `macrofit_app/test/features/summary/data/summary_repository_impl_test.dart` › resumen diario (GET /users/me/summary/daily) › manda la fecha y convierte meta, consumo y restante
+- `macrofit_app/test/features/summary/data/summary_repository_impl_test.dart` › resumen diario (GET /users/me/summary/daily) › lee el origen coach y el restante negativo del exceso
+- `macrofit_app/test/features/summary/data/summary_repository_impl_test.dart` › resumen diario (GET /users/me/summary/daily) › un día sin registros llega con consumo en 0
+- `macrofit_app/test/features/summary/data/summary_repository_impl_test.dart` › resumen diario (GET /users/me/summary/daily) › 404 PROFILE_NOT_FOUND llega como ApiException con su código
+
+### <a id="caso-53"></a>Caso 53 · HU-10 — Progreso del día en la pantalla principal (RF-09, CU-01 paso 7)
+
+Mobile: 6 · Backend: 0
+
+**Mobile**
+
+- `macrofit_app/test/features/home/presentation/user_home_view_model_test.dart` › resumen del día (HU-10) › loadSummary trae el consumo, la meta y lo que falta
+- `macrofit_app/test/features/home/presentation/user_home_view_model_test.dart` › resumen del día (HU-10) › un día sin registros trae consumo en 0 y restante igual a la meta
+- `macrofit_app/test/features/home/presentation/user_home_view_model_test.dart` › resumen del día (HU-10) › con exceso el restante es negativo
+- `macrofit_app/test/app/app_test.dart` › meta vigente en la pantalla principal (HU-26) › muestra el progreso del día con consumido, meta y restante
+- `macrofit_app/test/app/app_test.dart` › meta vigente en la pantalla principal (HU-26) › con exceso la barra se llena y dice cuánto se pasó
+- `macrofit_app/test/app/app_test.dart` › meta vigente en la pantalla principal (HU-26) › un día sin registros muestra consumo en 0
+
+### <a id="caso-54"></a>Caso 54 · HU-10 — La fecha del resumen es la de México (`APP_UTC_OFFSET`)
+
+Mobile: 5 · Backend: 0
+
+**Mobile**
+
+- `macrofit_app/test/features/summary/domain/app_day_test.dart` › el día de la app es el de México (UTC-6), no el UTC
+- `macrofit_app/test/features/summary/domain/app_day_test.dart` › cruza el cambio de mes y de año
+- `macrofit_app/test/features/summary/domain/app_day_test.dart` › completa mes y día con cero
+- `macrofit_app/test/features/summary/domain/app_day_test.dart` › da el mismo día sin importar la zona del DateTime recibido
+- `macrofit_app/test/features/home/presentation/user_home_view_model_test.dart` › resumen del día (HU-10) › pide el día de hoy en hora de México, no el UTC
+
+### <a id="caso-55"></a>Caso 55 · HU-10 — Sin meta y sin conexión al consultar el resumen (RNF-11)
+
+Mobile: 6 · Backend: 0
+
+**Mobile**
+
+- `macrofit_app/test/features/home/presentation/user_home_view_model_test.dart` › resumen del día (HU-10) › sin meta (404 PROFILE_NOT_FOUND) no se considera un error
+- `macrofit_app/test/features/home/presentation/user_home_view_model_test.dart` › resumen del día (HU-10) › antes de cargar no se considera que falte el resumen
+- `macrofit_app/test/features/home/presentation/user_home_view_model_test.dart` › resumen del día (HU-10) › sin conexión muestra el error y permite reintentar
+- `macrofit_app/test/features/home/presentation/user_home_view_model_test.dart` › resumen del día (HU-10) › un error al recargar conserva el último resumen
+- `macrofit_app/test/app/app_test.dart` › meta vigente en la pantalla principal (HU-26) › sin meta el resumen muestra un mensaje y no un error
+- `macrofit_app/test/app/app_test.dart` › meta vigente en la pantalla principal (HU-26) › sin conexión el resumen muestra el error y reintenta
+
+### <a id="caso-56"></a>Caso 56 · HU-10 — El resumen se vuelve a consultar (RF-09)
+
+Mobile: 5 · Backend: 0
+
+**Mobile**
+
+- `macrofit_app/test/features/home/presentation/user_home_view_model_test.dart` › resumen del día (HU-10) › al recargar refleja los registros nuevos
+- `macrofit_app/test/features/home/presentation/user_home_view_model_test.dart` › resumen del día (HU-10) › no lanza una segunda consulta mientras otra está en curso
+- `macrofit_app/test/features/home/presentation/user_home_view_model_test.dart` › resumen del día (HU-10) › refresh consulta la meta y el resumen
+- `macrofit_app/test/app/app_test.dart` › meta vigente en la pantalla principal (HU-26) › al regresar de registrar una comida se vuelve a consultar
+- `macrofit_app/test/app/app_test.dart` › meta vigente en la pantalla principal (HU-26) › al deslizar para actualizar se consulta de nuevo
+
+### <a id="caso-57"></a>Caso 57 · HU-11 — Llamada a `GET /users/me/summary/weekly` y modelo del resumen semanal
+
+Mobile: 4 · Backend: 0
+
+**Mobile**
+
+- `macrofit_app/test/features/summary/data/summary_repository_impl_test.dart` › resumen semanal (GET /users/me/summary/weekly) › manda start y convierte los 7 días, el promedio y los días cumplidos
+- `macrofit_app/test/features/summary/data/summary_repository_impl_test.dart` › resumen semanal (GET /users/me/summary/weekly) › cada día trae su meta, su consumo y si cumplió (goal_met)
+- `macrofit_app/test/features/summary/data/summary_repository_impl_test.dart` › resumen semanal (GET /users/me/summary/weekly) › 404 PROFILE_NOT_FOUND llega como ApiException con su código
+- `macrofit_app/test/features/summary/data/summary_repository_impl_test.dart` › resumen diario (GET /users/me/summary/daily) › un día del resumen diario no trae goal_met y queda en false
+
+### <a id="caso-58"></a>Caso 58 · HU-11 — Gráfica de los 7 días contra la meta de cada día (RF-10)
+
+Mobile: 4 · Backend: 0
+
+**Mobile**
+
+- `macrofit_app/test/features/summary/presentation/weekly_summary_view_model_test.dart` › con registros trae los 7 días, el promedio y los días cumplidos
+- `macrofit_app/test/features/summary/presentation/weekly_summary_view_model_test.dart` › una semana sin registros trae los 7 días en 0 sin días cumplidos
+- `macrofit_app/test/app/app_test.dart` › meta vigente en la pantalla principal (HU-26) › resumen semanal (HU-11) › muestra las calorías de los 7 días contra la meta
+- `macrofit_app/test/app/app_test.dart` › meta vigente en la pantalla principal (HU-26) › resumen semanal (HU-11) › los días sin registros aparecen en 0
+
+### <a id="caso-59"></a>Caso 59 · HU-11 — Promedio diario y días con la meta cumplida (RF-10)
+
+Mobile: 1 · Backend: 0
+
+**Mobile**
+
+- `macrofit_app/test/app/app_test.dart` › meta vigente en la pantalla principal (HU-26) › resumen semanal (HU-11) › muestra el promedio y los días con la meta cumplida
+
+### <a id="caso-60"></a>Caso 60 · HU-11 — Cada día indica si cumplió la meta sin depender del color
+
+Mobile: 1 · Backend: 0
+
+**Mobile**
+
+- `macrofit_app/test/app/app_test.dart` › meta vigente en la pantalla principal (HU-26) › resumen semanal (HU-11) › cada día indica si cumplió la meta sin depender del color
+
+### <a id="caso-61"></a>Caso 61 · HU-11 — Cambio a la semana anterior o siguiente
+
+Mobile: 12 · Backend: 0
+
+**Mobile**
+
+- `macrofit_app/test/features/summary/presentation/weekly_summary_view_model_test.dart` › la semana inicial termina hoy
+- `macrofit_app/test/features/summary/presentation/weekly_summary_view_model_test.dart` › hoy se toma en hora de México, no en UTC
+- `macrofit_app/test/features/summary/presentation/weekly_summary_view_model_test.dart` › la semana siguiente no puede terminar después de hoy
+- `macrofit_app/test/features/summary/presentation/weekly_summary_view_model_test.dart` › previousWeek va 7 días atrás y vuelve a consultar
+- `macrofit_app/test/features/summary/presentation/weekly_summary_view_model_test.dart` › nextWeek regresa a la semana siguiente y se detiene en hoy
+- `macrofit_app/test/features/summary/presentation/weekly_summary_view_model_test.dart` › al cambiar de semana se quita la anterior mientras carga
+- `macrofit_app/test/features/summary/presentation/weekly_summary_view_model_test.dart` › un error al cambiar de semana no deja la semana anterior bajo otras fechas
+- `macrofit_app/test/features/summary/presentation/weekly_summary_view_model_test.dart` › la respuesta de una semana que ya no se ve se descarta
+- `macrofit_app/test/app/app_test.dart` › meta vigente en la pantalla principal (HU-26) › resumen semanal (HU-11) › cambia a la semana anterior y regresa a la siguiente
+- `macrofit_app/test/features/summary/domain/app_day_test.dart` › shiftDay › suma y resta días cruzando mes y año
+- `macrofit_app/test/features/summary/domain/app_day_test.dart` › shiftDay › respeta los años bisiestos
+- `macrofit_app/test/features/summary/domain/app_day_test.dart` › weekdayOf, dayOfMonth y monthOf leen el día YYYY-MM-DD
+
+### <a id="caso-62"></a>Caso 62 · HU-11 — Sin meta y sin conexión al consultar la semana (RNF-11)
+
+Mobile: 7 · Backend: 0
+
+**Mobile**
+
+- `macrofit_app/test/features/summary/presentation/weekly_summary_view_model_test.dart` › sin meta (404 PROFILE_NOT_FOUND) no se considera un error
+- `macrofit_app/test/features/summary/presentation/weekly_summary_view_model_test.dart` › antes de cargar no se considera que falte el resumen
+- `macrofit_app/test/features/summary/presentation/weekly_summary_view_model_test.dart` › sin conexión muestra el error y permite reintentar
+- `macrofit_app/test/features/summary/presentation/weekly_summary_view_model_test.dart` › un error al recargar la misma semana conserva el resumen
+- `macrofit_app/test/features/summary/presentation/weekly_summary_view_model_test.dart` › no lanza una segunda consulta mientras otra está en curso
+- `macrofit_app/test/app/app_test.dart` › meta vigente en la pantalla principal (HU-26) › resumen semanal (HU-11) › sin meta muestra un mensaje y no un error
+- `macrofit_app/test/app/app_test.dart` › meta vigente en la pantalla principal (HU-26) › resumen semanal (HU-11) › sin conexión muestra el error en español y reintenta
+
+### <a id="caso-63"></a>Caso 63 · HU-11 — Acceso y ruta del resumen semanal
+
+Mobile: 3 · Backend: 0
+
+**Mobile**
+
+- `macrofit_app/test/app/app_test.dart` › meta vigente en la pantalla principal (HU-26) › resumen semanal (HU-11) › el botón del inicio abre el resumen semanal
+- `macrofit_app/test/app/router_test.dart` › resumen semanal (HU-11) › un usuario con perfil abre el resumen semanal
+- `macrofit_app/test/app/router_test.dart` › resumen semanal (HU-11) › un coach, un usuario sin perfil o sin sesión no lo abren
+
+### <a id="caso-64"></a>Caso 64 · HU-09 — Guardar el registro y regresar al historial del día
+
+Mobile: 7 · Backend: 0
+
+**Mobile**
+
+- `macrofit_app/test/features/meals/presentation/meal_estimate_view_model_test.dart` › guardar sin corregir (HU-09) › manda los totales como finales y en estimated con la foto
+- `macrofit_app/test/features/meals/presentation/meal_estimate_view_model_test.dart` › guardar sin corregir (HU-09) › sin estimación no guarda
+- `macrofit_app/test/features/meals/presentation/meal_estimate_view_model_test.dart` › guardar sin corregir (HU-09) › un registro guardado no se vuelve a enviar
+- `macrofit_app/test/app/app_test.dart` › formulario de valores (HU-08) › Corregir valores abre el formulario precargado y Guardar registra lo corregido
+- `macrofit_app/test/app/app_test.dart` › formulario de valores (HU-08) › comida no reconocida: Capturar a mano abre el formulario vacío y guarda sin estimated
+
+### <a id="caso-65"></a>Caso 65 · HU-09 — Registro por foto en 4 toques o menos
+
+Mobile: 1 · Backend: 0
+
+**Mobile**
+
+- `macrofit_app/test/app/app_test.dart` › historial de comidas (HU-09) › registro por foto en 4 toques desde el inicio hasta guardar (RNF-09)
+
+### <a id="caso-66"></a>Caso 66 · HU-09 — Historial del día
+
+Mobile: 9 · Backend: 0
+
+**Mobile**
+
+- `macrofit_app/test/features/meals/data/meals_repository_impl_test.dart` › historial (GET /meals, DELETE /meals/{id}, fotos) › pide el día con ?date=AAAA-MM-DD y conserva el orden de la API
+- `macrofit_app/test/features/meals/data/meals_repository_impl_test.dart` › historial (GET /meals, DELETE /meals/{id}, fotos) › un día sin registros es una lista vacía
+- `macrofit_app/test/features/meals/data/meals_repository_impl_test.dart` › historial (GET /meals, DELETE /meals/{id}, fotos) › descarga la foto de un registro como bytes
+- `macrofit_app/test/features/meals/presentation/meal_history_view_model_test.dart` › cargar el día › empieza en hoy y muestra los registros en el orden de la API
+- `macrofit_app/test/features/meals/presentation/meal_history_view_model_test.dart` › cargar el día › con el día del registro guardado empieza en ese día
+- `macrofit_app/test/features/meals/presentation/meal_history_view_model_test.dart` › cargar el día › el total del día suma los valores finales
+- `macrofit_app/test/features/meals/presentation/meal_history_view_model_test.dart` › cargar el día › un día sin registros lo indica
+- `macrofit_app/test/features/meals/presentation/meal_history_view_model_test.dart` › cargar el día › un error muestra el mensaje y reintentar vuelve a cargar
+- `macrofit_app/test/app/app_test.dart` › historial de comidas (HU-09) › Mis comidas muestra hora, foto y valores de cada registro del día
+
+### <a id="caso-67"></a>Caso 67 · HU-09 — Cambio de fecha
+
+Mobile: 4 · Backend: 0
+
+**Mobile**
+
+- `macrofit_app/test/features/meals/presentation/meal_history_view_model_test.dart` › cambiar de día › el día anterior carga ese día
+- `macrofit_app/test/features/meals/presentation/meal_history_view_model_test.dart` › cambiar de día › no avanza más allá de hoy
+- `macrofit_app/test/features/meals/presentation/meal_history_view_model_test.dart` › cambiar de día › elegir una fecha ignora la hora y una fecha futura se lleva a hoy
+- `macrofit_app/test/app/app_test.dart` › historial de comidas (HU-09) › un día sin registros lo indica y se puede cambiar de día
+
+### <a id="caso-68"></a>Caso 68 · HU-09 — Eliminar con confirmación
+
+Mobile: 8 · Backend: 0
+
+**Mobile**
+
+- `macrofit_app/test/features/meals/data/meals_repository_impl_test.dart` › historial (GET /meals, DELETE /meals/{id}, fotos) › eliminar usa DELETE /meals/{id}
+- `macrofit_app/test/features/meals/data/meals_repository_impl_test.dart` › historial (GET /meals, DELETE /meals/{id}, fotos) › 404 al eliminar se traduce a ApiException MEAL_NOT_FOUND
+- `macrofit_app/test/features/meals/presentation/meal_history_view_model_test.dart` › eliminar › quita el registro de la lista y lo avisa una sola vez
+- `macrofit_app/test/features/meals/presentation/meal_history_view_model_test.dart` › eliminar › 404 MEAL_NOT_FOUND recarga la lista con un mensaje
+- `macrofit_app/test/features/meals/presentation/meal_history_view_model_test.dart` › eliminar › sin conexión conserva la lista y muestra el error
+- `macrofit_app/test/features/meals/presentation/meal_history_view_model_test.dart` › eliminar › otro error de la API también conserva la lista
+- `macrofit_app/test/app/app_test.dart` › historial de comidas (HU-09) › eliminar pide confirmación: cancelar lo conserva y confirmar lo quita
+- `macrofit_app/test/app/app_test.dart` › historial de comidas (HU-09) › si el registro ya no existía recarga la lista y lo avisa (404 MEAL_NOT_FOUND)
+
+### <a id="caso-69"></a>Caso 69 · HU-09 — Errores de la foto al guardar sin perder los valores
+
+Mobile: 4 · Backend: 0
+
+**Mobile**
+
+- `macrofit_app/test/features/meals/presentation/meal_estimate_view_model_test.dart` › guardar sin corregir (HU-09) › 409 PHOTO_ALREADY_USED muestra el error y conserva la estimación
+- `macrofit_app/test/features/meals/presentation/meal_estimate_view_model_test.dart` › guardar sin corregir (HU-09) › 404 PHOTO_NOT_FOUND muestra el error y conserva la estimación
+- `macrofit_app/test/features/meals/presentation/meal_form_view_model_test.dart` › errores › 409 PHOTO_ALREADY_USED muestra el mensaje sin perder los valores
+- `macrofit_app/test/features/meals/presentation/meal_form_view_model_test.dart` › errores › 404 PHOTO_NOT_FOUND muestra el mensaje sin perder los valores
+
+### <a id="caso-70"></a>Caso 70 · HU-09 — Ruta del historial
+
+Mobile: 2 · Backend: 0
+
+**Mobile**
+
+- `macrofit_app/test/app/router_test.dart` › historial de comidas (HU-09) › un usuario con perfil abre "Mis comidas"
+- `macrofit_app/test/app/router_test.dart` › historial de comidas (HU-09) › un coach, un usuario sin perfil o sin sesión no lo abren
