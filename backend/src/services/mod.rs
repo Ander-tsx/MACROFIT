@@ -9,6 +9,8 @@ pub mod meal_estimates;
 pub mod meals;
 pub mod photos;
 pub mod profile;
+pub mod routine_engine;
+pub mod routines;
 pub mod session;
 pub mod summary;
 pub mod weights;
