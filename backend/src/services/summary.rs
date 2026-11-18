@@ -481,6 +481,31 @@ mod tests {
         assert_eq!(week.days[2].summary.consumed.calories_kcal, 2000.0);
     }
 
+    /// RN-06 / RF-21 — con la meta del coach desde el 19 (fecha de México), el 18 se compara contra la calculada y
+    /// desde el 19 contra la del coach. Antes, la fecha se guardaba a las 00:00 UTC y el 18 ya usaba la del coach.
+    #[test]
+    fn el_dia_anterior_al_inicio_de_la_meta_del_coach_usa_la_que_regia() {
+        let mexico = crate::config::default_utc_offset();
+        let on = |d: u32| NaiveDate::from_ymd_opt(2026, 11, d).unwrap();
+        let mut system = goal(GoalSource::System);
+        system.calories = 1843;
+        system.effective_from = crate::validation::start_of_day(on(1), mexico);
+        let mut coach = goal(GoalSource::Coach);
+        coach.calories = 2000;
+        coach.effective_from = crate::validation::start_of_day(on(19), mexico);
+        let goals_list = [system, coach];
+
+        let source_on = |d: u32| {
+            goals::pick_goal_at(&goals_list, end_of_day(on(d), mexico))
+                .map(|g| (g.source, g.calories))
+                .unwrap()
+        };
+        assert_eq!(source_on(17), (GoalSource::System, 1843));
+        assert_eq!(source_on(18), (GoalSource::System, 1843));
+        assert_eq!(source_on(19), (GoalSource::Coach, 2000));
+        assert_eq!(source_on(20), (GoalSource::Coach, 2000));
+    }
+
     #[test]
     fn cada_dia_se_compara_con_la_meta_vigente_ese_dia() {
         let mut days = week_goals(2000);

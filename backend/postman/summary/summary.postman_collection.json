@@ -3203,7 +3203,7 @@
                   "    const round1 = (n) => Math.round(n * 10) / 10;",
                   "    const start = pm.variables.get(\"weekly_query_start\");",
                   "    const sent = (function () { const o = {}; o[pm.collectionVariables.get(\"weekly_today\")] = { calories_kcal: round1(Number(pm.collectionVariables.get(\"weekly_meal_a_kcal\")) + Number(pm.collectionVariables.get(\"weekly_meal_b_kcal\")) + Number(pm.collectionVariables.get(\"weekly_meal_c_kcal\"))), protein_g: 90, fat_g: 30 }; return o; })();",
-                  "    const goalFor = (function (date) { const from = addDays(pm.collectionVariables.get(\"weekly_today\"), 3); if (date < addDays(from, -1)) { return { source: \"system\", calories_kcal: Number(pm.collectionVariables.get(\"weekly_goal_calories\")), protein_g: Number(pm.collectionVariables.get(\"weekly_goal_protein\")), fat_g: Number(pm.collectionVariables.get(\"weekly_goal_fat\")) }; } if (date >= from) { return { source: \"coach\", calories_kcal: 2000, protein_g: 150, fat_g: 60 }; } return null; });",
+                  "    const goalFor = (function (date) { const from = addDays(pm.collectionVariables.get(\"weekly_today\"), 3); if (date < from) { return { source: \"system\", calories_kcal: Number(pm.collectionVariables.get(\"weekly_goal_calories\")), protein_g: Number(pm.collectionVariables.get(\"weekly_goal_protein\")), fat_g: Number(pm.collectionVariables.get(\"weekly_goal_fat\")) }; } if (date >= from) { return { source: \"coach\", calories_kcal: 2000, protein_g: 150, fat_g: 60 }; } return null; });",
                   "    const zero = { calories_kcal: 0, protein_g: 0, fat_g: 0 };",
                   "    pm.test(\"Estructura: start, end, days, average y goal_met_days\", function () {",
                   "        pm.expect(data).to.have.all.keys(\"start\", \"end\", \"days\", \"average\", \"goal_met_days\");",
@@ -3256,6 +3256,13 @@
                   "        pm.expect(sources[0]).to.eql(\"system\");",
                   "        pm.expect(sources[6]).to.eql(\"coach\");",
                   "    });",
+                  "    pm.test(\"RN-06: el día justo antes del inicio usa la calculada y el día del inicio la del coach\", function () {",
+                  "        const from = addDays(pm.collectionVariables.get(\"weekly_today\"), 3);",
+                  "        const before = data.days.find((day) => day.date === addDays(from, -1));",
+                  "        const first = data.days.find((day) => day.date === from);",
+                  "        pm.expect(before.goal.source, before.date).to.eql(\"system\");",
+                  "        pm.expect(first.goal.source, first.date).to.eql(\"coach\");",
+                  "    });",
                   "}"
                 ]
               }
@@ -3289,7 +3296,7 @@
                 }
               ]
             },
-            "description": "Semana de ayer a hoy+5. Los días anteriores al inicio de la meta del coach usan la calculada y los posteriores la del coach. El día justo antes del inicio no se comprueba: la fecha de la meta es una fecha en UTC y ese día puede quedar a uno u otro lado según la zona horaria."
+            "description": "Semana de ayer a hoy+5. La meta del coach empieza a las 00:00 de México del día elegido (hoy+3): los días anteriores, incluido el día justo antes del inicio, usan la calculada, y desde el inicio la del coach (RN-06)."
           },
           "response": []
         }

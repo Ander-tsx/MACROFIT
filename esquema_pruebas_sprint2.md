@@ -41,7 +41,7 @@
 | HU-11 | Totales de calorías, proteína y grasa de cada día. | Integración | Cada día trae lo consumido ese día (igual a lo enviado), la meta de ese día y el restante; los días sin registros aparecen en 0. | [**3**](#caso-37) (mobile 0 · backend 3) |
 | HU-11 | Promedio diario con los días vacíos como 0. | Unitaria | El promedio es el total de los 7 días entre 7, redondeado a 1 decimal; una semana sin registros da promedio 0 (nunca `-0`). | [**3**](#caso-38) (mobile 0 · backend 3) |
 | HU-11 | Día con la meta cumplida. | Unitaria | Un día cumple si consumió calorías y estas quedan entre el 90 % y el 110 % de su meta (límites incluidos); sin consumo nunca cumple; `goal_met_days` cuenta los días cumplidos. | [**6**](#caso-39) (mobile 0 · backend 6) |
-| HU-11 | Meta que cambia a mitad de semana (RF-21). | Integración | Cada día se compara con la meta vigente ese día (calculada antes, del coach después), con la misma regla que `GET /users/me/goals/current`. | [**4**](#caso-40) (mobile 0 · backend 4) |
+| HU-11 | Meta que cambia a mitad de semana (RF-21). | Integración | Cada día se compara con la meta vigente ese día (calculada antes, incluido el día anterior al inicio; del coach desde las 00:00 de México del día elegido), con la misma regla que `GET /users/me/goals/current`. | [**7**](#caso-40) (mobile 0 · backend 7) |
 | HU-11 | Validación de `start`. | Integración | Un `start` ausente o con formato inválido responde 400 `VALIDATION_ERROR` con el campo `start` señalado. | [**3**](#caso-41) (mobile 0 · backend 3) |
 | HU-11 | Restricción por sesión, rol y perfil. | Integración | Sin sesión responde 401 `UNAUTHORIZED`; una cuenta de coach responde 403 `FORBIDDEN_ROLE`; un usuario sin perfil ni meta responde 404 `PROFILE_NOT_FOUND`. | [**3**](#caso-42) (mobile 0 · backend 3) |
 
@@ -577,15 +577,18 @@ Calorías entre el 90 % y el 110 % de la meta del día. En Postman el mismo día
 
 ### <a id="caso-40"></a>Caso 40 · HU-11 — Meta que cambia a mitad de semana
 
-Mobile: 0 · Backend: 4
+Mobile: 0 · Backend: 7
 
-`pick_goal_at` aplica la regla de la meta vigente a cualquier instante; la semana la usa una vez por día con una sola consulta (`get_goals_at`). En Postman el coach fija una meta que empieza a mitad de semana; el día justo antes del inicio no se comprueba porque la fecha de la meta es una fecha en UTC y ese día puede quedar a uno u otro lado según la zona horaria.
+`pick_goal_at` aplica la regla de la meta vigente a cualquier instante; la semana la usa una vez por día con una sola consulta (`get_goals_at`). La meta del coach empieza a las 00:00 de México del día elegido (`start_of_day` con `APP_UTC_OFFSET`), así que el día justo antes del inicio usa la meta que regía. En Postman el coach fija una meta que empieza a mitad de semana y se comprueba también ese día (corregido en `fix/HU-11-meta-del-coach-empieza-en-dia-de-mexico`, hallazgo H-1 de QA-04).
 
 **Backend (Rust)**
 
 - `backend/src/services/summary.rs` › `cada_dia_se_compara_con_la_meta_vigente_ese_dia`
 - `backend/src/services/goals.rs` › `meta_a_una_fecha_cambia_a_mitad_de_semana_y_la_del_coach_gana`
 - `backend/src/services/goals.rs` › `meta_a_una_fecha_anterior_a_la_primera_meta_no_existe`
+- `backend/src/services/summary.rs` › `el_dia_anterior_al_inicio_de_la_meta_del_coach_usa_la_que_regia`
+- `backend/src/services/goals.rs` › `la_meta_del_coach_empieza_a_la_medianoche_de_la_zona_de_la_app`
+- `backend/src/validation.rs` › `el_dia_empieza_a_la_medianoche_de_la_zona_de_la_app`
 
 **Backend (Postman)**
 
