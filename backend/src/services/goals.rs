@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use chrono::FixedOffset;
 use mongodb::{
     Database,
     bson::{DateTime, Document, doc, oid::ObjectId, to_bson},
@@ -11,7 +12,7 @@ use crate::error::{AppError, FieldErrors};
 use crate::models::goal::{GOALS_COLLECTION, GoalSource, NutritionalGoal};
 use crate::models::profile::{Gender, Objective, PROFILES_COLLECTION, UserProfile};
 use crate::services::coach_links;
-use crate::validation::{check, date_to_bson, parse_date};
+use crate::validation::{check, parse_date, start_of_day};
 
 const MS_PER_DAY: i64 = 86_400_000;
 
@@ -167,7 +168,7 @@ pub struct CoachGoalInput {
     pub calories: Option<Value>,
     pub protein_g: Option<Value>,
     pub fat_g: Option<Value>,
-    /// `YYYY-MM-DD`.
+    /// `YYYY-MM-DD`: día de la app (`APP_UTC_OFFSET`) en que empieza la meta.
     pub effective_from: Option<String>,
 }
 
@@ -176,6 +177,7 @@ pub struct ValidCoachGoal {
     pub calories: i32,
     pub protein_g: i32,
     pub fat_g: i32,
+    /// 00:00 del día elegido en la zona de la app, para que la meta no rija desde el día anterior (RN-06).
     pub effective_from: DateTime,
 }
 
@@ -191,14 +193,20 @@ fn parse_positive_int(value: Value, label: &str, max: i32) -> Result<i32, String
     }
 }
 
-fn parse_effective_from(value: String) -> Result<DateTime, String> {
-    parse_date(value.trim()).map(date_to_bson).ok_or_else(|| {
-        "La fecha de vigencia debe ser una fecha válida con formato AAAA-MM-DD".into()
-    })
+fn parse_effective_from(value: String, offset: FixedOffset) -> Result<DateTime, String> {
+    parse_date(value.trim())
+        .map(|date| start_of_day(date, offset))
+        .ok_or_else(|| {
+            "La fecha de vigencia debe ser una fecha válida con formato AAAA-MM-DD".into()
+        })
 }
 
-/// Valida todos los campos de la meta y los señala a la vez.
-pub fn validate_coach_goal(input: CoachGoalInput) -> Result<ValidCoachGoal, AppError> {
+/// Valida todos los campos de la meta y los señala a la vez. `offset` es la zona de la app (`APP_UTC_OFFSET`):
+/// la meta empieza a las 00:00 de `effective_from` en esa zona.
+pub fn validate_coach_goal(
+    input: CoachGoalInput,
+    offset: FixedOffset,
+) -> Result<ValidCoachGoal, AppError> {
     let mut errors = FieldErrors::new();
 
     let calories = check(
@@ -231,7 +239,7 @@ pub fn validate_coach_goal(input: CoachGoalInput) -> Result<ValidCoachGoal, AppE
         input.effective_from,
         true,
         "La fecha de vigencia es obligatoria",
-        parse_effective_from,
+        |value| parse_effective_from(value, offset),
     );
 
     match (calories, protein_g, fat_g, effective_from) {
@@ -435,15 +443,16 @@ pub async fn get_goals_history(
 }
 
 /// HU-05 — el coach fija una meta para un cliente vinculado. Se agrega al historial;
-/// las anteriores no se modifican.
+/// las anteriores no se modifican. Empieza a las 00:00 de `effective_from` en la zona `offset` de la app.
 pub async fn set_client_goal(
     db: &Database,
     coach_id: ObjectId,
     client_id: &str,
+    offset: FixedOffset,
     input: CoachGoalInput,
 ) -> Result<NutritionalGoal, AppError> {
     let client_id = coach_links::require_active_link(db, coach_id, client_id).await?;
-    let valid = validate_coach_goal(input)?;
+    let valid = validate_coach_goal(input, offset)?;
 
     let goal = NutritionalGoal {
         id: ObjectId::new(),
@@ -714,8 +723,12 @@ mod tests {
         }
     }
 
+    fn mexico() -> FixedOffset {
+        crate::config::default_utc_offset()
+    }
+
     fn invalid_fields(input: CoachGoalInput) -> Vec<String> {
-        match validate_coach_goal(input) {
+        match validate_coach_goal(input, mexico()) {
             Err(AppError::Validation(fields)) => fields.into_keys().collect(),
             other => panic!("se esperaban errores de validación, llegó {other:?}"),
         }
@@ -723,15 +736,35 @@ mod tests {
 
     #[test]
     fn meta_de_coach_valida_se_acepta() {
-        let goal = validate_coach_goal(coach_input()).unwrap();
+        let goal = validate_coach_goal(coach_input(), mexico()).unwrap();
         assert_eq!(
             goal,
             ValidCoachGoal {
                 calories: 2200,
                 protein_g: 160,
                 fat_g: 70,
-                effective_from: date("2026-10-09T00:00:00Z"),
+                effective_from: date("2026-10-09T06:00:00Z"),
             }
+        );
+    }
+
+    /// RN-06 / RF-21 — la meta del coach del 19 no rige el 18 en México: empieza a las 00:00 locales del 19
+    /// (06:00 UTC), no a las 00:00 UTC (18:00 del 18 en México).
+    #[test]
+    fn la_meta_del_coach_empieza_a_la_medianoche_de_la_zona_de_la_app() {
+        let input = CoachGoalInput {
+            effective_from: Some("2026-11-19".into()),
+            ..coach_input()
+        };
+        let starts = validate_coach_goal(input, mexico()).unwrap().effective_from;
+        assert_eq!(starts, date("2026-11-19T06:00:00Z"));
+        assert!(
+            date("2026-11-19T05:59:59.999Z") < starts,
+            "el 18 a las 23:59:59.999 en México todavía no rige"
+        );
+        assert!(
+            date("2026-11-19T00:00:00Z") < starts,
+            "el 18 a las 18:00 en México todavía no rige"
         );
     }
 

@@ -388,7 +388,7 @@ La vinculación se comprueba antes de validar el cuerpo.
 |---|---|
 | `calories` | Entero de 1 a 10 000 |
 | `protein_g`, `fat_g` | Entero de 1 a 1 000 |
-| `effective_from` | Fecha válida `YYYY-MM-DD` (medianoche UTC) |
+| `effective_from` | Fecha válida `YYYY-MM-DD`: la meta empieza a las 00:00 de ese día en la zona de la app (`APP_UTC_OFFSET`, México UTC−6). Se guarda y se devuelve como ese instante: `2026-10-09` → `2026-10-09T06:00:00Z` |
 
 **201 Created** — misma forma que `GET /users/me/goals/current` (HU-04) con `source: "coach"` y `set_by` igual al id del coach.
 La meta se agrega al historial; las anteriores no se modifican. Errores: `400 VALIDATION_ERROR` (campos en `fields`;
@@ -399,6 +399,10 @@ un texto o un decimal se señalan en su campo), `400 INVALID_BODY`.
 **Meta vigente (HU-04 y HU-05):** es la de `effective_from` más reciente que ya empezó (las de fecha futura todavía no
 aplican). Una meta de coach vigente tiene prioridad sobre las calculadas, y editar el perfil nunca la reemplaza.
 Un cliente sin perfil recibe la meta del coach en `GET /users/me/goals/current`.
+
+Como `effective_from` es la medianoche de México y no la de UTC, el día anterior a la fecha elegida sigue con la meta que
+regía: en el resumen diario y semanal (RN-06 / RF-21) y en `GET /users/me/goals/current`, que no cambia a las 18:00 del día
+anterior.
 
 ### Lista de clientes — GET `/coach/clients` (HU-05, HU-24)
 
@@ -1165,6 +1169,26 @@ Para probar la API en este ambiente, importa `postman/MacroFit.deployed.postman_
 ### Límites del plan
 
 El plan gratuito de Railway funciona con un crédito de uso limitado, no con recursos ilimitados (riesgo S-05). Revisa el consumo en el panel del proyecto (*Usage*) antes de las pruebas del Sprint 3. Si se agota, los servicios se detienen hasta renovar el crédito o cambiar de plan.
+
+### Migración: metas del coach guardadas a medianoche UTC
+
+Hasta `fix/HU-11-meta-del-coach-empieza-en-dia-de-mexico`, `effective_from` de las metas del coach se guardaba a las 00:00 UTC
+(18:00 del día anterior en México), y el día anterior quedaba con la meta del coach. Las metas creadas antes del fix se
+corrigen una vez con `mongosh`, en la base desplegada (`macrofit_prod`) y en las de desarrollo que las tengan:
+
+```js
+db.goals.updateMany(
+  { source: "coach", $expr: { $and: [
+    { $eq: [{ $hour: "$effective_from" }, 0] }, { $eq: [{ $minute: "$effective_from" }, 0] },
+    { $eq: [{ $second: "$effective_from" }, 0] }, { $eq: [{ $millisecond: "$effective_from" }, 0] },
+  ] } },
+  [{ $set: { effective_from: { $dateAdd: { startDate: "$effective_from", unit: "hour", amount: 6 } } } }],
+)
+```
+
+Solo toca metas del coach que están exactamente a las 00:00:00.000 UTC y las pasa a las 06:00 UTC (00:00 de México, con
+`APP_UTC_OFFSET=-06:00`). Correrlo otra vez no cambia nada, porque ya no quedan metas a esa hora. Las metas calculadas no
+se tocan: su `effective_from` es el instante en que se generaron.
 
 ### Datos de prueba en el ambiente desplegado
 
