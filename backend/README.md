@@ -1019,6 +1019,12 @@ Cabecera `Authorization: Bearer <access_token>`. **Solo rol `user`**. Registra y
 marcó como completadas (RF-16). Colección `routine_sessions`
 ([esquema](src/models/README.md#colección-routine_sessions-routine_sessionrs)), que HU-22 lee para el cumplimiento.
 
+**Cumplimiento (HU-22 / HU-23).** `GET /users/me/progress` y `GET /coach/clients/{clientId}/progress` devuelven en
+`compliance` bloques de 7 días desde `from` (el último puede ser más corto). `completed_sessions` es el número de
+documentos de `routine_sessions` del usuario cuyo `date` cae en el bloque: cuentan los de la rutina recomendada y los
+de las asignadas, también los de una rutina regenerada, retirada o de un coach desvinculado (RF-24). Dos rutinas
+distintas completadas el mismo día cuentan dos. `training_days` son los días de entrenamiento del perfil.
+
 La rutina `{id}` debe ser accesible para el usuario (misma comprobación que `GET /routines/{id}` de HU-16):
 
 | Origen | Rutina accesible | Sesiones |
