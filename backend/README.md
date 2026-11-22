@@ -192,6 +192,7 @@ El contrato completo (cuerpos, respuestas y códigos de error de cada endpoint) 
 | GET | `/coach/test` | Bearer (coach) | TEC-05 | Prueba de la regla de acceso por rol |
 | GET | `/coach/invite-code` | Bearer (coach) | HU-12 | Código de invitación del coach; se crea si no existe |
 | POST | `/coach/invite-code/regenerate` | Bearer (coach) | HU-12 | Genera un código nuevo; el anterior deja de ser válido |
+| GET | `/users/me/coach-link/preview?invite_code=` | Bearer (user) | HU-13 | Nombre del coach de un código, para confirmar antes de vincularse (no vincula) |
 | GET | `/users/me/coach-link` | Bearer (user) | HU-13 | Coach con el que el usuario tiene vinculación activa (`404 USER_NOT_LINKED` si no tiene) |
 | POST | `/users/me/coach-link` | Bearer (user) | HU-13 | Vincula al usuario con un coach mediante su código de invitación |
 | DELETE | `/users/me/coach-link` | Bearer (user) | HU-14 | Desvincula al usuario de su coach activo |
@@ -453,7 +454,8 @@ Cabecera `Authorization: Bearer <access_token>`. **Solo rol `user`** (`403 FORBI
 |---|---|
 | `invite_code` | Obligatorio. Se normaliza (sin espacios alrededor y en mayúsculas) |
 
-Un usuario solo puede tener **una vinculación activa**. Si ya existía una vinculación previa con ese coach, se reactiva.
+Un usuario solo puede tener **una vinculación activa** (RN-02; lo garantiza el índice `user_id_active_unique` aunque
+lleguen dos peticiones a la vez). Si ya existía una vinculación previa con ese coach, se reactiva.
 
 **201 Created**
 
@@ -464,6 +466,21 @@ Un usuario solo puede tener **una vinculación activa**. Si ya existía una vinc
 **Errores:** `400 VALIDATION_ERROR` (falta `invite_code`), `400 INVALID_BODY`, `401 UNAUTHORIZED`,
 `403 FORBIDDEN_ROLE`, `404 INVITE_CODE_NOT_FOUND` (el código no existe o su dueño ya no es coach),
 `409 USER_ALREADY_LINKED`.
+
+### GET `/users/me/coach-link/preview` (HU-13, CU-02 paso 4)
+
+Cabecera `Authorization: Bearer <access_token>`. **Solo rol `user`** (`403 FORBIDDEN_ROLE` para un `coach`).
+Valida `invite_code` (query, con las mismas reglas que el `POST`) y devuelve el coach para que el usuario confirme
+antes de vincularse. **No crea ni cambia ninguna vinculación.**
+
+```bash
+curl "http://localhost:3000/api/v1/users/me/coach-link/preview?invite_code=K7P2QX" -H "Authorization: Bearer <access_token>"
+```
+
+**200 OK** → `{ "coach_name": "Laura" }`
+
+**Errores:** `400 VALIDATION_ERROR` en `invite_code` (ausente o vacío), `401 UNAUTHORIZED`, `403 FORBIDDEN_ROLE`,
+`404 INVITE_CODE_NOT_FOUND`, `409 USER_ALREADY_LINKED` (ya tiene un coach activo: debe desvincularse primero, CU-02 4b).
 
 ### DELETE `/users/me/coach-link` (HU-14)
 

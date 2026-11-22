@@ -8,7 +8,254 @@
       "name": "HU-13 Vinculación",
       "item": [
         {
-          "name": "01 - Vincular con código válido",
+          "name": "01 - Vista previa del código",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{user_access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/me/coach-link/preview?invite_code={{coach_invite_code}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "me",
+                "coach-link",
+                "preview"
+              ],
+              "query": [
+                {
+                  "key": "invite_code",
+                  "value": "{{coach_invite_code}}"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "  pm.test('Status 200 OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "  });",
+                  "  const data = pm.response.json();",
+                  "  pm.test('Solo devuelve el nombre del coach', function () {",
+                  "    pm.expect(data).to.have.all.keys('coach_name');",
+                  "    pm.expect(data.coach_name).to.be.a('string').and.not.empty;",
+                  "  });",
+                  "  pm.collectionVariables.set('preview_coach_name', data.coach_name);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "02 - La vista previa no vincula",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{user_access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/me/coach-link",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "me",
+                "coach-link"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "  pm.test('Status 404 Not Found', function () {",
+                  "    pm.response.to.have.status(404);",
+                  "  });",
+                  "  const body = pm.response.json();",
+                  "  pm.test('error.code == USER_NOT_LINKED', function () {",
+                  "    pm.expect(body.error.code).to.eql('USER_NOT_LINKED');",
+                  "  });",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "03 - Vista previa con código inexistente",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{user_access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/me/coach-link/preview?invite_code=ZZZZZZ",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "me",
+                "coach-link",
+                "preview"
+              ],
+              "query": [
+                {
+                  "key": "invite_code",
+                  "value": "ZZZZZZ"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "  pm.test('Status 404 Not Found', function () {",
+                  "    pm.response.to.have.status(404);",
+                  "  });",
+                  "  const body = pm.response.json();",
+                  "  pm.test('error.code == INVITE_CODE_NOT_FOUND', function () {",
+                  "    pm.expect(body.error.code).to.eql('INVITE_CODE_NOT_FOUND');",
+                  "  });",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "04 - Vista previa sin código",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{user_access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/me/coach-link/preview",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "me",
+                "coach-link",
+                "preview"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "  pm.test('Status 400 Bad Request', function () {",
+                  "    pm.response.to.have.status(400);",
+                  "  });",
+                  "  const body = pm.response.json();",
+                  "  pm.test('error.code == VALIDATION_ERROR', function () {",
+                  "    pm.expect(body.error.code).to.eql('VALIDATION_ERROR');",
+                  "  });",
+                  "  pm.test('Señala el campo invite_code', function () {",
+                  "    pm.expect(body.error.fields).to.have.all.keys('invite_code');",
+                  "  });",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "05 - Vista previa con cuenta de coach",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{coach_access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/me/coach-link/preview?invite_code={{coach_invite_code}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "me",
+                "coach-link",
+                "preview"
+              ],
+              "query": [
+                {
+                  "key": "invite_code",
+                  "value": "{{coach_invite_code}}"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "  pm.test('Status 403 Forbidden', function () {",
+                  "    pm.response.to.have.status(403);",
+                  "  });",
+                  "  const body = pm.response.json();",
+                  "  pm.test('error.code == FORBIDDEN_ROLE', function () {",
+                  "    pm.expect(body.error.code).to.eql('FORBIDDEN_ROLE');",
+                  "  });",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "06 - Vincular con código válido",
           "request": {
             "method": "POST",
             "header": [
@@ -59,6 +306,9 @@
                   "    pm.expect(data).to.have.all.keys('id', 'coach_id', 'coach_name', 'coach_email', 'status');",
                   "    pm.expect(data.status).to.eql('active');",
                   "  });",
+                  "  pm.test('Es el coach que mostró la vista previa (CU-02 pasos 4 y 5)', function () {",
+                  "    pm.expect(data.coach_name).to.eql(pm.collectionVariables.get('preview_coach_name'));",
+                  "  });",
                   "}"
                 ]
               }
@@ -66,7 +316,7 @@
           ]
         },
         {
-          "name": "02 - Verificación en lista del coach",
+          "name": "07 - Verificación en lista del coach",
           "request": {
             "method": "GET",
             "header": [
@@ -132,7 +382,7 @@
           ]
         },
         {
-          "name": "03 - Código inexistente",
+          "name": "08 - Código inexistente",
           "request": {
             "method": "POST",
             "header": [
@@ -188,7 +438,7 @@
           ]
         },
         {
-          "name": "04 - Código regenerado",
+          "name": "09 - Código regenerado",
           "request": {
             "method": "POST",
             "header": [
@@ -244,7 +494,7 @@
           ]
         },
         {
-          "name": "05 - Usuario ya vinculado",
+          "name": "10 - Usuario ya vinculado",
           "request": {
             "method": "POST",
             "header": [
@@ -343,7 +593,58 @@
           ]
         },
         {
-          "name": "06 - Cuenta de coach",
+          "name": "11 - Vista previa con un coach activo",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{user_access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/me/coach-link/preview?invite_code={{other_coach_invite_code}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "me",
+                "coach-link",
+                "preview"
+              ],
+              "query": [
+                {
+                  "key": "invite_code",
+                  "value": "{{other_coach_invite_code}}"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "  pm.test('Status 409 Conflict', function () {",
+                  "    pm.response.to.have.status(409);",
+                  "  });",
+                  "  const body = pm.response.json();",
+                  "  pm.test('error.code == USER_ALREADY_LINKED', function () {",
+                  "    pm.expect(body.error.code).to.eql('USER_ALREADY_LINKED');",
+                  "  });",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "12 - Cuenta de coach",
           "request": {
             "method": "POST",
             "header": [
@@ -399,7 +700,7 @@
           ]
         },
         {
-          "name": "07 - Consultar coach vinculado",
+          "name": "13 - Consultar coach vinculado",
           "request": {
             "method": "GET",
             "header": [
@@ -442,7 +743,7 @@
           ]
         },
         {
-          "name": "08 - Consultar con cuenta de coach",
+          "name": "14 - Consultar con cuenta de coach",
           "request": {
             "method": "GET",
             "header": [
@@ -530,7 +831,95 @@
           ]
         },
         {
-          "name": "02 - Desvincular sin estar vinculado",
+          "name": "02 - El coach ya no lo ve en su lista",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{coach_access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/coach/clients",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "coach",
+                "clients"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "  pm.test('Status 200 OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "  });",
+                  "  pm.test('El usuario desvinculado no aparece (RN-04)', function () {",
+                  "    const ids = pm.response.json().map(function (client) { return client.id; });",
+                  "    pm.expect(ids).to.not.include(pm.collectionVariables.get('linked_user_id'));",
+                  "  });",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "03 - El coach ya no ve sus metas",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{coach_access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/coach/clients/{{linked_user_id}}/goals",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "coach",
+                "clients",
+                "{{linked_user_id}}",
+                "goals"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "  pm.test('Status 403 Forbidden', function () {",
+                  "    pm.response.to.have.status(403);",
+                  "  });",
+                  "  const body = pm.response.json();",
+                  "  pm.test('error.code == CLIENT_NOT_LINKED', function () {",
+                  "    pm.expect(body.error.code).to.eql('CLIENT_NOT_LINKED');",
+                  "  });",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "04 - Desvincular sin estar vinculado",
           "request": {
             "method": "DELETE",
             "header": [
@@ -573,7 +962,7 @@
           ]
         },
         {
-          "name": "03 - Cuenta de coach intenta desvincularse",
+          "name": "05 - Cuenta de coach intenta desvincularse",
           "request": {
             "method": "DELETE",
             "header": [
@@ -616,7 +1005,7 @@
           ]
         },
         {
-          "name": "04 - Consultar sin estar vinculado",
+          "name": "06 - Consultar sin estar vinculado",
           "request": {
             "method": "GET",
             "header": [
@@ -657,6 +1046,99 @@
               }
             }
           ]
+        },
+        {
+          "name": "07 - Volver a vincularse con el mismo código",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{user_access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/me/coach-link",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "me",
+                "coach-link"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"invite_code\": \"{{coach_invite_code}}\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "  pm.test('Status 201 Created', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "  });",
+                  "  const data = pm.response.json();",
+                  "  pm.test('La vinculación se reactiva con el mismo coach', function () {",
+                  "    pm.expect(data.status).to.eql('active');",
+                  "    pm.expect(data.coach_name).to.eql(pm.collectionVariables.get('preview_coach_name'));",
+                  "  });",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "00 - Preparación: desvincular de nuevo",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{user_access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/me/coach-link",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "me",
+                "coach-link"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "  pm.test('Status 204 No Content', function () {",
+                  "    pm.response.to.have.status(204);",
+                  "  });",
+                  "}"
+                ]
+              }
+            }
+          ]
         }
       ]
     }
@@ -668,6 +1150,10 @@
     },
     {
       "key": "other_coach_invite_code",
+      "value": ""
+    },
+    {
+      "key": "preview_coach_name",
       "value": ""
     }
   ]
