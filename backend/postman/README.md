@@ -20,6 +20,7 @@ postman/
 ├── user_routines/user_routines.postman_collection.json # src/routes/user_routines.rs → HU-16 rutinas del usuario
 ├── recommended_routines/recommended_routines.postman_collection.json # src/routes/recommended_routines.rs → HU-15 rutina recomendada
 ├── summary/summary.postman_collection.json # src/routes/summary.rs → HU-10 resumen diario y HU-11 resumen semanal (cuentas y registros propios)
+├── progress/progress.postman_collection.json # src/routes/progress.rs → HU-22 progreso del usuario y HU-23 progreso de un cliente
 └── meals/meals.postman_collection.json # src/routes/meals.rs → HU-06 carga de foto, HU-07 estimación, HU-09 registros de comida, HU-08 valores corregidos, HU-25 comidas de un cliente (archivos de prueba en meals/files/)
 ```
 

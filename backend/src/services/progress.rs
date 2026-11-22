@@ -16,7 +16,7 @@ use crate::services::{
     goals, meals, profile,
     summary::{self, DailySummary},
 };
-use crate::validation::{DATE_FORMAT, parse_date};
+use crate::validation::{DATE_FORMAT, parse_date, start_of_day};
 
 /// Rango máximo permitido de días (93 días = aprox. 3 meses).
 pub const MAX_PROGRESS_DAYS: i64 = 93;
@@ -106,7 +106,8 @@ pub async fn get_progress(
 ) -> Result<ProgressResponse, AppError> {
     let (from_date, to_date) = validate_range(from, to)?;
 
-    let start_dt = summary::end_of_day(from_date, offset);
+    // Desde las 00:00 de México del primer día hasta el último instante del último (`APP_UTC_OFFSET`).
+    let start_dt = start_of_day(from_date, offset);
     let end_dt = summary::end_of_day(to_date, offset);
 
     let weights_cursor = db
@@ -284,6 +285,75 @@ mod tests {
         assert_eq!(compliance[0].training_days, 5);
     }
 
+    /// Campo y mensaje del error de `validate_range`.
+    fn range_error(from: Option<&str>, to: Option<&str>) -> (String, String) {
+        match validate_range(from.map(String::from), to.map(String::from)) {
+            Err(AppError::Validation(fields)) => {
+                assert_eq!(fields.len(), 1, "un solo campo señalado: {fields:?}");
+                fields.into_iter().next().unwrap()
+            }
+            other => panic!("se esperaba VALIDATION_ERROR, llegó {other:?}"),
+        }
+    }
+
+    #[test]
+    fn el_rango_valido_devuelve_las_dos_fechas() {
+        assert_eq!(
+            validate_range(Some("2026-11-01".into()), Some(" 2026-11-30 ".into())).unwrap(),
+            (day("2026-11-01"), day("2026-11-30"))
+        );
+        assert_eq!(
+            validate_range(Some("2026-11-17".into()), Some("2026-11-17".into())).unwrap(),
+            (day("2026-11-17"), day("2026-11-17"))
+        );
+    }
+
+    #[test]
+    fn las_fechas_ausentes_o_vacias_se_senalan() {
+        assert_eq!(range_error(None, Some("2026-11-30")).0, "from");
+        assert_eq!(range_error(Some("  "), Some("2026-11-30")).0, "from");
+        assert_eq!(range_error(Some("2026-11-01"), None).0, "to");
+        assert_eq!(range_error(Some("2026-11-01"), Some("")).0, "to");
+    }
+
+    #[test]
+    fn las_fechas_con_formato_invalido_se_senalan() {
+        for value in ["17/11/2026", "2026-13-01", "2026-02-30", "hoy"] {
+            assert_eq!(
+                range_error(Some(value), Some("2026-11-30")),
+                (
+                    "from".to_string(),
+                    "La fecha debe tener el formato YYYY-MM-DD".to_string()
+                )
+            );
+            assert_eq!(range_error(Some("2026-11-01"), Some(value)).0, "to");
+        }
+    }
+
+    #[test]
+    fn el_inicio_posterior_al_fin_se_rechaza() {
+        assert_eq!(
+            range_error(Some("2026-11-18"), Some("2026-11-17")),
+            (
+                "from".to_string(),
+                "La fecha de inicio no puede ser posterior a la de fin".to_string()
+            )
+        );
+    }
+
+    #[test]
+    fn el_rango_admite_93_dias_y_no_mas() {
+        // 2026-08-01 + 93 días = 2026-11-02.
+        assert!(validate_range(Some("2026-08-01".into()), Some("2026-11-02".into())).is_ok());
+        assert_eq!(
+            range_error(Some("2026-08-01"), Some("2026-11-03")),
+            (
+                "to".to_string(),
+                "El rango no puede superar los 93 días".to_string()
+            )
+        );
+    }
+
     /// Pruebas contra MongoDB real: `cargo test -- --ignored` con un servidor local
     /// (por defecto `mongodb://localhost:27017`; otra con la variable `TEST_MONGO_URI`). Cada prueba usa una base
     /// propia y la borra al terminar.
@@ -368,6 +438,52 @@ mod tests {
                 ]
             );
             assert!(progress.compliance.iter().all(|w| w.training_days == 4));
+            db.drop().await.unwrap();
+        }
+
+        #[tokio::test]
+        #[ignore = "requiere MongoDB"]
+        async fn los_pesos_del_primer_y_ultimo_dia_del_rango_se_incluyen() {
+            let db = test_db().await;
+            let ana = ObjectId::new();
+            with_profile(&db, ana, 4).await;
+            let offset = FixedOffset::west_opt(6 * 3600).unwrap();
+            let at = |utc: &str| {
+                DateTime::from_millis(
+                    chrono::DateTime::parse_from_rfc3339(utc)
+                        .unwrap()
+                        .timestamp_millis(),
+                )
+            };
+            // Hora de México (−06:00): 06:00Z es la medianoche local.
+            let pesos = [
+                ("2026-11-11T05:59:59Z", 70.0), // 10/11 a las 23:59 locales: antes del rango
+                ("2026-11-11T06:00:00Z", 71.0), // 11/11 a las 00:00 locales: primer día
+                ("2026-11-11T18:00:00Z", 72.0), // 11/11 a mediodía: primer día
+                ("2026-11-21T05:59:59Z", 73.0), // 20/11 a las 23:59 locales: último día
+                ("2026-11-21T06:00:00Z", 74.0), // 21/11 a las 00:00 locales: después del rango
+            ];
+            db.collection::<WeightEntry>(crate::models::weight_entry::WEIGHTS_COLLECTION)
+                .insert_many(pesos.iter().map(|(utc, weight_kg)| WeightEntry {
+                    id: ObjectId::new(),
+                    user_id: ana,
+                    weight_kg: *weight_kg,
+                    recorded_at: at(utc),
+                }))
+                .await
+                .unwrap();
+
+            let progress = get_progress(
+                &db,
+                ana,
+                offset,
+                Some("2026-11-11".into()),
+                Some("2026-11-20".into()),
+            )
+            .await
+            .unwrap();
+            let weights: Vec<f64> = progress.weights.iter().map(|w| w.weight_kg).collect();
+            assert_eq!(weights, vec![71.0, 72.0, 73.0]);
             db.drop().await.unwrap();
         }
     }
