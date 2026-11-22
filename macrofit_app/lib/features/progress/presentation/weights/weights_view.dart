@@ -53,18 +53,24 @@ class WeightsView extends StatelessWidget {
                             ErrorBanner(message: message),
                             const SizedBox(height: AppSpacing.md),
                           ],
-                          AppTextField(
-                            key: const Key('weight_input'),
-                            label: 'Peso (kg)',
-                            hint: 'Ej. 75.5',
-                            icon: LucideIcons.weight,
-                            suffixText: 'kg',
-                            errorText: viewModel.fieldError('weight_kg'),
-                            keyboardType: const TextInputType.numberWithOptions(
-                              decimal: true,
+                          // Una clave nueva tras registrar vacía el campo, que
+                          // no tiene controlador (HU-21).
+                          KeyedSubtree(
+                            key: ValueKey(viewModel.inputVersion),
+                            child: AppTextField(
+                              key: const Key('weight_input'),
+                              label: 'Peso (kg)',
+                              hint: 'Ej. 75.5',
+                              icon: LucideIcons.weight,
+                              suffixText: 'kg',
+                              errorText: viewModel.fieldError('weight_kg'),
+                              keyboardType:
+                                  const TextInputType.numberWithOptions(
+                                    decimal: true,
+                                  ),
+                              onChanged: viewModel.setWeightInput,
+                              enabled: !viewModel.isSubmitting,
                             ),
-                            onChanged: viewModel.setWeightInput,
-                            enabled: !viewModel.isSubmitting,
                           ),
                           const SizedBox(height: AppSpacing.lg),
                           PrimaryButton(

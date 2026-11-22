@@ -24,7 +24,7 @@
 | HU-22 | Restricción del progreso por sesión y rol. | Integración | Sin sesión responde 401 `UNAUTHORIZED`; una cuenta de coach en `/users/me/progress` y una de usuario en `/coach/clients/{clientId}/progress` responden 403 `FORBIDDEN_ROLE`. | [**3**](#caso-20) (mobile 0 · backend 3) |
 | HU-23 | El coach ve el mismo progreso que su cliente (RF-25). | Integración | Con vinculación activa, `GET /coach/clients/{clientId}/progress` devuelve exactamente lo mismo que `GET /users/me/progress` del cliente para el mismo periodo, incluidas las sesiones completadas. | [**2**](#caso-21) (mobile 0 · backend 2) |
 | HU-23 | Solo un coach vinculado ve el progreso (RN-04). | Integración | Un coach no vinculado, un id mal formado y el coach después de que el cliente se desvincula reciben 403 `CLIENT_NOT_LINKED`. | [**3**](#caso-22) (mobile 0 · backend 3) |
-| HU-21 | Registro de peso en la app (RF-17). | Unitaria | El peso vacío, no numérico o fuera de 35–250 kg se rechaza antes de llamar a la API; uno válido se registra y aparece al inicio del historial; los errores de red y de validación de la API se muestran; **Registrar** abre el registro desde Progreso. | [**11**](#caso-23) (mobile 11 · backend 0) |
+| HU-21 | Registro de peso en la app (RF-17). | Unitaria | El peso vacío, no numérico o fuera de 35–250 kg se rechaza antes de llamar a la API y se conserva en el campo; uno válido se registra, aparece al inicio del historial y deja el campo vacío para el siguiente; los errores de red y de validación de la API se muestran; **Registrar** abre el registro desde Progreso. | [**14**](#caso-23) (mobile 14 · backend 0) |
 | HU-22 | Gráficas de progreso por semana y por mes (RF-18). | Interfaz | Se muestran peso, consumo por día y entrenamiento; se cambia entre semana (7 días hasta hoy) y mes (del día 1 a hoy) sin pasar a un periodo futuro; un periodo sin datos muestra mensajes en lugar de gráficas; sin conexión se puede reintentar. | [**25**](#caso-24) (mobile 25 · backend 0) |
 | HU-23 | Progreso de un cliente para el coach (RF-25, RN-04). | Interfaz | Desde el detalle del cliente se abre su progreso semanal o mensual, de solo lectura (sin **Registrar**); un periodo sin datos lo indica; `CLIENT_NOT_LINKED` marca al cliente como desvinculado y regresa a la lista; sin conexión se puede reintentar. | [**18**](#caso-25) (mobile 18 · backend 0) |
 
@@ -40,7 +40,7 @@ Inventario al cerrar HU-16-API: **633** pruebas mobile (`flutter test`; sin camb
 
 Inventario al cerrar HU-15-APP: **661** pruebas mobile (`flutter test`; 633 en `develop` con HU-16-APP y HU-17-APP). HU-15-APP agrega 28 (3 de datos, 12 del ViewModel, 9 de la pantalla, 2 de rutas y 2 de flujos en `app_test`) y mueve la tarjeta de sesión del detalle de HU-16 al widget compartido `SessionPlanCard`, sin cambiar sus pruebas. Sin cambios en el backend. La prueba de punta a punta en un dispositivo físico contra la API desplegada queda pendiente (no se cuenta).
 
-Inventario al cerrar QA-08: **682** pruebas mobile (`flutter test`, sin cambios), **319** pruebas de Rust (`cargo test`: 282 se ejecutan y 37 requieren MongoDB y se ejecutan con `--ignored`) y **332** requests de Postman en la colección combinada (sin contar los 162 de preparación). QA-08 agrega 6 pruebas de Rust (5 de `validate_range` y 1 con MongoDB de los pesos del primer y último día) y el módulo de Postman `progress` con 14 requests (más 12 de preparación), y documenta los casos 17 a 25 con las pruebas de HU-21-APP, HU-22 y HU-23 que ya existían. La colección completa pasó dos veces seguidas con Newman contra una base temporal (498 requests y 1272 aserciones por corrida, 0 fallos).
+Inventario al cerrar QA-08: **685** pruebas mobile (`flutter test`; 682 en `develop`), **319** pruebas de Rust (`cargo test`: 282 se ejecutan y 37 requieren MongoDB y se ejecutan con `--ignored`) y **332** requests de Postman en la colección combinada (sin contar los 162 de preparación). QA-08 agrega 3 pruebas de widgets del registro de peso, 6 pruebas de Rust (5 de `validate_range` y 1 con MongoDB de los pesos del primer y último día) y el módulo de Postman `progress` con 14 requests (más 12 de preparación), y documenta los casos 17 a 25 con las pruebas de HU-21-APP, HU-22 y HU-23 que ya existían. La colección completa pasó dos veces seguidas con Newman contra una base temporal (498 requests y 1272 aserciones por corrida, 0 fallos).
 
 ## Detalle de las pruebas por caso
 
@@ -360,7 +360,9 @@ Mobile: 0 · Backend: 3
 
 ### <a id="caso-23"></a>Caso 23 · HU-21 — Registro de peso en la app (RF-17)
 
-Mobile: 11 · Backend: 0
+Mobile: 14 · Backend: 0
+
+Hallazgo de QA-08: después de registrar, el campo seguía mostrando el peso pero el ViewModel ya lo había vaciado, así que volver a tocar **Registrar peso** decía que estaba vacío. Ahora el campo se vacía al registrar.
 
 **Mobile**
 
@@ -375,6 +377,9 @@ Mobile: 11 · Backend: 0
 - `macrofit_app/test/features/progress/presentation/weights_view_model_test.dart` › WeightsViewModel › valida localmente peso inválido antes de llamar a la API
 - `macrofit_app/test/features/progress/presentation/weights_view_model_test.dart` › WeightsViewModel › maneja error de validación 400 de la API
 - `macrofit_app/test/app/app_test.dart` › progreso (HU-22) › "Registrar" abre el registro de peso
+- `macrofit_app/test/features/progress/presentation/weights_view_test.dart` › al registrar un peso el campo queda vacío
+- `macrofit_app/test/features/progress/presentation/weights_view_test.dart` › se puede registrar otro peso justo después del primero
+- `macrofit_app/test/features/progress/presentation/weights_view_test.dart` › un peso inválido se conserva en el campo con su mensaje
 
 
 ### <a id="caso-24"></a>Caso 24 · HU-22 — Gráficas de progreso por semana y por mes (RF-18)
