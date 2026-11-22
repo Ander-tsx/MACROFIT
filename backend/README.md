@@ -344,10 +344,10 @@ Cabecera `Authorization: Bearer <access_token>`. **Solo rol `user`**: un coach r
 > [`src/services/README.md`](src/services/README.md#meta-nutricional-hu-04-y-tec-12)). El registro de peso (HU-21)
 > valida con `services::profile::parse_weight_kg`.
 >
-> **Pendiente en la app (Sprint 3):** `macrofit_app/lib/features/profile/domain/validators/profile_validators.dart`
-> todavía usa los rangos provisionales (30–300 kg, 100–250 cm, 18–100 años) y el cálculo local de la meta en
-> `macrofit_app/lib/features/goals/` no aplica el mínimo de calorías. Hasta entonces el backend rechaza con
-> `VALIDATION_ERROR` lo que la app deje pasar fuera de los rangos nuevos.
+> La app valida los mismos rangos antes de enviar
+> (`macrofit_app/lib/features/profile/domain/validators/profile_validators.dart`). El cálculo local de la meta en
+> `macrofit_app/lib/features/goals/domain/usecases/` no aplica el mínimo de calorías, pero la app no lo usa: la meta
+> que muestra viene de este backend (HU-26).
 
 **201 Created** — además marca `users.profile_completed = true` (visible en `GET /auth/me`):
 
