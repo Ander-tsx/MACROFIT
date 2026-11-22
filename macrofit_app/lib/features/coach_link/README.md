@@ -35,4 +35,5 @@ Contrato en [backend/README.md](../../../../backend/README.md). Solo rol `user`;
 3. Errores (sin confirmación y sin borrar el código): vacío → *El código de invitación es obligatorio.*; inexistente →
    *Código inválido*; con un coach activo → *Primero debes desvincularte* (CU-02 4a y 4b); sin conexión, el mensaje
    de la API.
-4. Con coach, la pantalla muestra su nombre y correo y **Desvincularme**, que pide confirmación (RF-13).
+4. Con coach, la pantalla no pide código: muestra su nombre y correo, avisa *Para vincularte con otro coach, primero
+   desvincúlate.* (CU-02 4b) y ofrece **Desvincularme**, que pide confirmación (RF-13).

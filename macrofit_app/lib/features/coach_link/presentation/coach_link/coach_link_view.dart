@@ -207,6 +207,14 @@ class _LinkedCoach extends StatelessWidget {
               color: context.colors.onSurfaceVariant,
             ),
           ),
+          const SizedBox(height: AppSpacing.xs),
+          // CU-02 4b (RN-02): con un coach activo no se ofrece otro código.
+          Text(
+            'Para vincularte con otro coach, primero desvincúlate.',
+            style: text.bodyMedium?.copyWith(
+              color: context.colors.onSurfaceVariant,
+            ),
+          ),
           const SizedBox(height: AppSpacing.xl),
           Semantics(
             label: 'Coach: ${coach.coachName}',

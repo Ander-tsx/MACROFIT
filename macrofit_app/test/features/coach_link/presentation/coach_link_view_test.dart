@@ -170,4 +170,18 @@ void main() {
       expect(find.byKey(_input), findsOneWidget);
     },
   );
+
+  testWidgets(
+    'con un coach activo no pide código y avisa que primero debe desvincularse (CU-02 4b)',
+    (tester) async {
+      final repository = FakeCoachLinkRepository(linkedCoach: _laura);
+      await pumpCoachLink(tester, repository);
+
+      expect(find.byKey(_input), findsNothing);
+      expect(
+        find.text('Para vincularte con otro coach, primero desvincúlate.'),
+        findsOneWidget,
+      );
+    },
+  );
 }
