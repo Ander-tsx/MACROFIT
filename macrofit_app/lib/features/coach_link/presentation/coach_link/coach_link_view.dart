@@ -71,6 +71,9 @@ class CoachLinkView extends StatelessWidget {
                                 children: [
                                   AppTextField(
                                     key: const Key('invite_code_input'),
+                                    // Conserva el código al volver de la carga
+                                    // (p. ej. tras un error), igual que el ViewModel.
+                                    initialValue: viewModel.inviteCode,
                                     label: 'Código de invitación',
                                     hint: 'Ej. K7P2QX',
                                     icon: LucideIcons.qrCode,
@@ -115,6 +118,20 @@ class CoachLinkView extends StatelessWidget {
     CoachLinkViewModel viewModel,
   ) async {
     final messenger = ScaffoldMessenger.of(context);
+    // CU-02 pasos 4 y 5: primero se muestra el coach del código y se confirma.
+    final coachName = await viewModel.previewCoach();
+    if (coachName == null || !context.mounted) return;
+    final confirmed = await showConfirmDialog(
+      context: context,
+      title: 'Vincular con coach',
+      message:
+          '¿Quieres vincularte con $coachName? Podrá ver tus comidas, metas, rutinas y progreso.',
+      confirmLabel: 'Vincular',
+      icon: LucideIcons.link,
+      confirmKey: const Key('coach_link_confirm'),
+      cancelKey: const Key('coach_link_cancel'),
+    );
+    if (!confirmed) return;
     final success = await viewModel.linkCoach();
     if (success) {
       showAppSnackBar(messenger, '¡Vinculación exitosa con el coach!');
@@ -132,6 +149,8 @@ class CoachLinkView extends StatelessWidget {
       confirmLabel: 'Desvincularme',
       icon: LucideIcons.unlink,
       destructive: true,
+      confirmKey: const Key('unlink_coach_confirm'),
+      cancelKey: const Key('unlink_coach_cancel'),
     );
 
     if (confirmed && context.mounted) {

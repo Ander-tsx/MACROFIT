@@ -39,38 +39,54 @@ class CoachLinkViewModel extends ViewModel {
     }
   }
 
-  /// Vincula al usuario con el coach usando el código ingresado.
-  /// Se normaliza (trim y mayúsculas) según RF-12.
-  Future<bool> linkCoach() async {
+  /// Código sin espacios y en mayúsculas (RF-12), o `null` con el error si está vacío.
+  String? _normalizedCode() {
     final trimmed = _inviteCode.trim();
     if (trimmed.isEmpty) {
       _errorMessage = 'El código de invitación es obligatorio.';
       notifyListeners();
-      return false;
+      return null;
     }
+    return trimmed.toUpperCase();
+  }
 
-    final normalizedCode = trimmed.toUpperCase();
+  /// CU-02 paso 4 — nombre del coach del código para que el usuario confirme
+  /// antes de vincularse; `null` si el código no sirve (el motivo queda en
+  /// [errorMessage]). No vincula.
+  Future<String?> previewCoach() async {
+    final code = _normalizedCode();
+    if (code == null) return null;
+    return _call(() => _repository.previewCoach(code));
+  }
 
+  /// CU-02 pasos 5 y 6 — vincula al usuario con el coach del código ingresado.
+  Future<bool> linkCoach() async {
+    final code = _normalizedCode();
+    if (code == null) return false;
+    final link = await _call(() => _repository.linkCoach(code));
+    if (link == null) return false;
+    _linkedCoach = link;
+    notifyListeners();
+    return true;
+  }
+
+  /// Ejecuta [action] con el estado de carga y traduce los errores del código.
+  Future<T?> _call<T>(Future<T> Function() action) async {
     _isLoading = true;
     _errorMessage = null;
     notifyListeners();
-
     try {
-      _linkedCoach = await _repository.linkCoach(normalizedCode);
-      _isLoading = false;
-      notifyListeners();
-      return true;
+      return await action();
     } on ApiException catch (error) {
-      if (error.code == ApiErrorCode.inviteCodeNotFound) {
-        _errorMessage = 'Código inválido';
-      } else if (error.code == ApiErrorCode.userAlreadyLinked) {
-        _errorMessage = 'Ya tienes una vinculación activa con un coach. Primero debes desvincularte.';
-      } else {
-        _errorMessage = error.message;
-      }
+      _errorMessage = switch (error.code) {
+        ApiErrorCode.inviteCodeNotFound => 'Código inválido',
+        ApiErrorCode.userAlreadyLinked => 'Ya tienes una vinculación activa con un coach. Primero debes desvincularte.',
+        _ => error.message,
+      };
+      return null;
+    } finally {
       _isLoading = false;
       notifyListeners();
-      return false;
     }
   }
 

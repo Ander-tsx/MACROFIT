@@ -47,6 +47,10 @@ class CoachLinkRepositoryImpl implements CoachLinkRepository {
   }
 
   @override
+  Future<String> previewCoach(String inviteCode) =>
+      _remoteDataSource.previewCoach(inviteCode);
+
+  @override
   Future<CoachLink> linkCoach(String inviteCode) async {
     final model = await _remoteDataSource.linkCoach(inviteCode);
     await _storage.write(
