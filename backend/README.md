@@ -188,6 +188,8 @@ El contrato completo (cuerpos, respuestas y códigos de error de cada endpoint) 
 | DELETE | `/meals/{id}` | Bearer (user) | HU-09 | Elimina un registro propio y su foto |
 | GET | `/users/me/summary/daily?date=YYYY-MM-DD` | Bearer (user) | HU-10 | Consumo del día, meta vigente y lo que falta |
 | GET | `/users/me/summary/weekly?start=YYYY-MM-DD` | Bearer (user) | HU-11 | 7 días con totales, promedio y días con la meta cumplida |
+| GET | `/users/me/progress?from=YYYY-MM-DD&to=YYYY-MM-DD` | Bearer (user) | HU-22 | Pesos, consumo por día y cumplimiento semanal del periodo (máx. 93 días) |
+| GET | `/coach/clients/{clientId}/progress?from=&to=` | Bearer (coach) | HU-23 | El mismo progreso de un cliente vinculado (`403 CLIENT_NOT_LINKED` si no) |
 | POST | `/dev/seed/coach-links` | — (solo `APP_ENV=development`) | HU-05 | Vincula un coach con un usuario de prueba |
 | GET | `/coach/test` | Bearer (coach) | TEC-05 | Prueba de la regla de acceso por rol |
 | GET | `/coach/invite-code` | Bearer (coach) | HU-12 | Código de invitación del coach; se crea si no existe |
