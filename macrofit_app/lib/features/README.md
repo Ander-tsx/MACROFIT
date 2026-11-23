@@ -12,6 +12,7 @@ feature; si necesitan algo de otra, usan su **dominio** (p. ej. `home` usa `auth
 | `meals/` | HU-06 tomar o elegir la foto de la comida y subirla; HU-07 estimación nutricional de la foto; HU-08 corrección de valores y captura manual; HU-09 guardar, historial del día y eliminación | [meals/README.md](meals/README.md) |
 | `clients/` | HU-24 lista de clientes del coach con búsqueda y detalle, HU-25 registro diario de comidas del cliente, HU-23 progreso histórico del cliente | [clients/README.md](clients/README.md) |
 | `invite_code/` | HU-12 código de invitación del coach: ver, copiar, compartir y regenerar | [invite_code/README.md](invite_code/README.md) |
+| `coach_link/` | HU-13 vincularse con el código (ver el coach y confirmar), HU-14 desvincularse | [coach_link/README.md](coach_link/README.md) |
 | `summary/` | HU-10 resumen del día (consumo contra la meta), HU-11 resumen semanal con gráfica | [summary/README.md](summary/README.md) |
 | `routines/` | HU-18 constructor de rutinas del coach (crear, editar, eliminar) con el catálogo de ejercicios de TEC-09; HU-19 asignar una rutina a uno o varios clientes; HU-20 clientes asignados, retiro y aviso al editar o eliminar | [routines/README.md](routines/README.md) |
 | `my_routines/` | HU-15 solicitar y ver la rutina recomendada; HU-16 rutinas del usuario (recomendada y asignadas) con su origen y su detalle; HU-17 marcar una sesión como completada | [my_routines/README.md](my_routines/README.md) |
