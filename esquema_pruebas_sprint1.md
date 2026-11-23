@@ -271,10 +271,10 @@ Mobile: 14 · Backend: 15
 - `macrofit_app/test/features/profile/domain/profile_validators_test.dart` › vacío o no numérico se rechaza
 - `macrofit_app/test/features/profile/domain/profile_validators_test.dart` › fuera de rango se rechaza y los límites se aceptan
 - `macrofit_app/test/features/profile/domain/profile_validators_test.dart` › acepta coma decimal
-- `macrofit_app/test/features/profile/domain/profile_validators_test.dart` › estatura de 100 a 250 cm
+- `macrofit_app/test/features/profile/domain/profile_validators_test.dart` › estatura de 130 a 230 cm (TEC-12)
 - `macrofit_app/test/features/profile/domain/profile_validators_test.dart` › obligatoria y no futura
 - `macrofit_app/test/features/profile/domain/profile_validators_test.dart` › 18 años cumplidos hoy es válido; un día antes no
-- `macrofit_app/test/features/profile/domain/profile_validators_test.dart` › 100 años es válido; 101 no
+- `macrofit_app/test/features/profile/domain/profile_validators_test.dart` › 80 años es válido; 81 no
 - `macrofit_app/test/features/profile/domain/profile_validators_test.dart` › calcula los años cumplidos
 - `macrofit_app/test/features/profile/presentation/profile_form_view_model_test.dart` › formulario vacío: no envía y señala cada campo
 - `macrofit_app/test/features/profile/presentation/profile_form_view_model_test.dart` › valores fuera de rango se señalan sin enviar
@@ -288,7 +288,7 @@ Mobile: 14 · Backend: 15
 - `backend/src/services/profile.rs` › `valores_no_permitidos_se_senalan_todos`
 - `backend/src/services/profile.rs` › `enumerados_exigen_minusculas_exactas`
 - `backend/src/services/profile.rs` › `limites_de_peso_estatura_y_dias_son_inclusivos`
-- `backend/src/services/profile.rs` › `edad_de_18_y_100_anios_es_valida_y_fuera_no`
+- `backend/src/services/profile.rs` › `edad_de_18_y_80_anios_es_valida_y_fuera_no`
 - `backend/src/services/profile.rs` › `fecha_con_formato_incorrecto_se_rechaza`
 - `backend/src/services/profile.rs` › `textos_en_blanco_cuentan_como_faltantes`
 - `backend/src/services/profile.rs` › `edicion_valida_los_campos_enviados`
@@ -543,7 +543,7 @@ Mobile: 2 · Backend: 0
 
 **Mobile**
 
-- `macrofit_app/test/app/app_test.dart` › el coach llega al formulario de un cliente en dos pantallas
+- `macrofit_app/test/app/app_test.dart` › el coach llega al formulario de un cliente desde su detalle
 - `macrofit_app/test/app/router_test.dart` › un coach abre sus pantallas de clientes y metas
 
 > Solo aplica a la app (flujo de pantallas).
@@ -604,9 +604,9 @@ Mobile: 3 · Backend: 1
 
 **Mobile**
 
-- `macrofit_app/test/features/goals/data/coach_goals_repository_impl_test.dart` › lista los clientes vinculados
-- `macrofit_app/test/features/goals/presentation/coach_clients_view_model_test.dart` › load trae los clientes vinculados
-- `macrofit_app/test/features/goals/presentation/coach_clients_view_model_test.dart` › load muestra el error y permite reintentar
+- `macrofit_app/test/features/clients/data/clients_repository_impl_test.dart` › lista los clientes con su meta vigente y su último registro
+- `macrofit_app/test/features/clients/presentation/clients_list_view_model_test.dart` › load trae los clientes vinculados con su resumen
+- `macrofit_app/test/features/clients/presentation/clients_list_view_model_test.dart` › load muestra el error y permite reintentar
 
 **Backend (Postman)**
 

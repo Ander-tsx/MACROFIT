@@ -48,15 +48,18 @@ void main() {
     });
   });
 
-  test('estatura de 100 a 250 cm', () {
+  test('estatura de 130 a 230 cm (TEC-12)', () {
     expect(ProfileValidators.height(''), 'La estatura es obligatoria');
-    expect(ProfileValidators.height('99.9'), isNotNull);
-    expect(ProfileValidators.height('250.5'), isNotNull);
-    expect(ProfileValidators.height('100'), isNull);
-    expect(ProfileValidators.height('250'), isNull);
+    expect(
+      ProfileValidators.height('129.9'),
+      'La estatura debe estar entre 130 y 230 cm',
+    );
+    expect(ProfileValidators.height('230.1'), isNotNull);
+    expect(ProfileValidators.height('130'), isNull);
+    expect(ProfileValidators.height('230'), isNull);
   });
 
-  group('fecha de nacimiento (18 a 100 años)', () {
+  group('fecha de nacimiento (18 a 80 años, TEC-12)', () {
     String? validate(DateTime? date) =>
         ProfileValidators.birthDate(date, today: today);
 
@@ -70,9 +73,9 @@ void main() {
       expect(validate(DateTime(2008, 10, 9)), isNotNull);
     });
 
-    test('100 años es válido; 101 no', () {
-      expect(validate(DateTime(1925, 10, 9)), isNull);
-      expect(validate(DateTime(1925, 10, 8)), isNotNull);
+    test('80 años es válido; 81 no', () {
+      expect(validate(DateTime(1945, 10, 9)), isNull);
+      expect(validate(DateTime(1945, 10, 8)), 'Debes tener entre 18 y 80 años');
     });
 
     test('calcula los años cumplidos', () {

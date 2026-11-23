@@ -3,14 +3,15 @@ import '../entities/profile.dart';
 /// Reglas del perfil (HU-03). Deben coincidir con `backend/src/services/profile.rs`.
 /// Cada función devuelve el mensaje de error o `null` si el valor es válido.
 ///
-/// TODO(TEC-12): rangos provisionales; cambiarlos aquí y en el backend a la vez.
+/// Rangos de TEC-12 (justificación en `backend/src/services/README.md`); si
+/// cambian, cámbialos aquí y en el backend a la vez.
 abstract final class ProfileValidators {
   static const weightMinKg = 35;
   static const weightMaxKg = 250;
-  static const heightMinCm = 100;
-  static const heightMaxCm = 250;
+  static const heightMinCm = 130;
+  static const heightMaxCm = 230;
   static const ageMinYears = 18;
-  static const ageMaxYears = 100;
+  static const ageMaxYears = 80;
   static const trainingDaysMin = 1;
   static const trainingDaysMax = 7;
 
