@@ -188,10 +188,13 @@ El contrato completo (cuerpos, respuestas y códigos de error de cada endpoint) 
 | DELETE | `/meals/{id}` | Bearer (user) | HU-09 | Elimina un registro propio y su foto |
 | GET | `/users/me/summary/daily?date=YYYY-MM-DD` | Bearer (user) | HU-10 | Consumo del día, meta vigente y lo que falta |
 | GET | `/users/me/summary/weekly?start=YYYY-MM-DD` | Bearer (user) | HU-11 | 7 días con totales, promedio y días con la meta cumplida |
+| GET | `/users/me/progress?from=YYYY-MM-DD&to=YYYY-MM-DD` | Bearer (user) | HU-22 | Pesos, consumo por día y cumplimiento semanal del periodo (máx. 93 días) |
+| GET | `/coach/clients/{clientId}/progress?from=&to=` | Bearer (coach) | HU-23 | El mismo progreso de un cliente vinculado (`403 CLIENT_NOT_LINKED` si no) |
 | POST | `/dev/seed/coach-links` | — (solo `APP_ENV=development`) | HU-05 | Vincula un coach con un usuario de prueba |
 | GET | `/coach/test` | Bearer (coach) | TEC-05 | Prueba de la regla de acceso por rol |
 | GET | `/coach/invite-code` | Bearer (coach) | HU-12 | Código de invitación del coach; se crea si no existe |
 | POST | `/coach/invite-code/regenerate` | Bearer (coach) | HU-12 | Genera un código nuevo; el anterior deja de ser válido |
+| GET | `/users/me/coach-link/preview?invite_code=` | Bearer (user) | HU-13 | Nombre del coach de un código, para confirmar antes de vincularse (no vincula) |
 | GET | `/users/me/coach-link` | Bearer (user) | HU-13 | Coach con el que el usuario tiene vinculación activa (`404 USER_NOT_LINKED` si no tiene) |
 | POST | `/users/me/coach-link` | Bearer (user) | HU-13 | Vincula al usuario con un coach mediante su código de invitación |
 | DELETE | `/users/me/coach-link` | Bearer (user) | HU-14 | Desvincula al usuario de su coach activo |
@@ -344,10 +347,10 @@ Cabecera `Authorization: Bearer <access_token>`. **Solo rol `user`**: un coach r
 > [`src/services/README.md`](src/services/README.md#meta-nutricional-hu-04-y-tec-12)). El registro de peso (HU-21)
 > valida con `services::profile::parse_weight_kg`.
 >
-> **Pendiente en la app (Sprint 3):** `macrofit_app/lib/features/profile/domain/validators/profile_validators.dart`
-> todavía usa los rangos provisionales (30–300 kg, 100–250 cm, 18–100 años) y el cálculo local de la meta en
-> `macrofit_app/lib/features/goals/` no aplica el mínimo de calorías. Hasta entonces el backend rechaza con
-> `VALIDATION_ERROR` lo que la app deje pasar fuera de los rangos nuevos.
+> La app valida los mismos rangos antes de enviar
+> (`macrofit_app/lib/features/profile/domain/validators/profile_validators.dart`). El cálculo local de la meta en
+> `macrofit_app/lib/features/goals/domain/usecases/` no aplica el mínimo de calorías, pero la app no lo usa: la meta
+> que muestra viene de este backend (HU-26).
 
 **201 Created** — además marca `users.profile_completed = true` (visible en `GET /auth/me`):
 
@@ -388,7 +391,7 @@ La vinculación se comprueba antes de validar el cuerpo.
 |---|---|
 | `calories` | Entero de 1 a 10 000 |
 | `protein_g`, `fat_g` | Entero de 1 a 1 000 |
-| `effective_from` | Fecha válida `YYYY-MM-DD` (medianoche UTC) |
+| `effective_from` | Fecha válida `YYYY-MM-DD`: la meta empieza a las 00:00 de ese día en la zona de la app (`APP_UTC_OFFSET`, México UTC−6). Se guarda y se devuelve como ese instante: `2026-10-09` → `2026-10-09T06:00:00Z` |
 
 **201 Created** — misma forma que `GET /users/me/goals/current` (HU-04) con `source: "coach"` y `set_by` igual al id del coach.
 La meta se agrega al historial; las anteriores no se modifican. Errores: `400 VALIDATION_ERROR` (campos en `fields`;
@@ -399,6 +402,10 @@ un texto o un decimal se señalan en su campo), `400 INVALID_BODY`.
 **Meta vigente (HU-04 y HU-05):** es la de `effective_from` más reciente que ya empezó (las de fecha futura todavía no
 aplican). Una meta de coach vigente tiene prioridad sobre las calculadas, y editar el perfil nunca la reemplaza.
 Un cliente sin perfil recibe la meta del coach en `GET /users/me/goals/current`.
+
+Como `effective_from` es la medianoche de México y no la de UTC, el día anterior a la fecha elegida sigue con la meta que
+regía: en el resumen diario y semanal (RN-06 / RF-21) y en `GET /users/me/goals/current`, que no cambia a las 18:00 del día
+anterior.
 
 ### Lista de clientes — GET `/coach/clients` (HU-05, HU-24)
 
@@ -449,7 +456,8 @@ Cabecera `Authorization: Bearer <access_token>`. **Solo rol `user`** (`403 FORBI
 |---|---|
 | `invite_code` | Obligatorio. Se normaliza (sin espacios alrededor y en mayúsculas) |
 
-Un usuario solo puede tener **una vinculación activa**. Si ya existía una vinculación previa con ese coach, se reactiva.
+Un usuario solo puede tener **una vinculación activa** (RN-02; lo garantiza el índice `user_id_active_unique` aunque
+lleguen dos peticiones a la vez). Si ya existía una vinculación previa con ese coach, se reactiva.
 
 **201 Created**
 
@@ -460,6 +468,21 @@ Un usuario solo puede tener **una vinculación activa**. Si ya existía una vinc
 **Errores:** `400 VALIDATION_ERROR` (falta `invite_code`), `400 INVALID_BODY`, `401 UNAUTHORIZED`,
 `403 FORBIDDEN_ROLE`, `404 INVITE_CODE_NOT_FOUND` (el código no existe o su dueño ya no es coach),
 `409 USER_ALREADY_LINKED`.
+
+### GET `/users/me/coach-link/preview` (HU-13, CU-02 paso 4)
+
+Cabecera `Authorization: Bearer <access_token>`. **Solo rol `user`** (`403 FORBIDDEN_ROLE` para un `coach`).
+Valida `invite_code` (query, con las mismas reglas que el `POST`) y devuelve el coach para que el usuario confirme
+antes de vincularse. **No crea ni cambia ninguna vinculación.**
+
+```bash
+curl "http://localhost:3000/api/v1/users/me/coach-link/preview?invite_code=K7P2QX" -H "Authorization: Bearer <access_token>"
+```
+
+**200 OK** → `{ "coach_name": "Laura" }`
+
+**Errores:** `400 VALIDATION_ERROR` en `invite_code` (ausente o vacío), `401 UNAUTHORIZED`, `403 FORBIDDEN_ROLE`,
+`404 INVITE_CODE_NOT_FOUND`, `409 USER_ALREADY_LINKED` (ya tiene un coach activo: debe desvincularse primero, CU-02 4b).
 
 ### DELETE `/users/me/coach-link` (HU-14)
 
@@ -1015,6 +1038,12 @@ Cabecera `Authorization: Bearer <access_token>`. **Solo rol `user`**. Registra y
 marcó como completadas (RF-16). Colección `routine_sessions`
 ([esquema](src/models/README.md#colección-routine_sessions-routine_sessionrs)), que HU-22 lee para el cumplimiento.
 
+**Cumplimiento (HU-22 / HU-23).** `GET /users/me/progress` y `GET /coach/clients/{clientId}/progress` devuelven en
+`compliance` bloques de 7 días desde `from` (el último puede ser más corto). `completed_sessions` es el número de
+documentos de `routine_sessions` del usuario cuyo `date` cae en el bloque: cuentan los de la rutina recomendada y los
+de las asignadas, también los de una rutina regenerada, retirada o de un coach desvinculado (RF-24). Dos rutinas
+distintas completadas el mismo día cuentan dos. `training_days` son los días de entrenamiento del perfil.
+
 La rutina `{id}` debe ser accesible para el usuario (misma comprobación que `GET /routines/{id}` de HU-16):
 
 | Origen | Rutina accesible | Sesiones |
@@ -1165,6 +1194,26 @@ Para probar la API en este ambiente, importa `postman/MacroFit.deployed.postman_
 ### Límites del plan
 
 El plan gratuito de Railway funciona con un crédito de uso limitado, no con recursos ilimitados (riesgo S-05). Revisa el consumo en el panel del proyecto (*Usage*) antes de las pruebas del Sprint 3. Si se agota, los servicios se detienen hasta renovar el crédito o cambiar de plan.
+
+### Migración: metas del coach guardadas a medianoche UTC
+
+Hasta `fix/HU-11-meta-del-coach-empieza-en-dia-de-mexico`, `effective_from` de las metas del coach se guardaba a las 00:00 UTC
+(18:00 del día anterior en México), y el día anterior quedaba con la meta del coach. Las metas creadas antes del fix se
+corrigen una vez con `mongosh`, en la base desplegada (`macrofit_prod`) y en las de desarrollo que las tengan:
+
+```js
+db.goals.updateMany(
+  { source: "coach", $expr: { $and: [
+    { $eq: [{ $hour: "$effective_from" }, 0] }, { $eq: [{ $minute: "$effective_from" }, 0] },
+    { $eq: [{ $second: "$effective_from" }, 0] }, { $eq: [{ $millisecond: "$effective_from" }, 0] },
+  ] } },
+  [{ $set: { effective_from: { $dateAdd: { startDate: "$effective_from", unit: "hour", amount: 6 } } } }],
+)
+```
+
+Solo toca metas del coach que están exactamente a las 00:00:00.000 UTC y las pasa a las 06:00 UTC (00:00 de México, con
+`APP_UTC_OFFSET=-06:00`). Correrlo otra vez no cambia nada, porque ya no quedan metas a esa hora. Las metas calculadas no
+se tocan: su `effective_from` es el instante en que se generaron.
 
 ### Datos de prueba en el ambiente desplegado
 

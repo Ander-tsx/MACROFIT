@@ -1,6 +1,11 @@
 //! HU-13 / HU-14 — rutas de vinculación y desvinculación con el coach.
 
-use axum::{Json, Router, extract::State, http::StatusCode, routing::get};
+use axum::{
+    Json, Router,
+    extract::{Query, State, rejection::QueryRejection},
+    http::StatusCode,
+    routing::get,
+};
 use serde::{Deserialize, Serialize};
 
 use crate::auth::middleware::UserOnly;
@@ -29,6 +34,57 @@ pub struct CoachLinkResponse {
     pub coach_email: String,
     #[schema(value_type = String, example = "active")]
     pub status: String,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct CoachPreviewQuery {
+    pub invite_code: Option<String>,
+}
+
+#[derive(Debug, Serialize, utoipa::ToSchema)]
+#[schema(
+    description = "Coach dueño de un código de invitación, para confirmar antes de vincularse."
+)]
+pub struct CoachPreviewResponse {
+    #[schema(value_type = String, example = "Laura")]
+    pub coach_name: String,
+}
+
+/// HU-13 (CU-02 paso 4) — GET /api/v1/users/me/coach-link/preview?invite_code=
+#[utoipa::path(
+    get,
+    path = "/users/me/coach-link/preview",
+    tag = "Vinculaciones",
+    summary = "Consultar el coach de un código de invitación antes de vincularse (HU-13)",
+    description = "Valida el código y devuelve el nombre de su coach para que el usuario confirme. No crea ninguna vinculación. Si el usuario ya tiene un coach activo responde `USER_ALREADY_LINKED` (RN-02).",
+    security(("bearer_auth" = ["user"])),
+    params(("invite_code" = String, Query, description = "Código de invitación del coach (6 caracteres; se ignoran mayúsculas y espacios)")),
+    responses(
+        (status = 200, description = "Coach del código", body = CoachPreviewResponse),
+        (status = 400, description = "`VALIDATION_ERROR` en `invite_code` (ausente o vacío)", body = ErrorResponse),
+        (status = 401, description = "`UNAUTHORIZED` o `TOKEN_REVOKED`", body = ErrorResponse),
+        (status = 403, description = "`FORBIDDEN_ROLE` (cuenta `coach`)", body = ErrorResponse),
+        (status = 404, description = "`INVITE_CODE_NOT_FOUND`", body = ErrorResponse),
+        (status = 409, description = "`USER_ALREADY_LINKED`", body = ErrorResponse),
+    )
+)]
+pub async fn preview_coach_link_handler(
+    UserOnly(auth): UserOnly,
+    State(state): State<AppState>,
+    query: Result<Query<CoachPreviewQuery>, QueryRejection>,
+) -> Result<Json<CoachPreviewResponse>, AppError> {
+    let Query(query) = query.map_err(|rejection| AppError::InvalidBody(rejection.body_text()))?;
+    let coach = coach_links::preview_invite_code(
+        &state.db,
+        auth.user_id,
+        LinkCoachInput {
+            invite_code: query.invite_code,
+        },
+    )
+    .await?;
+    Ok(Json(CoachPreviewResponse {
+        coach_name: coach.name,
+    }))
 }
 
 /// HU-13 — POST /api/v1/users/me/coach-link
@@ -128,10 +184,15 @@ pub async fn unlink_coach_handler(
 }
 
 pub fn router() -> Router<AppState> {
-    Router::new().route(
-        "/users/me/coach-link",
-        get(get_coach_link_handler)
-            .post(link_coach_handler)
-            .delete(unlink_coach_handler),
-    )
+    Router::new()
+        .route(
+            "/users/me/coach-link",
+            get(get_coach_link_handler)
+                .post(link_coach_handler)
+                .delete(unlink_coach_handler),
+        )
+        .route(
+            "/users/me/coach-link/preview",
+            get(preview_coach_link_handler),
+        )
 }

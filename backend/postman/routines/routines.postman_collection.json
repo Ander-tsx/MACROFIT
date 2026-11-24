@@ -6011,7 +6011,138 @@
           "response": []
         },
         {
-          "name": "24 - Ana se desvincula",
+          "name": "24 - El progreso de Ana cuenta sus sesiones completadas (HU-22)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 200 OK\", function () {",
+                  "        pm.response.to.have.status(200);",
+                  "    });",
+                  "    const body = pm.response.json();",
+                  "    const today = pm.collectionVariables.get(\"hu17_today\");",
+                  "    const yesterday = pm.collectionVariables.get(\"hu17_yesterday\");",
+                  "    pm.test(\"Un solo bloque de ayer a hoy con los 3 días del perfil de Ana\", function () {",
+                  "        pm.expect(body.compliance).to.have.lengthOf(1);",
+                  "        pm.expect(body.compliance[0].start).to.eql(yesterday);",
+                  "        pm.expect(body.compliance[0].end).to.eql(today);",
+                  "        pm.expect(body.compliance[0].training_days).to.eql(3);",
+                  "    });",
+                  "    // Ana completó: hoy la sesión 2 de la recomendada (01), Torso (07) y Pierna (20); ayer Torso (08).",
+                  "    // La recomendada reemplazada (05) no registró nada y Pierna sigue contando aunque se retiró (RF-24).",
+                  "    pm.test(\"completed_sessions cuenta las 4 sesiones completadas (RF-16)\", function () {",
+                  "        pm.expect(body.compliance[0].completed_sessions).to.eql(4);",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{hu17_client_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/me/progress?from={{hu17_yesterday}}&to={{hu17_today}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "me",
+                "progress"
+              ],
+              "query": [
+                {
+                  "key": "from",
+                  "value": "{{hu17_yesterday}}"
+                },
+                {
+                  "key": "to",
+                  "value": "{{hu17_today}}"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "25 - El coach ve las mismas sesiones en el progreso de Ana (HU-23)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 200 OK\", function () {",
+                  "        pm.response.to.have.status(200);",
+                  "    });",
+                  "    const body = pm.response.json();",
+                  "    const today = pm.collectionVariables.get(\"hu17_today\");",
+                  "    const yesterday = pm.collectionVariables.get(\"hu17_yesterday\");",
+                  "    pm.test(\"Un solo bloque de ayer a hoy con los 3 días del perfil de Ana\", function () {",
+                  "        pm.expect(body.compliance).to.have.lengthOf(1);",
+                  "        pm.expect(body.compliance[0].start).to.eql(yesterday);",
+                  "        pm.expect(body.compliance[0].end).to.eql(today);",
+                  "        pm.expect(body.compliance[0].training_days).to.eql(3);",
+                  "    });",
+                  "    // Ana completó: hoy la sesión 2 de la recomendada (01), Torso (07) y Pierna (20); ayer Torso (08).",
+                  "    // La recomendada reemplazada (05) no registró nada y Pierna sigue contando aunque se retiró (RF-24).",
+                  "    pm.test(\"completed_sessions cuenta las 4 sesiones completadas (RF-16)\", function () {",
+                  "        pm.expect(body.compliance[0].completed_sessions).to.eql(4);",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{hu17_coach_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/coach/clients/{{hu17_client_id}}/progress?from={{hu17_yesterday}}&to={{hu17_today}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "coach",
+                "clients",
+                "{{hu17_client_id}}",
+                "progress"
+              ],
+              "query": [
+                {
+                  "key": "from",
+                  "value": "{{hu17_yesterday}}"
+                },
+                {
+                  "key": "to",
+                  "value": "{{hu17_today}}"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "26 - Ana se desvincula",
           "event": [
             {
               "listen": "test",
@@ -6053,7 +6184,7 @@
           "response": []
         },
         {
-          "name": "25 - Rutina de un coach desvinculado",
+          "name": "27 - Rutina de un coach desvinculado",
           "event": [
             {
               "listen": "test",

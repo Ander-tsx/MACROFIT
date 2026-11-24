@@ -190,12 +190,13 @@ fn activation_update(now: DateTime) -> Document {
     }
 }
 
-/// HU-13 — vincula al usuario con el coach dueño del código de invitación.
-pub async fn link_with_invite_code(
+/// Coach dueño del código, si el usuario puede vincularse con él: código obligatorio y existente
+/// (`INVITE_CODE_NOT_FOUND`) y sin coach activo (`USER_ALREADY_LINKED`, RN-02).
+async fn resolve_invite_coach(
     db: &Database,
     user_id: ObjectId,
     input: LinkCoachInput,
-) -> Result<(CoachLink, User), AppError> {
+) -> Result<User, AppError> {
     let code = normalize_invite_code(input.invite_code)?;
 
     let invite = db
@@ -218,6 +219,26 @@ pub async fn link_with_invite_code(
     if already_linked {
         return Err(AppError::UserAlreadyLinked);
     }
+    Ok(coach)
+}
+
+/// HU-13 (CU-02 paso 4) — coach dueño del código, para que el usuario confirme antes de vincularse.
+/// No crea ni cambia ninguna vinculación.
+pub async fn preview_invite_code(
+    db: &Database,
+    user_id: ObjectId,
+    input: LinkCoachInput,
+) -> Result<User, AppError> {
+    resolve_invite_coach(db, user_id, input).await
+}
+
+/// HU-13 — vincula al usuario con el coach dueño del código de invitación.
+pub async fn link_with_invite_code(
+    db: &Database,
+    user_id: ObjectId,
+    input: LinkCoachInput,
+) -> Result<(CoachLink, User), AppError> {
+    let coach = resolve_invite_coach(db, user_id, input).await?;
 
     let result = links(db)
         .find_one_and_update(
@@ -231,7 +252,8 @@ pub async fn link_with_invite_code(
     let link = match result {
         Ok(Some(link)) => link,
         Ok(None) => return Err(AppError::internal("la vinculación no se pudo crear")),
-        // Otra petición vinculó a este usuario entre la verificación y el upsert.
+        // Otra petición vinculó a este usuario entre la verificación y el upsert: lo impide el índice
+        // `user_id_active_unique` (RN-02).
         Err(e) if is_duplicate_key(&e) => return Err(AppError::UserAlreadyLinked),
         Err(e) => return Err(AppError::internal(e)),
     };
@@ -387,5 +409,113 @@ mod tests {
                 .iter()
                 .all(|s| s.goal.is_none() && s.last_meal_at.is_none())
         );
+    }
+
+    /// Pruebas contra MongoDB real: `cargo test -- --ignored` con un servidor local
+    /// (por defecto `mongodb://localhost:27017`; otra con la variable `TEST_MONGO_URI`). Cada prueba usa una base
+    /// propia y la borra al terminar.
+    mod mongo {
+        use super::*;
+        use crate::models::coach_link::LinkStatus;
+        use crate::services::coach_invite_codes::get_or_create_invite_code;
+
+        async fn test_db() -> Database {
+            let uri = std::env::var("TEST_MONGO_URI")
+                .unwrap_or_else(|_| "mongodb://localhost:27017".into());
+            crate::db::connect(&uri, &format!("macrofit_test_{}", ObjectId::new())).await
+        }
+
+        /// Crea un coach con su código de invitación; devuelve su id y el código.
+        async fn coach_with_code(db: &Database, name: &str) -> (ObjectId, String) {
+            let coach = User {
+                role: Role::Coach,
+                ..user(name)
+            };
+            let id = coach.id.unwrap();
+            db.collection::<User>(USERS_COLLECTION)
+                .insert_one(&coach)
+                .await
+                .unwrap();
+            (id, get_or_create_invite_code(db, id).await.unwrap().code)
+        }
+
+        fn code(raw: &str) -> LinkCoachInput {
+            LinkCoachInput {
+                invite_code: Some(raw.into()),
+            }
+        }
+
+        #[tokio::test]
+        #[ignore = "requiere MongoDB"]
+        async fn la_vista_previa_da_el_coach_del_codigo_sin_vincular() {
+            let db = test_db().await;
+            let (coach_id, invite) = coach_with_code(&db, "Laura").await;
+            let ana = ObjectId::new();
+
+            let coach = preview_invite_code(&db, ana, code(&invite.to_lowercase()))
+                .await
+                .unwrap();
+            assert_eq!(coach.id, Some(coach_id));
+            assert_eq!(coach.name, "Laura");
+            assert!(matches!(
+                find_active_link(&db, ana).await,
+                Err(AppError::UserNotLinked)
+            ));
+            db.drop().await.unwrap();
+        }
+
+        #[tokio::test]
+        #[ignore = "requiere MongoDB"]
+        async fn la_vista_previa_rechaza_un_codigo_inexistente_o_vacio() {
+            let db = test_db().await;
+            let ana = ObjectId::new();
+            assert!(matches!(
+                preview_invite_code(&db, ana, code("ZZZZZZ")).await,
+                Err(AppError::InviteCodeNotFound)
+            ));
+            assert!(matches!(
+                preview_invite_code(&db, ana, code("  ")).await,
+                Err(AppError::Validation(_))
+            ));
+            db.drop().await.unwrap();
+        }
+
+        #[tokio::test]
+        #[ignore = "requiere MongoDB"]
+        async fn la_vista_previa_avisa_si_el_usuario_ya_tiene_coach() {
+            let db = test_db().await;
+            let (_, laura) = coach_with_code(&db, "Laura").await;
+            let (_, marco) = coach_with_code(&db, "Marco").await;
+            let ana = ObjectId::new();
+            link_with_invite_code(&db, ana, code(&laura)).await.unwrap();
+
+            assert!(matches!(
+                preview_invite_code(&db, ana, code(&marco)).await,
+                Err(AppError::UserAlreadyLinked)
+            ));
+            db.drop().await.unwrap();
+        }
+
+        #[tokio::test]
+        #[ignore = "requiere MongoDB"]
+        async fn un_usuario_no_puede_tener_dos_vinculaciones_activas() {
+            let db = test_db().await;
+            let (laura, _) = coach_with_code(&db, "Laura").await;
+            let (marco, _) = coach_with_code(&db, "Marco").await;
+            let ana = ObjectId::new();
+            let link = |coach_id| CoachLink {
+                id: ObjectId::new(),
+                coach_id,
+                user_id: ana,
+                status: LinkStatus::Active,
+                created_at: DateTime::now(),
+            };
+            links(&db).insert_one(link(laura)).await.unwrap();
+
+            // La comprobación previa no basta si dos peticiones llegan a la vez: el índice lo impide (RN-02).
+            let second = links(&db).insert_one(link(marco)).await;
+            assert!(second.is_err_and(|e| is_duplicate_key(&e)));
+            db.drop().await.unwrap();
+        }
     }
 }

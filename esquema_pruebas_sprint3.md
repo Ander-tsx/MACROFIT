@@ -72,6 +72,10 @@
 | HU-09 | Eliminar con confirmación. | Unitaria | El diálogo pide confirmar (cancelar conserva el registro); `DELETE /meals/{id}` quita el registro y avisa; `404 MEAL_NOT_FOUND` recarga la lista con un mensaje; sin conexión u otro error conserva la lista y muestra el error. | [**8**](#caso-68) (mobile 8 · backend 0) |
 | HU-09 | Errores de la foto al guardar sin perder los valores. | Unitaria | `409 PHOTO_ALREADY_USED` y `404 PHOTO_NOT_FOUND` muestran un mensaje en español de la app, en la estimación y en el formulario, conservando la estimación o los valores capturados. | [**4**](#caso-69) (mobile 4 · backend 0) |
 | HU-09 | Ruta del historial. | Unitaria | Solo un usuario con perfil abre `/user/meals` (un coach, un usuario sin perfil o sin sesión son redirigidos). | [**2**](#caso-70) (mobile 2 · backend 0) |
+| HU-12 | Código de invitación en el perfil del coach: ver, copiar, compartir y regenerar (RF-11, CU-02 paso 1). | Interfaz | El coach abre su código desde su inicio o la barra; copiar deja solo el código; compartir manda un mensaje con el código; regenerar pide confirmación y cancelar lo conserva; sin conexión se puede reintentar; un usuario no abre la pantalla. | [**25**](#caso-71) (mobile 25 · backend 0) |
+| HU-13 | Vincularse con el código: ver el coach y confirmar (RF-12, CU-02 pasos 2 a 6). | Interfaz | Desde el inicio se abre la vinculación; el código se normaliza; se muestra el nombre del coach y solo se vincula al confirmar; cancelar no vincula y conserva el código; el inicio muestra al coach vinculado. | [**13**](#caso-72) (mobile 13 · backend 0) |
+| HU-13 | Errores al vincularse (CU-02 4a y 4b, RN-02). | Unitaria | Un código vacío no consulta la API; uno inexistente muestra *Código inválido*; con un coach activo se pide desvincularse primero; sin conexión se muestra el mensaje; en ningún caso se pide confirmar ni se borra el código escrito; con un coach activo la pantalla no pide código y avisa que primero debe desvincularse. | [**11**](#caso-73) (mobile 11 · backend 0) |
+| HU-14 | Desvincularse pide confirmación (RF-13). | Interfaz | **Desvincularme** pide confirmar; cancelar conserva al coach; al confirmar se borra la vinculación guardada y se vuelve a pedir un código; si el servidor ya no tenía vinculación se trata como éxito. | [**6**](#caso-74) (mobile 6 · backend 0) |
 
 ## Cómo se cuentan las pruebas
 
@@ -91,6 +95,8 @@ Inventario al cerrar HU-18-APP: **372** pruebas mobile (`flutter test`; 307 en `
 Inventario al cerrar HU-10-APP: **418** pruebas mobile (`flutter test`; 392 en `develop` con HU-18-APP y HU-13/14/21-APP). HU-10-APP agrega 26 (4 de datos, 4 de la fecha, 11 del ViewModel y 7 de widgets) y ajusta 1 de HU-13 (el botón *Vincular con coach* quedó debajo del progreso del día). Sin cambios en el backend. Además se probó de punta a punta en el simulador de iPhone 16 contra el backend local con base temporal y se corrió la colección de Postman con Newman (299 requests, 846 aserciones, 0 fallos) (no se cuentan).
 Inventario al cerrar HU-11-APP: **450** pruebas mobile (`flutter test`; 418 en la rama de HU-10-APP, de la que sale). HU-11-APP agrega 32 (4 de datos, 3 de fechas, 15 del ViewModel, 8 de widgets y 2 de rutas). Sin cambios en el backend. Además se probó de punta a punta en el simulador de iPhone 16 contra el backend local con base temporal y se corrió la colección de Postman con Newman (299 requests, 846 aserciones, 0 fallos) (no se cuentan).
 Inventario al cerrar HU-09-APP: **483** pruebas mobile (`flutter test`; 450 en `develop` con HU-10-APP, HU-11-APP, HU-13/14/21-APP y HU-18-APP). HU-09-APP agrega 33 (5 de datos, 13 del ViewModel del historial, 6 de guardar desde la estimación, 2 de rutas y 7 de widgets, 2 de ellos para que el progreso del día de HU-10 se actualice al regresar al inicio) y cambia 5: la de HU-07 que esperaba **Continuar** (ahora **Guardar** y **Corregir valores**), las dos de HU-08 que regresaban al inicio (ahora al historial) y las dos de `409`/`404` del formulario (ahora con el mensaje de la app). Sin cambios en el backend. Además se probó a mano en un teléfono Android (moto g60) contra el backend de `develop` en local: guardar en 4 toques, corregir y guardar, historial con foto y captura manual, eliminar, `404 MEAL_NOT_FOUND` y cambio de día (no se cuenta).
+
+Inventario al cerrar QA-05 (app): **699** pruebas mobile (`flutter test`; 682 en `develop`). QA-05 agrega 17 (6 de datos, 4 del ViewModel y 7 de la pantalla de vinculación): el usuario ve el nombre del coach y confirma antes de vincularse (CU-02 pasos 4 y 5), el código escrito ya no se borra al volver de la carga tras un error y, con un coach activo, la pantalla avisa que primero debe desvincularse (CU-02 4b). Documenta los casos 71 a 74 con las pruebas de HU-12, HU-13 y HU-14.
 
 ## Detalle de las pruebas por caso
 
@@ -934,3 +940,93 @@ Mobile: 2 · Backend: 0
 
 - `macrofit_app/test/app/router_test.dart` › historial de comidas (HU-09) › un usuario con perfil abre "Mis comidas"
 - `macrofit_app/test/app/router_test.dart` › historial de comidas (HU-09) › un coach, un usuario sin perfil o sin sesión no lo abren
+
+### <a id="caso-71"></a>Caso 71 · HU-12 — Código de invitación del coach (RF-11, CU-02 paso 1)
+
+Mobile: 25 · Backend: 0
+
+**Mobile**
+
+- `macrofit_app/test/features/invite_code/data/invite_code_repository_impl_test.dart` › obtiene el código con GET /coach/invite-code
+- `macrofit_app/test/features/invite_code/data/invite_code_repository_impl_test.dart` › regenera con POST /coach/invite-code/regenerate
+- `macrofit_app/test/features/invite_code/data/invite_code_repository_impl_test.dart` › un usuario sin rol coach recibe FORBIDDEN_ROLE
+- `macrofit_app/test/features/invite_code/data/invite_code_repository_impl_test.dart` › sin red lanza NETWORK_ERROR
+- `macrofit_app/test/features/invite_code/presentation/invite_code_view_model_test.dart` › carga › trae el código de 6 caracteres del coach
+- `macrofit_app/test/features/invite_code/presentation/invite_code_view_model_test.dart` › carga › sin red muestra el error y al reintentar carga el código
+- `macrofit_app/test/features/invite_code/presentation/invite_code_view_model_test.dart` › carga › no repite la petición mientras ya está cargando
+- `macrofit_app/test/features/invite_code/presentation/invite_code_view_model_test.dart` › regeneración › confirmada muestra el código nuevo
+- `macrofit_app/test/features/invite_code/presentation/invite_code_view_model_test.dart` › regeneración › marca el estado mientras se regenera
+- `macrofit_app/test/features/invite_code/presentation/invite_code_view_model_test.dart` › regeneración › cancelada no llama a la API y conserva el código
+- `macrofit_app/test/features/invite_code/presentation/invite_code_view_model_test.dart` › regeneración › sin red conserva el código anterior y muestra el error
+- `macrofit_app/test/features/invite_code/presentation/invite_code_view_model_test.dart` › regeneración › sin código cargado no pide confirmación
+- `macrofit_app/test/features/invite_code/presentation/invite_code_view_model_test.dart` › copiar y compartir › copiar pone solo el código en el portapapeles
+- `macrofit_app/test/features/invite_code/presentation/invite_code_view_model_test.dart` › copiar y compartir › compartir manda el mensaje con el código y el origen
+- `macrofit_app/test/features/invite_code/presentation/invite_code_view_model_test.dart` › copiar y compartir › después de regenerar se comparte el código nuevo
+- `macrofit_app/test/features/invite_code/presentation/invite_code_view_model_test.dart` › copiar y compartir › sin código no copia ni comparte
+- `macrofit_app/test/app/app_test.dart` › código de invitación (HU-12) › el coach ve su código desde su pantalla principal
+- `macrofit_app/test/app/app_test.dart` › código de invitación (HU-12) › también se abre desde la barra del panel
+- `macrofit_app/test/app/app_test.dart` › código de invitación (HU-12) › copiar pone el código en el portapapeles y lo avisa
+- `macrofit_app/test/app/app_test.dart` › código de invitación (HU-12) › compartir abre la hoja con un mensaje que incluye el código
+- `macrofit_app/test/app/app_test.dart` › código de invitación (HU-12) › regenerar pide confirmación y muestra el código nuevo
+- `macrofit_app/test/app/app_test.dart` › código de invitación (HU-12) › cancelar la regeneración conserva el código
+- `macrofit_app/test/app/app_test.dart` › código de invitación (HU-12) › sin conexión muestra el error y permite reintentar
+- `macrofit_app/test/app/router_test.dart` › código de invitación (HU-12) › un coach abre su código de invitación
+- `macrofit_app/test/app/router_test.dart` › código de invitación (HU-12) › un usuario no accede al código de invitación del coach
+
+
+### <a id="caso-72"></a>Caso 72 · HU-13 — Vincularse con el código: ver el coach y confirmar (RF-12, CU-02 pasos 2 a 6)
+
+Mobile: 13 · Backend: 0
+
+Hallazgo de QA-05: la app vinculaba directo al tocar **Vincular coach**, sin mostrar el nombre del coach ni pedir confirmación. Ahora consulta `GET /users/me/coach-link/preview` y pide confirmar.
+
+**Mobile**
+
+- `macrofit_app/test/features/coach_link/data/coach_link_repository_impl_test.dart` › la vista previa pide GET /users/me/coach-link/preview con el código
+- `macrofit_app/test/features/coach_link/data/coach_link_repository_impl_test.dart` › vincular envía POST /users/me/coach-link con el código
+- `macrofit_app/test/features/coach_link/data/coach_link_repository_impl_test.dart` › sin conexión se muestra la última vinculación guardada
+- `macrofit_app/test/features/coach_link/presentation/coach_link_view_model_test.dart` › CoachLinkViewModel › estado inicial
+- `macrofit_app/test/features/coach_link/presentation/coach_link_view_model_test.dart` › CoachLinkViewModel › actualiza código y limpia error
+- `macrofit_app/test/features/coach_link/presentation/coach_link_view_model_test.dart` › CoachLinkViewModel › vinculación exitosa normaliza a mayúsculas y asigna coach_name
+- `macrofit_app/test/features/coach_link/presentation/coach_link_view_model_test.dart` › vista previa del código (CU-02 paso 4) › normaliza el código y devuelve el nombre del coach sin vincular
+- `macrofit_app/test/features/coach_link/presentation/coach_link_view_test.dart` › muestra el nombre del coach y vincula solo al confirmar (CU-02 pasos 4 y 5)
+- `macrofit_app/test/features/coach_link/presentation/coach_link_view_test.dart` › cancelar la confirmación no vincula y conserva el código
+- `macrofit_app/test/app/app_test.dart` › código de invitación (HU-12) › abre la pantalla de vinculación con el coach desde el inicio
+- `macrofit_app/test/features/home/presentation/user_home_view_model_test.dart` › coach vinculado (HU-13) › loadCoach expone el coach vinculado
+- `macrofit_app/test/features/home/presentation/user_home_view_model_test.dart` › coach vinculado (HU-13) › sin vinculación deja linkedCoach en null
+- `macrofit_app/test/features/home/presentation/user_home_view_model_test.dart` › coach vinculado (HU-13) › si la consulta falla conserva el último coach conocido
+
+
+### <a id="caso-73"></a>Caso 73 · HU-13 — Errores al vincularse (CU-02 4a y 4b, RN-02)
+
+Mobile: 11 · Backend: 0
+
+Hallazgo de QA-05: al volver de la carga después de un error, el campo aparecía vacío aunque la app conservaba el código; ahora se muestra el código escrito.
+
+**Mobile**
+
+- `macrofit_app/test/features/coach_link/data/coach_link_repository_impl_test.dart` › la vista previa de un código inexistente lanza INVITE_CODE_NOT_FOUND
+- `macrofit_app/test/features/coach_link/presentation/coach_link_view_model_test.dart` › CoachLinkViewModel › falla si el código está vacío
+- `macrofit_app/test/features/coach_link/presentation/coach_link_view_model_test.dart` › CoachLinkViewModel › maneja INVITE_CODE_NOT_FOUND (Código inválido)
+- `macrofit_app/test/features/coach_link/presentation/coach_link_view_model_test.dart` › CoachLinkViewModel › maneja USER_ALREADY_LINKED
+- `macrofit_app/test/features/coach_link/presentation/coach_link_view_model_test.dart` › CoachLinkViewModel › maneja error de red (sin conexión)
+- `macrofit_app/test/features/coach_link/presentation/coach_link_view_model_test.dart` › vista previa del código (CU-02 paso 4) › con el código vacío no consulta la API
+- `macrofit_app/test/features/coach_link/presentation/coach_link_view_model_test.dart` › vista previa del código (CU-02 paso 4) › un código inexistente muestra Código inválido (CU-02 4a)
+- `macrofit_app/test/features/coach_link/presentation/coach_link_view_model_test.dart` › vista previa del código (CU-02 paso 4) › con un coach activo pide desvincularse primero (CU-02 4b)
+- `macrofit_app/test/features/coach_link/presentation/coach_link_view_test.dart` › un código inválido muestra el error, sin confirmación y sin borrar el código (CU-02 4a)
+- `macrofit_app/test/features/coach_link/presentation/coach_link_view_test.dart` › con un coach activo indica que debe desvincularse primero (CU-02 4b)
+- `macrofit_app/test/features/coach_link/presentation/coach_link_view_test.dart` › con un coach activo no pide código y avisa que primero debe desvincularse (CU-02 4b)
+
+
+### <a id="caso-74"></a>Caso 74 · HU-14 — Desvincularse pide confirmación (RF-13)
+
+Mobile: 6 · Backend: 0
+
+**Mobile**
+
+- `macrofit_app/test/features/coach_link/data/coach_link_repository_impl_test.dart` › desvincularse envía DELETE y olvida la vinculación guardada
+- `macrofit_app/test/features/coach_link/data/coach_link_repository_impl_test.dart` › USER_NOT_LINKED al desvincularse no es un error
+- `macrofit_app/test/features/coach_link/presentation/coach_link_view_model_test.dart` › CoachLinkViewModel › desvinculación exitosa limpia linkedCoach
+- `macrofit_app/test/features/coach_link/presentation/coach_link_view_model_test.dart` › CoachLinkViewModel › desvinculación con 404 USER_NOT_LINKED trata como éxito sin coach
+- `macrofit_app/test/features/coach_link/presentation/coach_link_view_test.dart` › desvincularse pide confirmación; cancelar conserva al coach (RF-13)
+- `macrofit_app/test/features/coach_link/presentation/coach_link_view_test.dart` › al confirmar la desvinculación vuelve a pedir un código (RF-13)

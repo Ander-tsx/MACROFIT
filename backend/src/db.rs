@@ -149,6 +149,22 @@ async fn ensure_indexes(db: &Database) {
         .await
         .expect("No se pudo crear el índice único de coach_links");
 
+    // RN-02: un usuario tiene como máximo un coach activo, aunque dos peticiones se vinculen a la vez.
+    let link_active_user_unique = IndexModel::builder()
+        .keys(doc! { "user_id": 1 })
+        .options(
+            IndexOptions::builder()
+                .unique(true)
+                .partial_filter_expression(doc! { "status": "active" })
+                .name("user_id_active_unique".to_string())
+                .build(),
+        )
+        .build();
+    db.collection::<CoachLink>(COACH_LINKS_COLLECTION)
+        .create_index(link_active_user_unique)
+        .await
+        .expect("No se pudo crear el índice user_id_active_unique de coach_links (¿hay usuarios con dos coaches activos?)");
+
     // TEC-13: bucket de GridFS de las fotos de comidas. Los dos primeros son los índices estándar de GridFS
     // (mismas claves y nombre automático que crearía el driver en la primera subida, así que no chocan);
     // el de `chunks` es único como pide la especificación de GridFS.

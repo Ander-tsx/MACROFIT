@@ -113,7 +113,7 @@ pub struct CoachGoalRequest {
     /// Entero de 1 a 1 000.
     #[schema(value_type = i32, required = true, example = 70)]
     pub fat_g: Option<Value>,
-    /// `YYYY-MM-DD` (medianoche UTC).
+    /// `YYYY-MM-DD`. La meta empieza a las 00:00 de ese día en la zona de la app (`APP_UTC_OFFSET`, México UTC−6).
     #[schema(value_type = String, format = Date, required = true, example = "2026-10-09")]
     pub effective_from: Option<String>,
 }
@@ -236,7 +236,14 @@ pub async fn set_client_goal_handler(
     Path(client_id): Path<String>,
     ApiJson(body): ApiJson<CoachGoalRequest>,
 ) -> Result<(StatusCode, Json<GoalResponse>), AppError> {
-    let goal = goals::set_client_goal(&state.db, coach.user_id, &client_id, body.into()).await?;
+    let goal = goals::set_client_goal(
+        &state.db,
+        coach.user_id,
+        &client_id,
+        state.utc_offset,
+        body.into(),
+    )
+    .await?;
     Ok((StatusCode::CREATED, Json(goal.into())))
 }
 

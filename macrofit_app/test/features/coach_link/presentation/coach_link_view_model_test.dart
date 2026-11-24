@@ -156,4 +156,64 @@ void main() {
       },
     );
   });
+
+  group('vista previa del código (CU-02 paso 4)', () {
+    test(
+      'normaliza el código y devuelve el nombre del coach sin vincular',
+      () async {
+        final repo = FakeCoachLinkRepository(previewName: 'Laura');
+        final vm = CoachLinkViewModel(repository: repo);
+
+        vm.updateInviteCode('  k7p2qx ');
+        final name = await vm.previewCoach();
+
+        expect(name, 'Laura');
+        expect(repo.previewCodes, ['K7P2QX']);
+        expect(repo.linkCodes, isEmpty);
+        expect(vm.linkedCoach, isNull);
+        expect(vm.isLoading, isFalse);
+      },
+    );
+
+    test('con el código vacío no consulta la API', () async {
+      final repo = FakeCoachLinkRepository();
+      final vm = CoachLinkViewModel(repository: repo);
+
+      vm.updateInviteCode('   ');
+
+      expect(await vm.previewCoach(), isNull);
+      expect(repo.previewCodes, isEmpty);
+      expect(vm.errorMessage, 'El código de invitación es obligatorio.');
+    });
+
+    test('un código inexistente muestra Código inválido (CU-02 4a)', () async {
+      final repo = FakeCoachLinkRepository(
+        previewException: const ApiException(
+          code: ApiErrorCode.inviteCodeNotFound,
+          message: 'No existe',
+        ),
+      );
+      final vm = CoachLinkViewModel(repository: repo);
+
+      vm.updateInviteCode('zzzzzz');
+
+      expect(await vm.previewCoach(), isNull);
+      expect(vm.errorMessage, 'Código inválido');
+    });
+
+    test('con un coach activo pide desvincularse primero (CU-02 4b)', () async {
+      final repo = FakeCoachLinkRepository(
+        previewException: const ApiException(
+          code: ApiErrorCode.userAlreadyLinked,
+          message: 'Ya vinculado',
+        ),
+      );
+      final vm = CoachLinkViewModel(repository: repo);
+
+      vm.updateInviteCode('k7p2qx');
+
+      expect(await vm.previewCoach(), isNull);
+      expect(vm.errorMessage, contains('Primero debes desvincularte'));
+    });
+  });
 }

@@ -1,6 +1,6 @@
 //! Reglas de validación reutilizables. Funciones puras: sin base de datos ni HTTP.
 
-use chrono::{NaiveDate, NaiveTime};
+use chrono::{FixedOffset, NaiveDate, NaiveTime};
 use mongodb::bson::DateTime;
 
 use crate::error::FieldErrors;
@@ -48,6 +48,20 @@ pub fn parse_date(value: &str) -> Option<NaiveDate> {
 /// Fecha → `DateTime` de BSON a medianoche UTC.
 pub fn date_to_bson(date: NaiveDate) -> DateTime {
     DateTime::from_millis(date.and_time(NaiveTime::MIN).and_utc().timestamp_millis())
+}
+
+/// Fecha → `DateTime` de BSON a la medianoche de `date` en la zona `offset` (00:00 locales). Es el instante en que
+/// empieza ese día para la app (`APP_UTC_OFFSET`): con −06:00, `2026-11-19` → `2026-11-19T06:00:00Z`.
+pub fn start_of_day(date: NaiveDate, offset: FixedOffset) -> DateTime {
+    let millis = date
+        .and_time(NaiveTime::MIN)
+        .and_local_timezone(offset)
+        .earliest()
+        .map_or_else(
+            || date.and_time(NaiveTime::MIN).and_utc().timestamp_millis(),
+            |start| start.timestamp_millis(),
+        );
+    DateTime::from_millis(millis)
 }
 
 /// `DateTime` de BSON → texto `YYYY-MM-DD` (fecha UTC).
@@ -127,5 +141,22 @@ mod tests {
     fn fecha_va_y_vuelve_de_bson() {
         let date = NaiveDate::from_ymd_opt(1996, 5, 20).unwrap();
         assert_eq!(date_to_string(date_to_bson(date)), "1996-05-20");
+    }
+
+    #[test]
+    fn el_dia_empieza_a_la_medianoche_de_la_zona_de_la_app() {
+        let date = NaiveDate::from_ymd_opt(2026, 11, 19).unwrap();
+        let mexico = FixedOffset::west_opt(6 * 3600).unwrap();
+        assert_eq!(
+            start_of_day(date, mexico).try_to_rfc3339_string().unwrap(),
+            "2026-11-19T06:00:00Z"
+        );
+        let india = FixedOffset::east_opt(5 * 3600 + 30 * 60).unwrap();
+        assert_eq!(
+            start_of_day(date, india).try_to_rfc3339_string().unwrap(),
+            "2026-11-18T18:30:00Z"
+        );
+        let utc = FixedOffset::east_opt(0).unwrap();
+        assert_eq!(start_of_day(date, utc), date_to_bson(date));
     }
 }

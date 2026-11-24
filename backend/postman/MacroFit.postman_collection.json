@@ -2,7 +2,7 @@
   "info": {
     "_postman_id": "b3e0d869-7c85-4871-9d22-4f6a1c2e0001",
     "name": "MacroFit",
-    "description": "ARCHIVO GENERADO por postman/build.js: no lo edites, modifica postman/<modulo>/ y regenera.\n\nAPI del backend de MacroFit (/api/v1). Una carpeta por historia del backlog (HU-XX / TEC-XX). Requiere el entorno \"MacroFit - Local\" (postman/MacroFit.postman_environment.json).\n\nMódulos (en orden): core, openapi, legal, auth, profile, goals, coach_invite_codes, coach_links, weights, exercises, routines, recommended_routines, user_routines, meals, summary. Las carpetas \"... · Cierre\" van al final.",
+    "description": "ARCHIVO GENERADO por postman/build.js: no lo edites, modifica postman/<modulo>/ y regenera.\n\nAPI del backend de MacroFit (/api/v1). Una carpeta por historia del backlog (HU-XX / TEC-XX). Requiere el entorno \"MacroFit - Local\" (postman/MacroFit.postman_environment.json).\n\nMódulos (en orden): core, openapi, legal, auth, profile, goals, coach_invite_codes, coach_links, weights, exercises, routines, recommended_routines, user_routines, meals, summary, progress. Las carpetas \"... · Cierre\" van al final.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "item": [
@@ -4486,7 +4486,7 @@
                 "type": "text/javascript",
                 "exec": [
                   "{",
-                  "    pm.collectionVariables.set(\"goals_first_date\", new Date(Date.now() + (-1) * 86400000).toISOString().slice(0, 10));",
+                  "    pm.collectionVariables.set(\"goals_first_date\", new Date(Date.now() - 6 * 3600 * 1000 + (-1) * 86400000).toISOString().slice(0, 10));",
                   "}"
                 ]
               }
@@ -4511,6 +4511,9 @@
                   "        pm.expect(goal.user_id).to.eql(pm.collectionVariables.get(\"goals_client_id\"));",
                   "        pm.expect([goal.calories, goal.protein_g, goal.fat_g]).to.eql([2200, 160, 70]);",
                   "        pm.expect(goal.effective_from.slice(0, 10)).to.eql(pm.collectionVariables.get(\"goals_first_date\"));",
+                  "    });",
+                  "    pm.test(\"RN-06: empieza a las 00:00 de México del día elegido (06:00 UTC), no a las 00:00 UTC\", function () {",
+                  "        pm.expect(Date.parse(goal.effective_from)).to.eql(Date.parse(pm.collectionVariables.get(\"goals_first_date\") + \"T06:00:00Z\"));",
                   "    });",
                   "    pm.collectionVariables.set(\"goals_first_goal_id\", goal.id);",
                   "}"
@@ -4615,7 +4618,7 @@
                 "type": "text/javascript",
                 "exec": [
                   "{",
-                  "    pm.collectionVariables.set(\"goals_second_date\", new Date(Date.now() + (0) * 86400000).toISOString().slice(0, 10));",
+                  "    pm.collectionVariables.set(\"goals_second_date\", new Date(Date.now() - 6 * 3600 * 1000 + (0) * 86400000).toISOString().slice(0, 10));",
                   "}"
                 ]
               }
@@ -4742,7 +4745,7 @@
                 "type": "text/javascript",
                 "exec": [
                   "{",
-                  "    pm.collectionVariables.set(\"goals_future_date\", new Date(Date.now() + (2) * 86400000).toISOString().slice(0, 10));",
+                  "    pm.collectionVariables.set(\"goals_future_date\", new Date(Date.now() - 6 * 3600 * 1000 + (2) * 86400000).toISOString().slice(0, 10));",
                   "}"
                 ]
               }
@@ -6265,7 +6268,7 @@
                 "type": "text/javascript",
                 "exec": [
                   "{",
-                  "    pm.collectionVariables.set(\"hu24_today\", new Date().toISOString().slice(0, 10));",
+                  "    pm.collectionVariables.set(\"hu24_today\", new Date(Date.now() - 6 * 3600 * 1000).toISOString().slice(0, 10));",
                   "}"
                 ]
               }
@@ -6572,7 +6575,254 @@
       "name": "HU-13 Vinculación",
       "item": [
         {
-          "name": "01 - Vincular con código válido",
+          "name": "01 - Vista previa del código",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{user_access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/me/coach-link/preview?invite_code={{coach_invite_code}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "me",
+                "coach-link",
+                "preview"
+              ],
+              "query": [
+                {
+                  "key": "invite_code",
+                  "value": "{{coach_invite_code}}"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "  pm.test('Status 200 OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "  });",
+                  "  const data = pm.response.json();",
+                  "  pm.test('Solo devuelve el nombre del coach', function () {",
+                  "    pm.expect(data).to.have.all.keys('coach_name');",
+                  "    pm.expect(data.coach_name).to.be.a('string').and.not.empty;",
+                  "  });",
+                  "  pm.collectionVariables.set('preview_coach_name', data.coach_name);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "02 - La vista previa no vincula",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{user_access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/me/coach-link",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "me",
+                "coach-link"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "  pm.test('Status 404 Not Found', function () {",
+                  "    pm.response.to.have.status(404);",
+                  "  });",
+                  "  const body = pm.response.json();",
+                  "  pm.test('error.code == USER_NOT_LINKED', function () {",
+                  "    pm.expect(body.error.code).to.eql('USER_NOT_LINKED');",
+                  "  });",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "03 - Vista previa con código inexistente",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{user_access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/me/coach-link/preview?invite_code=ZZZZZZ",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "me",
+                "coach-link",
+                "preview"
+              ],
+              "query": [
+                {
+                  "key": "invite_code",
+                  "value": "ZZZZZZ"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "  pm.test('Status 404 Not Found', function () {",
+                  "    pm.response.to.have.status(404);",
+                  "  });",
+                  "  const body = pm.response.json();",
+                  "  pm.test('error.code == INVITE_CODE_NOT_FOUND', function () {",
+                  "    pm.expect(body.error.code).to.eql('INVITE_CODE_NOT_FOUND');",
+                  "  });",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "04 - Vista previa sin código",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{user_access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/me/coach-link/preview",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "me",
+                "coach-link",
+                "preview"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "  pm.test('Status 400 Bad Request', function () {",
+                  "    pm.response.to.have.status(400);",
+                  "  });",
+                  "  const body = pm.response.json();",
+                  "  pm.test('error.code == VALIDATION_ERROR', function () {",
+                  "    pm.expect(body.error.code).to.eql('VALIDATION_ERROR');",
+                  "  });",
+                  "  pm.test('Señala el campo invite_code', function () {",
+                  "    pm.expect(body.error.fields).to.have.all.keys('invite_code');",
+                  "  });",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "05 - Vista previa con cuenta de coach",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{coach_access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/me/coach-link/preview?invite_code={{coach_invite_code}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "me",
+                "coach-link",
+                "preview"
+              ],
+              "query": [
+                {
+                  "key": "invite_code",
+                  "value": "{{coach_invite_code}}"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "  pm.test('Status 403 Forbidden', function () {",
+                  "    pm.response.to.have.status(403);",
+                  "  });",
+                  "  const body = pm.response.json();",
+                  "  pm.test('error.code == FORBIDDEN_ROLE', function () {",
+                  "    pm.expect(body.error.code).to.eql('FORBIDDEN_ROLE');",
+                  "  });",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "06 - Vincular con código válido",
           "request": {
             "method": "POST",
             "header": [
@@ -6623,6 +6873,9 @@
                   "    pm.expect(data).to.have.all.keys('id', 'coach_id', 'coach_name', 'coach_email', 'status');",
                   "    pm.expect(data.status).to.eql('active');",
                   "  });",
+                  "  pm.test('Es el coach que mostró la vista previa (CU-02 pasos 4 y 5)', function () {",
+                  "    pm.expect(data.coach_name).to.eql(pm.collectionVariables.get('preview_coach_name'));",
+                  "  });",
                   "}"
                 ]
               }
@@ -6630,7 +6883,7 @@
           ]
         },
         {
-          "name": "02 - Verificación en lista del coach",
+          "name": "07 - Verificación en lista del coach",
           "request": {
             "method": "GET",
             "header": [
@@ -6696,7 +6949,7 @@
           ]
         },
         {
-          "name": "03 - Código inexistente",
+          "name": "08 - Código inexistente",
           "request": {
             "method": "POST",
             "header": [
@@ -6752,7 +7005,7 @@
           ]
         },
         {
-          "name": "04 - Código regenerado",
+          "name": "09 - Código regenerado",
           "request": {
             "method": "POST",
             "header": [
@@ -6808,7 +7061,7 @@
           ]
         },
         {
-          "name": "05 - Usuario ya vinculado",
+          "name": "10 - Usuario ya vinculado",
           "request": {
             "method": "POST",
             "header": [
@@ -6907,7 +7160,58 @@
           ]
         },
         {
-          "name": "06 - Cuenta de coach",
+          "name": "11 - Vista previa con un coach activo",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{user_access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/me/coach-link/preview?invite_code={{other_coach_invite_code}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "me",
+                "coach-link",
+                "preview"
+              ],
+              "query": [
+                {
+                  "key": "invite_code",
+                  "value": "{{other_coach_invite_code}}"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "  pm.test('Status 409 Conflict', function () {",
+                  "    pm.response.to.have.status(409);",
+                  "  });",
+                  "  const body = pm.response.json();",
+                  "  pm.test('error.code == USER_ALREADY_LINKED', function () {",
+                  "    pm.expect(body.error.code).to.eql('USER_ALREADY_LINKED');",
+                  "  });",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "12 - Cuenta de coach",
           "request": {
             "method": "POST",
             "header": [
@@ -6963,7 +7267,7 @@
           ]
         },
         {
-          "name": "07 - Consultar coach vinculado",
+          "name": "13 - Consultar coach vinculado",
           "request": {
             "method": "GET",
             "header": [
@@ -7006,7 +7310,7 @@
           ]
         },
         {
-          "name": "08 - Consultar con cuenta de coach",
+          "name": "14 - Consultar con cuenta de coach",
           "request": {
             "method": "GET",
             "header": [
@@ -7094,7 +7398,95 @@
           ]
         },
         {
-          "name": "02 - Desvincular sin estar vinculado",
+          "name": "02 - El coach ya no lo ve en su lista",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{coach_access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/coach/clients",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "coach",
+                "clients"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "  pm.test('Status 200 OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "  });",
+                  "  pm.test('El usuario desvinculado no aparece (RN-04)', function () {",
+                  "    const ids = pm.response.json().map(function (client) { return client.id; });",
+                  "    pm.expect(ids).to.not.include(pm.collectionVariables.get('linked_user_id'));",
+                  "  });",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "03 - El coach ya no ve sus metas",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{coach_access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/coach/clients/{{linked_user_id}}/goals",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "coach",
+                "clients",
+                "{{linked_user_id}}",
+                "goals"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "  pm.test('Status 403 Forbidden', function () {",
+                  "    pm.response.to.have.status(403);",
+                  "  });",
+                  "  const body = pm.response.json();",
+                  "  pm.test('error.code == CLIENT_NOT_LINKED', function () {",
+                  "    pm.expect(body.error.code).to.eql('CLIENT_NOT_LINKED');",
+                  "  });",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "04 - Desvincular sin estar vinculado",
           "request": {
             "method": "DELETE",
             "header": [
@@ -7137,7 +7529,7 @@
           ]
         },
         {
-          "name": "03 - Cuenta de coach intenta desvincularse",
+          "name": "05 - Cuenta de coach intenta desvincularse",
           "request": {
             "method": "DELETE",
             "header": [
@@ -7180,7 +7572,7 @@
           ]
         },
         {
-          "name": "04 - Consultar sin estar vinculado",
+          "name": "06 - Consultar sin estar vinculado",
           "request": {
             "method": "GET",
             "header": [
@@ -7215,6 +7607,99 @@
                   "  });",
                   "  pm.test('error.code == USER_NOT_LINKED', function () {",
                   "    pm.expect(pm.response.json().error.code).to.eql('USER_NOT_LINKED');",
+                  "  });",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "07 - Volver a vincularse con el mismo código",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{user_access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/me/coach-link",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "me",
+                "coach-link"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"invite_code\": \"{{coach_invite_code}}\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "  pm.test('Status 201 Created', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "  });",
+                  "  const data = pm.response.json();",
+                  "  pm.test('La vinculación se reactiva con el mismo coach', function () {",
+                  "    pm.expect(data.status).to.eql('active');",
+                  "    pm.expect(data.coach_name).to.eql(pm.collectionVariables.get('preview_coach_name'));",
+                  "  });",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "00 - Preparación: desvincular de nuevo",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{user_access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/me/coach-link",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "me",
+                "coach-link"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "  pm.test('Status 204 No Content', function () {",
+                  "    pm.response.to.have.status(204);",
                   "  });",
                   "}"
                 ]
@@ -14428,7 +14913,138 @@
           "response": []
         },
         {
-          "name": "24 - Ana se desvincula",
+          "name": "24 - El progreso de Ana cuenta sus sesiones completadas (HU-22)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 200 OK\", function () {",
+                  "        pm.response.to.have.status(200);",
+                  "    });",
+                  "    const body = pm.response.json();",
+                  "    const today = pm.collectionVariables.get(\"hu17_today\");",
+                  "    const yesterday = pm.collectionVariables.get(\"hu17_yesterday\");",
+                  "    pm.test(\"Un solo bloque de ayer a hoy con los 3 días del perfil de Ana\", function () {",
+                  "        pm.expect(body.compliance).to.have.lengthOf(1);",
+                  "        pm.expect(body.compliance[0].start).to.eql(yesterday);",
+                  "        pm.expect(body.compliance[0].end).to.eql(today);",
+                  "        pm.expect(body.compliance[0].training_days).to.eql(3);",
+                  "    });",
+                  "    // Ana completó: hoy la sesión 2 de la recomendada (01), Torso (07) y Pierna (20); ayer Torso (08).",
+                  "    // La recomendada reemplazada (05) no registró nada y Pierna sigue contando aunque se retiró (RF-24).",
+                  "    pm.test(\"completed_sessions cuenta las 4 sesiones completadas (RF-16)\", function () {",
+                  "        pm.expect(body.compliance[0].completed_sessions).to.eql(4);",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{hu17_client_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/me/progress?from={{hu17_yesterday}}&to={{hu17_today}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "me",
+                "progress"
+              ],
+              "query": [
+                {
+                  "key": "from",
+                  "value": "{{hu17_yesterday}}"
+                },
+                {
+                  "key": "to",
+                  "value": "{{hu17_today}}"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "25 - El coach ve las mismas sesiones en el progreso de Ana (HU-23)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 200 OK\", function () {",
+                  "        pm.response.to.have.status(200);",
+                  "    });",
+                  "    const body = pm.response.json();",
+                  "    const today = pm.collectionVariables.get(\"hu17_today\");",
+                  "    const yesterday = pm.collectionVariables.get(\"hu17_yesterday\");",
+                  "    pm.test(\"Un solo bloque de ayer a hoy con los 3 días del perfil de Ana\", function () {",
+                  "        pm.expect(body.compliance).to.have.lengthOf(1);",
+                  "        pm.expect(body.compliance[0].start).to.eql(yesterday);",
+                  "        pm.expect(body.compliance[0].end).to.eql(today);",
+                  "        pm.expect(body.compliance[0].training_days).to.eql(3);",
+                  "    });",
+                  "    // Ana completó: hoy la sesión 2 de la recomendada (01), Torso (07) y Pierna (20); ayer Torso (08).",
+                  "    // La recomendada reemplazada (05) no registró nada y Pierna sigue contando aunque se retiró (RF-24).",
+                  "    pm.test(\"completed_sessions cuenta las 4 sesiones completadas (RF-16)\", function () {",
+                  "        pm.expect(body.compliance[0].completed_sessions).to.eql(4);",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{hu17_coach_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/coach/clients/{{hu17_client_id}}/progress?from={{hu17_yesterday}}&to={{hu17_today}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "coach",
+                "clients",
+                "{{hu17_client_id}}",
+                "progress"
+              ],
+              "query": [
+                {
+                  "key": "from",
+                  "value": "{{hu17_yesterday}}"
+                },
+                {
+                  "key": "to",
+                  "value": "{{hu17_today}}"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "26 - Ana se desvincula",
           "event": [
             {
               "listen": "test",
@@ -14470,7 +15086,7 @@
           "response": []
         },
         {
-          "name": "25 - Rutina de un coach desvinculado",
+          "name": "27 - Rutina de un coach desvinculado",
           "event": [
             {
               "listen": "test",
@@ -27332,7 +27948,7 @@
                   "    const round1 = (n) => Math.round(n * 10) / 10;",
                   "    const start = pm.variables.get(\"weekly_query_start\");",
                   "    const sent = (function () { const o = {}; o[pm.collectionVariables.get(\"weekly_today\")] = { calories_kcal: round1(Number(pm.collectionVariables.get(\"weekly_meal_a_kcal\")) + Number(pm.collectionVariables.get(\"weekly_meal_b_kcal\")) + Number(pm.collectionVariables.get(\"weekly_meal_c_kcal\"))), protein_g: 90, fat_g: 30 }; return o; })();",
-                  "    const goalFor = (function (date) { const from = addDays(pm.collectionVariables.get(\"weekly_today\"), 3); if (date < addDays(from, -1)) { return { source: \"system\", calories_kcal: Number(pm.collectionVariables.get(\"weekly_goal_calories\")), protein_g: Number(pm.collectionVariables.get(\"weekly_goal_protein\")), fat_g: Number(pm.collectionVariables.get(\"weekly_goal_fat\")) }; } if (date >= from) { return { source: \"coach\", calories_kcal: 2000, protein_g: 150, fat_g: 60 }; } return null; });",
+                  "    const goalFor = (function (date) { const from = addDays(pm.collectionVariables.get(\"weekly_today\"), 3); if (date < from) { return { source: \"system\", calories_kcal: Number(pm.collectionVariables.get(\"weekly_goal_calories\")), protein_g: Number(pm.collectionVariables.get(\"weekly_goal_protein\")), fat_g: Number(pm.collectionVariables.get(\"weekly_goal_fat\")) }; } if (date >= from) { return { source: \"coach\", calories_kcal: 2000, protein_g: 150, fat_g: 60 }; } return null; });",
                   "    const zero = { calories_kcal: 0, protein_g: 0, fat_g: 0 };",
                   "    pm.test(\"Estructura: start, end, days, average y goal_met_days\", function () {",
                   "        pm.expect(data).to.have.all.keys(\"start\", \"end\", \"days\", \"average\", \"goal_met_days\");",
@@ -27385,6 +28001,13 @@
                   "        pm.expect(sources[0]).to.eql(\"system\");",
                   "        pm.expect(sources[6]).to.eql(\"coach\");",
                   "    });",
+                  "    pm.test(\"RN-06: el día justo antes del inicio usa la calculada y el día del inicio la del coach\", function () {",
+                  "        const from = addDays(pm.collectionVariables.get(\"weekly_today\"), 3);",
+                  "        const before = data.days.find((day) => day.date === addDays(from, -1));",
+                  "        const first = data.days.find((day) => day.date === from);",
+                  "        pm.expect(before.goal.source, before.date).to.eql(\"system\");",
+                  "        pm.expect(first.goal.source, first.date).to.eql(\"coach\");",
+                  "    });",
                   "}"
                 ]
               }
@@ -27418,9 +28041,1474 @@
                 }
               ]
             },
-            "description": "Semana de ayer a hoy+5. Los días anteriores al inicio de la meta del coach usan la calculada y los posteriores la del coach. El día justo antes del inicio no se comprueba: la fecha de la meta es una fecha en UTC y ese día puede quedar a uno u otro lado según la zona horaria."
+            "description": "Semana de ayer a hoy+5. La meta del coach empieza a las 00:00 de México del día elegido (hoy+3): los días anteriores, incluido el día justo antes del inicio, usan la calculada, y desde el inicio la del coach (RN-06)."
           },
           "response": []
+        }
+      ]
+    },
+    {
+      "name": "HU-22 HU-23 Progreso",
+      "item": [
+        {
+          "name": "00 - Preparación: registrar a Lía HU-22",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "register"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Lía HU-22\",\n  \"email\": \"{{email}}\",\n  \"password\": \"{{test_password}}\",\n  \"role\": \"user\",\n  \"privacy_accepted\": true\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    const email = \"hu22.user.\" + Date.now() + \".\" + Math.floor(Math.random() * 1e6) + \"@macrofit.test\";",
+                  "    pm.variables.set(\"email\", email);",
+                  "    pm.collectionVariables.set(\"hu22_user_email\", email);",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 201 Created\", function () {",
+                  "        pm.response.to.have.status(201);",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "00 - Preparación: iniciar sesión a Lía HU-22",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{hu22_user_email}}\",\n  \"password\": \"{{test_password}}\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 200 OK\", function () {",
+                  "        pm.response.to.have.status(200);",
+                  "    });",
+                  "    pm.collectionVariables.set(\"hu22_user_token\", pm.response.json().access_token);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "00 - Preparación: registrar el perfil de Lía",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{hu22_user_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/me/profile",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "me",
+                "profile"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"weight_kg\": 72.5,\n  \"height_cm\": 165,\n  \"birth_date\": \"1998-03-15\",\n  \"gender\": \"female\",\n  \"level\": \"intermediate\",\n  \"training_days\": 4,\n  \"objective\": \"maintain\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    const mx = (days) => new Date(Date.now() - 6 * 3600 * 1000 + days * 86400 * 1000).toISOString().slice(0, 10);",
+                  "    pm.collectionVariables.set(\"hu22_today\", mx(0));",
+                  "    pm.collectionVariables.set(\"hu22_week_from\", mx(-6));",
+                  "    pm.collectionVariables.set(\"hu22_month_from\", mx(-29));",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 201 Created\", function () {",
+                  "        pm.response.to.have.status(201);",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "00 - Preparación: Lía registra su peso",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{hu22_user_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/me/weights",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "me",
+                "weights"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"weight_kg\": 70.5\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 201 Created\", function () {",
+                  "        pm.response.to.have.status(201);",
+                  "    });",
+                  "    pm.collectionVariables.set(\"hu22_weight_id\", pm.response.json().id);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "00 - Preparación: id de Lía",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{hu22_user_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "me"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 200 OK\", function () {",
+                  "        pm.response.to.have.status(200);",
+                  "    });",
+                  "    pm.collectionVariables.set(\"hu22_user_id\", pm.response.json().id);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "00 - Preparación: registrar a Coach Progreso HU-23",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "register"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Coach Progreso HU-23\",\n  \"email\": \"{{email}}\",\n  \"password\": \"{{test_password}}\",\n  \"role\": \"coach\",\n  \"privacy_accepted\": true\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    const email = \"hu22.coach.\" + Date.now() + \".\" + Math.floor(Math.random() * 1e6) + \"@macrofit.test\";",
+                  "    pm.variables.set(\"email\", email);",
+                  "    pm.collectionVariables.set(\"hu22_coach_email\", email);",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 201 Created\", function () {",
+                  "        pm.response.to.have.status(201);",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "00 - Preparación: iniciar sesión a Coach Progreso HU-23",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{hu22_coach_email}}\",\n  \"password\": \"{{test_password}}\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 200 OK\", function () {",
+                  "        pm.response.to.have.status(200);",
+                  "    });",
+                  "    pm.collectionVariables.set(\"hu22_coach_token\", pm.response.json().access_token);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "00 - Preparación: código de invitación del coach",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{hu22_coach_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/coach/invite-code",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "coach",
+                "invite-code"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 200 OK\", function () {",
+                  "        pm.response.to.have.status(200);",
+                  "    });",
+                  "    pm.collectionVariables.set(\"hu22_invite_code\", pm.response.json().code);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "00 - Preparación: vincular a Lía con el coach",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{hu22_user_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/me/coach-link",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "me",
+                "coach-link"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"invite_code\": \"{{hu22_invite_code}}\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 201 Created\", function () {",
+                  "        pm.response.to.have.status(201);",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "00 - Preparación: registrar a Coach sin vincular HU-23",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "register"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Coach sin vincular HU-23\",\n  \"email\": \"{{email}}\",\n  \"password\": \"{{test_password}}\",\n  \"role\": \"coach\",\n  \"privacy_accepted\": true\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    const email = \"hu22.other_coach.\" + Date.now() + \".\" + Math.floor(Math.random() * 1e6) + \"@macrofit.test\";",
+                  "    pm.variables.set(\"email\", email);",
+                  "    pm.collectionVariables.set(\"hu22_other_coach_email\", email);",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 201 Created\", function () {",
+                  "        pm.response.to.have.status(201);",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "00 - Preparación: iniciar sesión a Coach sin vincular HU-23",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{hu22_other_coach_email}}\",\n  \"password\": \"{{test_password}}\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 200 OK\", function () {",
+                  "        pm.response.to.have.status(200);",
+                  "    });",
+                  "    pm.collectionVariables.set(\"hu22_other_coach_token\", pm.response.json().access_token);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "01 - Sin sesión",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/me/progress?from={{hu22_week_from}}&to={{hu22_today}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "me",
+                "progress"
+              ],
+              "query": [
+                {
+                  "key": "from",
+                  "value": "{{hu22_week_from}}"
+                },
+                {
+                  "key": "to",
+                  "value": "{{hu22_today}}"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 401 Unauthorized\", function () {",
+                  "        pm.response.to.have.status(401);",
+                  "    });",
+                  "    const body = pm.response.json();",
+                  "    pm.test(\"Formato de error { error: { code, message, fields } }\", function () {",
+                  "        pm.expect(body).to.have.all.keys(\"error\");",
+                  "        pm.expect(body.error).to.have.all.keys(\"code\", \"message\", \"fields\");",
+                  "        pm.expect(body.error.message).to.be.a(\"string\").and.not.empty;",
+                  "        pm.expect(body.error.fields).to.be.an(\"object\");",
+                  "    });",
+                  "    pm.test(\"Código UNAUTHORIZED\", function () {",
+                  "        pm.expect(body.error.code).to.eql(\"UNAUTHORIZED\");",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "02 - Progreso propio con una cuenta de coach",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{hu22_coach_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/me/progress?from={{hu22_week_from}}&to={{hu22_today}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "me",
+                "progress"
+              ],
+              "query": [
+                {
+                  "key": "from",
+                  "value": "{{hu22_week_from}}"
+                },
+                {
+                  "key": "to",
+                  "value": "{{hu22_today}}"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 403 Forbidden\", function () {",
+                  "        pm.response.to.have.status(403);",
+                  "    });",
+                  "    const body = pm.response.json();",
+                  "    pm.test(\"Formato de error { error: { code, message, fields } }\", function () {",
+                  "        pm.expect(body).to.have.all.keys(\"error\");",
+                  "        pm.expect(body.error).to.have.all.keys(\"code\", \"message\", \"fields\");",
+                  "        pm.expect(body.error.message).to.be.a(\"string\").and.not.empty;",
+                  "        pm.expect(body.error.fields).to.be.an(\"object\");",
+                  "    });",
+                  "    pm.test(\"Código FORBIDDEN_ROLE\", function () {",
+                  "        pm.expect(body.error.code).to.eql(\"FORBIDDEN_ROLE\");",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "03 - Sin fechas",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{hu22_user_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/me/progress",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "me",
+                "progress"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 400 Bad Request\", function () {",
+                  "        pm.response.to.have.status(400);",
+                  "    });",
+                  "    const body = pm.response.json();",
+                  "    pm.test(\"Formato de error { error: { code, message, fields } }\", function () {",
+                  "        pm.expect(body).to.have.all.keys(\"error\");",
+                  "        pm.expect(body.error).to.have.all.keys(\"code\", \"message\", \"fields\");",
+                  "        pm.expect(body.error.message).to.be.a(\"string\").and.not.empty;",
+                  "        pm.expect(body.error.fields).to.be.an(\"object\");",
+                  "    });",
+                  "    pm.test(\"Código VALIDATION_ERROR\", function () {",
+                  "        pm.expect(body.error.code).to.eql(\"VALIDATION_ERROR\");",
+                  "    });",
+                  "    pm.test(\"Señala solo el campo from\", function () {",
+                  "        pm.expect(Object.keys(body.error.fields)).to.eql([\"from\"]);",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "04 - Fecha con formato inválido",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{hu22_user_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/me/progress?from={{hu22_week_from}}&to=2026-13-01",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "me",
+                "progress"
+              ],
+              "query": [
+                {
+                  "key": "from",
+                  "value": "{{hu22_week_from}}"
+                },
+                {
+                  "key": "to",
+                  "value": "2026-13-01"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 400 Bad Request\", function () {",
+                  "        pm.response.to.have.status(400);",
+                  "    });",
+                  "    const body = pm.response.json();",
+                  "    pm.test(\"Formato de error { error: { code, message, fields } }\", function () {",
+                  "        pm.expect(body).to.have.all.keys(\"error\");",
+                  "        pm.expect(body.error).to.have.all.keys(\"code\", \"message\", \"fields\");",
+                  "        pm.expect(body.error.message).to.be.a(\"string\").and.not.empty;",
+                  "        pm.expect(body.error.fields).to.be.an(\"object\");",
+                  "    });",
+                  "    pm.test(\"Código VALIDATION_ERROR\", function () {",
+                  "        pm.expect(body.error.code).to.eql(\"VALIDATION_ERROR\");",
+                  "    });",
+                  "    pm.test(\"Señala solo el campo to\", function () {",
+                  "        pm.expect(Object.keys(body.error.fields)).to.eql([\"to\"]);",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "05 - Inicio posterior al fin",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{hu22_user_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/me/progress?from={{hu22_today}}&to={{hu22_week_from}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "me",
+                "progress"
+              ],
+              "query": [
+                {
+                  "key": "from",
+                  "value": "{{hu22_today}}"
+                },
+                {
+                  "key": "to",
+                  "value": "{{hu22_week_from}}"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 400 Bad Request\", function () {",
+                  "        pm.response.to.have.status(400);",
+                  "    });",
+                  "    const body = pm.response.json();",
+                  "    pm.test(\"Formato de error { error: { code, message, fields } }\", function () {",
+                  "        pm.expect(body).to.have.all.keys(\"error\");",
+                  "        pm.expect(body.error).to.have.all.keys(\"code\", \"message\", \"fields\");",
+                  "        pm.expect(body.error.message).to.be.a(\"string\").and.not.empty;",
+                  "        pm.expect(body.error.fields).to.be.an(\"object\");",
+                  "    });",
+                  "    pm.test(\"Código VALIDATION_ERROR\", function () {",
+                  "        pm.expect(body.error.code).to.eql(\"VALIDATION_ERROR\");",
+                  "    });",
+                  "    pm.test(\"Señala solo el campo from\", function () {",
+                  "        pm.expect(Object.keys(body.error.fields)).to.eql([\"from\"]);",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "06 - Rango de más de 93 días",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{hu22_user_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/me/progress?from=2026-01-01&to=2026-06-30",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "me",
+                "progress"
+              ],
+              "query": [
+                {
+                  "key": "from",
+                  "value": "2026-01-01"
+                },
+                {
+                  "key": "to",
+                  "value": "2026-06-30"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 400 Bad Request\", function () {",
+                  "        pm.response.to.have.status(400);",
+                  "    });",
+                  "    const body = pm.response.json();",
+                  "    pm.test(\"Formato de error { error: { code, message, fields } }\", function () {",
+                  "        pm.expect(body).to.have.all.keys(\"error\");",
+                  "        pm.expect(body.error).to.have.all.keys(\"code\", \"message\", \"fields\");",
+                  "        pm.expect(body.error.message).to.be.a(\"string\").and.not.empty;",
+                  "        pm.expect(body.error.fields).to.be.an(\"object\");",
+                  "    });",
+                  "    pm.test(\"Código VALIDATION_ERROR\", function () {",
+                  "        pm.expect(body.error.code).to.eql(\"VALIDATION_ERROR\");",
+                  "    });",
+                  "    pm.test(\"Señala solo el campo to\", function () {",
+                  "        pm.expect(Object.keys(body.error.fields)).to.eql([\"to\"]);",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "07 - Progreso de la semana",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{hu22_user_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/me/progress?from={{hu22_week_from}}&to={{hu22_today}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "me",
+                "progress"
+              ],
+              "query": [
+                {
+                  "key": "from",
+                  "value": "{{hu22_week_from}}"
+                },
+                {
+                  "key": "to",
+                  "value": "{{hu22_today}}"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 200 OK\", function () {",
+                  "        pm.response.to.have.status(200);",
+                  "    });",
+                  "    const body = pm.response.json();",
+                  "    pm.test(\"Estructura del progreso: weights, daily y compliance\", function () {",
+                  "        pm.expect(body).to.have.all.keys(\"weights\", \"daily\", \"compliance\");",
+                  "        body.weights.forEach(function (w) {",
+                  "            pm.expect(w).to.have.all.keys(\"id\", \"user_id\", \"weight_kg\", \"recorded_at\");",
+                  "        });",
+                  "        body.daily.forEach(function (d) {",
+                  "            pm.expect(d).to.have.all.keys(\"date\", \"goal\", \"consumed\", \"remaining\");",
+                  "        });",
+                  "        body.compliance.forEach(function (c) {",
+                  "            pm.expect(c).to.have.all.keys(\"start\", \"end\", \"training_days\", \"completed_sessions\");",
+                  "        });",
+                  "    });",
+                  "    pm.test(\"Un día por fecha, del primero al último del periodo\", function () {",
+                  "        pm.expect(body.daily).to.have.lengthOf(7);",
+                  "        pm.expect(body.daily[0].date).to.eql(pm.collectionVariables.get(\"hu22_week_from\"));",
+                  "        pm.expect(body.daily[6].date).to.eql(pm.collectionVariables.get(\"hu22_today\"));",
+                  "    });",
+                  "    pm.test(\"Incluye el peso que Lía registró hoy (RF-17)\", function () {",
+                  "        pm.expect(body.weights).to.have.lengthOf(1);",
+                  "        pm.expect(body.weights[0].id).to.eql(pm.collectionVariables.get(\"hu22_weight_id\"));",
+                  "        pm.expect(body.weights[0].user_id).to.eql(pm.collectionVariables.get(\"hu22_user_id\"));",
+                  "        pm.expect(body.weights[0].weight_kg).to.eql(70.5);",
+                  "    });",
+                  "    pm.test(\"Un bloque de cumplimiento con los 4 días del perfil y 0 sesiones\", function () {",
+                  "        pm.expect(body.compliance).to.have.lengthOf(1);",
+                  "        pm.expect(body.compliance[0].start).to.eql(pm.collectionVariables.get(\"hu22_week_from\"));",
+                  "        pm.expect(body.compliance[0].end).to.eql(pm.collectionVariables.get(\"hu22_today\"));",
+                  "        pm.expect(body.compliance[0].training_days).to.eql(4);",
+                  "        pm.expect(body.compliance[0].completed_sessions).to.eql(0);",
+                  "    });",
+                  "    pm.test(\"Sin registros de comida el consumo de cada día es 0\", function () {",
+                  "        body.daily.forEach(function (d) {",
+                  "            pm.expect(d.consumed).to.eql({ calories_kcal: 0, protein_g: 0, fat_g: 0 });",
+                  "        });",
+                  "    });",
+                  "    pm.collectionVariables.set(\"hu22_week_body\", JSON.stringify(body));",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "08 - Progreso del mes",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{hu22_user_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/me/progress?from={{hu22_month_from}}&to={{hu22_today}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "me",
+                "progress"
+              ],
+              "query": [
+                {
+                  "key": "from",
+                  "value": "{{hu22_month_from}}"
+                },
+                {
+                  "key": "to",
+                  "value": "{{hu22_today}}"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 200 OK\", function () {",
+                  "        pm.response.to.have.status(200);",
+                  "    });",
+                  "    const body = pm.response.json();",
+                  "    pm.test(\"Estructura del progreso: weights, daily y compliance\", function () {",
+                  "        pm.expect(body).to.have.all.keys(\"weights\", \"daily\", \"compliance\");",
+                  "        body.weights.forEach(function (w) {",
+                  "            pm.expect(w).to.have.all.keys(\"id\", \"user_id\", \"weight_kg\", \"recorded_at\");",
+                  "        });",
+                  "        body.daily.forEach(function (d) {",
+                  "            pm.expect(d).to.have.all.keys(\"date\", \"goal\", \"consumed\", \"remaining\");",
+                  "        });",
+                  "        body.compliance.forEach(function (c) {",
+                  "            pm.expect(c).to.have.all.keys(\"start\", \"end\", \"training_days\", \"completed_sessions\");",
+                  "        });",
+                  "    });",
+                  "    pm.test(\"30 días y 5 bloques de cumplimiento (el último de 2 días)\", function () {",
+                  "        pm.expect(body.daily).to.have.lengthOf(30);",
+                  "        pm.expect(body.compliance).to.have.lengthOf(5);",
+                  "        pm.expect(body.compliance[0].start).to.eql(pm.collectionVariables.get(\"hu22_month_from\"));",
+                  "        pm.expect(body.compliance[4].end).to.eql(pm.collectionVariables.get(\"hu22_today\"));",
+                  "    });",
+                  "    pm.test(\"El peso de hoy también está en el mes\", function () {",
+                  "        pm.expect(body.weights.map(function (w) { return w.weight_kg; })).to.eql([70.5]);",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "09 - Progreso de un cliente con una cuenta de usuario",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{hu22_user_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/coach/clients/{{hu22_user_id}}/progress?from={{hu22_week_from}}&to={{hu22_today}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "coach",
+                "clients",
+                "{{hu22_user_id}}",
+                "progress"
+              ],
+              "query": [
+                {
+                  "key": "from",
+                  "value": "{{hu22_week_from}}"
+                },
+                {
+                  "key": "to",
+                  "value": "{{hu22_today}}"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 403 Forbidden\", function () {",
+                  "        pm.response.to.have.status(403);",
+                  "    });",
+                  "    const body = pm.response.json();",
+                  "    pm.test(\"Formato de error { error: { code, message, fields } }\", function () {",
+                  "        pm.expect(body).to.have.all.keys(\"error\");",
+                  "        pm.expect(body.error).to.have.all.keys(\"code\", \"message\", \"fields\");",
+                  "        pm.expect(body.error.message).to.be.a(\"string\").and.not.empty;",
+                  "        pm.expect(body.error.fields).to.be.an(\"object\");",
+                  "    });",
+                  "    pm.test(\"Código FORBIDDEN_ROLE\", function () {",
+                  "        pm.expect(body.error.code).to.eql(\"FORBIDDEN_ROLE\");",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "10 - Coach no vinculado",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{hu22_other_coach_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/coach/clients/{{hu22_user_id}}/progress?from={{hu22_week_from}}&to={{hu22_today}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "coach",
+                "clients",
+                "{{hu22_user_id}}",
+                "progress"
+              ],
+              "query": [
+                {
+                  "key": "from",
+                  "value": "{{hu22_week_from}}"
+                },
+                {
+                  "key": "to",
+                  "value": "{{hu22_today}}"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 403 Forbidden\", function () {",
+                  "        pm.response.to.have.status(403);",
+                  "    });",
+                  "    const body = pm.response.json();",
+                  "    pm.test(\"Formato de error { error: { code, message, fields } }\", function () {",
+                  "        pm.expect(body).to.have.all.keys(\"error\");",
+                  "        pm.expect(body.error).to.have.all.keys(\"code\", \"message\", \"fields\");",
+                  "        pm.expect(body.error.message).to.be.a(\"string\").and.not.empty;",
+                  "        pm.expect(body.error.fields).to.be.an(\"object\");",
+                  "    });",
+                  "    pm.test(\"Código CLIENT_NOT_LINKED\", function () {",
+                  "        pm.expect(body.error.code).to.eql(\"CLIENT_NOT_LINKED\");",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "11 - Id de cliente mal formado",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{hu22_coach_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/coach/clients/no-es-un-id/progress?from={{hu22_week_from}}&to={{hu22_today}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "coach",
+                "clients",
+                "no-es-un-id",
+                "progress"
+              ],
+              "query": [
+                {
+                  "key": "from",
+                  "value": "{{hu22_week_from}}"
+                },
+                {
+                  "key": "to",
+                  "value": "{{hu22_today}}"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 403 Forbidden\", function () {",
+                  "        pm.response.to.have.status(403);",
+                  "    });",
+                  "    const body = pm.response.json();",
+                  "    pm.test(\"Formato de error { error: { code, message, fields } }\", function () {",
+                  "        pm.expect(body).to.have.all.keys(\"error\");",
+                  "        pm.expect(body.error).to.have.all.keys(\"code\", \"message\", \"fields\");",
+                  "        pm.expect(body.error.message).to.be.a(\"string\").and.not.empty;",
+                  "        pm.expect(body.error.fields).to.be.an(\"object\");",
+                  "    });",
+                  "    pm.test(\"Código CLIENT_NOT_LINKED\", function () {",
+                  "        pm.expect(body.error.code).to.eql(\"CLIENT_NOT_LINKED\");",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "12 - Fechas inválidas en el progreso del cliente",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{hu22_coach_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/coach/clients/{{hu22_user_id}}/progress",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "coach",
+                "clients",
+                "{{hu22_user_id}}",
+                "progress"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 400 Bad Request\", function () {",
+                  "        pm.response.to.have.status(400);",
+                  "    });",
+                  "    const body = pm.response.json();",
+                  "    pm.test(\"Formato de error { error: { code, message, fields } }\", function () {",
+                  "        pm.expect(body).to.have.all.keys(\"error\");",
+                  "        pm.expect(body.error).to.have.all.keys(\"code\", \"message\", \"fields\");",
+                  "        pm.expect(body.error.message).to.be.a(\"string\").and.not.empty;",
+                  "        pm.expect(body.error.fields).to.be.an(\"object\");",
+                  "    });",
+                  "    pm.test(\"Código VALIDATION_ERROR\", function () {",
+                  "        pm.expect(body.error.code).to.eql(\"VALIDATION_ERROR\");",
+                  "    });",
+                  "    pm.test(\"Señala solo el campo from\", function () {",
+                  "        pm.expect(Object.keys(body.error.fields)).to.eql([\"from\"]);",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "13 - El coach vinculado ve el mismo progreso que Lía (RF-25)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{hu22_coach_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/coach/clients/{{hu22_user_id}}/progress?from={{hu22_week_from}}&to={{hu22_today}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "coach",
+                "clients",
+                "{{hu22_user_id}}",
+                "progress"
+              ],
+              "query": [
+                {
+                  "key": "from",
+                  "value": "{{hu22_week_from}}"
+                },
+                {
+                  "key": "to",
+                  "value": "{{hu22_today}}"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 200 OK\", function () {",
+                  "        pm.response.to.have.status(200);",
+                  "    });",
+                  "    const body = pm.response.json();",
+                  "    pm.test(\"Estructura del progreso: weights, daily y compliance\", function () {",
+                  "        pm.expect(body).to.have.all.keys(\"weights\", \"daily\", \"compliance\");",
+                  "        body.weights.forEach(function (w) {",
+                  "            pm.expect(w).to.have.all.keys(\"id\", \"user_id\", \"weight_kg\", \"recorded_at\");",
+                  "        });",
+                  "        body.daily.forEach(function (d) {",
+                  "            pm.expect(d).to.have.all.keys(\"date\", \"goal\", \"consumed\", \"remaining\");",
+                  "        });",
+                  "        body.compliance.forEach(function (c) {",
+                  "            pm.expect(c).to.have.all.keys(\"start\", \"end\", \"training_days\", \"completed_sessions\");",
+                  "        });",
+                  "    });",
+                  "    pm.test(\"Mismos pesos, días y cumplimiento que GET /users/me/progress\", function () {",
+                  "        pm.expect(body).to.eql(JSON.parse(pm.collectionVariables.get(\"hu22_week_body\")));",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "00 - Preparación: Lía se desvincula del coach",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{hu22_user_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/me/coach-link",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "me",
+                "coach-link"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 204 No Content\", function () {",
+                  "        pm.response.to.have.status(204);",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "14 - Tras la desvinculación el coach ya no ve el progreso (RN-04)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{hu22_coach_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/coach/clients/{{hu22_user_id}}/progress?from={{hu22_week_from}}&to={{hu22_today}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "coach",
+                "clients",
+                "{{hu22_user_id}}",
+                "progress"
+              ],
+              "query": [
+                {
+                  "key": "from",
+                  "value": "{{hu22_week_from}}"
+                },
+                {
+                  "key": "to",
+                  "value": "{{hu22_today}}"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "{",
+                  "    pm.test(\"Status 403 Forbidden\", function () {",
+                  "        pm.response.to.have.status(403);",
+                  "    });",
+                  "    const body = pm.response.json();",
+                  "    pm.test(\"Formato de error { error: { code, message, fields } }\", function () {",
+                  "        pm.expect(body).to.have.all.keys(\"error\");",
+                  "        pm.expect(body.error).to.have.all.keys(\"code\", \"message\", \"fields\");",
+                  "        pm.expect(body.error.message).to.be.a(\"string\").and.not.empty;",
+                  "        pm.expect(body.error.fields).to.be.an(\"object\");",
+                  "    });",
+                  "    pm.test(\"Código CLIENT_NOT_LINKED\", function () {",
+                  "        pm.expect(body.error.code).to.eql(\"CLIENT_NOT_LINKED\");",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ]
         }
       ]
     },
@@ -27924,6 +30012,10 @@
     },
     {
       "key": "other_coach_invite_code",
+      "value": ""
+    },
+    {
+      "key": "preview_coach_name",
       "value": ""
     },
     {
@@ -28721,6 +30813,58 @@
       "key": "weekly_meal_c_kcal",
       "value": "",
       "type": "string"
+    },
+    {
+      "key": "hu22_user_email",
+      "value": ""
+    },
+    {
+      "key": "hu22_user_token",
+      "value": ""
+    },
+    {
+      "key": "hu22_today",
+      "value": ""
+    },
+    {
+      "key": "hu22_week_from",
+      "value": ""
+    },
+    {
+      "key": "hu22_month_from",
+      "value": ""
+    },
+    {
+      "key": "hu22_weight_id",
+      "value": ""
+    },
+    {
+      "key": "hu22_user_id",
+      "value": ""
+    },
+    {
+      "key": "hu22_coach_email",
+      "value": ""
+    },
+    {
+      "key": "hu22_coach_token",
+      "value": ""
+    },
+    {
+      "key": "hu22_invite_code",
+      "value": ""
+    },
+    {
+      "key": "hu22_other_coach_email",
+      "value": ""
+    },
+    {
+      "key": "hu22_other_coach_token",
+      "value": ""
+    },
+    {
+      "key": "hu22_week_body",
+      "value": ""
     }
   ]
 }

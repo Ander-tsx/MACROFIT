@@ -18,6 +18,15 @@ class CoachLinkRemoteDataSource {
     return CoachLinkModel.fromJson(response.data!);
   });
 
+  /// `GET /users/me/coach-link/preview`: nombre del coach del código, sin vincular.
+  Future<String> previewCoach(String inviteCode) => guardApiCall(() async {
+    final response = await _dio.get<Map<String, dynamic>>(
+      '/users/me/coach-link/preview',
+      queryParameters: {'invite_code': inviteCode},
+    );
+    return response.data!['coach_name'] as String;
+  });
+
   /// `POST /users/me/coach-link`.
   Future<CoachLinkModel> linkCoach(String inviteCode) => guardApiCall(() async {
     final response = await _dio.post<Map<String, dynamic>>(

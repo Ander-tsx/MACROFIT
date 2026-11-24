@@ -14,11 +14,16 @@ class WeightsViewModel extends ViewModel with FormStateMixin {
   bool _isLoading = false;
   String? _loadError;
   String _weightInput = '';
+  int _inputVersion = 0;
 
   List<WeightEntry> get weights => _weights;
   bool get isLoading => _isLoading;
   String? get loadError => _loadError;
   String get weightInput => _weightInput;
+
+  /// Cambia cada vez que se registra un peso: la vista lo usa como clave del
+  /// campo para mostrarlo vacío, igual que [weightInput].
+  int get inputVersion => _inputVersion;
 
   void setWeightInput(String value) {
     _weightInput = value;
@@ -58,6 +63,7 @@ class WeightsViewModel extends ViewModel with FormStateMixin {
       final newEntry = await _repository.createWeight(weightValue);
       _weights = [newEntry, ..._weights];
       _weightInput = '';
+      _inputVersion++;
       setSubmitting(false);
       return true;
     } on ApiException catch (error) {

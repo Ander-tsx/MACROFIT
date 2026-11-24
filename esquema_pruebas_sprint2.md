@@ -41,9 +41,18 @@
 | HU-11 | Totales de calorías, proteína y grasa de cada día. | Integración | Cada día trae lo consumido ese día (igual a lo enviado), la meta de ese día y el restante; los días sin registros aparecen en 0. | [**3**](#caso-37) (mobile 0 · backend 3) |
 | HU-11 | Promedio diario con los días vacíos como 0. | Unitaria | El promedio es el total de los 7 días entre 7, redondeado a 1 decimal; una semana sin registros da promedio 0 (nunca `-0`). | [**3**](#caso-38) (mobile 0 · backend 3) |
 | HU-11 | Día con la meta cumplida. | Unitaria | Un día cumple si consumió calorías y estas quedan entre el 90 % y el 110 % de su meta (límites incluidos); sin consumo nunca cumple; `goal_met_days` cuenta los días cumplidos. | [**6**](#caso-39) (mobile 0 · backend 6) |
-| HU-11 | Meta que cambia a mitad de semana (RF-21). | Integración | Cada día se compara con la meta vigente ese día (calculada antes, del coach después), con la misma regla que `GET /users/me/goals/current`. | [**4**](#caso-40) (mobile 0 · backend 4) |
+| HU-11 | Meta que cambia a mitad de semana (RF-21). | Integración | Cada día se compara con la meta vigente ese día (calculada antes, incluido el día anterior al inicio; del coach desde las 00:00 de México del día elegido), con la misma regla que `GET /users/me/goals/current`. | [**7**](#caso-40) (mobile 0 · backend 7) |
 | HU-11 | Validación de `start`. | Integración | Un `start` ausente o con formato inválido responde 400 `VALIDATION_ERROR` con el campo `start` señalado. | [**3**](#caso-41) (mobile 0 · backend 3) |
 | HU-11 | Restricción por sesión, rol y perfil. | Integración | Sin sesión responde 401 `UNAUTHORIZED`; una cuenta de coach responde 403 `FORBIDDEN_ROLE`; un usuario sin perfil ni meta responde 404 `PROFILE_NOT_FOUND`. | [**3**](#caso-42) (mobile 0 · backend 3) |
+| HU-12 | Código de invitación único del coach (RF-11). | Unitaria | El código tiene 6 caracteres de A-Z y 0-9 y es aleatorio; consultar dos veces devuelve el mismo; regenerar da uno distinto y el anterior deja de servir para vincularse. | [**6**](#caso-43) (mobile 0 · backend 6) |
+| HU-12 | El código solo es del coach. | Integración | Una cuenta de usuario recibe 403 `FORBIDDEN_ROLE` al consultar el código. | [**1**](#caso-44) (mobile 0 · backend 1) |
+| HU-13 | Vista previa del coach antes de vincularse (CU-02 paso 4). | Integración | `GET /users/me/coach-link/preview` devuelve solo `coach_name` del dueño del código (sin importar mayúsculas) y no crea ninguna vinculación. | [**3**](#caso-45) (mobile 0 · backend 3) |
+| HU-13 | Código obligatorio, normalizado y existente (CU-02 4a). | Unitaria | El código se recorta y pasa a mayúsculas; vacío responde 400 `VALIDATION_ERROR` en `invite_code` y uno que no existe 404 `INVITE_CODE_NOT_FOUND`, en la vista previa y en el alta. | [**6**](#caso-46) (mobile 0 · backend 6) |
+| HU-13 | La vinculación agrega al usuario a la lista del coach (CU-02 pasos 5 y 6, RF-12). | Integración | `POST /users/me/coach-link` responde 201 con el coach que mostró la vista previa; el usuario aparece en `GET /coach/clients` y `GET /users/me/coach-link` devuelve a su coach. | [**4**](#caso-47) (mobile 0 · backend 4) |
+| HU-13 | Un solo coach activo por usuario (RN-02, CU-02 4b). | Integración | Con un coach activo, la vista previa y el alta con el código de otro coach responden 409 `USER_ALREADY_LINKED`; el índice `user_id_active_unique` impide dos vinculaciones activas aunque lleguen a la vez. | [**4**](#caso-48) (mobile 0 · backend 4) |
+| HU-13 | Vincularse y desvincularse son solo de cuentas de usuario. | Integración | Una cuenta de coach recibe 403 `FORBIDDEN_ROLE` en la vista previa, el alta, la consulta y la desvinculación. | [**4**](#caso-49) (mobile 0 · backend 4) |
+| HU-14 | Al desvincularse el coach pierde el acceso (RF-13, RN-04). | Integración | `DELETE /users/me/coach-link` responde 204; después el usuario no tiene coach (404 `USER_NOT_LINKED`), no aparece en la lista del coach y sus metas responden 403 `CLIENT_NOT_LINKED`; desvincularse sin coach responde 404 `USER_NOT_LINKED`. | [**5**](#caso-50) (mobile 0 · backend 5) |
+| HU-14 | Volver a vincularse con el mismo coach. | Integración | Después de desvincularse, el mismo código reactiva la vinculación (201, `status: active`) y conserva su fecha de creación. | [**2**](#caso-51) (mobile 0 · backend 2) |
 
 ## Cómo se cuentan las pruebas
 
@@ -59,6 +68,8 @@ Inventario al cerrar HU-24-API: **119** pruebas mobile, **181** pruebas de Rust 
 Inventario al cerrar HU-10-API: **119** pruebas mobile, **188** pruebas de Rust (`cargo test`: 174 se ejecutan y 14 requieren MongoDB y se ejecutan con `--ignored`) y **158** requests de Postman en la colección combinada (sin contar los 48 de preparación). HU-10 agrega 7 pruebas de Rust y 15 requests de Postman (más 10 de preparación). Su endpoint está en el catálogo de `routes/openapi.rs`, así que lo cubren también las pruebas generales de TEC-14 (casos 11 a 15).
 
 Inventario al cerrar HU-11-API: **119** pruebas mobile, **199** pruebas de Rust (`cargo test`: 185 se ejecutan y 14 requieren MongoDB y se ejecutan con `--ignored`) y **172** requests de Postman en la colección combinada (sin contar los 58 de preparación). HU-11 agrega 11 pruebas de Rust y 14 requests de Postman (más 10 de preparación) y reutiliza el cálculo diario de HU-10. Su endpoint también está en el catálogo de `routes/openapi.rs` (casos 11 a 15 de TEC-14).
+
+Inventario al cerrar QA-05 (API): **317** pruebas de Rust (`cargo test`: 277 se ejecutan y 40 requieren MongoDB y se ejecutan con `--ignored`) y **327** requests de Postman en la colección combinada (sin contar los 151 de preparación). QA-05 agrega `GET /users/me/coach-link/preview` (CU-02 paso 4), el índice `user_id_active_unique` (RN-02), 4 pruebas de Rust con MongoDB y 9 requests de Postman (más 1 de preparación), y documenta los casos 43 a 51 con las pruebas de HU-12, HU-13 y HU-14 que ya existían. La colección completa pasó dos veces seguidas con Newman contra una base temporal (482 requests y 1230 aserciones por corrida, 0 fallos).
 
 ## Detalle de las pruebas por caso
 
@@ -577,15 +588,18 @@ Calorías entre el 90 % y el 110 % de la meta del día. En Postman el mismo día
 
 ### <a id="caso-40"></a>Caso 40 · HU-11 — Meta que cambia a mitad de semana
 
-Mobile: 0 · Backend: 4
+Mobile: 0 · Backend: 7
 
-`pick_goal_at` aplica la regla de la meta vigente a cualquier instante; la semana la usa una vez por día con una sola consulta (`get_goals_at`). En Postman el coach fija una meta que empieza a mitad de semana; el día justo antes del inicio no se comprueba porque la fecha de la meta es una fecha en UTC y ese día puede quedar a uno u otro lado según la zona horaria.
+`pick_goal_at` aplica la regla de la meta vigente a cualquier instante; la semana la usa una vez por día con una sola consulta (`get_goals_at`). La meta del coach empieza a las 00:00 de México del día elegido (`start_of_day` con `APP_UTC_OFFSET`), así que el día justo antes del inicio usa la meta que regía. En Postman el coach fija una meta que empieza a mitad de semana y se comprueba también ese día (corregido en `fix/HU-11-meta-del-coach-empieza-en-dia-de-mexico`, hallazgo H-1 de QA-04).
 
 **Backend (Rust)**
 
 - `backend/src/services/summary.rs` › `cada_dia_se_compara_con_la_meta_vigente_ese_dia`
 - `backend/src/services/goals.rs` › `meta_a_una_fecha_cambia_a_mitad_de_semana_y_la_del_coach_gana`
 - `backend/src/services/goals.rs` › `meta_a_una_fecha_anterior_a_la_primera_meta_no_existe`
+- `backend/src/services/summary.rs` › `el_dia_anterior_al_inicio_de_la_meta_del_coach_usa_la_que_regia`
+- `backend/src/services/goals.rs` › `la_meta_del_coach_empieza_a_la_medianoche_de_la_zona_de_la_app`
+- `backend/src/validation.rs` › `el_dia_empieza_a_la_medianoche_de_la_zona_de_la_app`
 
 **Backend (Postman)**
 
@@ -613,3 +627,129 @@ Mobile: 0 · Backend: 3
 - Postman › HU-11 Resumen semanal › 10 - Sin sesión
 - Postman › HU-11 Resumen semanal › 11 - Cuenta de coach
 - Postman › HU-11 Resumen semanal › 12 - Usuario sin meta vigente
+
+### <a id="caso-43"></a>Caso 43 · HU-12 — Código de invitación único del coach (RF-11)
+
+Mobile: 0 · Backend: 6
+
+**Backend (Rust)**
+
+- `backend/src/services/coach_invite_codes.rs` › `generate_code_has_six_uppercase_alphanumeric_chars`
+- `backend/src/services/coach_invite_codes.rs` › `generate_code_is_random`
+
+**Backend (Postman)**
+
+- Postman › HU-12 Código de invitación › 01 - Primera consulta (Coach)
+- Postman › HU-12 Código de invitación › 02 - Segunda consulta (Mismo código)
+- Postman › HU-12 Código de invitación › 03 - Regenerar código
+- Postman › HU-13 Vinculación › 09 - Código regenerado
+
+
+### <a id="caso-44"></a>Caso 44 · HU-12 — El código solo es del coach
+
+Mobile: 0 · Backend: 1
+
+**Backend (Postman)**
+
+- Postman › HU-12 Código de invitación › 04 - Consulta con cuenta de usuario
+
+
+### <a id="caso-45"></a>Caso 45 · HU-13 — Vista previa del coach antes de vincularse (CU-02 paso 4)
+
+Mobile: 0 · Backend: 3
+
+**Backend (Rust)**
+
+- `backend/src/services/coach_links.rs` › `la_vista_previa_da_el_coach_del_codigo_sin_vincular` (requiere MongoDB)
+
+**Backend (Postman)**
+
+- Postman › HU-13 Vinculación › 01 - Vista previa del código
+- Postman › HU-13 Vinculación › 02 - La vista previa no vincula
+
+
+### <a id="caso-46"></a>Caso 46 · HU-13 — Código obligatorio, normalizado y existente (CU-02 4a)
+
+Mobile: 0 · Backend: 6
+
+**Backend (Rust)**
+
+- `backend/src/services/coach_links.rs` › `rejects_missing_or_blank_invite_code`
+- `backend/src/services/coach_links.rs` › `trims_and_uppercases_invite_code`
+- `backend/src/services/coach_links.rs` › `la_vista_previa_rechaza_un_codigo_inexistente_o_vacio` (requiere MongoDB)
+
+**Backend (Postman)**
+
+- Postman › HU-13 Vinculación › 03 - Vista previa con código inexistente
+- Postman › HU-13 Vinculación › 04 - Vista previa sin código
+- Postman › HU-13 Vinculación › 08 - Código inexistente
+
+
+### <a id="caso-47"></a>Caso 47 · HU-13 — La vinculación agrega al usuario a la lista del coach (CU-02 pasos 5 y 6, RF-12)
+
+Mobile: 0 · Backend: 4
+
+**Backend (Rust)**
+
+- `backend/src/services/coach_links.rs` › `creation_fields_are_only_set_on_insert`
+
+**Backend (Postman)**
+
+- Postman › HU-13 Vinculación › 06 - Vincular con código válido
+- Postman › HU-13 Vinculación › 07 - Verificación en lista del coach
+- Postman › HU-13 Vinculación › 13 - Consultar coach vinculado
+
+
+### <a id="caso-48"></a>Caso 48 · HU-13 — Un solo coach activo por usuario (RN-02, CU-02 4b)
+
+Mobile: 0 · Backend: 4
+
+Hallazgo de QA-05: RN-02 solo se comprobaba en el código, así que dos peticiones simultáneas con códigos de coaches distintos podían dejar dos vinculaciones activas. Ahora lo impide el índice único parcial.
+
+**Backend (Rust)**
+
+- `backend/src/services/coach_links.rs` › `la_vista_previa_avisa_si_el_usuario_ya_tiene_coach` (requiere MongoDB)
+- `backend/src/services/coach_links.rs` › `un_usuario_no_puede_tener_dos_vinculaciones_activas` (requiere MongoDB)
+
+**Backend (Postman)**
+
+- Postman › HU-13 Vinculación › 10 - Usuario ya vinculado
+- Postman › HU-13 Vinculación › 11 - Vista previa con un coach activo
+
+
+### <a id="caso-49"></a>Caso 49 · HU-13 — Vincularse y desvincularse son solo de cuentas de usuario
+
+Mobile: 0 · Backend: 4
+
+**Backend (Postman)**
+
+- Postman › HU-13 Vinculación › 05 - Vista previa con cuenta de coach
+- Postman › HU-13 Vinculación › 12 - Cuenta de coach
+- Postman › HU-13 Vinculación › 14 - Consultar con cuenta de coach
+- Postman › HU-14 Desvinculación › 05 - Cuenta de coach intenta desvincularse
+
+
+### <a id="caso-50"></a>Caso 50 · HU-14 — Al desvincularse el coach pierde el acceso (RF-13, RN-04)
+
+Mobile: 0 · Backend: 5
+
+**Backend (Postman)**
+
+- Postman › HU-14 Desvinculación › 01 - Desvincular exitosamente
+- Postman › HU-14 Desvinculación › 02 - El coach ya no lo ve en su lista
+- Postman › HU-14 Desvinculación › 03 - El coach ya no ve sus metas
+- Postman › HU-14 Desvinculación › 04 - Desvincular sin estar vinculado
+- Postman › HU-14 Desvinculación › 06 - Consultar sin estar vinculado
+
+
+### <a id="caso-51"></a>Caso 51 · HU-14 — Volver a vincularse con el mismo coach
+
+Mobile: 0 · Backend: 2
+
+**Backend (Rust)**
+
+- `backend/src/services/coach_links.rs` › `reactivation_keeps_created_at_and_sets_status`
+
+**Backend (Postman)**
+
+- Postman › HU-14 Desvinculación › 07 - Volver a vincularse con el mismo código

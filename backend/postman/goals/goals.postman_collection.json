@@ -1487,7 +1487,7 @@
                 "type": "text/javascript",
                 "exec": [
                   "{",
-                  "    pm.collectionVariables.set(\"goals_first_date\", new Date(Date.now() + (-1) * 86400000).toISOString().slice(0, 10));",
+                  "    pm.collectionVariables.set(\"goals_first_date\", new Date(Date.now() - 6 * 3600 * 1000 + (-1) * 86400000).toISOString().slice(0, 10));",
                   "}"
                 ]
               }
@@ -1512,6 +1512,9 @@
                   "        pm.expect(goal.user_id).to.eql(pm.collectionVariables.get(\"goals_client_id\"));",
                   "        pm.expect([goal.calories, goal.protein_g, goal.fat_g]).to.eql([2200, 160, 70]);",
                   "        pm.expect(goal.effective_from.slice(0, 10)).to.eql(pm.collectionVariables.get(\"goals_first_date\"));",
+                  "    });",
+                  "    pm.test(\"RN-06: empieza a las 00:00 de México del día elegido (06:00 UTC), no a las 00:00 UTC\", function () {",
+                  "        pm.expect(Date.parse(goal.effective_from)).to.eql(Date.parse(pm.collectionVariables.get(\"goals_first_date\") + \"T06:00:00Z\"));",
                   "    });",
                   "    pm.collectionVariables.set(\"goals_first_goal_id\", goal.id);",
                   "}"
@@ -1616,7 +1619,7 @@
                 "type": "text/javascript",
                 "exec": [
                   "{",
-                  "    pm.collectionVariables.set(\"goals_second_date\", new Date(Date.now() + (0) * 86400000).toISOString().slice(0, 10));",
+                  "    pm.collectionVariables.set(\"goals_second_date\", new Date(Date.now() - 6 * 3600 * 1000 + (0) * 86400000).toISOString().slice(0, 10));",
                   "}"
                 ]
               }
@@ -1743,7 +1746,7 @@
                 "type": "text/javascript",
                 "exec": [
                   "{",
-                  "    pm.collectionVariables.set(\"goals_future_date\", new Date(Date.now() + (2) * 86400000).toISOString().slice(0, 10));",
+                  "    pm.collectionVariables.set(\"goals_future_date\", new Date(Date.now() - 6 * 3600 * 1000 + (2) * 86400000).toISOString().slice(0, 10));",
                   "}"
                 ]
               }
@@ -3266,7 +3269,7 @@
                 "type": "text/javascript",
                 "exec": [
                   "{",
-                  "    pm.collectionVariables.set(\"hu24_today\", new Date().toISOString().slice(0, 10));",
+                  "    pm.collectionVariables.set(\"hu24_today\", new Date(Date.now() - 6 * 3600 * 1000).toISOString().slice(0, 10));",
                   "}"
                 ]
               }

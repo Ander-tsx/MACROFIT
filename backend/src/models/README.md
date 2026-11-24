@@ -129,7 +129,8 @@ Vinculación entre un coach y un cliente (HU-05 y HU-13).
 | `status` | `"active"` \| `"unlinked"` | Solo `active` da acceso al cliente |
 | `created_at` | ISODate | |
 
-**Índices:** `coach_id_user_id_unique` → `{ coach_id: 1, user_id: 1 }`, único.
+**Índices:** `coach_id_user_id_unique` → `{ coach_id: 1, user_id: 1 }`, único; `user_id_active_unique` →
+`{ user_id: 1 }`, único solo entre las de `status: "active"` (RN-02: un coach activo por usuario).
 
 ## Colección `coach_invite_codes` (`coach_invite_code.rs`)
 

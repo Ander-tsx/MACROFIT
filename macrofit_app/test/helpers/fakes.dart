@@ -1196,6 +1196,9 @@ class FakeCoachLinkRepository implements CoachLinkRepository {
     this.linkException,
     this.unlinkException,
     this.error,
+    this.previewName = 'Laura',
+    this.previewException,
+    this.latency = Duration.zero,
   });
 
   CoachLink? linkedCoach;
@@ -1205,6 +1208,26 @@ class FakeCoachLinkRepository implements CoachLinkRepository {
   ApiException? error;
   bool unlinkedCalled = false;
 
+  /// Nombre del coach que devuelve la vista previa del código (CU-02 paso 4).
+  String previewName;
+  Exception? previewException;
+
+  /// Demora de la vista previa, para que la pantalla llegue a mostrar la carga.
+  Duration latency;
+
+  /// Códigos enviados a la vista previa y al alta, en orden.
+  final previewCodes = <String>[];
+  final linkCodes = <String>[];
+
+  @override
+  Future<String> previewCoach(String inviteCode) async {
+    previewCodes.add(inviteCode);
+    await Future<void>.delayed(latency);
+    if (error != null) throw error!;
+    if (previewException != null) throw previewException!;
+    return previewName;
+  }
+
   @override
   Future<CoachLink?> getLinkedCoach() async {
     if (error != null) throw error!;
@@ -1213,6 +1236,7 @@ class FakeCoachLinkRepository implements CoachLinkRepository {
 
   @override
   Future<CoachLink> linkCoach(String inviteCode) async {
+    linkCodes.add(inviteCode);
     if (error != null) throw error!;
     if (linkException != null) throw linkException!;
     linkedCoach =

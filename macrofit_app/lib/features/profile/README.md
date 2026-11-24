@@ -10,7 +10,7 @@
 |---|---|---|
 | Dominio | `entities/profile.dart` | `Profile` + enums `Objective`, `ExperienceLevel`, `Gender` (`apiValue` = valor de la API, `label` = texto) |
 | | `repositories/profile_repository.dart` | Contrato `getProfile` / `createProfile` / `updateProfile` |
-| | `validators/profile_validators.dart` | Mismas reglas que `backend/src/services/profile.rs` (rangos provisionales, TEC-12) |
+| | `validators/profile_validators.dart` | Mismas reglas que `backend/src/services/profile.rs` (rangos de TEC-12: 35–250 kg, 130–230 cm, 18–80 años) |
 | Datos | `models/profile_model.dart` | JSON de `ProfileResponse`; `birth_date` como `YYYY-MM-DD` |
 | | `datasources/profile_remote_data_source.dart` | `GET`/`POST`/`PATCH /users/me/profile` con el cliente **con sesión** |
 | | `repositories/profile_repository_impl.dart` | Implementación del contrato |
